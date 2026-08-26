@@ -1,0 +1,37 @@
+# SUPERSEDED — kept forever, never deleted.
+# Scenario history: no experiment ran under this version.
+id:             category_margin_per_store_week
+version:        2
+effective_from: 2025-09-01
+effective_to:   2026-03-01
+supersedes:     1
+grain:          [store_id, iso_week, category]
+unit:           EUR
+rounding:       { mode: half_up, decimals: 2 }
+expression: |
+  sum(s.qty * s.price_paid)
+  - sum(s.qty * s.unit_cost_as_of)
+  - sum(w.qty * w.unit_cost_as_of)
+sources:
+  - { alias: s, relation: gold.decision_economics, join: anchor }
+  - { alias: w, relation: gold.waste,              join: full_outer_on_grain }
+description: >-
+  Revenue less cost of goods sold less the cost of what was thrown away. Written at
+  the cost as it was known at the time of the sale or the disposal, never the current cost.
+why_the_readout_needs_it: >-
+  Retained so that any experiment closed while it was in force would remain interpretable.
+  In this repository none was. It is never the primary metric of a new design.
+restatement:
+  from_version:        1
+  reason: >-
+    Waste at cost is now subtracted. Every value stated under v1 was too high by the
+    cost of what that store threw away in that week. Prior values are restated, not
+    overwritten: the v1 number, this number and the delta are all recoverable.
+  affects_past_values: true
+provenance:
+  kind: scenario_assumption
+  note: >-
+    Scenario version history. No experiment ever ran under this version. It exists to make
+    the restatement rule concrete — a change that alters past values must say so — and the
+    definition is the synthetic scenario's own.
+  verified_on: 2026-08-27

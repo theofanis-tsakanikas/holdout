@@ -1,0 +1,36 @@
+# SUPERSEDED — kept forever, never deleted.
+# Scenario history: no experiment ran under this version, because no experiment has run at
+# all. It is here so that supersession, as-of resolution and restatement have a real family
+# to operate on. The rule it stands for is real even though the history is not — the meaning
+# of an experiment that ran under a definition depends on that definition still saying
+# exactly what it said then, so it is read through the as-of resolver and never by assuming
+# the latest version applied.
+id:             category_margin_per_store_week
+version:        1
+effective_from: 2025-01-01
+effective_to:   2025-09-01
+supersedes:     null
+grain:          [store_id, iso_week, category]
+unit:           EUR
+rounding:       { mode: half_up, decimals: 2 }
+expression: |
+  sum(s.qty * s.price_paid)
+  - sum(s.qty * s.unit_cost_as_of)
+sources:
+  - { alias: s, relation: gold.decision_economics, join: anchor }
+description: >-
+  Revenue less cost of goods sold, per store, ISO week and category. Waste is not
+  subtracted, which is the defect that v2 exists to correct.
+why_the_readout_needs_it: >-
+  Retained so that any experiment closed while it was in force would remain interpretable.
+  In this repository none was: it is never the primary metric of a new design, and it earns
+  its place by giving the supersession and restatement rules something to bind.
+provenance:
+  kind: scenario_assumption
+  note: >-
+    Scenario version history. No experiment ever ran under this version and none closed
+    before 2025-09-01: v1 and v2 exist so that the as-of resolver, the supersession chain
+    and the restatement rule have a real family to work on rather than a single version
+    agreeing with itself. The definition is the synthetic scenario's own and is not drawn
+    from any published accounting standard.
+  verified_on: 2026-08-27

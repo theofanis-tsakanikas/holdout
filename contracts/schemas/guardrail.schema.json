@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/guardrail.schema.json",
+  "title": "Guardrail contract",
+  "description": "One file per guardrail in the envelope. A guardrail is a sequence of effective windows, contiguous and non-overlapping. A decision taken in April is judged by April's window, permanently, even after the rule changes again — so no window is ever edited or deleted, only closed and succeeded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "applies_to", "windows"],
+  "properties": {
+    "id": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/identifier" },
+    "title": { "type": "string", "minLength": 8 },
+    "description": { "type": "string" },
+    "applies_to": {
+      "description": "The decision paths this guardrail constrains. `markdown` actuates itself; `base_price` is a proposal to a human.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["markdown", "base_price"] }
+    },
+    "safe_state": {
+      "description": "Doctrine rule 1 — the safe state is asymmetric and declared per decision path. No path inherits the other's answer.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "markdown": { "enum": ["ladder", "no_action", "refuse"] },
+        "base_price": { "enum": ["ladder", "no_action", "refuse"] }
+      }
+    },
+    "windows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["effective_from", "effective_to", "rules"],
+        "properties": {
+          "effective_from": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date" },
+          "effective_to": {
+            "description": "The first date on which this window is NO LONGER in force. Half-open: [effective_from, effective_to). null means still in force.",
+            "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date_or_null"
+          },
+          "label": { "type": "string" },
+          "note": { "type": "string" },
+          "rules": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/rule" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "description": "Deliberately permissive about shape and absolute about provenance: `source` is required here, and an independent structural check refuses any `value` at any nesting depth that has no `source` beside it. The schema cannot be widened into a hole.",
+      "type": "object",
+      "required": ["id", "statement", "source"],
+      "properties": {
+        "id": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/identifier" },
+        "statement": {
+          "description": "What the rule forbids or requires, in one sentence, in the terms the decision path uses.",
+          "type": "string",
+          "minLength": 15
+        },
+        "value": { "type": ["number", "string", "array", "object", "boolean"] },
+        "unit": { "type": "string" },
+        "source": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/provenance" }
+      }
+    }
+  }
+}

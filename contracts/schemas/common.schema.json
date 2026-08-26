@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/common.schema.json",
+  "title": "Shared definitions for every contract family",
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 2,
+      "maxLength": 96
+    },
+    "iso_date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "iso_date_or_null": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/iso_date"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "relation": {
+      "description": "A fully qualified table name, schema-qualified. Never a vendor object id.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "rounding": {
+      "description": "Load-bearing. Claim 5 compares consumers as integers with no tolerance, so every consumer must round identically. `decimals` fixes the integer scale: canonical_integer = round(value, decimals) * 10**decimals.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "decimals"
+      ],
+      "properties": {
+        "mode": {
+          "description": "half_even is banker's rounding (SQL bround). half_up is SQL round.",
+          "enum": [
+            "half_even",
+            "half_up"
+          ]
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        }
+      }
+    },
+    "provenance": {
+      "description": "Doctrine rule 3 — nothing is invented. Every number that comes from outside the repository carries a citation and a verification date. A `value` without a `source` is a build failure. `kind` distinguishes a verified legal fact from a stated assumption of the synthetic scenario; both are permitted, neither may be omitted, and the two are never dressed as one another. Note the failure this cannot catch on its own: a citation that is real but does not say what the value claims. The defence against that is a `quote` long enough for a reader to check, which is why paraphrase is kept out of it.",
+      "type": "object",
+      "required": [
+        "kind",
+        "verified_on"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "legal_instrument",
+            "scenario_assumption"
+          ]
+        },
+        "verified_on": {
+          "$ref": "#/$defs/iso_date"
+        }
+      },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "instrument",
+            "article",
+            "url",
+            "verified_on"
+          ],
+          "properties": {
+            "kind": {
+              "const": "legal_instrument"
+            },
+            "instrument": {
+              "type": "string",
+              "minLength": 4
+            },
+            "article": {
+              "type": "string",
+              "minLength": 1
+            },
+            "url": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "quote": {
+              "description": "VERBATIM text of the cited provision, and nothing else. Ellipses may shorten it; a summary, an extract, a rubric gloss or an English paraphrase may not stand in it — those go in `note`. The quote is the only part of a citation a reviewer can check without opening the gazette, so a quote that has been helpfully tidied is worse than no quote at all.",
+              "type": "string"
+            },
+            "note": {
+              "description": "Anything that is not the provision's own words: a summary of a long article, what an extract omits, or — importantly — the fact that this citation supports a CONTINUATION rather than a creation, which is an inference from no amending instrument having been found.",
+              "type": "string"
+            },
+            "verified_on": {
+              "$ref": "#/$defs/iso_date"
+            }
+          },
+          "anyOf": [
+            {
+              "required": [
+                "quote"
+              ]
+            },
+            {
+              "required": [
+                "note"
+              ]
+            }
+          ],
+          "description": "A provision that was read at its source. It must carry either a verbatim `quote` — the only part of a citation a reviewer can check without opening the gazette — or a `note` accounting for why there is none. A citation with neither is an assertion with a URL attached, and the failure it hides is the worst kind: an instrument that is real and says something other than what the value claims."
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "note",
+            "verified_on"
+          ],
+          "properties": {
+            "kind": {
+              "const": "scenario_assumption"
+            },
+            "note": {
+              "description": "What is being assumed and why. A law number may appear here, but only to DISOWN it — to record which instrument was found and why its figure is not the source of this value. What must never appear is an instrument presented as the source: that is what `kind: legal_instrument` is for, and it requires an article and a URL that can be opened.",
+              "type": "string",
+              "minLength": 20
+            },
+            "informed_by": {
+              "type": "string"
+            },
+            "verified_on": {
+              "$ref": "#/$defs/iso_date"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

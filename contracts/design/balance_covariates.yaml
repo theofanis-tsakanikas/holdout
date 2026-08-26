@@ -1,0 +1,63 @@
+# Fixed here, not chosen per experiment.
+#
+# If each experiment could pick which characteristics to balance on, that would be a new
+# way to fish: try combinations until a draw comes out flattering. Fixing the list removes
+# the degree of freedom, exactly as the closed reason codes and the pre-declared
+# decision_rule do. Anything that can be chosen after the fact will be chosen after the fact.
+#
+# Every covariate is measured on the pre-period only. Screening on anything measured inside
+# the comparison window uses the same data twice and biases the estimate toward zero.
+#
+# Because the space of admissible assignments is restricted by this screen, the ordinary
+# confidence interval is wrong — it assumes simple randomisation and comes out falsely wide.
+# The inference must be a permutation test under the same restriction, or an estimate
+# adjusted for exactly these covariates. That is the estimator's obligation, not this file's;
+# this file only fixes what the restriction is.
+
+version:        1
+effective_from: 2026-03-01
+
+covariates:
+
+  - id:              category_revenue_8w
+    type:            numeric
+    measured:        pre_period
+    lookback_weeks:  8
+    source_relation: gold.store_day
+    description: >-
+      Revenue in the experiment's categories over the eight weeks ending the day before
+      the period opens. The dominant driver of the primary metric's variance.
+
+  - id:              store_format
+    type:            categorical
+    measured:        pre_period
+    source_relation: gold.store_day
+    description: >-
+      Hypermarket, supermarket or convenience. Format determines fresh assortment depth and
+      therefore how much markdown decision volume a store generates at all.
+
+  - id:              store_size_sqm
+    type:            numeric
+    measured:        pre_period
+    source_relation: gold.store_day
+    description: >-
+      Selling area in square metres. Correlated with format but not determined by it, and
+      it separates two stores of the same format at opposite ends of their range.
+
+  - id:              waste_rate
+    type:            numeric
+    measured:        pre_period
+    lookback_weeks:  8
+    source_relation: gold.store_day
+    description: >-
+      Cost of disposals over cost of goods sold, in the experiment's categories, over the
+      same eight weeks. A store already running high waste has the most room to move, so an
+      arm that happens to collect them starts ahead.
+
+  - id:              pricing_zone
+    type:            categorical
+    measured:        pre_period
+    source_relation: gold.store_day
+    description: >-
+      The zone whose base price the store carries. Base price is set centrally by zone, so
+      two stores in different zones are not selling the same assortment at the same price.

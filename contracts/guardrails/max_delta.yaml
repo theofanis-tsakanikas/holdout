@@ -1,0 +1,79 @@
+# The maximum movement a price may make, per path and per day.
+#
+# The two decision paths bound differently and neither may inherit the other's number. A
+# markdown on expiring fresh is allowed to be deep, because the alternative is disposal. A
+# base price is central, weekly and by pricing zone, and a large move on it is a commercial
+# event rather than an automated one.
+
+id:         max_delta
+title:      The maximum movement a price may make
+applies_to: [markdown, base_price]
+
+safe_state:
+  markdown:   ladder
+  base_price: no_action
+
+windows:
+
+  - effective_from: 2025-01-01
+    effective_to:   null
+    label: Opening envelope
+    rules:
+
+      - id: markdown_max_depth_pct
+        statement: >-
+          A markdown may not cut deeper than this percentage below the shelf base price.
+          The deepest step of any ladder policy must sit at or under it.
+        value: 70
+        unit: percent
+        source:
+          kind: scenario_assumption
+          note: >-
+            An operational bound of the synthetic scenario, set to the deepest step of
+            ladder_policy@v1 so that the envelope binds the ladder rather than trailing it.
+            A guardrail looser than every policy it governs has never refused anything.
+          verified_on: 2026-08-27
+
+      - id: markdown_max_changes_per_sku_per_day
+        statement: >-
+          At most this many price changes may be dispatched for one SKU in one store in one
+          day. A decision is idempotent per (sku_id, store_id, ladder_step), so re-running
+          never contributes to this count.
+        value: 4
+        unit: count
+        source:
+          kind: scenario_assumption
+          note: >-
+            Set to the number of ladder steps. Electronic shelf label updates cost battery
+            and bandwidth, and a shelf whose price flickers is a shelf customers stop
+            trusting; the bound is what makes an unbounded retry loop visible as a refusal
+            rather than as a busy afternoon.
+          verified_on: 2026-08-27
+
+      - id: base_price_max_weekly_increase_pct
+        statement: >-
+          A base price may not rise by more than this percentage against the price in force
+          at the start of the pricing week.
+        value: 10
+        unit: percent
+        source:
+          kind: scenario_assumption
+          note: >-
+            A commercial bound of the synthetic scenario. The base-price path produces a
+            proposal to a human and never actuates itself, so this bound governs what may
+            be proposed, not what may be written to a shelf.
+          verified_on: 2026-08-27
+
+      - id: base_price_max_weekly_decrease_pct
+        statement: >-
+          A base price may not fall by more than this percentage against the price in force
+          at the start of the pricing week.
+        value: 20
+        unit: percent
+        source:
+          kind: scenario_assumption
+          note: >-
+            A commercial bound of the synthetic scenario. It is wider than the increase
+            bound because a reduction announced against a prior price carries its own
+            constraint from the prior-price guardrail, which binds first.
+          verified_on: 2026-08-27

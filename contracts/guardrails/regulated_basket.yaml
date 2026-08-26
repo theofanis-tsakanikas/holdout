@@ -1,0 +1,396 @@
+# The regulated basket — the gross-margin cap on staple goods.
+#
+# This is the guardrail CLAUDE.md names as the reason effective windows exist at all, and
+# the real history is a better argument than the one the project started with. Between 2021
+# and 2026 the Greek cap did not merely change its numbers: it changed its SHAPE twice. The
+# unit of comparison moved from the margin per unit to the margin per product code, and the
+# benchmark moved from a point in time to a full-year average. Neither regime can be
+# re-applied to the other's window, and no single "current cap" field could ever have
+# expressed both.
+#
+# It is also the guardrail with the most holes, and the holes are written down. Where an
+# instrument was found but could not be read at an authenticated primary source, or where
+# an extension is reported only in the press, this file states that no cap is encoded for
+# that period and says why. A window that quietly carried a plausible percentage would be
+# the exact failure doctrine rule 3 exists to prevent — and it would be invisible, because
+# a plausible percentage looks like a verified one.
+#
+# Every URL below was fetched and read on 2026-08-27. docs/REGULATORY.md carries the
+# argument and a section listing, by name, everything that is NOT verified.
+
+id:         regulated_basket
+title:      The gross-margin cap on goods essential to the consumer
+applies_to: [markdown, base_price]
+
+description: >-
+  A cap on gross margin is not a floor and not a ceiling on price: it binds the margin
+  between the cost and the price, so the same shelf price is legal or illegal depending on
+  what the goods cost the retailer. It therefore has to be evaluated against the cost as it
+  was known at decision time, like every other arithmetic in this system, and a decision
+  taken in April is judged by April's window permanently.
+
+  The scope is not constant either. The 2021 and 2022 measures reach goods and services
+  essential to the consumer's health, nutrition, living, movement and safety; the 2026
+  measure reaches products essential to nutrition and living. A guardrail that assumed one
+  scope across all of them would refuse decisions it had no basis to refuse in one direction
+  and pass decisions it should have caught in the other.
+
+safe_state:
+  markdown:   ladder
+  base_price: no_action
+
+windows:
+
+  # ---------------------------------------------------------------- 18.07.2021
+  - effective_from: 2021-07-18
+    effective_to:   2022-01-01
+    label: "ν. 4818/2021 άρθρο 58 — a cap benchmarked on the seller's own pre-01.09.2020 margin"
+    note: >-
+      Two things about this window are easy to get wrong, and both were got wrong here once.
+      The measure is conditional on the COVID-19 emergency and self-limited to 31.12.2021, and
+      its scope is wider than nutrition: it reaches health, living, movement and safety. More
+      seriously, the instrument does NOT say what the margin is measured on — «ανά μονάδα»
+      does not occur anywhere in ν. 4818/2021. The per-unit basis first enters with ν.
+      4903/2022 άρθρο 50, where the text does say it. An earlier version of this file imported
+      the successor's arithmetic into this window and stamped this instrument's citation on
+      it. No check in this repository could have caught that: a citation that is real but says
+      something else is indistinguishable, mechanically, from one that says what it claims.
+      The only defence is a quote long enough to be checked, which is why the elided clauses
+      are restored below.
+    rules:
+
+      - id: cap_in_force
+        statement: >-
+          A cap on gross margin is in force in this window. It is conditional on the COVID-19
+          emergency and expires no later than 31.12.2021 by its own terms, and it covers goods
+          and services essential to the consumer's health, nutrition, living, movement and
+          safety — a wider scope than the nutrition-and-living basket of the 2026 measure.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4818/2021 (ΦΕΚ Α΄ 124/18.07.2021), «Περιστολή αθέμιτης κερδοφορίας σε συνθήκες κρίσης …»"
+          article: "άρθρο 58 παρ. 1"
+          url: https://www.sate.gr/data_source/2021%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A124%CE%91.pdf
+          quote: >-
+            «Εφόσον, υφίσταται άμεσος κίνδυνος διασποράς του κορωνοϊού COVID-19 και πάντως όχι
+            πέραν της 31ης.12.2021, απαγορεύεται η συνομολόγηση ή η λήψη περιουσιακών
+            ωφελημάτων που αφορούν στην πώληση οποιουδήποτε προϊόντος ή υπηρεσίας που είναι
+            απαραίτητα για την υγεία, τη διατροφή, τη διαβίωση, τη μετακίνηση και την ασφάλεια
+            του καταναλωτή … τόσο ώστε το μικτό περιθώριο κέρδους να είναι μεγαλύτερο του
+            αντίστοιχου περιθωρίου προ της 1ης Σεπτεμβρίου 2020 …»
+          verified_on: 2026-08-27
+
+      - id: cap_benchmark
+        statement: >-
+          What the margin is compared against. Here it is the seller's own margin before a
+          fixed date, so the benchmark is a property of the seller and not of the market.
+        value: seller_margin_before_2020_09_01
+        unit: benchmark
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4818/2021 (ΦΕΚ Α΄ 124/18.07.2021)"
+          article: "άρθρο 58 παρ. 1"
+          url: https://www.sate.gr/data_source/2021%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A124%CE%91.pdf
+          quote: >-
+            «… τόσο ώστε το μικτό περιθώριο κέρδους να είναι μεγαλύτερο του αντίστοιχου
+            περιθωρίου προ της 1ης Σεπτεμβρίου 2020 …»
+          verified_on: 2026-08-27
+
+      - id: cap_basis
+        statement: >-
+          What the margin is measured on — per unit sold, per product code, or something else.
+          For this window the instrument does not say, so neither does this contract. Code
+          that has to branch on the basis must treat this window as one it cannot evaluate,
+          rather than borrowing the arithmetic of the regime that followed.
+        value: unspecified_in_the_instrument
+        unit: basis
+        source:
+          kind: scenario_assumption
+          note: >-
+            The full text of ν. 4818/2021 was searched and «ανά μονάδα» does not occur in it.
+            The per-unit basis appears for the first time in ν. 4903/2022 άρθρο 50, cited in
+            the 2022 window below, where the text states it explicitly. Naming an instrument
+            here is disowning it, not sourcing from it: no basis is claimed for this window.
+          verified_on: 2026-08-27
+
+      - id: cap_expires_on
+        statement: >-
+          The measure ends by its own terms no later than this date, and earlier if the
+          COVID-19 emergency it is conditional on ends first.
+        value: "2021-12-31"
+        unit: date
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4818/2021 (ΦΕΚ Α΄ 124/18.07.2021)"
+          article: "άρθρο 58 παρ. 1"
+          url: https://www.sate.gr/data_source/2021%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A124%CE%91.pdf
+          quote: >-
+            «Εφόσον, υφίσταται άμεσος κίνδυνος διασποράς του κορωνοϊού COVID-19 και πάντως όχι
+            πέραν της 31ης.12.2021 …»
+          verified_on: 2026-08-27
+
+  # ---------------------------------------------------------------- 01.01.2022
+  - effective_from: 2022-01-01
+    effective_to:   2022-03-05
+    label: "No cap encoded — the 2021 measure has expired and any bridge into 2022 is unverified"
+    note: >-
+      A declared hole, not an omission — and only half a hole. The window boundary itself is
+      sourced: ν. 4818/2021 ends by its own terms no later than 31.12.2021, quoted in the
+      previous window. What is unverified is whether anything bridged the interval until ν.
+      4903/2022 took effect on 05.03.2022; ν. 4876/2021 is a candidate that was never opened.
+      A gap and a lapse look identical on disk, so this window says which one it is.
+    rules:
+
+      - id: cap_in_force
+        statement: >-
+          No gross-margin cap is encoded for this window. This is a statement about what
+          this repository verified, not a statement that no cap existed.
+        value: false
+        unit: boolean
+        source:
+          kind: scenario_assumption
+          note: >-
+            The 2021 measure expires no later than 31.12.2021 on the face of its own text,
+            and ν. 4903/2022 takes effect on 05.03.2022. Whether ν. 4876/2021 or another
+            instrument bridged the interval was not established at gazette level. Nothing is
+            encoded rather than a guess, and the synthetic scenario holds no data in this
+            window in any case.
+          verified_on: 2026-08-27
+
+  # ---------------------------------------------------------------- 05.03.2022
+  - effective_from: 2022-03-05
+    effective_to:   2022-07-01
+    label: "ν. 4903/2022 άρθρο 50 — margin per unit against the pre-01.09.2021 margin"
+    note: >-
+      The window where the per-unit basis actually enters Greek law. «ανά μονάδα» appears
+      twice in the sentence quoted below, on both sides of the comparison.
+    rules:
+
+      - id: cap_in_force
+        statement: A gross-margin cap on essential goods is in force in this window.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4903/2022 (ΦΕΚ Α΄ 46/05.03.2022), αντικαθιστά τον τίτλο και τις παρ. 1–6 του άρθρου 58 ν. 4818/2021"
+          article: "άρθρο 50"
+          url: https://www.sate.gr/data_source/2022%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A46%CE%91.pdf
+          quote: >-
+            «Για το χρονικό διάστημα από τη δημοσίευση του παρόντος και έως την 30ή.6.2022,
+            απαγορεύεται η αποκόμιση μικτού κέρδους … όταν το περιθώριο μικτού κέρδους ανά
+            μονάδα υπερβαίνει το αντίστοιχο περιθώριο μικτού κέρδους ανά μονάδα προ της
+            1ης.9.2021.»
+          verified_on: 2026-08-27
+
+      - id: cap_basis
+        statement: >-
+          What the margin is measured on. Per unit sold, on both sides of the comparison.
+        value: per_unit
+        unit: basis
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4903/2022 (ΦΕΚ Α΄ 46/05.03.2022)"
+          article: "άρθρο 50"
+          url: https://www.sate.gr/data_source/2022%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A46%CE%91.pdf
+          quote: >-
+            «… όταν το περιθώριο μικτού κέρδους ανά μονάδα υπερβαίνει το αντίστοιχο περιθώριο
+            μικτού κέρδους ανά μονάδα προ της 1ης.9.2021.»
+          verified_on: 2026-08-27
+
+      - id: cap_benchmark
+        statement: >-
+          What the margin is compared against. Still the seller's own margin before a fixed
+          date; only the date moved.
+        value: seller_margin_before_2021_09_01
+        unit: benchmark
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4903/2022 (ΦΕΚ Α΄ 46/05.03.2022)"
+          article: "άρθρο 50"
+          url: https://www.sate.gr/data_source/2022%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A46%CE%91.pdf
+          quote: >-
+            «… προ της 1ης.9.2021.»
+          verified_on: 2026-08-27
+
+      - id: cap_expires_on
+        statement: The measure ends by its own terms on this date.
+        value: "2022-06-30"
+        unit: date
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4903/2022 (ΦΕΚ Α΄ 46/05.03.2022)"
+          article: "άρθρο 50"
+          url: https://www.sate.gr/data_source/2022%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A46%CE%91.pdf
+          quote: >-
+            «Για το χρονικό διάστημα από τη δημοσίευση του παρόντος και έως την 30ή.6.2022 …»
+          verified_on: 2026-08-27
+
+  # ---------------------------------------------------------------- 01.07.2022
+  - effective_from: 2022-07-01
+    effective_to:   2026-03-11
+    label: "No cap encoded — the 2023–2025 chain was found but not verified at an authenticated source"
+    note: >-
+      The longest declared hole, and the one that covers most of the corpus. A later chain
+      of instruments is reported to have carried a per-unit cap benchmarked before
+      31.12.2021 from July 2023 into 2025, but the gazette copies could not be retrieved
+      over an authenticated connection and the 2025 extension could not be located at all.
+      The synthetic scenario therefore runs with no cap in force until the 2026 emergency
+      measure, and says so.
+    rules:
+
+      - id: cap_in_force
+        statement: >-
+          No gross-margin cap is encoded for this window. This is a statement about what
+          this repository verified, not a statement that no cap existed.
+        value: false
+        unit: boolean
+        source:
+          kind: scenario_assumption
+          note: >-
+            ν. 5045/2023 άρθρο 54 and its reported extensions by ν. 5079/2023, ν. 5116/2024
+            and a 2025 instrument were identified but could not be read at an authenticated
+            primary source, and the reference period they depend on is itself fixed by a
+            ministerial decision that was never obtained. Encoding a percentage here would
+            be a number with a plausible shape and no citation behind it. See
+            docs/REGULATORY.md, "Not verified".
+          verified_on: 2026-08-27
+
+  # ---------------------------------------------------------------- 11.03.2026
+  - effective_from: 2026-03-11
+    effective_to:   2026-07-01
+    label: "ΠΝΠ 11.03.2026 / ν. 5289/2026 — margin per product code against the 2025 average"
+    note: >-
+      The window the scenario is built around, and the one where the shape of the rule
+      changes. The unit of comparison is now the product code rather than the unit sold, and
+      the benchmark is a full-year average rather than a date. Code that had hard-coded the
+      earlier arithmetic would keep returning a number here, and the number would be wrong.
+    rules:
+
+      - id: cap_in_force
+        statement: A gross-margin cap on essential goods is in force in this window.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "Πράξη Νομοθετικού Περιεχομένου της 11.3.2026 (ΦΕΚ Α΄ 37/11.03.2026), κυρωθείσα με τον ν. 5289/2026 (ΦΕΚ Α΄ 45/20.03.2026)"
+          article: "άρθρο δεύτερο"
+          url: https://www.dsanet.gr/Epikairothta/Nomothesia/45.PDF
+          quote: >-
+            «Από την έναρξη ισχύος του παρόντος και έως την 30ή Ιουνίου 2026 απαγορεύεται η
+            αποκόμιση μεικτού περιθωρίου κέρδους από την πώληση οποιουδήποτε προϊόντος, που
+            είναι απαραίτητο για τη διατροφή και τη διαβίωση του καταναλωτή, εφόσον το
+            μεικτό περιθώριο κέρδους, υπολογιζόμενο ανά κωδικό προϊόντος, υπερβαίνει τον
+            μέσο όρο του αντίστοιχου μεικτού περιθωρίου κέρδους του έτους 2025.»
+          verified_on: 2026-08-27
+
+      - id: cap_basis
+        statement: >-
+          What the margin is measured on. Per product code — not per unit sold, which is what
+          every earlier regime that stated a basis used.
+        value: per_product_code
+        unit: basis
+        source:
+          kind: legal_instrument
+          instrument: "ΠΝΠ 11.3.2026 (ΦΕΚ Α΄ 37/11.03.2026), κυρωθείσα με τον ν. 5289/2026 (ΦΕΚ Α΄ 45/20.03.2026)"
+          article: "άρθρο δεύτερο"
+          url: https://www.dsanet.gr/Epikairothta/Nomothesia/45.PDF
+          quote: >-
+            «… εφόσον το μεικτό περιθώριο κέρδους, υπολογιζόμενο ανά κωδικό προϊόντος,
+            υπερβαίνει τον μέσο όρο του αντίστοιχου μεικτού περιθωρίου κέρδους του έτους
+            2025.»
+          verified_on: 2026-08-27
+
+      - id: cap_benchmark
+        statement: >-
+          What the margin is compared against. A full-year average rather than the margin on
+          a particular date, so the benchmark cannot be read off a single historical price.
+        value: average_gross_margin_2025
+        unit: benchmark
+        source:
+          kind: legal_instrument
+          instrument: "ΠΝΠ 11.3.2026 (ΦΕΚ Α΄ 37/11.03.2026), κυρωθείσα με τον ν. 5289/2026 (ΦΕΚ Α΄ 45/20.03.2026)"
+          article: "άρθρο δεύτερο"
+          url: https://www.dsanet.gr/Epikairothta/Nomothesia/45.PDF
+          quote: >-
+            «… υπερβαίνει τον μέσο όρο του αντίστοιχου μεικτού περιθωρίου κέρδους του έτους
+            2025.»
+          verified_on: 2026-08-27
+
+      - id: cap_expires_on
+        statement: >-
+          The measure ends by its own terms on this date, and may be ended earlier by
+          ministerial decision. Whether anything extended it is a separate question, answered
+          — as far as this repository can answer it — in the window that follows.
+        value: "2026-06-30"
+        unit: date
+        source:
+          kind: legal_instrument
+          instrument: "ΠΝΠ 11.3.2026 (ΦΕΚ Α΄ 37/11.03.2026), κυρωθείσα με τον ν. 5289/2026 (ΦΕΚ Α΄ 45/20.03.2026)"
+          article: "άρθρα δεύτερο και τέταρτο"
+          url: https://www.dsanet.gr/Epikairothta/Nomothesia/45.PDF
+          quote: >-
+            «Με όμοια απόφαση είναι δυνατόν να παύει η εφαρμογή της παρούσας Πράξης προ της
+            30ής Ιουνίου 2026.»
+          verified_on: 2026-08-27
+
+      - id: max_fine_eur
+        statement: >-
+          The upper bound on a penalty, doubled on repetition. The number the guardrail type
+          exists to keep away from.
+        value: 5000000
+        unit: EUR
+        source:
+          kind: legal_instrument
+          instrument: "ΠΝΠ 11.3.2026 (ΦΕΚ Α΄ 37/11.03.2026), κυρωθείσα με τον ν. 5289/2026 (ΦΕΚ Α΄ 45/20.03.2026)"
+          article: "άρθρο τρίτο"
+          url: https://www.dsanet.gr/Epikairothta/Nomothesia/45.PDF
+          note: >-
+            Not a quotation — a summary. The article provides for a fine of €5,000 to
+            €5,000,000, calibrated on firm size, gravity, duration and economic benefit,
+            doubled on repetition; up to €50,000 for obstructing an inspection. Enforced by
+            the Ανεξάρτητη Αρχή Ελέγχου της Αγοράς και Προστασίας του Καταναλωτή.
+          verified_on: 2026-08-27
+
+      - id: regulated_category_ids
+        statement: >-
+          The categories the scenario treats as inside the basket. Membership is a
+          product-master attribute resolved as of the decision, never inferred at readout.
+        value: [dairy, bakery, poultry]
+        unit: category_id
+        source:
+          kind: scenario_assumption
+          note: >-
+            The real scope is fixed by a ministerial decision issued under άρθρο τέταρτο of
+            the emergency measure, reported to name 63 product categories. That decision was
+            not obtained at a primary source, so its list is not reproduced here. These three
+            are the synthetic scenario's own fresh categories, declared so that the guardrail
+            has something to bind in the corpus; they are not a claim about the real list.
+          verified_on: 2026-08-27
+
+  # ---------------------------------------------------------------- 01.07.2026
+  - effective_from: 2026-07-01
+    effective_to:   null
+    label: "No cap encoded — the emergency measure lapsed on its own terms"
+    note: >-
+      The measure's own text ends it on 30.06.2026 and gives no power to extend it. No
+      instrument extending it was found, and none confirming it lapsed either. The scenario
+      treats it as lapsed and records the uncertainty rather than resolving it silently in
+      either direction.
+    rules:
+
+      - id: cap_in_force
+        statement: >-
+          No gross-margin cap is encoded for this window. Should one be enacted, it is added
+          as a new window; this one is closed, never edited.
+        value: false
+        unit: boolean
+        source:
+          kind: scenario_assumption
+          note: >-
+            The emergency measure carries a hard end date of 30.06.2026, an early-termination
+            power and no extension mechanism, which supports expiry. Press reporting from June
+            2026 points both ways and no instrument was found either extending it or
+            confirming its lapse. Stated as the scenario's position, with the uncertainty on
+            the record. See docs/REGULATORY.md, "Not verified".
+          verified_on: 2026-08-27

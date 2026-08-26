@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/balance_covariates.schema.json",
+  "title": "The balance covariates",
+  "description": "Fixed here, not chosen per experiment. If each experiment could pick which characteristics to balance on, that would be a new way to fish — try combinations until a draw comes out flattering. Every covariate must be measured on the pre-period only: selecting on anything measured inside the comparison window uses the same data twice and biases the estimate toward zero.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "effective_from", "covariates"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "effective_from": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date" },
+    "note": { "type": "string" },
+    "covariates": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "measured", "description"],
+        "properties": {
+          "id": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/identifier" },
+          "type": { "enum": ["numeric", "categorical"] },
+          "measured": {
+            "description": "Only `pre_period` is admissible. The value is spelled out rather than assumed so that a change to it is visible in a diff.",
+            "const": "pre_period"
+          },
+          "lookback_weeks": { "type": "integer", "minimum": 1, "maximum": 104 },
+          "description": { "type": "string", "minLength": 15 },
+          "source_relation": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/relation" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,239 @@
+{
+  "$comment": "GENERATED FILE — DO NOT EDIT. source: contracts/design/form.schema.yaml plus the closed lists resolved from contracts/metrics/ and contracts/policies/; generator: holdout.contracts.compilers.design_form; regenerate: make contracts.",
+  "$id": "https://holdout.local/contracts/design/form.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "decision_rule": {
+      "additionalProperties": false,
+      "description": "What we will do with each outcome, declared before the period opens and applied unchanged when it closes. A rule that permits acting before max_duration has elapsed is refused with STOPPING_RULE_PERMITS_PEEKING. `if_refused` is mandatory because a refusal is an outcome, and a design with no plan for it invites the plan being made after the refusal arrives.",
+      "properties": {
+        "if_not_significant": {
+          "minLength": 10,
+          "type": "string"
+        },
+        "if_refused": {
+          "minLength": 10,
+          "type": "string"
+        },
+        "if_significant": {
+          "minLength": 10,
+          "type": "string"
+        }
+      },
+      "required": [
+        "if_significant",
+        "if_not_significant",
+        "if_refused"
+      ],
+      "type": "object",
+      "x-never-filled-by": [
+        "agent"
+      ]
+    },
+    "exclusions": {
+      "description": "Store ids with reasons, declared before assignment. Every exclusion is a degree of freedom, so each one carries a reason that can be read back.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "minLength": 10,
+            "type": "string"
+          },
+          "store_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "store_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "filled_by": {
+      "description": "Attribution, not a design field. The engine reads it, records it and ignores it when deciding. All three sources are first-class.",
+      "pattern": "^(agent|human:[A-Za-z][A-Za-z .'-]{1,60}|policy:[a-z][a-z0-9_]*)$",
+      "type": "string"
+    },
+    "hypothesis": {
+      "description": "One precise sentence — what changes, on what, measured by what. Imprecision here is not caught by any later check, because every later check takes the hypothesis as given.",
+      "maxLength": 300,
+      "minLength": 30,
+      "type": "string"
+    },
+    "intervention": {
+      "additionalProperties": false,
+      "description": "What the two arms actually are. Control is never \"nothing\": the holdout runs the existing policy, because comparing against abandonment would inflate every uplift.",
+      "properties": {
+        "control": {
+          "$comment": "closed list `policy_refs`, resolved from the contracts at compile time. Do not edit: add or remove the contract instead.",
+          "enum": [
+            "ladder_policy@v1"
+          ],
+          "type": "string"
+        },
+        "treatment": {
+          "$comment": "closed list `policy_refs`, resolved from the contracts at compile time. Do not edit: add or remove the contract instead.",
+          "enum": [
+            "ladder_policy@v1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "treatment",
+        "control"
+      ],
+      "type": "object"
+    },
+    "max_duration": {
+      "additionalProperties": false,
+      "description": "A business constraint, not a statistical one. If the required sample does not fit inside it the design is refused with UNDERPOWERED_FOR_DURATION rather than quietly shortened.",
+      "properties": {
+        "weeks": {
+          "maximum": 52,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "weeks"
+      ],
+      "type": "object",
+      "x-never-filled-by": [
+        "agent"
+      ]
+    },
+    "mde": {
+      "additionalProperties": false,
+      "description": "The smallest difference worth detecting, declared in advance. Declared afterwards it is whatever the data happened to show.",
+      "properties": {
+        "direction": {
+          "description": "A one-sided expectation must be declared before the period opens or not at all.",
+          "enum": [
+            "increase",
+            "decrease",
+            "either"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "relative_pct",
+            "absolute"
+          ]
+        },
+        "value": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "primary_metric": {
+      "$comment": "closed list `metric_ids`, resolved from the contracts at compile time. Do not edit: add or remove the contract instead.",
+      "description": "From the metric contract — a closed list, never free text. An id outside the contract is refused at design with METRIC_NOT_IN_CONTRACT. The version is not chosen here: the version in force on the design date applies, and it applies permanently to this experiment even after the metric is superseded.",
+      "enum": [
+        "category_margin_per_store_week",
+        "units_sold_per_store_week",
+        "waste_value_per_store_week"
+      ],
+      "type": "string"
+    },
+    "scope": {
+      "additionalProperties": false,
+      "description": "Which categories, products and stores the experiment may touch.",
+      "properties": {
+        "categories": {
+          "items": {
+            "minLength": 2,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "products": {
+          "description": "Null means every product in the named categories.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "stores": {
+          "description": "`all` means the whole corpus minus the exclusions. A list narrows it. Narrowing after the fact is what EXCLUSIONS_DEFINED_POST_HOC refuses.",
+          "oneOf": [
+            {
+              "const": "all"
+            },
+            {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 2,
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        }
+      },
+      "required": [
+        "categories",
+        "stores"
+      ],
+      "type": "object"
+    },
+    "unit": {
+      "description": "The unit of randomisation. It has no single correct answer, which is why a model may propose it — and whether the resulting design has the power it claims has exactly one, which is why code decides that.",
+      "enum": [
+        "store",
+        "store_week",
+        "store_category",
+        "region"
+      ]
+    }
+  },
+  "required": [
+    "hypothesis",
+    "intervention",
+    "scope",
+    "primary_metric",
+    "unit",
+    "mde",
+    "max_duration",
+    "exclusions",
+    "decision_rule",
+    "filled_by"
+  ],
+  "title": "Experiment design form",
+  "type": "object",
+  "x-design-fields": [
+    "hypothesis",
+    "intervention",
+    "scope",
+    "primary_metric",
+    "unit",
+    "mde",
+    "max_duration",
+    "exclusions",
+    "decision_rule"
+  ]
+}

@@ -1,0 +1,65 @@
+# Categories in which no automated price decision may be taken at all.
+#
+# A frozen category is not a category with a tighter bound; it is a category the decision
+# path does not enter. That distinction is why this is its own contract rather than a floor
+# of one hundred percent: a guardrail that clamps still produces a price, and here the
+# correct output is that no decision was taken.
+#
+# This file carries two windows, and the second exists to make the as-of question concrete.
+# A category frozen for a season is judged frozen for every decision inside that season,
+# permanently, and unfrozen for every decision after it — including when both are read in
+# the same query a year later.
+
+id:         frozen_categories
+title:      Categories in which no automated price decision is taken
+applies_to: [markdown, base_price]
+
+safe_state:
+  markdown:   no_action
+  base_price: no_action
+
+windows:
+
+  - effective_from: 2025-01-01
+    effective_to:   2025-11-01
+    label: Opening list
+    rules:
+
+      - id: frozen_category_ids
+        statement: >-
+          No automated price decision is dispatched for a product in any of these
+          categories. The decision path stops before the model is called.
+        value: [tobacco, spirits, infant_formula, pharmacy]
+        unit: category_id
+        source:
+          kind: scenario_assumption
+          note: >-
+            A stated list of the synthetic scenario. Each of these categories is subject to
+            price or marketing rules in real European markets — tobacco retail pricing,
+            alcohol duty and display, infant formula marketing, pharmacy-only products —
+            and none of those rules was verified for this project. They are frozen here
+            because the scenario declines to automate them, not because a specific
+            instrument was read and encoded. See docs/REGULATORY.md, "Not verified".
+          verified_on: 2026-08-27
+
+  - effective_from: 2025-11-01
+    effective_to:   null
+    label: Fresh-fish counter added after the sourcing change
+    note: >-
+      The window that makes the as-of question concrete: a decision taken in June 2025 is
+      judged by the opening list, permanently, even though fresh_fish is frozen now.
+    rules:
+
+      - id: frozen_category_ids
+        statement: >-
+          No automated price decision is dispatched for a product in any of these
+          categories. The decision path stops before the model is called.
+        value: [tobacco, spirits, infant_formula, pharmacy, fresh_fish]
+        unit: category_id
+        source:
+          kind: scenario_assumption
+          note: >-
+            fresh_fish joins the list in the synthetic scenario after a sourcing change
+            moved the counter to daily manual pricing. Stated as a scenario event; no real
+            retailer's assortment decision is being described.
+          verified_on: 2026-08-27

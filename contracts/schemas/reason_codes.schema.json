@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/reason_codes.schema.json",
+  "title": "The refusal vocabulary",
+  "description": "Closed, because a free-text reason cannot be counted, tested or gated. Claim 6's 'N proposed, M refused, K would have been wrong' exists only because the reasons are enumerable. The closed set lives in this schema; the meanings live in contracts/design/reason_codes.yaml; a test asserts the two agree in both directions. Adding a code is therefore a code change with a test, exactly as intended.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["at_design", "at_readout"],
+  "properties": {
+    "at_design": {
+      "description": "A refusal before any unit is assigned. The experiment does not happen.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "meaning"],
+        "properties": {
+          "code": {
+            "enum": [
+              "UNDERPOWERED_FOR_DURATION",
+              "UNDERPOWERED_FOR_CAPACITY",
+              "UNIT_GUARANTEES_INTERFERENCE",
+              "STOPPING_RULE_PERMITS_PEEKING",
+              "EXCLUSIONS_DEFINED_POST_HOC",
+              "METRIC_NOT_IN_CONTRACT",
+              "UNITS_ALREADY_COMMITTED"
+            ]
+          },
+          "meaning": { "type": "string", "minLength": 20 },
+          "what_would_fix_it": {
+            "description": "A refusal names what would fix it. Without this the engine is an obstacle rather than a design partner.",
+            "type": "string",
+            "minLength": 15
+          }
+        }
+      }
+    },
+    "at_readout": {
+      "description": "A refusal after the period closed. The experiment ran; no number may be stated from it.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "meaning"],
+        "properties": {
+          "code": {
+            "enum": [
+              "IMBALANCED_PRE_PERIOD",
+              "EXPOSURE_BELOW_THRESHOLD",
+              "CONTAMINATED_ASSIGNMENT",
+              "POWER_NOT_REACHED"
+            ]
+          },
+          "meaning": { "type": "string", "minLength": 20 },
+          "check": {
+            "description": "Which of the four mandatory close checks produces this code.",
+            "enum": ["balance", "exposure", "contamination", "power"]
+          }
+        }
+      }
+    }
+  }
+}

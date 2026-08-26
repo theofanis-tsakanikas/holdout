@@ -1,0 +1,27 @@
+# IN FORCE.
+id:             waste_value_per_store_week
+version:        1
+effective_from: 2025-09-01
+effective_to:   null
+supersedes:     null
+grain:          [store_id, iso_week, category]
+unit:           EUR
+rounding:       { mode: half_even, decimals: 2 }
+expression: |
+  sum(w.qty * w.unit_cost_as_of)
+sources:
+  - { alias: w, relation: gold.waste, join: anchor }
+description: >-
+  The cost of everything disposed of, per store, ISO week and category, valued at the
+  cost as it was known on the day of disposal.
+why_the_readout_needs_it: >-
+  Markdown trades margin against waste. A readout on margin alone can be satisfied by
+  never marking anything down, which raises measured margin in the same week as it
+  raises waste; read together the two make that trade visible, and separately neither
+  can be gamed by the other.
+provenance:
+  kind: scenario_assumption
+  note: >-
+    The definition is the synthetic scenario's own. Valuing disposals at the cost known on
+    the day of disposal is a stated choice, not an external requirement.
+  verified_on: 2026-08-27

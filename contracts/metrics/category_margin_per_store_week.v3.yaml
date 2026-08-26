@@ -1,0 +1,42 @@
+# IN FORCE.
+# The primary metric of the fresh-markdown experiments. Compiles into four consumers:
+# a dbt model, a SQL table function, the agent's tool definition and the readout query.
+id:             category_margin_per_store_week
+version:        3
+effective_from: 2026-03-01
+effective_to:   null
+supersedes:     2
+grain:          [store_id, iso_week, category]
+unit:           EUR
+rounding:       { mode: half_even, decimals: 2 }
+expression: |
+  sum(s.qty * s.price_paid)
+  - sum(s.qty * s.unit_cost_as_of)
+  - sum(w.qty * w.unit_cost_as_of)
+sources:
+  - { alias: s, relation: gold.decision_economics, join: anchor }
+  - { alias: w, relation: gold.waste,              join: full_outer_on_grain }
+description: >-
+  Revenue less cost of goods sold less the cost of what was thrown away, per store,
+  ISO week and category, at the cost as it was known when the sale or the disposal
+  happened. Identical in arithmetic to v2; it differs only in how it rounds, and that
+  difference is the whole reason it exists.
+why_the_readout_needs_it: >-
+  It is the primary metric of the experiment the project is built to defend. A markdown
+  that clears stock but destroys margin, and a markdown withheld that saves margin but
+  raises waste, both land here as one euro figure.
+restatement:
+  from_version:        2
+  reason: >-
+    v2 rounded half_up. Two consumers of the same definition can then disagree by one
+    cent — the dbt path through SQL round() against the Python reference implementation,
+    whose Decimal default is half_even — and claim 5 compares as integers with no
+    tolerance, so a one-cent disagreement is a failed claim for a stupid reason.
+    half_even is now the contract and every consumer is compiled to it.
+  affects_past_values: true
+provenance:
+  kind: scenario_assumption
+  note: >-
+    The definition is the synthetic scenario's own, not a published accounting standard.
+    Its predecessors v1 and v2 are scenario history: no experiment ran under either.
+  verified_on: 2026-08-27

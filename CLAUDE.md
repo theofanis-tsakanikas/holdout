@@ -55,7 +55,7 @@ cannot be violated **is** the engineering.
 |---|---|---|
 | markdown on expiring fresh | **yes** | per store, per day, already automated in real chains |
 | base price change | with conditions | central, weekly, by pricing zone — never per store per hour |
-| margin cap on staple goods | **limit** | Greece 2026: the state imposed a gross-margin cap by emergency legislation and changed it twice in six months. **The list is a versioned contract with effective dates.** |
+| margin cap on staple goods | **limit** | Greece: the state has imposed a gross-margin cap by emergency legislation three times since 2021, and between 2021 and 2022 it changed not its numbers but its **shape** — margin per unit against a past date, then margin per product code against a full-year average. **The list is a versioned contract with effective dates.** |
 | announcing a reduction | **limit** | the "prior price" is bound by Directive 98/6/EC as amended |
 | free dynamic pricing everywhere | **no** | ESL penetration is ~30% of large European retailers; display rules are tightening |
 | personalised price per customer | **no** | structurally impossible: the decision key has no customer dimension |
@@ -450,8 +450,10 @@ fails over a one-cent difference for a stupid reason.
 floor.yaml · regulated_basket.yaml · prior_price.yaml · max_delta.yaml · frozen_categories.yaml
 ```
 
-The regulated basket carries **windows**, because the Greek cap changed twice in six months. A
-decision taken in April is judged by April's rule, permanently, even after the law changes again.
+The regulated basket carries **windows**, because the Greek cap changed shape between 2021 and
+2022 and no single "current cap" field could ever have expressed both regimes. A decision taken in
+April is judged by April's rule, permanently, even after the law changes again. The verified
+history, with citations, is in `docs/REGULATORY.md`.
 
 **Doctrine rule 3 bites hardest here.** A numeric `value` in a guardrail contract requires a
 `source` and a verification date. **`value` without `source` is a build failure.**

@@ -1,0 +1,57 @@
+{
+  "$comment": "GENERATED FILE — DO NOT EDIT. source: contracts/metrics/units_sold_per_store_week.v1.yaml; generator: holdout.contracts.compilers.agent_tool; regenerate: make contracts.",
+  "name": "metric_units_sold_per_store_week",
+  "description": "Units sold, per store, ISO week and category. A count, so the contract rounds to zero decimals — which is also the only metric here that exercises a second integer scale, and therefore the only one that would catch a compiler hard-coding two. Returns the metric at grain (store_id, iso_week, category) in units, rounded half_even to 0 decimals. The definition is fixed by contract; this tool does not accept a formula.",
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "date_from",
+      "date_to"
+    ],
+    "properties": {
+      "date_from": {
+        "type": "string",
+        "description": "ISO date, inclusive. The metric version in force on this date applies."
+      },
+      "date_to": {
+        "type": "string",
+        "description": "ISO date, exclusive."
+      },
+      "store_id": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Restrict to these store_id values. Omit for all."
+      },
+      "category": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Restrict to these category values. Omit for all."
+      },
+      "experiment_id": {
+        "type": "string",
+        "description": "Optional. Restrict to the units assigned to this experiment and return the result split by arm. Results are refused before the declared end date."
+      }
+    }
+  },
+  "metric": {
+    "id": "units_sold_per_store_week",
+    "version": 1,
+    "effective_from": "2025-01-01",
+    "grain": [
+      "store_id",
+      "iso_week",
+      "category"
+    ],
+    "unit": "units",
+    "rounding": {
+      "mode": "half_even",
+      "decimals": 0
+    },
+    "canonical_integer_scale": 1
+  }
+}

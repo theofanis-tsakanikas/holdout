@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/policy.schema.json",
+  "title": "Policy contract",
+  "description": "What a treatment arm and a control arm actually are. No policy version is ever deleted: the meaning of last year's experiment depends on exactly what its control was. `supersedes` names the predecessor, and a check refuses a chain whose predecessor is not on disk.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "version", "effective_from", "supersedes", "kind", "decision_path", "safe_state", "steps", "floor_behaviour"],
+  "properties": {
+    "id": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/identifier" },
+    "version": { "type": "integer", "minimum": 1 },
+    "effective_from": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date" },
+    "effective_to": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date_or_null" },
+    "supersedes": {
+      "description": "`<id>@v<n>` of the predecessor, or null for the first version. The named file must exist on disk.",
+      "oneOf": [{ "type": "string", "pattern": "^[a-z][a-z0-9_]*@v[0-9]+$" }, { "type": "null" }]
+    },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "kind": {
+      "description": "`deterministic` means the policy has exactly one correct answer for a given input and no model is consulted. The markdown ladder is the declared safe state of the fresh path, so it must be deterministic or the safe state is not safe.",
+      "enum": ["deterministic", "model_assisted"]
+    },
+    "decision_path": { "enum": ["markdown", "base_price"] },
+    "safe_state": {
+      "description": "Whether this policy is itself the safe state for its path.",
+      "type": "boolean"
+    },
+    "marker": {
+      "description": "Doctrine rule 2 — a price produced by a fallback carries this marker to the label, the P&L and the experiment.",
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step", "hours_to_expiry_at_most", "depth_pct", "source"],
+        "properties": {
+          "step": { "type": "integer", "minimum": 1 },
+          "hours_to_expiry_at_most": { "type": "number", "exclusiveMinimum": 0 },
+          "depth_pct": {
+            "description": "Reduction from the shelf base price, as a percentage.",
+            "type": "number", "minimum": 0, "maximum": 100
+          },
+          "source": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/provenance" }
+        }
+      }
+    },
+    "floor_behaviour": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["when_step_breaches_floor", "statement"],
+      "properties": {
+        "when_step_breaches_floor": {
+          "description": "`clamp_to_floor` keeps selling at the lowest legal price; `refuse` stops offering the item, which is a correct output (donation or disposal), not an error.",
+          "enum": ["clamp_to_floor", "refuse"]
+        },
+        "statement": { "type": "string", "minLength": 15 }
+      }
+    },
+    "idempotency_key": {
+      "description": "A decision is idempotent per this key — re-running never produces a second price change.",
+      "type": "array",
+      "items": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/identifier" },
+      "minItems": 1
+    }
+  }
+}

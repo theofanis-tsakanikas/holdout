@@ -50,6 +50,41 @@ coverage.
 **If the A/A test does not stand, nothing is built on top of it.** That is the whole point of
 putting it first.
 
+### Progress
+
+| piece | branch | state |
+|---|---|---|
+| the repository skeleton, `contracts/`, the compilers, `make contracts`, `docs/REGULATORY.md` | `contracts/schemas` | **landed** |
+| `src/holdout/core/` — guardrails and the certificate type, scenario selection, the ladder | `core/guardrails-pricing-ladder` | open |
+| `src/holdout/core/` — the design form, feasibility, assignment, the four checks, the estimator | `core/design-experiment` | open |
+| the generator and the six adversarial worlds | `corpus/adversarial-worlds` | open |
+| the A/A harness, the reference implementation of truth, the per-claim eval directories | `evals/aa-harness` | open |
+| the `claim-N`, `gate-proof` and `preview-audit` targets | with the eval each proves | open |
+
+**What the contract layer settled.** The four families are versioned with effective windows and
+resolve as-of, so a decision taken in April is judged by April's rule permanently. Every numeric
+`value` carries either a legal citation with a verification date or an explicit
+`scenario_assumption` — 45 values, and `make contracts` prints the ratio of sourced to found so the
+number can be less than 100%. The metric contract compiles into 13 artefacts that are byte-compared
+on every run, so a hand-edited consumer is a build failure. A metric whose arithmetic or rounding
+moved without a `restatement` is a build failure. `src/holdout/core/` is still empty by design; the
+boundary test that keeps PyYAML and jsonschema out of it is placed and waiting.
+
+**What it cost to get honest.** The review caught a `legal_instrument` asserting a basis its own
+article never states — the per-unit framing belongs to 2022, not 2021 — and four more of the same
+class, including a Directive cited as evidence about Greece. `make contracts` could not have caught
+any of them: it checks the *shape* of provenance, never its *content*. That is the standing limit
+of the mechanism, and it is why oversight level 2 reads the citations rather than trusting the
+green tick. Separately, generation had been resolving paths against a fixed repository root, so
+every negative test asserting only "exit code 1" had been passing for the wrong reason.
+
+**Deliberately not built yet:** no `claim-N` target exists, because nothing here proves a claim. A
+green target that proves nothing is a gate disarmed before it was ever armed.
+
+**Still missing from the "read this first" table:** `docs/SCENARIO.md`, `docs/DECISIONS.md`,
+`docs/DAY-ONE.md`. And there is no `.github/` — oversight level 1 is a Makefile someone remembers
+to type until a remote and a `ci` workflow exist.
+
 ### Closed in this phase
 
 Claims 1, 2, 3, 4 and 7 — all provable local, with no account.

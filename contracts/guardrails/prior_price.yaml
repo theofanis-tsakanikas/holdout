@@ -1,0 +1,398 @@
+# The prior-price rule — what may be announced as a reduction, and against what.
+#
+# This is the guardrail with the most law in it and the one with the most consequence for
+# the architecture, because of a single sentence in Greek statute: the rule does not apply
+# to perishable food. That exemption is the reason the fresh-markdown path is allowed to
+# actuate itself at all. Remove it and every automatic markdown becomes an announcement
+# that must carry a thirty-day lowest price, and the whole primary decision path changes
+# shape.
+#
+# It is therefore encoded here as a verified citation rather than assumed, and the windows
+# are the four Greek instruments that carried it in turn. The fourth moved the rule to a
+# different law entirely and repealed the old one, which is exactly the case an "always use
+# the current rule" implementation gets wrong: a markdown announced in March 2024 is judged
+# by ν. 4177/2013 άρθρο 15 παρ. 2α, permanently, and that provision no longer exists.
+#
+# Every URL below was fetched and read on 2026-08-27. See docs/REGULATORY.md for the full
+# argument, the transposition chain, and an explicit list of what is NOT verified.
+
+id:         prior_price
+title:      What may be announced as a price reduction, and against which prior price
+applies_to: [markdown, base_price]
+
+description: >-
+  Article 6a of Directive 98/6/EC, inserted by Article 2 of Directive (EU) 2019/2161, and
+  its Greek transposition. The system's obligation is twofold: never announce a reduction
+  against a price that was not really applied, and know — per SKU, per decision — whether
+  the SKU is inside the perishable exemption or outside it. The two branches are different
+  rules, not a stricter and a looser version of one rule.
+
+safe_state:
+  markdown:   ladder
+  base_price: no_action
+
+windows:
+
+  # ---------------------------------------------------------------- 20.05.2022
+  - effective_from: 2022-05-20
+    effective_to:   2022-09-02
+    label: "ν. 4933/2022 άρθρο 3 — παρ. 2α στο άρθρο 15 ν. 4177/2013"
+    note: >-
+      The first Greek transposition of Article 6a. No perishable derogation yet, so in this
+      window a markdown on expiring fresh was an announcement like any other.
+    rules:
+
+      - id: prior_price_lookback_days
+        statement: >-
+          An announced reduction must be stated against the lowest price the trader applied
+          during at least this many days before the reduction.
+        value: 30
+        unit: days
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4933/2022 (ΦΕΚ Α΄ 99/20.05.2022), εισάγει παρ. 2α στο άρθρο 15 ν. 4177/2013"
+          article: "άρθρο 3"
+          url: https://kataggelies.mindev.gov.gr/wp-content/uploads/%CE%9D.4933_2022%CE%9199.pdf
+          quote: >-
+            «(άρθρο 6α της Οδηγίας 98/6/ΕΚ - παρ. 1 του άρθρου 2 της Οδηγίας 2019/2161/ΕΕ)»
+          note: >-
+            Quoted text is the article's rubric, which names the Union provision transposed.
+          verified_on: 2026-08-27
+
+      - id: new_product_lookback_days
+        statement: >-
+          For a product on the market for less than the full window, this shorter period
+          applied instead.
+        value: 10
+        unit: days
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4933/2022 (ΦΕΚ Α΄ 99/20.05.2022), παρ. 2α άρθρου 15 ν. 4177/2013"
+          article: "άρθρο 3"
+          url: https://kataggelies.mindev.gov.gr/wp-content/uploads/%CE%9D.4933_2022%CE%9199.pdf
+          note: >-
+            The shorter period for a newly marketed product sits in the same paragraph as the
+            thirty-day rule quoted above; it is not reproduced separately here.
+          verified_on: 2026-08-27
+
+      - id: perishable_exemption
+        statement: >-
+          Whether food liable to deteriorate rapidly is outside the rule. In this window it is
+          not. The evidence is the wording of the instrument that creates the exemption: ν.
+          4965/2022 άρθρο 6 «προσθέτει» παρ. 2β with effect from 02.09.2022, and a provision
+          that is added on a date did not exist before it.
+        value: false
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4965/2022 (ΦΕΚ Α΄ 162/02.09.2022), το οποίο προσθέτει την παρ. 2β στο άρθρο 15 ν. 4177/2013"
+          article: "άρθρο 6"
+          url: https://www.sate.gr/data_source/2022%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A162%CE%91.pdf
+          note: >-
+            Cited for what it creates and when, which is what fixes the value in the window
+            BEFORE it. The Union derogation that made the exemption possible is a separate
+            rule below; it permits, and permission is not exercise.
+          verified_on: 2026-08-27
+
+      - id: eu_perishable_derogation_available
+        statement: >-
+          The Union-level option existed throughout this window. It says what a Member State
+          may do, and nothing about what Greece had done.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "Directive 98/6/EC as amended by Article 2 of Directive (EU) 2019/2161"
+          article: "Article 6a(3)"
+          url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:01998L0006-20220528
+          quote: >-
+            "Member States may provide for different rules for goods which are liable to
+            deteriorate or expire rapidly."
+          verified_on: 2026-08-27
+
+  # ---------------------------------------------------------------- 02.09.2022
+  - effective_from: 2022-09-02
+    effective_to:   2023-04-03
+    label: "ν. 4965/2022 άρθρο 6 — παρ. 2β, the perishable derogation is taken up"
+    note: >-
+      The window that changes the architecture. From here on, a markdown on fresh food that
+      may become unfit for sale within thirty days is outside the prior-price rule.
+    rules:
+
+      - id: perishable_exemption
+        statement: >-
+          Fresh and perishable agricultural products and foodstuffs which, by their nature
+          or at the processing stage, may become unfit for sale within thirty days of
+          harvest, production or processing are outside the prior-price rule.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4965/2022 (ΦΕΚ Α΄ 162/02.09.2022), προσθέτει παρ. 2β στο άρθρο 15 ν. 4177/2013"
+          article: "άρθρο 6"
+          url: https://www.sate.gr/data_source/2022%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A162%CE%91.pdf
+          quote: >-
+            «2β. Η παρ. 2α δεν εφαρμόζεται για νωπά και ευαλλοίωτα γεωργικά προϊόντα και
+            τρόφιμα τα οποία, από τη φύση τους ή στο στάδιο της μεταποίησης, ενδέχεται να
+            καταστούν ακατάλληλα προς πώληση εντός τριάντα (30) ημερών από τη συγκομιδή,
+            την παραγωγή ή τη μεταποίηση, και ιδίως όσα περιλαμβάνονται στο Παράρτημα Ι του
+            ν. 4492/2017 (Α΄ 156).»
+          verified_on: 2026-08-27
+
+      - id: prior_price_lookback_days
+        statement: >-
+          Unchanged for products outside the exemption.
+        value: 30
+        unit: days
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4933/2022 (ΦΕΚ Α΄ 99/20.05.2022), παρ. 2α άρθρου 15 ν. 4177/2013"
+          article: "άρθρο 3"
+          url: https://kataggelies.mindev.gov.gr/wp-content/uploads/%CE%9D.4933_2022%CE%9199.pdf
+          note: >-
+            Continuation, not creation. The instrument cited created this rule in the previous
+            window; that it still stood in this one is an inference from no amending
+            instrument having been found, and no free authoritative consolidation was
+            available to confirm it. See docs/REGULATORY.md, "Not verified".
+          verified_on: 2026-08-27
+
+  # ---------------------------------------------------------------- 03.04.2023
+  - effective_from: 2023-04-03
+    effective_to:   2024-05-24
+    label: "ν. 5039/2023 άρθρο 12 — παρ. 2α replaced"
+    rules:
+
+      - id: prior_price_lookback_days
+        statement: >-
+          The lookback is a fixed thirty days; for a product on the market for less than
+          that, the period it has actually been on the market.
+        value: 30
+        unit: days
+        source:
+          kind: legal_instrument
+          instrument: "ν. 5039/2023 (ΦΕΚ Α΄ 83/03.04.2023), αντικαθιστά την παρ. 2α του άρθρου 15 ν. 4177/2013"
+          article: "άρθρο 12"
+          url: https://www.elinyae.gr/sites/default/files/2023-04/83%CE%91_2023.pdf
+          note: >-
+            The replacing paragraph was read and keeps the thirty-day lookback; its wording is
+            not reproduced verbatim here, and the operative text is the gazette's.
+          verified_on: 2026-08-27
+
+      - id: perishable_exemption
+        statement: >-
+          The exemption continues. ν. 5039/2023 άρθρο 12 replaces παρ. 2α and says nothing
+          about παρ. 2β.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4965/2022 (ΦΕΚ Α΄ 162/02.09.2022), παρ. 2β άρθρου 15 ν. 4177/2013"
+          article: "άρθρο 6"
+          url: https://www.sate.gr/data_source/2022%CE%A0%CE%A1%CE%A9%CE%98-%CE%A6%CE%95%CE%9A162%CE%91.pdf
+          note: >-
+            Continuation, not creation. The amending instrument of this window reaches παρ. 2α
+            only; that παρ. 2β survived unchanged is an inference from that, and no free
+            authoritative consolidation was available to confirm it. See docs/REGULATORY.md,
+            "Not verified".
+          verified_on: 2026-08-27
+
+  # ---------------------------------------------------------------- 24.05.2024
+  - effective_from: 2024-05-24
+    effective_to:   null
+    label: "ν. 5111/2024 — the rule moves to άρθρο 9ι ν. 2251/1994 and the old one is repealed"
+    note: >-
+      The instrument changed, not only the numbers. ν. 5111/2024 άρθρο 43 περ. α) repeals
+      παρ. 2α and 2β of άρθρο 15 ν. 4177/2013 outright. A decision taken before this date is
+      still judged by a provision that no longer exists, which is precisely why a window is
+      never edited and never deleted.
+    rules:
+
+      - id: prior_price_lookback_days
+        statement: >-
+          An announced reduction must be stated against the lowest price the trader applied
+          during the thirty days before the reduction. For a product on the market for less
+          than thirty days, the period it has been on the market.
+        value: 30
+        unit: days
+        source:
+          kind: legal_instrument
+          instrument: "ν. 5111/2024 (ΦΕΚ Α΄ 76/24.05.2024), εισάγει άρθρο 9ι στον ν. 2251/1994"
+          article: "άρθρο 3 → άρθρο 9ι παρ. 1 ν. 2251/1994"
+          url: https://kataggelies.mindev.gov.gr/wp-content/uploads/%CE%9D.5111_2024%CE%9176.pdf
+          quote: >-
+            «Ως προγενέστερη τιμή νοείται η χαμηλότερη τιμή που εφάρμοσε ο προμηθευτής κατά
+            τη διάρκεια του χρονικού διαστήματος των τριάντα (30) ημερών πριν από την
+            εφαρμογή της μείωσης της τιμής.»
+          verified_on: 2026-08-27
+
+      - id: progressive_reduction_window_days
+        statement: >-
+          Where the price is reduced progressively, the prior price is the one in force
+          before the first of the successive reductions, looking back over this many days.
+          Wider than the thirty-day general rule, so a ladder that steps repeatedly cannot
+          reset its own reference by stepping again.
+        value: 60
+        unit: days
+        source:
+          kind: legal_instrument
+          instrument: "ν. 5111/2024 (ΦΕΚ Α΄ 76/24.05.2024), άρθρο 9ι παρ. 1 ν. 2251/1994"
+          article: "άρθρο 3 → άρθρο 9ι παρ. 1 ν. 2251/1994"
+          url: https://kataggelies.mindev.gov.gr/wp-content/uploads/%CE%9D.5111_2024%CE%9176.pdf
+          quote: >-
+            «Αν η τιμή μειώνεται προοδευτικά κατά τη διάρκεια των εξήντα (60) ημερών, πριν
+            από την εφαρμογή της μείωσης της τιμής, ως προγενέστερη τιμή νοείται η τιμή που
+            ίσχυε πριν από την εφαρμογή της πρώτης από τις διαδοχικές μειώσεις τιμών.»
+          verified_on: 2026-08-27
+
+      - id: perishable_exemption
+        statement: >-
+          Perishable food is outside the prior-price rule. This is the provision the
+          fresh-markdown decision path depends on: without it, every automatic markdown
+          would be an announcement carrying a thirty-day lowest price.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "ν. 5111/2024 (ΦΕΚ Α΄ 76/24.05.2024), άρθρο 9ι παρ. 2 ν. 2251/1994"
+          article: "άρθρο 3 → άρθρο 9ι παρ. 2 ν. 2251/1994"
+          url: https://kataggelies.mindev.gov.gr/wp-content/uploads/%CE%9D.5111_2024%CE%9176.pdf
+          quote: >-
+            «2. Η παρ. 1 δεν εφαρμόζεται για νωπά και ευαλλοίωτα γεωργικά προϊόντα και
+            τρόφιμα τα οποία … ενδέχεται να καταστούν ακατάλληλα προς πώληση εντός τριάντα
+            (30) ημερών …, ιδίως όσα περιλαμβάνονται στο Παράρτημα Ι του άρθρου 17 του ν.
+            4492/2017 (Α’ 156).»
+          verified_on: 2026-08-27
+
+      - id: perishable_reference_list
+        statement: >-
+          The list the exemption points to. Whether a SKU is inside it is a product-master
+          attribute resolved before the decision, never inferred from its shelf life at
+          decision time.
+        value: "Παράρτημα Ι του άρθρου 17 ν. 4492/2017 (ΦΕΚ Α΄ 156/18.10.2017)"
+        unit: reference
+        source:
+          kind: legal_instrument
+          instrument: "ν. 4492/2017 (ΦΕΚ Α΄ 156/18.10.2017), Παράρτημα Ι"
+          article: "άρθρο 17, Παράρτημα Ι"
+          url: https://www.elinyae.gr/sites/default/files/2019-07/156a_2017.1508398011625.pdf
+          note: >-
+            Not a quotation — an extract. The annex is a long enumeration; among its entries
+            are ντομάτες· κρεμμύδια, σκόρδα, πράσα· κράμβες, κουνουπίδια, μπρόκολα, λάχανα·
+            μαρούλια, ραδίκια· καρότα· αγγούρια· πιπεριές· πατάτες· μανιτάρια· κρέατα
+            χοιροειδών, προβατοειδών, αιγοειδών, κονίκλων· γάλα νωπό και παστεριωμένο·
+            αλιεύματα· αυγά πουλερικών με τσόφλι· φέτα· τυριά· γιαούρτι· αλλαντικά. The
+            operative list is the annex itself, never this extract.
+          verified_on: 2026-08-27
+
+      - id: exempt_but_still_bound_by_unfair_practices_rules
+        statement: >-
+          A markdown inside the perishable exemption escapes the prior-price rule and
+          nothing else. The unfair commercial practices provisions continue to apply, so a
+          reduction that is announced must still be real.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "ΥΑ 19138/2025, Κώδικας Δεοντολογίας για ανακοινώσεις μείωσης της τιμής (ΦΕΚ Β΄ 1140/12.03.2025)"
+          article: "§ 3.3.3"
+          url: https://www.greekecommerce.gr/wp-content/uploads/2025/03/%CE%A6%CE%95%CE%9A-1140-12032025-%CE%9D%CE%95%CE%9F%CE%A3-%CE%9A%CE%A9%CE%94%CE%99%CE%9A%CE%91%CE%A3-%CE%94%CE%95%CE%9F%CE%9D%CE%A4%CE%9F%CE%9B%CE%9F%CE%93%CE%99%CE%91%CE%A3.pdf
+          quote: >-
+            «Εξακολουθούν ασφαλώς να εφαρμόζονται οι διατάξεις για τις αθέμιτες εμπορικές
+            πρακτικές.»
+          verified_on: 2026-08-27
+
+      - id: displayed_original_price_must_be_provable
+        statement: >-
+          On inspection the retailer must be able to prove that the original price printed
+          on the label was really applied. This is the legal reason the electronic shelf
+          label acknowledgement is a first-class source in this system rather than a log:
+          it is the only evidence that a price reached the shelf.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "ΥΑ 91354/2017, Κανόνες ΔΙ.Ε.Π.Π.Υ. (ΦΕΚ Β΄ 2983/30.08.2017)"
+          article: "άρθρο 78 παρ. 4"
+          url: https://www.mindev.gov.gr/wp-content/uploads/2021/05/%CE%A5%CE%9191354_2017_%CE%A6%CE%95%CE%9A-%CE%92-2983.pdf
+          quote: >-
+            «Οι υπεύθυνοι των σημείων πώλησης θα πρέπει, σε περίπτωση ελέγχου, να είναι σε
+            θέση να αποδείξουν … ότι η αρχική τιμή πώλησης που αναγράφεται στην πινακίδα,
+            ανταποκρίνεται στη πραγματικότητα.»
+          verified_on: 2026-08-27
+
+      - id: percentage_announcements_computed_from_the_prior_price
+        statement: >-
+          A reduction announced as a percentage, or as any promotional claim highlighting
+          how advantageous the price is, must be computed against the prior price and not
+          against the price in force the moment before.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "CJEU C-330/23, Verbraucherzentrale Baden-Württemberg eV v Aldi Süd, judgment of 26 September 2024"
+          article: "operative part"
+          url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:62023CJ0330
+          quote: >-
+            "… a price reduction of a product announced by a trader in the form of a
+            percentage, or in the form of a promotional statement intended to highlight the
+            advantageous nature of the announced price, must be determined on the basis of
+            the 'prior price', within the meaning of paragraph 2 of that article."
+          verified_on: 2026-08-27
+
+      - id: eu_basis_prior_price_lookback_days
+        statement: >-
+          The Union rule the Greek provision transposes. Recorded because a change in Greek
+          law is read against it, and because the derogation the fresh path depends on is a
+          Union-level option rather than a national invention.
+        value: 30
+        unit: days
+        source:
+          kind: legal_instrument
+          instrument: "Directive 98/6/EC as amended by Article 2 of Directive (EU) 2019/2161 (OJ L 328/7, 18.12.2019)"
+          article: "Article 6a(1)–(2)"
+          url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:01998L0006-20220528
+          quote: >-
+            "Any announcement of a price reduction shall indicate the prior price applied by
+            the trader for a determined period of time prior to the application of the price
+            reduction. … The prior price means the lowest price applied by the trader during
+            a period of time not shorter than 30 days prior to the application of the price
+            reduction."
+          verified_on: 2026-08-27
+
+      - id: eu_perishable_derogation_is_permissive
+        statement: >-
+          Article 6a(3) permits Member States to set different rules for goods liable to
+          deteriorate or expire rapidly, up to a complete exemption. It is an option, not a
+          harmonised rule, so a chain operating in more than one Member State cannot assume
+          the Greek answer elsewhere.
+        value: true
+        unit: boolean
+        source:
+          kind: legal_instrument
+          instrument: "Commission Notice — Guidance on Article 6a of Directive 98/6/EC (2021/C 526/02, OJ C 526/130, 29.12.2021)"
+          article: "§ 4.1"
+          url: "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:52021XC1229(06)"
+          quote: >-
+            "Such rules may even consist of completely exempting such goods from the scope
+            of Article 6a or allowing the seller to indicate as 'prior' price the last price
+            immediately before the price reduction. … Examples of goods liable to deteriorate
+            or expire rapidly are fresh food and drinks with short expiry time limits."
+          verified_on: 2026-08-27
+
+      - id: max_fine_eur
+        statement: >-
+          The upper bound on a penalty for breaching the prior-price rule, and the reason
+          the guardrail is a type rather than a check.
+        value: 1500000
+        unit: EUR
+        source:
+          kind: legal_instrument
+          instrument: "ΥΑ 19138/2025 (ΦΕΚ Β΄ 1140/12.03.2025), citing άρθρα 13α, 13δ, 13ε ν. 2251/1994"
+          article: "§§ 78–80"
+          url: https://www.greekecommerce.gr/wp-content/uploads/2025/03/%CE%A6%CE%95%CE%9A-1140-12032025-%CE%9D%CE%95%CE%9F%CE%A3-%CE%9A%CE%A9%CE%94%CE%99%CE%9A%CE%91%CE%A3-%CE%94%CE%95%CE%9F%CE%9D%CE%A4%CE%9F%CE%9B%CE%9F%CE%93%CE%99%CE%91%CE%A3.pdf
+          note: >-
+            Not a quotation — a summary. The Code provides for a recommendation, or a fine of
+            €5,000 to €1,500,000, and a ceiling of €3,000,000 where MORE THAN ONE penalty
+            decision was issued against the trader in the preceding five years. "On
+            repetition" was the earlier wording here and was too loose.
+          verified_on: 2026-08-27

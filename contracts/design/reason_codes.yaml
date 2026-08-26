@@ -1,0 +1,91 @@
+# The refusal vocabulary. Closed in both directions:
+#   the set of codes lives in contracts/schemas/reason_codes.schema.json
+#   the meaning of each code lives here
+#   a test asserts the two agree exactly, in both directions
+# Adding a code is therefore a code change with a test, which is the point. A free-text
+# reason cannot be counted, tested or gated, and claim 6's "N proposed, M refused, K would
+# have been wrong" exists only because the reasons are enumerable.
+
+at_design:
+
+  - code: UNDERPOWERED_FOR_DURATION
+    meaning: >-
+      The sample required to detect the declared MDE cannot be accumulated inside
+      max_duration at the observed historical variance.
+    what_would_fix_it: >-
+      A larger MDE, a longer max_duration, or a lower-variance unit of randomisation.
+
+  - code: UNDERPOWERED_FOR_CAPACITY
+    meaning: >-
+      The sample required exceeds the units available, because the holdout share is
+      fixed and some units are already committed to other experiments.
+    what_would_fix_it: >-
+      Wait for a running experiment to close, narrow the scope, or raise the MDE.
+
+  - code: UNIT_GUARANTEES_INTERFERENCE
+    meaning: >-
+      The declared unit of randomisation cannot isolate arms — treated and control units
+      share customers, so the control is contaminated by construction rather than by accident.
+    what_would_fix_it: >-
+      Randomise at a coarser unit, or exclude the units that overlap.
+
+  - code: STOPPING_RULE_PERMITS_PEEKING
+    meaning: >-
+      The declared decision_rule permits acting on the result before max_duration has
+      elapsed, which inflates the false-positive rate above the declared alpha regardless
+      of how the estimator is computed.
+    what_would_fix_it: >-
+      Declare a single readout at the end, or declare a group-sequential design with its
+      spending function fixed in advance.
+
+  - code: EXCLUSIONS_DEFINED_POST_HOC
+    meaning: >-
+      An exclusion was added, removed or changed after the first observation of the period.
+      Every such edit is a degree of freedom applied with knowledge of the outcome.
+    what_would_fix_it: >-
+      Nothing, for this experiment. Declare the exclusion before the next one opens.
+
+  - code: METRIC_NOT_IN_CONTRACT
+    meaning: >-
+      The primary_metric is not an id in contracts/metrics/. A metric defined inside a
+      design is a metric nobody else computes the same way.
+    what_would_fix_it: >-
+      Choose an id from the contract, or add the metric to the contract first — which is a
+      versioned change with its own restatement question.
+
+  - code: UNITS_ALREADY_COMMITTED
+    meaning: >-
+      One or more units in scope are assigned to an experiment that has not closed. A unit
+      in two experiments measures the sum of both and attributes it to either.
+    what_would_fix_it: >-
+      Exclude the committed units, or wait for the other experiment to close.
+
+at_readout:
+
+  - code: IMBALANCED_PRE_PERIOD
+    check: balance
+    meaning: >-
+      The arms differ on a declared balance covariate by more than the tolerance, measured
+      on the pre-period only. The difference of means would carry that difference into the
+      estimate and call it an effect.
+
+  - code: EXPOSURE_BELOW_THRESHOLD
+    check: exposure
+    meaning: >-
+      Too few treated units were actually exposed — the ESL acknowledgement never arrived,
+      so the price never reached the shelf. Estimating anyway measures intentions instead
+      of actions and dilutes the effect toward zero without saying so.
+
+  - code: CONTAMINATED_ASSIGNMENT
+    check: contamination
+    meaning: >-
+      A unit received the other arm's policy, or an assignment differs from the committed
+      seed's draw. The lottery is where the validity comes from; once it is broken there is
+      nothing left to be unbiased about.
+
+  - code: POWER_NOT_REACHED
+    check: power
+    meaning: >-
+      The realised variance or the realised sample leaves the experiment unable to detect
+      the declared MDE. A wide interval is honest; a point estimate presented without one
+      is not.

@@ -1,0 +1,26 @@
+# IN FORCE.
+id:             units_sold_per_store_week
+version:        1
+effective_from: 2025-01-01
+effective_to:   null
+supersedes:     null
+grain:          [store_id, iso_week, category]
+unit:           units
+rounding:       { mode: half_even, decimals: 0 }
+expression: |
+  sum(s.qty)
+sources:
+  - { alias: s, relation: gold.decision_economics, join: anchor }
+description: >-
+  Units sold, per store, ISO week and category. A count, so the contract rounds to
+  zero decimals — which is also the only metric here that exercises a second integer
+  scale, and therefore the only one that would catch a compiler hard-coding two.
+why_the_readout_needs_it: >-
+  The design engine computes historical variance and required sample from this series
+  before an experiment may exist, and the power check on close reads the same series.
+  It is also the volume metric that exposes a margin gain achieved by selling far less.
+provenance:
+  kind: scenario_assumption
+  note: >-
+    The definition is the synthetic scenario's own.
+  verified_on: 2026-08-27

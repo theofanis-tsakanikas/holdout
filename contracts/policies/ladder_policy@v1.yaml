@@ -1,0 +1,86 @@
+# The deterministic markdown ladder.
+#
+# This is the declared safe state of the fresh decision path. For an expiring product
+# silence is not safe — the product is thrown away — so when the freshness gate fails,
+# when the model is unavailable, or when any input is stale, the decision falls here
+# rather than to no action.
+#
+# It is also the control arm of the fresh-markdown experiments: the holdout does not mean
+# "nothing", it means the existing policy. Comparing against abandonment would inflate
+# every uplift.
+#
+# No policy version is ever deleted. The meaning of an experiment run last year depends on
+# exactly what its control was, and deleting the version it named would make its result
+# retroactively uninterpretable.
+
+id:             ladder_policy
+version:        1
+effective_from: 2026-03-01
+effective_to:   null
+supersedes:     null
+title:          Deterministic markdown ladder for expiring fresh
+kind:           deterministic
+decision_path:  markdown
+safe_state:     true
+marker:         FALLBACK_LADDER
+
+description: >-
+  A fixed schedule of reductions from the shelf base price, keyed on hours remaining
+  before the product's expiry. It consults no model and no forecast, so it has exactly one
+  correct answer for a given input — which is what makes it usable as a safe state at all.
+  A price produced by this policy carries `marker` to the label, to the P&L and to the
+  experiment, because a fallback that looks like a model decision is worse than an outage.
+
+steps:
+
+  - step: 1
+    hours_to_expiry_at_most: 24
+    depth_pct: 20
+    source:
+      kind: scenario_assumption
+      note: >-
+        Ladder depths are a stated assumption of the synthetic scenario. They are shaped to
+        resemble published descriptions of fresh markdown practice in European grocery, but
+        no chain's actual schedule was obtained and none is claimed here.
+      informed_by: Publicly described fresh-markdown practice in European grocery retail.
+      verified_on: 2026-08-27
+
+  - step: 2
+    hours_to_expiry_at_most: 12
+    depth_pct: 35
+    source:
+      kind: scenario_assumption
+      note: >-
+        Ladder depths are a stated assumption of the synthetic scenario, not an observed
+        schedule from any retailer.
+      verified_on: 2026-08-27
+
+  - step: 3
+    hours_to_expiry_at_most: 6
+    depth_pct: 50
+    source:
+      kind: scenario_assumption
+      note: >-
+        Ladder depths are a stated assumption of the synthetic scenario, not an observed
+        schedule from any retailer.
+      verified_on: 2026-08-27
+
+  - step: 4
+    hours_to_expiry_at_most: 3
+    depth_pct: 70
+    source:
+      kind: scenario_assumption
+      note: >-
+        Ladder depths are a stated assumption of the synthetic scenario, not an observed
+        schedule from any retailer.
+      verified_on: 2026-08-27
+
+floor_behaviour:
+  when_step_breaches_floor: clamp_to_floor
+  statement: >-
+    A step whose price falls below the floor guardrail is applied at the floor, not at the
+    step. The ladder never produces the refusal itself: the guardrail set decides whether
+    any legal price sells the item, and a refusal there is a correct output — donation or
+    disposal — rather than an error.
+
+idempotency_key: [sku_id, store_id, ladder_step]
