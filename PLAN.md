@@ -54,6 +54,9 @@ putting it first.
 
 Claims 1, 2, 3, 4 and 7 — all provable local, with no account.
 
+**Then an integration session**, before the next phase opens: read the whole repository against
+`CLAUDE.md` and report conceptual drift. It builds nothing.
+
 ### Open
 
 Everything that needs data at scale, an engine, or a workspace.
@@ -90,6 +93,9 @@ refused anything has not been tested.**
 ### Closed in this phase
 
 Claim 5. The pipelines and the training code, proved local.
+
+**Then an integration session**, before the next phase opens: read the whole repository against
+`CLAUDE.md` and report conceptual drift. It builds nothing.
 
 ### Open
 
@@ -140,6 +146,9 @@ least one experiment that produces a number and at least one that **refuses** fo
 
 The live evidence for claims 1 to 5. The cost model — 20–60 USD a cycle, 100–600 USD across the
 five to ten cycles it realistically takes — replaced by a real bill.
+
+**Then an integration session**, before the next phase opens: read the whole repository against
+`CLAUDE.md` and report conceptual drift. It builds nothing.
 
 ### Open
 

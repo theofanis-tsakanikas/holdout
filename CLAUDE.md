@@ -758,6 +758,39 @@ branch and required checks says something on its own.
 
 ---
 
+## Oversight — four levels
+
+Many small sessions carry one real risk: **conceptual drift**. Each session is locally correct,
+its tests pass, its piece closes — and after five of them the project has lost its spine with
+nothing red anywhere. The estimator quietly becomes model-based because it "gave better results".
+The generator starts sharing assumptions with `core/`, so the import test still passes while the
+independence is gone. A gate is "fixed" so it stops firing so often. Code appears that serves no
+claim.
+
+| | when | catches | who |
+|---|---|---|---|
+| **1 · CI** | every PR | mechanical drift — `make claim-N`, `make contracts`, `make preview-audit`, `gate-proof` | automatic |
+| **2 · Reviewer** | every PR | the diff against `PLAN.md` and the claims | a subagent in **fresh context** |
+| **3 · Integration** | **at every phase boundary** | conceptual drift | a dedicated session |
+| **4 · The author** | always | is this still worth building? | a human, and never an agent |
+
+Level 1 is why the claims are Makefile targets: a session cannot merge something that breaks a
+claim, because the gate is structural rather than advisory.
+
+**Level 3 builds nothing.** It reads the whole repository against this file and asks what CI
+cannot:
+
+- Does any claim's proof rest on something that has quietly become a tautology?
+- Has any gate stopped biting — and for what reason?
+- Does the code still say what `CLAUDE.md` says it says?
+- Is there code that serves no claim?
+- Has a claim landed on a preview surface?
+- Is there still **exactly one** door with no key — not zero, not three?
+
+It is scheduled, not remembered: at the end of every phase, without exception.
+
+---
+
 ## Before any change — checklist
 
 - Which of the seven claims does this serve?
