@@ -55,7 +55,7 @@ putting it first.
 | piece | branch | state |
 |---|---|---|
 | the repository skeleton, `contracts/`, the compilers, `make contracts`, `docs/REGULATORY.md` | `contracts/schemas` | **landed** |
-| `src/holdout/core/` — guardrails and the certificate type, scenario selection, the ladder | `core/guardrails-pricing-ladder` | open |
+| `src/holdout/core/` — guardrails and the certificate type, scenario selection, the ladder | `core/guardrails-pricing-ladder` | **landed** |
 | `src/holdout/core/` — the design form, feasibility, assignment, the four checks, the estimator | `core/design-experiment` | open |
 | the generator and the six adversarial worlds | `corpus/adversarial-worlds` | open |
 | the A/A harness, the reference implementation of truth, the per-claim eval directories | `evals/aa-harness` | open |
@@ -78,8 +78,33 @@ of the mechanism, and it is why oversight level 2 reads the citations rather tha
 green tick. Separately, generation had been resolving paths against a fixed repository root, so
 every negative test asserting only "exit code 1" had been passing for the wrong reason.
 
+**What the core settled.** `ProposedPrice → CertifiedPrice | Refusal`, and `CertifiedPrice` is a
+type rather than a convention: not a dataclass, filled by a function held in a closure and stamped
+with a witness that has no importable name. Direct construction, subclassing, `dataclasses.replace`,
+pickling, copying and duck-typing all refuse. The actuator re-derives the certificate's checks from
+its own recorded bounds, so a tampered price contradicts what the certificate claims was checked.
+Money is integer cents with three roundings, because a bound that rounds toward what it forbids is
+not a bound. The ladder, the envelope and scenario selection are pure functions over plain data;
+`core/` imports no SDK, no engine, and not PyYAML or jsonschema either.
+
+**The limit, stated rather than papered over.** A forger who rewrites the price, the bounds, the
+checks and the source in one coordinated edit is not caught by any check inside a certificate,
+because the certificate never held independent evidence of its own provenance. A test asserts that
+limit rather than hiding it. **The type makes the mistake impossible and leaves the forgery visible.**
+
+**What the review cost, again.** Two lines of public API defeated claim 1's central sentence: an
+empty `PriceBounds()` satisfied both halves of the actuator's re-check, turning a certified €2.00
+into €0.01 on a shelf. And the ladder's deepest rung — the declared safe state of the primary
+decision path — was refused by the envelope for roughly one base price in five, at the rung three
+hours from expiry that matters most, because the ladder rounded its quote as a price and the
+guardrail rounded the same number as a bound. Neither was visible to a green suite, for one reason:
+**the branch delivered two modules and never composed them.** From here on, no core module is
+tested only alone.
+
 **Deliberately not built yet:** no `claim-N` target exists, because nothing here proves a claim. A
-green target that proves nothing is a gate disarmed before it was ever armed.
+green target that proves nothing is a gate disarmed before it was ever armed. Claim 1 is not proved
+by the core — it is made provable; the eval that attacks the gates from an independent corpus of
+real price lists is still open, and the seam it needs is built and verified.
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md`, `docs/DECISIONS.md`,
 `docs/DAY-ONE.md`. And there is no `.github/` — oversight level 1 is a Makefile someone remembers

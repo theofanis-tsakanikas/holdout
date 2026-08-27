@@ -219,16 +219,28 @@ class ReasonCode:
     meaning: str
     what_would_fix_it: str | None = None
     check: str | None = None
+    guardrail: str | None = None
+    """Which guardrail produces a decision-time refusal, or `any` where no single one owns
+    it. Absent for the design-time and readout-time codes, which are not about a price."""
 
 
 @dataclass(frozen=True, slots=True)
 class ReasonCodes:
+    """Three moments, because the system refuses three different things: a price, an
+    experiment, and a number."""
+
+    at_decision: tuple[ReasonCode, ...]
     at_design: tuple[ReasonCode, ...]
     at_readout: tuple[ReasonCode, ...]
 
     @property
     def all_codes(self) -> frozenset[str]:
-        return frozenset(c.code for c in (*self.at_design, *self.at_readout))
+        return frozenset(c.code for c in (*self.at_decision, *self.at_design, *self.at_readout))
+
+    @property
+    def decision_codes(self) -> frozenset[str]:
+        """The closed vocabulary `holdout.core.guardrails` must mirror exactly."""
+        return frozenset(c.code for c in self.at_decision)
 
 
 @dataclass(frozen=True, slots=True)

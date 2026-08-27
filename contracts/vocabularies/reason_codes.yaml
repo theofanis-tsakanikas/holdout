@@ -1,0 +1,227 @@
+# The refusal vocabulary. Closed in both directions:
+#   the set of codes lives in contracts/schemas/reason_codes.schema.json
+#   the meaning of each code lives here
+#   a test asserts the two agree exactly, in both directions
+# Adding a code is therefore a code change with a test, which is the point. A free-text
+# reason cannot be counted, tested or gated, and claim 6's "N proposed, M refused, K would
+# have been wrong" exists only because the reasons are enumerable.
+#
+# Three moments, because the system refuses three different things.
+#
+#   at_decision  a price. The guardrail envelope would not certify it, so no price reaches
+#                the shelf. Claim 1's evidence is a count of which guardrails fired, and
+#                that count exists only because this list is closed.
+#   at_design    an experiment. It does not happen.
+#   at_readout   a number. The experiment ran and no uplift may be stated from it.
+#
+# A refusal is a correct output, not an error. Where no legal price sells the item the
+# answer is donation or disposal, and that is the system working.
+
+at_decision:
+
+  - code: CATEGORY_FROZEN
+    guardrail: frozen_categories
+    meaning: >-
+      The product is in a category in which no automated price decision is taken at all.
+      A frozen category is not a category with a tighter bound: the decision path stops
+      before the model is called and no price is produced, certified or refused on merit.
+    what_would_fix_it: >-
+      Nothing automatic. The category is priced by a human until it leaves the list, and
+      the list is a versioned contract with effective dates.
+
+  - code: COST_STALE
+    guardrail: floor
+    meaning: >-
+      The unit cost known at decision time is older than the declared staleness bound, so
+      every bound in the envelope is computed from a cost that may no longer be the cost.
+      A floor in the wrong place still lets every individual price pass every other check.
+    what_would_fix_it: >-
+      A fresh cost from the ERP feed. Until then the markdown path falls to the ladder,
+      marked, because for an expiring product silence is not the safe state.
+
+  - code: BELOW_ABSOLUTE_FLOOR
+    guardrail: floor
+    meaning: >-
+      The proposed price is below the absolute minimum a certified decision may carry,
+      whatever the cost says. The minimum is a declared figure in the floor contract and is
+      not zero; the bound exists because a price at or near zero is a data defect rather
+      than a decision, and it is refused by the envelope rather than corrected downstream.
+    what_would_fix_it: >-
+      Propose at or above the absolute floor, or accept the refusal and dispose.
+
+  - code: BELOW_MARGIN_FLOOR
+    guardrail: floor
+    meaning: >-
+      The proposed price leaves a gross margin below the declared minimum against the unit
+      cost as it was known at decision time — not against the current cost table, which
+      would silently rewrite the margin of every historical decision.
+    what_would_fix_it: >-
+      Propose at or above the margin floor. Where no price above the floor sells the item,
+      the correct output is the refusal and not a price below it.
+
+  - code: NO_PRICE_SATISFIES_EVERY_GUARDRAIL
+    guardrail: any
+    meaning: >-
+      The envelope's floor is above its ceiling, so the admissible price range is empty and
+      no price exists that satisfies every guardrail at once. The crossing is between two
+      guardrails by construction, which is why no single one owns this code; the refusal
+      records which bound came from where. The operational consequence is donation or
+      disposal, but that follows from legality: the envelope never asks whether the item
+      would sell, and the code does not claim it did.
+    what_would_fix_it: >-
+      Nothing, at this price and this cost. Donation or disposal is the correct output and
+      the decision record says so.
+
+  - code: MARKDOWN_EXCEEDS_MAX_DEPTH
+    guardrail: max_delta
+    meaning: >-
+      The markdown cuts deeper below the shelf base price than the envelope allows. The
+      deepest rung of any ladder policy sits at or under this bound, so a proposal past it
+      came from somewhere other than the schedule.
+    what_would_fix_it: >-
+      Propose within the maximum depth, or change the bound — which is a versioned contract
+      change with an effective date, not an exception.
+
+  - code: DAILY_CHANGE_BUDGET_EXHAUSTED
+    guardrail: max_delta
+    meaning: >-
+      This SKU in this store has already had the maximum number of price changes dispatched
+      today. A decision is idempotent per (sku_id, store_id, ladder_step), so a re-run never
+      contributes to the count and reaching the bound means genuinely distinct changes.
+    what_would_fix_it: >-
+      Nothing today. An unbounded retry loop becomes visible here as a refusal rather than
+      as a busy afternoon, which is what the bound is for.
+
+  - code: BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT
+    guardrail: max_delta
+    meaning: >-
+      The proposed base price moves further from the price in force at the start of the
+      pricing week than the envelope allows in that direction. The bounds are asymmetric:
+      an increase is bound tighter than a decrease.
+    what_would_fix_it: >-
+      Propose inside the weekly bound, or take the move to a human as a commercial event
+      rather than as an automated proposal.
+
+  - code: MARGIN_CAP_EXCEEDED
+    guardrail: regulated_basket
+    meaning: >-
+      The product is in the regulated basket and the proposed price leaves a gross margin
+      above the benchmark the window in force declares. A cap on margin is neither a floor
+      nor a ceiling on price: the same shelf price is legal or illegal depending on what
+      the goods cost the retailer.
+    what_would_fix_it: >-
+      Propose at or below the capped price for the cost known at decision time.
+
+  - code: MARGIN_CAP_BASIS_UNEVALUABLE
+    guardrail: regulated_basket
+    meaning: >-
+      A cap is in force in the window that governs this decision, but the instrument does
+      not state what the margin is measured on, so the arithmetic is undefined. Borrowing
+      the basis of the regime that came before or after would produce a number that looks
+      right and answers a different question.
+    what_would_fix_it: >-
+      Nothing in code. Either the window gains a sourced basis, or decisions in it stay
+      with a human.
+
+  - code: PRIOR_PRICE_NOT_ESTABLISHED
+    guardrail: prior_price
+    meaning: >-
+      The decision announces a reduction and the prior price required to state it is not
+      established — either it was never supplied, or the proposed price is not below it, so
+      there is no reduction to announce. Nothing is assumed in its place.
+    what_would_fix_it: >-
+      Supply the lowest price actually applied over the declared lookback, or dispatch the
+      price without announcing it as a reduction.
+
+  - code: INPUT_NOT_AVAILABLE
+    guardrail: any
+    meaning: >-
+      A guardrail needs an input the proposal does not carry, and doctrine rule 3 forbids
+      inventing one. A default here is a lie with a plausible shape: it would produce a
+      certified price whose certificate asserts a check that never ran.
+    what_would_fix_it: >-
+      Supply the missing input. The refusal names the guardrail, the rule and the field.
+
+at_design:
+
+  - code: UNDERPOWERED_FOR_DURATION
+    meaning: >-
+      The sample required to detect the declared MDE cannot be accumulated inside
+      max_duration at the observed historical variance.
+    what_would_fix_it: >-
+      A larger MDE, a longer max_duration, or a lower-variance unit of randomisation.
+
+  - code: UNDERPOWERED_FOR_CAPACITY
+    meaning: >-
+      The sample required exceeds the units available, because the holdout share is
+      fixed and some units are already committed to other experiments.
+    what_would_fix_it: >-
+      Wait for a running experiment to close, narrow the scope, or raise the MDE.
+
+  - code: UNIT_GUARANTEES_INTERFERENCE
+    meaning: >-
+      The declared unit of randomisation cannot isolate arms — treated and control units
+      share customers, so the control is contaminated by construction rather than by accident.
+    what_would_fix_it: >-
+      Randomise at a coarser unit, or exclude the units that overlap.
+
+  - code: STOPPING_RULE_PERMITS_PEEKING
+    meaning: >-
+      The declared decision_rule permits acting on the result before max_duration has
+      elapsed, which inflates the false-positive rate above the declared alpha regardless
+      of how the estimator is computed.
+    what_would_fix_it: >-
+      Declare a single readout at the end, or declare a group-sequential design with its
+      spending function fixed in advance.
+
+  - code: EXCLUSIONS_DEFINED_POST_HOC
+    meaning: >-
+      An exclusion was added, removed or changed after the first observation of the period.
+      Every such edit is a degree of freedom applied with knowledge of the outcome.
+    what_would_fix_it: >-
+      Nothing, for this experiment. Declare the exclusion before the next one opens.
+
+  - code: METRIC_NOT_IN_CONTRACT
+    meaning: >-
+      The primary_metric is not an id in contracts/metrics/. A metric defined inside a
+      design is a metric nobody else computes the same way.
+    what_would_fix_it: >-
+      Choose an id from the contract, or add the metric to the contract first — which is a
+      versioned change with its own restatement question.
+
+  - code: UNITS_ALREADY_COMMITTED
+    meaning: >-
+      One or more units in scope are assigned to an experiment that has not closed. A unit
+      in two experiments measures the sum of both and attributes it to either.
+    what_would_fix_it: >-
+      Exclude the committed units, or wait for the other experiment to close.
+
+at_readout:
+
+  - code: IMBALANCED_PRE_PERIOD
+    check: balance
+    meaning: >-
+      The arms differ on a declared balance covariate by more than the tolerance, measured
+      on the pre-period only. The difference of means would carry that difference into the
+      estimate and call it an effect.
+
+  - code: EXPOSURE_BELOW_THRESHOLD
+    check: exposure
+    meaning: >-
+      Too few treated units were actually exposed — the ESL acknowledgement never arrived,
+      so the price never reached the shelf. Estimating anyway measures intentions instead
+      of actions and dilutes the effect toward zero without saying so.
+
+  - code: CONTAMINATED_ASSIGNMENT
+    check: contamination
+    meaning: >-
+      A unit received the other arm's policy, or an assignment differs from the committed
+      seed's draw. The lottery is where the validity comes from; once it is broken there is
+      nothing left to be unbiased about.
+
+  - code: POWER_NOT_REACHED
+    check: power
+    meaning: >-
+      The realised variance or the realised sample leaves the experiment unable to detect
+      the declared MDE. A wide interval is honest; a point estimate presented without one
+      is not.

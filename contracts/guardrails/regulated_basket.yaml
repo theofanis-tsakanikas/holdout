@@ -288,6 +288,17 @@ windows:
         statement: >-
           What the margin is measured on. Per product code — not per unit sold, which is what
           every earlier regime that stated a basis used.
+
+          HOW THIS IS ENFORCED, AND WHERE THE ENFORCEMENT IS STRICTER THAN THE RULE. The
+          instrument compares an aggregate — the gross margin of a product code — against the
+          2025 full-year average. A single pricing decision does not have that aggregate: it
+          needs the code's realised margin for the period, which is a gold table and not an
+          argument to a pure function. src/holdout/core/guardrails/ therefore bounds each
+          decision's OWN margin against the benchmark, which refuses some prices the measure
+          would allow once averaged down. That is a deliberate choice to err toward refusal
+          and it is recorded here, beside the value, rather than only in a docstring: a
+          reader of this contract must not take the per-product-code cap as implemented
+          compliance.
         value: per_product_code
         unit: basis
         source:

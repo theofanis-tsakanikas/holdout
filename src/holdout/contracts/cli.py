@@ -122,7 +122,8 @@ def _summary(contracts: ContractSet, expected: dict[str, str]) -> list[str]:
         f" · guardrails {len(contracts.guardrails)}"
         f" · policies {len(contracts.policies)}",
         f"vocabularies reason codes {len(contracts.reason_codes.all_codes)}"
-        f" ({len(contracts.reason_codes.at_design)} at design,"
+        f" ({len(contracts.reason_codes.at_decision)} at decision,"
+        f" {len(contracts.reason_codes.at_design)} at design,"
         f" {len(contracts.reason_codes.at_readout)} at readout)"
         f" · balance covariates {len(contracts.balance_covariates.covariates)}",
         _provenance_line(contracts.census),
@@ -194,7 +195,14 @@ def main(argv: list[str] | None = None) -> int:
         return _fail(violations)
     for line in _summary(contracts, expected):
         print(line)
-    print(f"\nOK      {len(expected)}/{len(expected)} generated artefacts match their contract")
+    # Two numbers from two places: what the contracts compile to, and what is on disk. The
+    # earlier line printed `len(expected)` over itself — a ratio that could only ever read
+    # 100%, which is the same defect a previous review removed from the provenance line.
+    on_disk = sum(1 for path in (args.root / "generated").rglob("*") if path.is_file())
+    print(
+        f"\nOK      {len(expected)} artefact(s) compiled from contracts · "
+        f"{on_disk} file(s) under generated/ · every byte matches"
+    )
     return 0
 
 

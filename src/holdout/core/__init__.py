@@ -23,7 +23,31 @@ and never `def certify(proposed, contracts_dir)`. A core function that had to fi
 parse a contract would be a core function that could not run without a filesystem layout,
 and the adapters exist precisely so that it does not have to.
 
-This package is deliberately empty in the branch that created it. It is filled by the
-branches that build the guardrail certificate, the scenario selection arithmetic, the
-ladder, the design engine, the assignment and the estimator.
+Two more rules, enforced by the same test
+-----------------------------------------
+**Determinism.** No clock, no environment, no random source. Time is an argument. A
+guardrail whose answer depends on when it was asked cannot be replayed, and a decision that
+cannot be replayed cannot be checked a year later.
+
+**Money is an integer number of cents.** Never a binary float — see `holdout.core.money`
+for the argument. A float literal, a `float` annotation and a call to `float()` are all
+refused anywhere in this package.
+
+What is here
+------------
+=================  ============================================================
+`money`            integer minor units, and three roundings because a bound is
+                   not a price
+`decision`         the decision key (claim 7), the two paths, and the safe state
+                   neither path may inherit from the other
+`guardrails/`      the envelope and the certificate type — claim 1
+`ladder/`          the deterministic markdown fallback, the markdown path's
+                   declared safe state
+`pricing/`         scenario selection: the model returns a table, code picks the
+                   row by arithmetic
+=================  ============================================================
+
+Still to come, in the branches that build them: the nine-field design form and its
+feasibility engine, assignment from a committed seed, the four validity checks and the
+design-based estimator.
 """

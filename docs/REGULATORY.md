@@ -224,6 +224,34 @@ average. There is no single "current cap" field that could hold both, and code t
 hard-coded either would keep returning a number under the other regime — a plausible
 number, computed the wrong way, with nothing red anywhere.
 
+### How the 2026 cap is enforced, and where the enforcement is stricter than the rule
+
+Read this before taking the `per_product_code` cap as implemented compliance. **It is not.**
+
+The measure compares an **aggregate** — the gross margin of a product code — against the
+2025 full-year average. A single pricing decision does not have that aggregate in front of
+it: it needs the code's realised margin for the period, which is a gold table and not an
+argument to a pure function. `src/holdout/core/guardrails/` therefore bounds **each
+decision's own margin** against the supplied benchmark.
+
+| basis | what the instrument says | what this repository computes |
+|---|---|---|
+| `per_unit` (2022) | the margin on a unit against the margin on a unit before a date | the same thing. Exact |
+| `per_product_code` (2026) | an aggregate over a code against a full-year average | the margin on **this decision**, against the benchmark. **Stricter** — it refuses prices the measure would allow once averaged down |
+| `unspecified_in_the_instrument` (2021) | nothing; ν. 4818/2021 does not say | nothing. The decision is **refused** with `MARGIN_CAP_BASIS_UNEVALUABLE` rather than evaluated with a neighbouring regime's arithmetic |
+
+Erring toward refusal is the direction this system is built to err in, and the choice is
+recorded in three places — here, in `contracts/guardrails/regulated_basket.yaml` beside the
+value, and in the rule's own docstring — because a reader of any one of them would
+otherwise take it for compliance.
+
+**A note on what is currently reachable.** `floor`, `max_delta` and `frozen_categories` all
+open on 2025-01-01, so `envelope_as_of` cannot build an envelope for any date before that.
+The 2021 and 2022 windows of this guardrail are therefore not reachable through the
+contract path today: `MARGIN_CAP_BASIS_UNEVALUABLE` and the `per_unit` basis are live code
+guarding a **future** instrument that again states no basis, not a demonstrated property of
+the 2021 window. They are exercised in the tests against hand-built envelopes.
+
 Also verified in the same instrument: **άρθρο τρίτο** — fines of €5,000 to €5,000,000,
 calibrated on firm size, gravity, duration and economic benefit, **doubled on repetition**,
 up to €50,000 for obstruction, enforced by the Ανεξάρτητη Αρχή Ελέγχου της Αγοράς και

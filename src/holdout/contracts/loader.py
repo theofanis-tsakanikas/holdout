@@ -68,6 +68,27 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CONTRACTS_DIR = REPO_ROOT / "contracts"
 SCHEMA_DIR = CONTRACTS_DIR / "schemas"
 
+#: The closed refusal vocabulary. Named once, here, because it is read by the loader, by
+#: two test modules and by a reader following a docstring — and it has already moved once,
+#: from `design/`, where it had been filed under the experiment-design engine while two
+#: thirds of it was about prices. A path spelled out in four places moves in three of them.
+REASON_CODES = Path("vocabularies") / "reason_codes.yaml"
+
+#: Rules the loader raises that are about a file's existence or its address rather than
+#: about its contents.
+MISSING_CONTRACT = "missing_contract"
+UNCLAIMED_CONTRACT = "unclaimed_contract"
+
+#: Every contract file this loader reads, by the directory that holds it. The list is
+#: exhaustive on purpose — see `_check_every_file_is_claimed`.
+CLAIMED_FILES = {
+    "metrics": None,  # every *.yaml
+    "guardrails": None,  # every *.yaml
+    "policies": None,  # every *.yaml
+    "vocabularies": frozenset({REASON_CODES.name}),
+    "design": frozenset({"balance_covariates.yaml", "form.schema.yaml"}),
+}
+
 #: Families whose numbers come from outside the repository, and which the independent
 #: provenance walk therefore descends. The design form is excluded deliberately: it is a
 #: JSON Schema, so its `value` keys are schema vocabulary rather than data.
@@ -259,6 +280,15 @@ def _policy(raw: dict[str, Any], path: Path, base: Path) -> Policy:
 
 def _reason_codes(raw: dict[str, Any]) -> ReasonCodes:
     return ReasonCodes(
+        at_decision=tuple(
+            ReasonCode(
+                code=c["code"],
+                meaning=c["meaning"],
+                what_would_fix_it=c.get("what_would_fix_it"),
+                guardrail=c.get("guardrail"),
+            )
+            for c in raw["at_decision"]
+        ),
         at_design=tuple(
             ReasonCode(
                 code=c["code"], meaning=c["meaning"], what_would_fix_it=c.get("what_would_fix_it")
@@ -305,11 +335,26 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
     def read(path: Path) -> Any:
         return yaml.load(path.read_text(encoding="utf-8"), Loader=_LiteralLoader)
 
+    def missing(path: Path) -> Violation:
+        return Violation(
+            path=repo_relative(path, base),
+            locator="",
+            rule=MISSING_CONTRACT,
+            detail=(
+                "the loader names this file and it is not on disk. A contract that moved "
+                "without its loader is a contract nobody is reading, and the failure is "
+                "silent everywhere else: every consumer simply stops seeing it."
+            ),
+        )
+
     def validated(
         paths: Iterable[Path], schema_name: str, family: str
     ) -> list[tuple[Path, dict[str, Any]]]:
         kept: list[tuple[Path, dict[str, Any]]] = []
         for path in paths:
+            if not path.is_file():
+                violations.append(missing(path))
+                continue
             raw = read(path)
             errors = _validate(
                 raw, schema_name, path=path, schema_dir=schema_dir, registry=registry, base=base
@@ -344,13 +389,21 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
 
     design_dir = root / "design"
     reason_codes_pairs = validated(
-        [design_dir / "reason_codes.yaml"], "reason_codes.schema.json", "design"
+        [root / REASON_CODES],
+        "reason_codes.schema.json",
+        "vocabularies",
     )
     covariate_pairs = validated(
         [design_dir / "balance_covariates.yaml"], "balance_covariates.schema.json", "design"
     )
-    form_raw = read(design_dir / "form.schema.yaml")
-    violations.extend(_check_form(form_raw, design_dir / "form.schema.yaml", base))
+    form_path = design_dir / "form.schema.yaml"
+    if form_path.is_file():
+        form_raw = read(form_path)
+        violations.extend(_check_form(form_raw, form_path, base))
+    else:
+        form_raw = {}
+        violations.append(missing(form_path))
+    violations.extend(_check_every_file_is_claimed(root, base))
 
     violations.extend(_check_metric_families(metrics))
     violations.extend(_check_guardrail_windows(guardrails))
@@ -617,4 +670,52 @@ def _check_form(form: Any, path: Path, base: Path = REPO_ROOT) -> list[Violation
         spec = form.get("properties", {}).get(field, {})
         if not spec.get("description"):
             bad(f"/properties/{field}", "form", "every design field carries a description")
+    return violations
+
+
+def _check_every_file_is_claimed(root: Path, base: Path) -> list[Violation]:
+    """No YAML under `contracts/` that nothing reads.
+
+    The contract-side twin of the `orphan_artefact` check that already guards `generated/`,
+    and it exists for a specific failure: a contract that is *moved* leaves a copy at the
+    old address whenever the move is done with `cp` rather than `git mv`, or whenever a
+    later merge resurrects one. The loader would go on reading the new address and nobody
+    would ever be told that a second, stale, fully-valid-looking copy of the source of
+    truth is sitting in the repository being read by human beings.
+
+    It is also what makes a *rename* a build failure rather than a silent skip: a file the
+    loader no longer names is unclaimed, and unclaimed is red.
+    """
+    violations: list[Violation] = []
+    for path in sorted(root.rglob("*.yaml")):
+        family = path.parent.name
+        if family not in CLAIMED_FILES:
+            violations.append(
+                Violation(
+                    path=repo_relative(path, base),
+                    locator="",
+                    rule=UNCLAIMED_CONTRACT,
+                    detail=(
+                        f"{family!r} is not a contract family this loader reads, so nothing "
+                        f"in it reaches any consumer. Known families: "
+                        f"{sorted(CLAIMED_FILES)}."
+                    ),
+                )
+            )
+            continue
+        allowed = CLAIMED_FILES[family]
+        if allowed is not None and path.name not in allowed:
+            violations.append(
+                Violation(
+                    path=repo_relative(path, base),
+                    locator="",
+                    rule=UNCLAIMED_CONTRACT,
+                    detail=(
+                        f"nothing reads this file. contracts/{family}/ is read by name and "
+                        f"the loader names {sorted(allowed)}. Either it was left behind by "
+                        "a move — a stale copy of a source of truth is worse than no copy — "
+                        "or it is new and the loader was never taught about it."
+                    ),
+                )
+            )
     return violations

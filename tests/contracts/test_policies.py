@@ -142,3 +142,44 @@ def test_the_two_policy_versions_form_a_contiguous_timeline(contracts_copy: Path
     with pytest.raises(ContractError) as raised:
         load(contracts_copy)
     assert any(v.rule == "timeline" for v in raised.value.violations)
+
+
+def test_a_safe_state_policy_with_no_marker_is_a_build_failure(
+    contracts_copy: Path, edit_contract: Callable[[Path, Callable[[Any], Any]], None]
+) -> None:
+    """Doctrine rule 2, moved from runtime to build time.
+
+    `marker` was optional in the schema, so a policy declaring `safe_state: true` and no
+    marker validated, and `holdout.core.ladder.quote` raised when it was asked for a price.
+    That is the safe state failing at exactly the moment it is the only thing left standing
+    — which is what `steps.py`'s own docstring says must not happen. It is a schema
+    condition now: a policy that IS the fallback must say what marks its prices.
+    """
+    path = contracts_copy / "policies" / "ladder_policy@v1.yaml"
+
+    def drop_marker(document: Any) -> Any:
+        del document["marker"]
+        return document
+
+    edit_contract(path, drop_marker)
+    with pytest.raises(ContractError) as raised:
+        load(contracts_copy)
+    assert any(v.rule == "schema" and "marker" in v.detail for v in raised.value.violations), (
+        raised.value.violations
+    )
+
+
+def test_a_policy_that_is_not_the_safe_state_needs_no_marker(
+    contracts_copy: Path, edit_contract: Callable[[Path, Callable[[Any], Any]], None]
+) -> None:
+    """The condition is on the value of `safe_state`, not on its presence — so it must not
+    fire on a policy that is merely a treatment arm."""
+    path = contracts_copy / "policies" / "ladder_policy@v1.yaml"
+
+    def not_the_safe_state(document: Any) -> Any:
+        del document["marker"]
+        document["safe_state"] = False
+        return document
+
+    edit_contract(path, not_the_safe_state)
+    load(contracts_copy)

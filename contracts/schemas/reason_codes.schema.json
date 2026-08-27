@@ -2,11 +2,57 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://holdout.local/schemas/reason_codes.schema.json",
   "title": "The refusal vocabulary",
-  "description": "Closed, because a free-text reason cannot be counted, tested or gated. Claim 6's 'N proposed, M refused, K would have been wrong' exists only because the reasons are enumerable. The closed set lives in this schema; the meanings live in contracts/design/reason_codes.yaml; a test asserts the two agree in both directions. Adding a code is therefore a code change with a test, exactly as intended.",
+  "description": "Closed, because a free-text reason cannot be counted, tested or gated. Claim 6's 'N proposed, M refused, K would have been wrong' exists only because the reasons are enumerable, and claim 1's 'which guardrails fired' exists for the same reason. The closed set lives in this schema; the meanings live in contracts/vocabularies/reason_codes.yaml; a test asserts the two agree in both directions. Adding a code is therefore a code change with a test, exactly as intended.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["at_design", "at_readout"],
+  "required": ["at_decision", "at_design", "at_readout"],
   "properties": {
+    "at_decision": {
+      "description": "A refusal of a price. No price reaches the shelf, and the safe state declared for the decision path applies instead. A refusal is a correct output, not an error.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "guardrail", "meaning", "what_would_fix_it"],
+        "properties": {
+          "code": {
+            "enum": [
+              "CATEGORY_FROZEN",
+              "COST_STALE",
+              "BELOW_ABSOLUTE_FLOOR",
+              "BELOW_MARGIN_FLOOR",
+              "NO_PRICE_SATISFIES_EVERY_GUARDRAIL",
+              "MARKDOWN_EXCEEDS_MAX_DEPTH",
+              "DAILY_CHANGE_BUDGET_EXHAUSTED",
+              "BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT",
+              "MARGIN_CAP_EXCEEDED",
+              "MARGIN_CAP_BASIS_UNEVALUABLE",
+              "PRIOR_PRICE_NOT_ESTABLISHED",
+              "INPUT_NOT_AVAILABLE"
+            ]
+          },
+          "guardrail": {
+            "description": "Which of the five guardrails in the envelope produces this code. `any` is for the two codes no single guardrail owns: an empty admissible range is a crossing between two of them, and a missing input can be missed by whichever rule needed it. The refusal itself always names the guardrail that actually fired.",
+            "enum": [
+              "floor",
+              "regulated_basket",
+              "prior_price",
+              "max_delta",
+              "frozen_categories",
+              "any"
+            ]
+          },
+          "meaning": { "type": "string", "minLength": 20 },
+          "what_would_fix_it": {
+            "description": "A refusal names what would fix it, even when the answer is 'nothing, and disposal is correct'.",
+            "type": "string",
+            "minLength": 15
+          }
+        }
+      }
+    },
     "at_design": {
       "description": "A refusal before any unit is assigned. The experiment does not happen.",
       "type": "array",

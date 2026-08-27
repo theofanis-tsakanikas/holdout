@@ -1,5 +1,10 @@
 """The closed vocabularies are closed.
 
+Three moments now, because the system refuses three different things: a price, an
+experiment and a number. The decision-time half is asserted from the core's side in
+`tests/core/test_refusal_codes.py`, where the enum that branches on it lives; what is
+checked here is the design and readout halves and the shape they all share.
+
 Claim 6 reports "N designs proposed, M refused, K of those would have produced a
 confidently wrong number". That sentence is only countable because the reasons are
 enumerable, so the set of codes lives in a JSON Schema, their meanings live in the YAML,
@@ -11,15 +16,23 @@ time.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 import yaml
 
-from holdout.contracts.loader import CONTRACTS_DIR, SCHEMA_DIR, validator_for
+from holdout.contracts.errors import ContractError
+from holdout.contracts.loader import (
+    CONTRACTS_DIR,
+    REASON_CODES,
+    SCHEMA_DIR,
+    load,
+    validator_for,
+)
 from holdout.contracts.model import ContractSet
 
 SCHEMA = json.loads((SCHEMA_DIR / "reason_codes.schema.json").read_text(encoding="utf-8"))
-DOCUMENT = yaml.safe_load((CONTRACTS_DIR / "design" / "reason_codes.yaml").read_text("utf-8"))
+DOCUMENT = yaml.safe_load((CONTRACTS_DIR / REASON_CODES).read_text("utf-8"))
 
 # The vocabulary as CLAUDE.md enumerates it. Written out here on purpose: this is the third
 # place, and it is the one a reviewer reads against the document. If a code is added to the
@@ -106,7 +119,53 @@ def test_a_covariate_measured_inside_the_window_is_rejected() -> None:
     assert errors
 
 
-@pytest.mark.parametrize("family", ["at_design", "at_readout"])
+@pytest.mark.parametrize("family", ["at_decision", "at_design", "at_readout"])
 def test_the_vocabulary_has_no_duplicates(family: str) -> None:
     codes = [entry["code"] for entry in DOCUMENT[family]]
     assert len(codes) == len(set(codes))
+
+
+# ------------------------------------------------- the vocabulary's address is checked
+
+
+def test_the_vocabulary_is_read_from_the_address_the_loader_names(repo_root: Path) -> None:
+    """It moved from `contracts/design/` to `contracts/vocabularies/`.
+
+    `design/` is named for the experiment-design engine and the file is two thirds about
+    prices, so the address was wrong even though keeping one closed vocabulary in one file
+    is right. Contract rule 1 makes a move cheap while the file is new and expensive later.
+    """
+    assert (repo_root / "contracts" / REASON_CODES).is_file()
+    assert not (repo_root / "contracts" / "design" / "reason_codes.yaml").exists()
+
+
+def test_a_contract_the_loader_no_longer_names_is_a_build_failure(
+    contracts_copy: Path,
+) -> None:
+    """A rename must be red, not a silent skip.
+
+    Without this, moving a contract and forgetting the loader leaves every consumer quietly
+    not seeing it — the worst possible failure for a source of truth, because nothing
+    breaks and nothing is reported.
+    """
+    (contracts_copy / REASON_CODES).rename(contracts_copy / "vocabularies" / "renamed.yaml")
+    with pytest.raises(ContractError) as raised:
+        load(contracts_copy)
+    rules = {v.rule for v in raised.value.violations}
+    assert "missing_contract" in rules
+    assert "unclaimed_contract" in rules, "and the file at its new address is read by nothing"
+
+
+def test_a_copy_left_behind_by_a_move_is_a_build_failure(contracts_copy: Path) -> None:
+    """The failure a `cp`-and-forget move leaves behind, and the one a merge can resurrect.
+
+    A stale, fully-valid-looking second copy of a source of truth sitting in the repository
+    is worse than no copy: the loader goes on reading the new address while human beings
+    read whichever they find first.
+    """
+    stale = contracts_copy / "design" / "reason_codes.yaml"
+    stale.write_text((contracts_copy / REASON_CODES).read_text(encoding="utf-8"), "utf-8")
+    with pytest.raises(ContractError) as raised:
+        load(contracts_copy)
+    offenders = [v for v in raised.value.violations if v.rule == "unclaimed_contract"]
+    assert offenders and "reason_codes" in offenders[0].path

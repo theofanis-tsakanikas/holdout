@@ -6,6 +6,16 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "version", "effective_from", "supersedes", "kind", "decision_path", "safe_state", "steps", "floor_behaviour"],
+  "allOf": [
+    {
+      "$comment": "Doctrine rule 2. A policy that IS the safe state produces prices when everything else has failed, and every one of them must be traceable as a fallback to the label, the P&L and the experiment. Without this, a policy with `safe_state: true` and no `marker` validates and the ladder raises at runtime instead — which is the safe state failing at exactly the moment it is the only thing left standing. `if/then` and not `dependentSchemas`, because the condition is on the VALUE of safe_state and dependentSchemas keys only on a property's presence.",
+      "if": {
+        "required": ["safe_state"],
+        "properties": { "safe_state": { "const": true } }
+      },
+      "then": { "required": ["marker"] }
+    }
+  ],
   "properties": {
     "id": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/identifier" },
     "version": { "type": "integer", "minimum": 1 },

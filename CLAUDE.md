@@ -464,10 +464,13 @@ history, with citations, is in `docs/REGULATORY.md`.
 last year's experiment depends on exactly what its control was. Delete v3 and the result of the
 experiment that used it becomes retroactively uninterpretable.
 
-### `design/` — the form and the refusal vocabulary
+### `design/` — the form, and `vocabularies/` — the refusal codes
 
-`form.schema.yaml` (the nine fields, with closed lists), `balance_covariates.yaml` and
-`reason_codes.yaml`.
+`design/form.schema.yaml` (the nine fields, with closed lists) and `design/balance_covariates.yaml`.
+
+**`vocabularies/reason_codes.yaml` is deliberately not in `design/`**, because the system refuses at
+three moments and only one of them is a design. One file, three sections, and a test that no code
+appears in two of them: a refusal that could be counted under two moments could be counted twice.
 
 **The balance covariates are fixed here, not chosen per experiment.** If each experiment could
 pick which characteristics to balance on, that would be a new way to fish — try combinations until
@@ -478,12 +481,22 @@ will be chosen after the fact.**
 The refusal vocabulary:
 
 ```
+at_decision: CATEGORY_FROZEN · COST_STALE · BELOW_ABSOLUTE_FLOOR · BELOW_MARGIN_FLOOR ·
+             NO_PRICE_SATISFIES_EVERY_GUARDRAIL · MARKDOWN_EXCEEDS_MAX_DEPTH ·
+             DAILY_CHANGE_BUDGET_EXHAUSTED · BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT ·
+             MARGIN_CAP_EXCEEDED · MARGIN_CAP_BASIS_UNEVALUABLE ·
+             PRIOR_PRICE_NOT_ESTABLISHED · INPUT_NOT_AVAILABLE
 at_design:   UNDERPOWERED_FOR_DURATION · UNDERPOWERED_FOR_CAPACITY ·
              UNIT_GUARANTEES_INTERFERENCE · STOPPING_RULE_PERMITS_PEEKING ·
              EXCLUSIONS_DEFINED_POST_HOC · METRIC_NOT_IN_CONTRACT · UNITS_ALREADY_COMMITTED
 at_readout:  IMBALANCED_PRE_PERIOD · EXPOSURE_BELOW_THRESHOLD ·
              CONTAMINATED_ASSIGNMENT · POWER_NOT_REACHED
 ```
+
+**`at_decision` names which guardrail refused a price**, and it is what claim 1 counts. A refusal is
+a correct output, not an error: when no legal price sells the item the answer is donation or
+disposal. `NO_PRICE_SATISFIES_EVERY_GUARDRAIL` is arithmetic — the legal range is empty — and says
+nothing about demand, which is the model's territory and not the envelope's.
 
 **Closed, because a free-text reason cannot be counted, tested or gated.** Claim 6's "N proposed,
 M refused, K would have been wrong" exists only because the reasons are enumerable. Adding a code
