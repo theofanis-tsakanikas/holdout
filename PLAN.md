@@ -60,6 +60,7 @@ putting it first.
 | the generator and the six adversarial worlds | `corpus/adversarial-worlds` | open |
 | the A/A harness, the reference implementation of truth, the per-claim eval directories | `evals/aa-harness` | open |
 | the `claim-N`, `gate-proof` and `preview-audit` targets | with the eval each proves | open |
+| CI, the protected `main`, and `docs/DECISIONS.md` | `ops/gate-and-decisions` | **landed** |
 
 **What the contract layer settled.** The four families are versioned with effective windows and
 resolve as-of, so a decision taken in April is judged by April's rule permanently. Every numeric
@@ -106,9 +107,23 @@ green target that proves nothing is a gate disarmed before it was ever armed. Cl
 by the core — it is made provable; the eval that attacks the gates from an independent corpus of
 real price lists is still open, and the seam it needs is built and verified.
 
-**Still missing from the "read this first" table:** `docs/SCENARIO.md`, `docs/DECISIONS.md`,
-`docs/DAY-ONE.md`. And there is no `.github/` — oversight level 1 is a Makefile someone remembers
-to type until a remote and a `ci` workflow exist.
+**Oversight level 1 is now structural.** `main` is protected by a ruleset with **no bypass actors**,
+so the rule binds the owner: changes only through a pull request, `gate` and `secrets` both required
+and both green, linear history, no force pushes, no deletion. Verified by attempting a direct push
+and being rejected by name. CI runs the whole local gate, names the contract gate separately,
+scans full history with `gitleaks`, and **discovers** claim targets by grepping the Makefile rather
+than listing them — so a claim target that exists but is never run is impossible by construction.
+
+The gate justified itself on its first green run by failing: `UV_FROZEN` and `uv sync --locked`
+contradict each other, and nothing local had noticed.
+
+**The repository is public.** It was created private; on a free account a private repository can
+have neither Actions nor a protected branch, and oversight level 1 is what everything else leans
+on. The publication *checklist* has not run, so the repository is public and **unannounced** — no
+README, no banner, no article, no post. `docs/DECISIONS.md` records the trade and restates the
+condition it overtook.
+
+**Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase
 

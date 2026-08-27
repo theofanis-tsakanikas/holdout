@@ -35,6 +35,25 @@ The account, the OIDC pattern, SSM for cross-layer publishing and the Terraform 
 already exist across three projects. A second cloud would divide attention without proving anything
 more about Databricks.
 
+**The repository is public, and it went public to buy a gate.** · 2026-08-27
+It was created private, because publication has its own checklist and that checklist has not run.
+Within the hour it became public, for one reason: **on a free account, a private repository can have
+neither GitHub Actions nor a protected branch.** Both routes to branch protection — classic
+protection and rulesets — return *"Upgrade to GitHub Pro or make this repository public"*, and
+Actions jobs never started at all. Oversight level 1 is the level everything else leans on, and a
+gate that cannot run is not a gate.
+
+*What was weighed:* paying for Pro would have kept it private, and was the recommendation. It was
+declined in favour of going public now. *What that costs:* the publication checklist is now owed
+rather than pending — see the restatement under **Deliberately deferred**. *What was checked
+first:* `gitleaks` over all 20 commits of history, plus a read of every file ever committed. No
+leaks, no credentials, no `notes/` — which is gitignored and was verified absent from the remote
+before and after.
+
+**Public but unannounced is a real state, and this is it.** No README, no banner, no article, no
+post. Anyone who finds it sees an honest work in progress whose own `PLAN.md` says which claims have
+not closed.
+
 **Not claimed, and written down so it stays not claimed** · 2026-08-24
 Observational uplift where randomisation is impossible. Causal identification outside the
 randomised design. That the feedback loop is solved. Optimality of any decision. A Genie
@@ -217,6 +236,16 @@ a bare fetcher user-agent and serves normally to a browser.
 *Unlock condition:* before the repository is made public. Each must be re-opened through
 `search.et.gr` and the citation updated. This is on the publication checklist, which has not run.
 
+> **Restated 2026-08-27, later the same day.** The unlock condition above was overtaken by the
+> visibility decision recorded under Scope: the repository is now public and the checklist still
+> has not run. The original wording stays because doctrine rule 4 says a correction never erases
+> what was previously stated, and because it is the honest record of what was intended.
+> **The revised condition:** before the repository is *announced* — README, banner, article, debut
+> post — every Greek citation is re-opened through `search.et.gr` and updated. Until then the
+> repository is public but unannounced, and `REGULATORY.md` already names each source it could not
+> reach at an authenticated primary URL. Nothing asserted as law depends on a source that was
+> never read.
+
 **The generated SQL has never been executed** · deferred 2026-08-27
 13 artefacts compile and are byte-compared, but the dbt models, SQL functions and readout queries
 are Databricks/Spark dialect that no engine has parsed. Gold column names (`qty`, `price_paid`,
@@ -251,6 +280,12 @@ implemented compliance.
 *Unlock condition:* phase 2's gold layer, which can supply the realised per-code margin.
 
 **Branch protection covers `main` only** · deferred 2026-08-27
+`main` is protected by a repository ruleset with **no bypass actors**, so the rule binds the owner
+too: changes only through a pull request, `gate` and `secrets` both required and both green,
+required linear history, no force pushes, no deletion. Verified rather than assumed — a direct push
+to `main` was attempted and rejected by name (`GH013`, *"Changes must be made through a pull
+request"*, *"2 of 2 required status checks are expected"*).
+
 No other branch is protected and none needs to be. `deploy`, `backfill`, `run` and `destroy` are
 specified to dispatch from `main` only; that constraint is currently a sentence in CLAUDE.md rather
 than a workflow condition, because those workflows do not exist.
