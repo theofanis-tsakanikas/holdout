@@ -108,6 +108,44 @@ decision monitor does not.
 A tag is mutable. `actions/checkout@v7.0.1` and `actions/checkout@3d3c42e…` are the same code today
 and need not be tomorrow. The tag stays in a trailing comment so the version is still readable.
 
+**`corpus/world/` is generated and never committed. `corpus/real/` is committed and never
+generated.** · 2026-08-27
+Two corpora, two opposite rules, one reason each. A world is a pure function of
+`(world, seed, scale)`, so storing one would be storing something a command reproduces exactly —
+and at the scenario scale it is a few GB. The ONS price quotes cannot be reproduced by any command:
+a person wrote them down in a shop. So one is regenerated and the other is digest-checked, and the
+rule that applies is decided by whether the data can be recomputed rather than by where it sits.
+
+**Randomness is keyed hashing seeding a per-unit `random.Random`, never a module-level seed.**
+· 2026-08-27
+`blake2b(seed, key)` decides *which* stream, the Mersenne Twister produces it. Both halves are
+stable across CPython versions and platforms; `hash()` is salted per process and would make every
+run a different world. The property that costs the most and buys the most is that **no key contains
+the arm**: generate a world under an assignment and again under all-control, and every store whose
+policy did not change draws the identical numbers. T003's reference implementation of
+truth-on-the-metric is that subtraction, and without common random numbers it would be measuring
+simulation noise alongside the treatment.
+
+**The world's geography is a plane, in metres.** · 2026-08-27
+`contracts/design/inference.yaml` declares a neighbour radius and the only question the scenario
+ever asks of geography is whether two stores are inside it. Integer metre offsets make that an exact
+comparison against a squared radius — no square root, no float, no datum. A real `store_master`
+carries latitude and longitude; this one does not, and says so rather than generating coordinates
+that would look like a GIS extract and answer the one question less exactly.
+
+**The sealed truth is an envelope, not a lock.** · 2026-08-27
+`corpus/world/seal.py` obscures the injected behaviour under a blake2b keystream whose nonce is
+stored in the same file, so anyone who reads the module can decode it. What the seal guarantees is
+narrower and is the half that matters: the truth is **never in the harness's process** — `events()`
+filters the exposure records out of the stream and no object a caller holds carries them — and the
+legitimate opening requires a readout that already exists on disk, whose digest goes into an
+append-only ledger inside the seal.
+**Declared limit:** a coordinated rewrite — decode, change, re-seal with a fresh commitment, forge
+the ledger — is not caught, because a seal never held independent evidence of its own provenance.
+`tests/corpus/test_world_seal.py` performs that forgery and asserts that it *succeeds*, rather than
+describing the limit in prose beside the code. Same shape as the certificate type's limit, same
+sentence: it makes the mistake impossible and leaves the forgery visible.
+
 **`gitleaks-action` is free here because this is a personal account.** · 2026-08-27
 A licence key is required for repositories owned by an **organisation**. This one is not. Recorded
 because it is a silent dependency: moving the repository under an org breaks CI until a free key is
@@ -140,6 +178,48 @@ but is never run is impossible by construction.
 Not ceremony for a solo repository: `main`'s log is part of the portfolio and will be read; the gate
 is structural only when the suite runs *before* anything lands; and the fresh-context reviewer needs
 an object to review, which a pull-request diff is.
+
+**The corpus contains the thing each world exists to detect, by construction rather than by
+chance.** · 2026-08-27
+Store placement clusters deterministically — every second store a town gets opens within 700 m of
+one already there — because a probabilistic cluster left the smoke scale with **zero** neighbour
+pairs, so W2 was structurally unable to interfere and every test about it would have passed
+vacuously. Measured before the rule was written, not assumed after. The same argument produced the
+deliberate twin basket (two receipts, same till, same second, identical contents) at a declared
+rate: a pathology that only appears at some scales is a pathology no test can rely on.
+
+**W2's direction is derived from the two schedules, and the test drives it both ways.**
+· 2026-08-27
+The first version hard-coded *control loses trade to treatment*, from the assumption that a
+candidate markdown policy cuts deeper. `policy.candidate` cuts **shallower** — measured against its
+own counterfactual, an aggressive ladder destroyed between 5% and 25% of category margin through
+reference-price habituation — so the assumption had been false since the day the candidate was
+chosen. A world whose interference points the wrong way still breaks SUTVA and would still have
+been detected by everything downstream, which is exactly why nothing would have caught it.
+`tests/corpus/test_world_worlds.py` therefore hands the neighbour a shallower ladder and then a
+deeper one, built inside the test, and requires the watched store to move both ways. A hard-coded
+direction passes one half and fails the other, whichever way it was wired. It is `CLAUDE.md`'s
+rule about a guard tested by its author, applied to a generator.
+
+**Blocking a module for a test goes through `sys.meta_path`, not `builtins.__import__`.**
+· 2026-08-27
+Both boundary tests — `core/` must import with `yaml` and `jsonschema` absent, `corpus/` must
+import with `holdout` absent — made the module unavailable by patching `builtins.__import__`. That
+backs the `import` **statement** and nothing else: `importlib.import_module("yaml")` goes through
+`sys.meta_path` and never touches it. So a module could reach straight past the check whose whole
+job was to stop it, and the check stayed green.
+
+Found by planting the call while adding the corpus half, and it could not have been found any other
+way — read side by side, the two tests look right. The rule and the fix are the ones this repository
+has arrived at twice already: **one implementation, two callers** (`tests/boundary/conftest.py`,
+mirroring `ops/isolation.py`), and **the instrument is driven by the shape that defeated its
+predecessor** (`tests/boundary/test_blocking.py` plants `importlib.import_module`, `__import__` and
+the statement, and requires each to raise, plus two negative cases so a blocker that blocked
+everything would not pass).
+
+*Both* tests were rewired, not only the new one. `CLAUDE.md`: *"when a guard is fixed, the gate
+behind it is re-read. They usually share the assumption."* Here they shared the technique, and the
+older of the two had carried the hole since it was written.
 
 **Four levels of oversight, because many small sessions drift.** · 2026-08-24
 CI on every PR · a fresh-context reviewer on every PR · an integration session at every phase
@@ -427,6 +507,41 @@ overreach is contained to prose in one file.
 reason. The new window carries the corrected id and its restatement; the closed window keeps the old
 one, which is exactly what "never deleted" is for. Failing that, it is a deliberate item for the
 phase-1 integration session, which is allowed to propose a restatement.
+
+**`corpus/world/` writes gzipped CSV, not Parquet** · deferred 2026-08-27
+`CLAUDE.md` describes the scenario corpus as *"a few GB of Parquet"*, and on the estate it will be.
+In phase 1 the generator's product is a **stream**, consumed in process by the A/A harness, and the
+`write` subcommand exists so a world can be looked at rather than because anything reads the files.
+Adding a Parquet engine to `corpus/` — which is stdlib-only apart from one `yaml.safe_load` — to
+write files nothing in this phase reads would be a dependency bought for a screenshot.
+*Unlock condition:* the S3 bulk load in T009, which is the first thing that needs files on disk in
+the format the lakehouse reads. The writer gains a Parquet target there, beside the CSV one.
+
+**The scenario scale is measured by hand, not by a gate** · deferred 2026-08-27
+`make check` and CI run the smoke scale, where a whole world is generated in well under a second.
+The scenario scale — 100 stores, 120 SKUs, 244 days — takes about two minutes per world and its
+figures are produced by `python -m corpus.world count --scale scenario` and recorded in
+`corpus/world/README.md` with the seed that produced them. So the number in that README is a
+measurement somebody took, not a number CI keeps honest, and it can drift from the code the day a
+demand constant moves.
+*Unlock condition:* the phase-1 integration session decides whether a periodic scenario-scale run
+earns its minutes in CI, once T003 has shown what the A/A harness actually costs. Until then the
+smoke scale is the gate and the README's figures carry their command.
+
+**The world's prices are not certified prices** · deferred 2026-08-27
+`corpus/world/` applies a markdown policy's declared depths and stops. It knows nothing about the
+guardrail envelope — no floor, no ceiling, no regulated basket, no maximum daily delta — so it can
+and does produce shelf prices that `holdout.core.guardrails` would refuse, and the deepest rungs of
+`ladder_policy@v1` sell below the unit cost the cost ledger records. That is deliberate: a corpus
+that consulted the envelope would be a corpus that had met the gates it exists to be independent
+of, which is the whole of the barrier `ops/isolation.py` enforces.
+It is recorded because it is a real gap and not only a boundary. The chain in the scenario runs
+*this* system, so a world in which the envelope never bites is a world one step removed from the
+one the claims describe — and it is the same gap the ladder-ceiling entry above already names from
+the other side.
+*Unlock condition:* the decision path being exercised end to end against a world, which is
+`evals/` work rather than corpus work — the join belongs there. T003 is the first eval to run a
+whole system over a world and is where the question becomes concrete.
 
 **`evals/` and every `claim-N` target** · deferred 2026-08-27
 Nothing in the repository proves a claim yet. Claim 1 in particular needs the eval that attacks the

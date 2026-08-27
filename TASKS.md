@@ -164,8 +164,37 @@ closes        corpus/world/ at 100 stores x 3 fresh categories x 8 months (~36M 
 out_of_scope  The estimator; the independent measurement of truth on the metric (T003).
 stop_at       When the six worlds produce data and the no-core-import barrier holds.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed, and the two places it went beyond the line above.** The generator is a **stream**
+rather than a directory of files: a world is a pure function of `(world, seed, scale)`, generated
+store-major with every draw keyed on what it is a draw *about*, so nothing is committed, a
+restriction to three stores is a genuine window onto the same world, and — the property T003 needs
+— **no key contains the arm**, which makes the all-control counterfactual differ from the observed
+world by the treatment effect and by nothing else. `write` materialises gzipped CSV rather than
+Parquet, recorded as a deferral with the S3 bulk load as its unlock.
+
+The seal is `corpus/world/seal.py`. It holds **behaviour** — the two schedules, the exposure that
+failed, the decay — and explicitly not a number about money, because the effect on the metric does
+not exist anywhere until it is computed. It opens only against a readout that is already on disk and
+records the opening in an append-only ledger. Its limit is asserted by a test that performs the
+coordinated forgery and requires it to *succeed*, rather than described in prose beside the code.
+
+**Two things were found by measuring rather than by reasoning, and both would have passed a green
+suite.** Store placement was probabilistic, and at the smoke scale it produced **zero** neighbour
+pairs — so W2 was structurally unable to interfere and every test about it would have passed
+vacuously. And W2's direction was hard-coded as *control loses trade to treatment*, from the
+assumption that a candidate markdown policy cuts deeper; the candidate cuts **shallower**, because
+an aggressive ladder measured against its own counterfactual destroyed 5–25% of category margin
+through reference-price habituation. A world whose interference points the wrong way still breaks
+SUTVA and would still have been detected downstream, which is exactly why nothing would have caught
+it. The test now hands the neighbour a shallower ladder and then a deeper one, both built inside the
+test, and requires the watched store to move both ways.
+
+**Deliberately not done here:** the world knows nothing about the guardrail envelope, so it produces
+shelf prices the system would refuse. That is what independence costs and it is recorded as a
+deferral rather than quietly fixed.
 
 ```
 id            T003          <- closes Phase 1
@@ -592,12 +621,13 @@ L5  CI, the protected main (a ruleset with no bypass actors), docs/DECISIONS.md.
 ## The critical path
 
 ```
-T00A ─▶ T002 ─┐        (T00A closed)
+T00A ─▶ T002 ─┐        (both closed)
               ├─▶ T003 (claim-2, closes Phase 1) ─▶ T008 ─▶ Phase 2 ─▶ Phase 3 ─▶ Phase 4
 T001 ─────────┤        ▲
 T000 ─────────┴────────┘  (also blocks T004, T005, T006)
 ```
 
-T000 and T00A gate the phase-1 evals and corpus respectively, and both had no upstream. **T00A has
-closed**, so `corpus/world/` may now be written: the next session can be T000, T001 or T002, and
-T001 and T002 are the only fully independent build tasks and can run in parallel.
+T000 and T00A gate the phase-1 evals and corpus respectively, and both had no upstream. **T00A and
+T002 have closed.** T003 — the A/A harness and `make claim-2`, which closes phase 1 — now waits on
+T000 and T001 alone, and those two are independent of each other and can run in parallel. T005
+(claim 4) is also unblocked on its corpus side and waits on the same two.

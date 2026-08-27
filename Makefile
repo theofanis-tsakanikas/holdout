@@ -25,7 +25,7 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        expiry claim-1 eval-guardrail gate-proof corpus clean
+        expiry claim-1 eval-guardrail gate-proof world corpus clean
 
 help:  ## show this help
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -90,6 +90,16 @@ eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 # CI spent thirteen minutes proving the same thing twice.
 gate-proof:  ## audit mutation ownership — every planted break owned by exactly one claim
 	$(RUN) python -m evals.gate_proof
+
+# The counterpart of `corpus` below, and the rule is the opposite one. `corpus/real/` is
+# committed because it cannot be regenerated — a person wrote those prices down in a shop.
+# `corpus/world/` is never committed because it can: a world is a pure function of
+# (world, seed, scale). This target is the smoke-scale proof that all six still produce data;
+# the scenario scale takes minutes and is a command in corpus/world/README.md, not a target.
+world:  ## generate all six adversarial worlds at smoke scale and count what came out
+	@for w in W1 W2 W3 W4 W5 W6; do \
+	  $(RUN) python -m corpus.world count --world $$w --scale smoke; \
+	done
 
 corpus:  ## rebuild corpus/real/data from the sources MANIFEST.yaml cites — NEEDS THE NETWORK
 	@echo "This downloads ~100 MB from the ONS. CI never runs it; the committed data is"

@@ -63,7 +63,16 @@ a step toward guessing, so each is taken only when the one above has failed.
   hook: it surfaces the violation in the turn that created it and it **cannot un-write the
   file**. It is not the guarantee. The test is.
 - `corpus_isolation` reads imports, not behaviour. `importlib.import_module("holdout")` is
-  invisible to it, exactly as it is to the boundary test, and always has been.
+  invisible to it, because there is no `Import` node to find. **The gate behind it no longer
+  has that hole at module level**: `tests/boundary/test_corpus_imports_nothing.py` also
+  imports every `corpus/` module with `holdout` unreachable through `sys.meta_path`, so a
+  dynamic import taken at import time raises whatever it was spelled as. A dynamic import
+  *inside a function* still runs neither check, and the hook remains blind to both — it reads
+  source, and the source is where the ordinary mistake is.
+  The first version of that test blocked `builtins.__import__`, which backs the `import`
+  statement and nothing else, so it did not catch the case it was written for and stayed green
+  while it did not. `tests/boundary/conftest.py` is the one implementation now and
+  `tests/boundary/test_blocking.py` drives it with the spelling that defeated its predecessor.
 - The text scan — reached only for a fragment that survives both parse attempts, which in
   practice means an `Edit` against a file that does not exist — is line-anchored, so it cannot
   see `x = 1; import holdout`. `tests/boundary/` asserts that limit directly rather than

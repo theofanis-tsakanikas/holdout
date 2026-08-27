@@ -27,6 +27,12 @@ htmlcov/
 # override file is the exception: it is per-machine and per-person by design.
 .claude/settings.local.json
 
+# Generated worlds. `corpus/world/` is a pure function of (world, seed, scale), so a world
+# is regenerated rather than stored — the opposite of `corpus/real/`, which is committed and
+# digest-checked precisely because it cannot be regenerated. `--out .worlds/W6` is the
+# convention corpus/world/README.md uses.
+.worlds/
+
 # Editors / OS
 .DS_Store
 .idea/
