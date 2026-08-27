@@ -128,14 +128,31 @@ would eventually disagree.
 | `rehearsal` | 20 | 24 | 56 | a laptop — enough to estimate something |
 | `scenario` | 100 | 120 | 244 | the declared corpus |
 
-At the scenario scale, with the default seed `holdout-w-0001`:
+At the scenario scale, with the default seed `holdout-w-0001`, from
+`python -m corpus.world count --world Wn --scale scenario` — about 150 seconds per world:
 
-```
-SCENARIO_COUNTS_TABLE
-```
+| | POS lines | ESL acks | shelf days | price decisions |
+|---|---:|---:|---:|---:|
+| **W1** | 36,676,068 | 1,876,392 | 2,928,000 | 1,876,392 |
+| **W2** | 36,266,964 | 1,997,911 | 2,928,000 | 1,997,911 |
+| **W3** | 37,510,813 | 1,825,055 | 2,928,000 | 1,825,055 |
+| **W4** | 37,349,168 | 1,827,013 | 2,928,000 | 1,827,013 |
+| **W5** | 31,465,861 | 1,132,484 | 2,928,000 | 1,132,484 |
+| **W6** | 37,292,793 | 1,837,333 | 2,928,000 | 1,837,333 |
 
-Every one of those figures comes from the command beside it, not from arithmetic on a smaller
-run. `CLAUDE.md` forbids extrapolating a corpus-size figure to the full estate, and the same
+**36.7M POS lines** on the null world, against the *"about 36M"* `CLAUDE.md` declares. The shelf
+day count is identical everywhere and is the only figure in the table that is arithmetic rather
+than a measurement: 100 stores × 120 SKUs × 244 days, one row each, whatever happened on them.
+
+Two of the rows say something. **W5 is nearly 6M lines short of the others**, because a
+heavy-tailed basket empties a shelf in fewer transactions and a shelf that is empty sells
+nothing else that day — and its price decisions are down by 38% for the same reason: stock that
+has already gone never reaches a markdown rung. **W3's acknowledgements match its decisions** exactly, as
+they do in every world: a label that refuses the new price still answers, and `accepted` is a
+column rather than a missing row. A world where a failed acknowledgement simply did not arrive
+would make exposure unmeasurable by deletion instead of by evidence.
+
+Every one of those figures comes from the command above, not from arithmetic on a smaller run. `CLAUDE.md` forbids extrapolating a corpus-size figure to the full estate, and the same
 rule applies one level down: `--only-stores` is a **window** onto the same world and a count
 over it is reported as a count over it.
 
@@ -171,6 +188,10 @@ exists to refuse. What it is:
   exists and appends its digest to an append-only ledger inside the seal, so an eval can
   assert exactly one opening against exactly the readout that was published.
 - **A quiet edit is caught**, by a SHA-256 commitment over the plaintext.
+- **A window's truth says it is a window.** A run restricted with `--only-stores` seals the
+  exposure of those stores and records the restriction, because a rate over three stores
+  wearing the whole world's name is exactly the kind of number this repository refuses to let
+  anyone quote.
 
 **The limit, stated rather than papered over.** A coordinated rewrite — decode, change,
 re-seal with a fresh commitment, forge the ledger — is not caught, because a seal never held
