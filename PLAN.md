@@ -193,6 +193,38 @@ the inputs" is tamper-**evident**, not tamper-proof.
 docstring naming a verification function that has never existed, and `_apply` joining a
 mutation's declared path with no containment check. The rest is a separate piece of work.*
 
+**What the hooks settled.** Two barriers stopped being tests that run afterwards. The corpus
+barrier — no module under `corpus/` may import `holdout` — now has **one** implementation in
+`ops/isolation.py`, called by the boundary test and by a harness hook, so the write is refused at
+the moment it is attempted rather than at the end of the session. It is registered on
+`PostToolUse` for `Bash` as well as on the editing tools, because a heredoc or a `sed -i` reaches
+no `PreToolUse` hook with a `file_path` at all and a Pre-only hook would have been blind to the
+most ordinary route a file gets written by. That half cannot un-write the file and says so; the
+test is still the gate. The second hook refuses `git commit` on `main` — not a duplicate of the
+ruleset, which refuses the *push*: what the ruleset cannot do is stop the commit being made, and
+the cost of that is the twenty minutes of `git reset` before a pull request can be opened.
+
+**The bar for a hook is now written down.** A hook exists only where the gate that already covers
+the rule cannot run at the moment the mistake is made. Three candidates were rejected against it
+— `make check` before every commit, a block on `git push` to `main`, and branch-name enforcement
+— and the reasons are in `docs/DECISIONS.md` rather than in a conversation. `.claude/settings.json`
+is committed, so the hooks go through a pull request and CI like everything else, and `ops/` and
+`.claude/hooks/` are linted and type-checked on the same terms as `src/`.
+
+**Doctrine rule 6 is enforced somewhere.** `make expiry` reads the deferred registry in
+`docs/DECISIONS.md` and refuses an entry past its date, or one carrying neither a date nor an
+unlock condition — the section's own opening sentence, made checkable. It also refuses a
+*partially* drifted section, which is the dangerous case: eleven entries stop matching, two still
+do, and a naive checker reports two deferrals and stays green while the registry silently shrinks.
+It is the only target that can go red on a day nobody touched the repository, which is the point.
+
+**Its limit is recorded as a deferral rather than glossed.** An unlock *condition* is prose and
+can never expire, and all thirteen existing entries carry one, so the expiry half of the target is
+armed by a planted entry in `tests/ops/test_expiry.py` and by nothing in the real registry. That
+is the same shape as a `claim-N` target with no mutation planted against it, and it is answered
+the same way. The target prints every deferral's age in days, because that is the only number
+available about a condition nobody can evaluate.
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase

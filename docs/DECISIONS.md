@@ -278,6 +278,82 @@ So it is proved by unit tests that break each of its checks on a deliberately br
 arrangement — `tests/evals/test_ledger.py`. A gate that has only ever been seen green has not
 been tested, and that applies to the accountant as much as to anything it counts.
 
+### The AI layer — what earns a hook
+
+**A hook must not duplicate a check CI already makes green-or-red.** · 2026-08-27
+CLAUDE.md's three mechanisms have three jobs: a rule holds passively, a skill is a procedure
+invoked by name, a hook is a guarantee the harness enforces whether it is wanted or not. The
+temptation with the third is to reach for it whenever something matters, and that is how a
+`.claude/` directory bloats into a second, unversioned test suite that nobody runs and nobody
+trusts.
+
+The bar taken here: **a hook exists only where the gate that already covers the rule cannot run
+at the moment the mistake is made.** Both hooks in `.claude/hooks/` clear it, and neither is
+the gate:
+
+- `corpus_isolation.py` — the gate is `tests/boundary/test_corpus_imports_nothing.py`, which
+  runs on every push and which `main` cannot take a violation past. What it cannot do is run
+  *now*, so a session can build for an hour on top of a barrier that is already gone.
+- `main_guard.py` — the gate is the `main` ruleset, with no bypass actors, which refuses the
+  *push* by name. What it cannot do is stop the commit being made. The cost of that is not a
+  broken `main`; it is the twenty minutes of `git reset` before the pull request can be opened,
+  and the temptation at minute nineteen to just push.
+
+*What was rejected:* a hook that runs `make check` before a commit (CI runs it, and a slow hook
+on every commit is a hook that gets switched off), a hook that blocks `git push` to `main` (the
+ruleset already refuses it by name), and a hook that enforces the branch-naming convention
+(judgment, not a thing that must never happen — that is a rule, and `CLAUDE.md` already carries
+it).
+
+**One rule, one implementation, two callers.** · 2026-08-27
+The corpus barrier is now `ops/isolation.py`, called by the boundary test *and* by the hook. The
+alternative — a hook with its own copy of the AST walk — was rejected on the ordinary grounds
+that two copies of one rule drift, and the copy that drifts is the one nobody reads. The hook
+would have been the one nobody reads.
+
+The hook polices the whole of `corpus/`, not `corpus/world/` alone, because that is what the
+test has always policed and a hook that policed *less* than its own gate would wave through
+exactly the violation it was added to catch early.
+
+**`ops/` is a new top-level package, deliberately not inside `src/holdout/`.** · 2026-08-27
+It holds the code that enforces the rules the product code is measured by — the corpus barrier
+and the deferral registry. Nothing in it serves one of the seven claims, and putting it in
+`src/holdout/` would have made it one more thing the claims have to be proved independent of.
+It is linted and type-checked on the same terms as `src/`, along with `.claude/hooks/`: a
+guarantee held to a lower standard than the code it guards is not one for long.
+
+**Both hooks fail open on input they cannot read.** · 2026-08-27
+A hook that dies on a malformed event takes the session's editing with it, and a hook that has
+to be switched off to get work done is a hook that gets switched off — permanently, and for
+every rule it carried. The test and CI remain the gate; failing open costs a turn, failing
+closed costs the session. The one exception is `main_guard` on a command line it cannot
+tokenise, where it falls back to a coarser match and refuses: an unbalanced quote is the single
+case where guessing in the safe direction costs only a retry.
+
+**Doctrine rule 6 becomes `make expiry`.** · 2026-08-27
+*"Exceptions expire. On expiry the finding returns and CI goes red again"* was enforced nowhere.
+It now is: `make expiry` reads the **Deliberately deferred** section of this file and refuses an
+entry that has passed its `*Expires:*` date, or that carries neither a date nor an
+`*Unlock condition:*` — the section's own opening sentence, made checkable.
+
+It is the only target in the repository that can go red on a day nobody touched it, which is
+the point rather than a side effect: a deferral outlives its reason by the calendar, not by an
+edit. It runs inside `make check` and is named as its own step in `ci`, so that when it does go
+red it is legible as itself.
+
+*The standing limit, stated rather than papered over:* an unlock **condition** is prose — "the
+phase-1 integration session", "phase 2's gold layer" — and no checker can evaluate it. A
+condition-only deferral is therefore checked for existence and never for truth, and it cannot
+expire. What the target can do about that it does: it prints the age in days of every deferral,
+so one that has quietly outlived its reason is a number on a terminal rather than something
+somebody has to remember. Deciding that an aged deferral is too old is a judgment, and it
+belongs to the integration session rather than to a regex.
+
+*What it refuses beyond the two obvious cases:* a **partially** drifted section. If an entry
+header changes shape and eleven entries stop matching while two still do, the naive checker
+reports two deferrals and stays green — the registry silently shrinks without anyone deleting
+anything. So every line that looks like a header and was not read as one is a red build.
+
 ---
 
 ## Deliberately deferred
@@ -426,6 +502,20 @@ restatement chain with it.
 *Unlock condition:* a decision that the scenario's basket should mirror the real one, taken
 deliberately and with the eval's independence re-argued — the phase-1 integration session is the
 right place. `docs/REGULATORY.md` item 6 carries the restatement in the meantime.
+
+**No deferral in this registry carries a date, so `make expiry` is armed by its tests alone** ·
+deferred 2026-08-27
+All thirteen existing entries carry an unlock **condition**, which is prose and can never expire.
+So the half of `make expiry` that refuses an expired deferral has nothing in the real registry to
+act on, and would stay green today if its arithmetic were nonsense. That is the same shape as a
+`claim-N` target with no mutation planted against it, and it is answered the same way:
+`tests/ops/test_expiry.py` plants an expired entry into a copy of this file and asserts the target
+goes red, by name and with the number of days it is overdue.
+
+Recorded rather than quietly accepted, because "the target is green" and "the target would notice"
+are different statements and only the second one is worth anything.
+*Unlock condition:* the first deferral taken with a date rather than a condition — at which point
+the registry arms the target itself and the planted entry stops being the only evidence.
 
 **Branch protection covers `main` only** · deferred 2026-08-27
 `main` is protected by a repository ruleset with **no bypass actors**, so the rule binds the owner

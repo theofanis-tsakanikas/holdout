@@ -69,6 +69,13 @@ jobs:
       - name: make contracts
         run: make contracts
 
+      # Also deliberately overlapping with `make check`. `make expiry` is the one target in
+      # the repository that can go red on a day nobody pushed anything — a deferral outlives
+      # its reason by the calendar, not by an edit — so when it does go red it has to be
+      # legible as itself rather than as "make check failed".
+      - name: make expiry
+        run: make expiry
+
       # This step discovers the claim targets instead of listing them, so the day one lands
       # it is gated by CI without anyone remembering to edit this file - and a claim target
       # that exists but is never run is impossible by construction. `claim-1` and
