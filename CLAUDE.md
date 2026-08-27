@@ -532,8 +532,9 @@ src/holdout/core/      pure functions — no SDK, no engine
 src/holdout/adapters/  thin cloud callers
 contracts/             the source of truth (above)
 corpus/world/          the six adversarial worlds — NO import path to core/
-corpus/real/           a public retail dataset, distribution realism only
-evals/                 one directory per claim
+corpus/real/           real published prices — claim 1's independent corpus, digest-checked
+evals/                 one directory per claim · report.py is the shared shape
+  gate_proof/          the planted mutations: green first, named target, STALE on a moved one
 pipelines/ingest/      Zerobus driver · Lakeflow Connect · the S3 bulk load
 pipelines/silver/      Spark Declarative Pipelines
 pipelines/gold/        dbt

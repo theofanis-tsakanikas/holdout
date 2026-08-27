@@ -59,7 +59,8 @@ putting it first.
 | `src/holdout/core/` — the design form, feasibility, assignment, the four checks, the estimator | `core/design-experiment` | open |
 | the generator and the six adversarial worlds | `corpus/adversarial-worlds` | open |
 | the A/A harness, the reference implementation of truth, the per-claim eval directories | `evals/aa-harness` | open |
-| the `claim-N`, `gate-proof` and `preview-audit` targets | with the eval each proves | open |
+| `corpus/real/`, `evals/guardrail/`, `evals/gate_proof/`, `make claim-1`, `make gate-proof` | `evals/guardrail-and-gate-proof` | **landed** |
+| the remaining `claim-N` and `preview-audit` targets | with the eval each proves | open |
 | CI, the protected `main`, and `docs/DECISIONS.md` | `ops/gate-and-decisions` | **landed** |
 
 **What the contract layer settled.** The four families are versioned with effective windows and
@@ -106,6 +107,10 @@ tested only alone.
 green target that proves nothing is a gate disarmed before it was ever armed. Claim 1 is not proved
 by the core — it is made provable; the eval that attacks the gates from an independent corpus of
 real price lists is still open, and the seam it needs is built and verified.
+*Since 2026-08-27: that eval exists and claim 1 has closed. `claim-2` … `claim-7` and
+`preview-audit` are still absent, on exactly the same reasoning. The seam held — the eval builds
+`Envelope` objects from literal numbers without opening `contracts/`, which is what let a sweep
+reach the `unspecified_in_the_instrument` branch that no contract date can reach.*
 
 **Oversight level 1 is now structural.** `main` is protected by a ruleset with **no bypass actors**,
 so the rule binds the owner: changes only through a pull request, `gate` and `secrets` both required
@@ -123,11 +128,41 @@ on. The publication *checklist* has not run, so the repository is public and **u
 README, no banner, no article, no post. `docs/DECISIONS.md` records the trade and restates the
 condition it overtook.
 
+**What claim 1 cost, and what it bought.** The eval attacks the gates from 32,480 individual price
+quotes the UK Office for National Statistics collected by hand in shops and published under the Open
+Government Licence, the 63 categories of ΥΑ 21330/12.03.2026 (ΦΕΚ Β΄ 1411) — the Greek margin cap's
+own list, which the contract does **not** name — and Eurostat's gross margin for Greek supermarkets.
+232,343 decisions across eight envelopes, **all twelve `at_decision` codes reached**, and nine
+checks green. The load-bearing one is a **second implementation** of the envelope arithmetic, in
+exact `Decimal` euros against the core's integer cents, with no tolerance: zero certified prices fell
+outside it, and zero refusals were unsupported by it.
+
+`make gate-proof` plants **thirteen** deliberate breaks and every one is refused by the check named
+in advance. Three rules make that mean something: green first, a parsed JSON reading rather than an
+exit code, and `STALE` — never a pass — when a mutation's anchor or its named check has moved.
+
+**What the corpus found that nothing else could.** Two things, both recorded in `docs/DECISIONS.md`
+with unlock conditions rather than quietly fixed. The **ladder takes a floor and no ceiling**, so
+where the margin cap binds below the base price the declared safe state produces prices the envelope
+refuses — 7,366 of 26,600 ladder quotes. The guardrails were right to refuse; doctrine rule 1 is what
+is incomplete, and it is the same class as the composition finding a review made earlier. And
+`benchmark_margin_pct` **does not say which denominator it is in**: the Greek instrument defines the
+capped margin over the selling price, the core bounds it as a mark-up on cost, and the contract's
+field name points at the first while the arithmetic wants the second. It fails safe. It is still an
+ambiguity in a load-bearing field, and it was found by reading the instrument rather than the
+contract.
+
+**Two mutations survived before they bit**, and both are kept in the record. One named a check that
+could not catch it; one was caught by a *different* check, so it proved nothing about the line it was
+aimed at. Each was fixed by correcting the eval, never by widening an assertion — **a gate can only
+be shown to bite where it is the gate that refuses.** A mutation set that never surprises its author
+was written after looking at the answers.
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase
 
-Claims 1, 2, 3, 4 and 7 — all provable local, with no account.
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claim 1 has closed.**
 
 **Then an integration session**, before the next phase opens: read the whole repository against
 `CLAUDE.md` and report conceptual drift. It builds nothing.
