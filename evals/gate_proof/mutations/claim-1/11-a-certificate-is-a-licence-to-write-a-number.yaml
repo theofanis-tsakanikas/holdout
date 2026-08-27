@@ -1,0 +1,20 @@
+# A certificate is a statement about one decision, not a permission slip. Without the key
+# comparison, a certificate legitimately issued for a cheap item can be presented for an
+# expensive one, and every other check in `certified()` still passes because nothing about
+# the certificate itself has been altered.
+
+id:          a-certificate-is-a-licence-to-write-a-number
+claim:       1
+eval_module: evals.guardrail
+targets:     [G9.no-tampered-certificate-reaches-a-shelf]
+
+breaks: >-
+  the actuator stops checking that the certificate it holds was issued for the decision it
+  is dispatching.
+
+file: src/holdout/core/guardrails/certificate.py
+
+anchor: |
+    if price.key != key:
+replacement: |
+    if False and price.key != key:

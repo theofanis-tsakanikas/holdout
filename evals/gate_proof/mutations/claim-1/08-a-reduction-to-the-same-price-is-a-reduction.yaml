@@ -1,0 +1,20 @@
+# Art. 6a of Directive 98/6/EC, and the practice it exists to stop: a label announcing a
+# reduction against a price that was never higher. One character — `>=` to `>` — and a
+# price equal to the prior price becomes an announceable reduction.
+
+id:          a-reduction-to-the-same-price-is-a-reduction
+claim:       1
+eval_module: evals.guardrail
+targets:     [G2.certified-price-inside-exact-bounds]
+
+breaks: >-
+  a reduction may be announced against a prior price the new price merely equals. The
+  announcement is then about nothing, which is the whole of what the prior-price rule
+  forbids.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+    if proposal.price >= prior:
+replacement: |
+    if proposal.price > prior:

@@ -1,0 +1,23 @@
+# A frozen category is not a tighter bound — it is a path the system does not enter. This
+# mutation turns it into a bound of zero width, which is what "we'll just log it" looks like
+# in code, and the eval answers with real cigarette, spirit and infant-formula prices.
+
+id:          frozen-category-is-only-a-warning
+claim:       1
+eval_module: evals.guardrail
+targets:     [G5.frozen-category-never-certified]
+
+breaks: >-
+  a frozen category no longer refuses. The category the scenario declines to automate at all
+  becomes a category it prices like any other.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+    if proposal.category_id in envelope.frozen_categories.category_ids:
+        refuse(
+            RefusalCode.CATEGORY_FROZEN,
+replacement: |
+    if False and proposal.category_id in envelope.frozen_categories.category_ids:
+        refuse(
+            RefusalCode.CATEGORY_FROZEN,

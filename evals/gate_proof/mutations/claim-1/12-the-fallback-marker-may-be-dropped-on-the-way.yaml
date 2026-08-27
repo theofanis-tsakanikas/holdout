@@ -1,0 +1,21 @@
+# Doctrine rule 2 — "a fallback is visible all the way to the end" — re-asserted at the far
+# end rather than only at the entrance. `ProposedPrice` enforces the equivalence when the
+# proposal is built; this line is what stops a marked fallback being stripped of its marker
+# afterwards and arriving at the shelf indistinguishable from a model decision.
+
+id:          the-fallback-marker-may-be-dropped-on-the-way
+claim:       1
+eval_module: evals.guardrail
+targets:     [G9.no-tampered-certificate-reaches-a-shelf]
+
+breaks: >-
+  the actuator stops re-asserting that a marker is present exactly when the source is the
+  ladder. A fallback can then be dressed as a model decision on its way to the label, the
+  P&L and the experiment.
+
+file: src/holdout/core/guardrails/certificate.py
+
+anchor: |
+        return (source is PriceSource.LADDER) == bool(marker)
+replacement: |
+        return True

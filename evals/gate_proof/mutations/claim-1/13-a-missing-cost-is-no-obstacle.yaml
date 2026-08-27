@@ -1,0 +1,25 @@
+# Doctrine rule 3, at the input that everything else in the envelope is computed from. Every
+# bound here comes from the cost as it was known at decision time, so a decision taken with
+# no cost at all has no floor — and a floor that does not exist is satisfied by every price
+# there is.
+
+id:          a-missing-cost-is-no-obstacle
+claim:       1
+eval_module: evals.guardrail
+targets:     [G2.certified-price-inside-exact-bounds]
+
+breaks: >-
+  a decision proceeds when no unit cost with a known arrival time was supplied, instead of
+  refusing. Nothing is defaulted and nothing is invented — the bound is simply absent, which
+  is the quieter of the two failures and the harder one to see in a readout.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+    if freshness is Freshness.UNKNOWN:
+        refuse(
+            RefusalCode.INPUT_NOT_AVAILABLE,
+replacement: |
+    if False and freshness is Freshness.UNKNOWN:
+        refuse(
+            RefusalCode.INPUT_NOT_AVAILABLE,

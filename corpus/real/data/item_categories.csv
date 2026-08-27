@@ -1,0 +1,38 @@
+item_id,item_desc,scenario_category,greek_basket_ordinal,match,note
+210102,LGE LOAF-WHTE-UNSLED-750-800G,bakery,3,exact,large white unsliced loaf — ψωμί φρατζόλα
+210106,SIX BREAD ROLLS-WHITE/BROWN,bakery,,,rolls are not one of the three bread lines the decision names
+210111,WHITE SLICED LOAF BRANDED 750G,bakery,2,equivalent,branded sliced loaf — the commercial slot of ψωμί για τοστ
+210113,WHOLEMEAL SLICED LOAF BRANDED,bakery,2,equivalent,as above
+210114,CHILLED GARLIC BREAD,bakery,,,a prepared bread product; not named
+210115,WRAP / TORTILLA PACK 6-8,bakery,,,not named
+210116,GLUTEN FREE BREAD LF 300-550G,bakery,,,not named
+210324,CRUMPETS PACK 6-9 SPEC NUMBER,bakery,,,not named
+211305,SPREADABLE BUTTER,dairy,34,equivalent,a butter blend; the decision names βούτυρο αγελάδος and μαργαρίνες separately
+211306,BUTTER 200-250G SPEC COO,dairy,34,exact,βούτυρο αγελάδος
+211501,CHEDDAR-HOME PRODUCED PER KG,dairy,29,equivalent,hard yellow cheese — the commercial slot the decision fills with τυρί γκούντα
+211506,"CHEESE SPREAD, 110G-200G TUB",dairy,,,not named
+211509,HARD REGIONAL CHEESE PER KG,dairy,29,equivalent,as cheddar
+211510,PARMESAN CHEESE-PER KG,dairy,29,equivalent,as cheddar
+211511,SOFT CONTINENTAL CHEESE - KG,dairy,28,equivalent,soft white cheese — λευκό τυρί
+211709,SHOP MILK-WHOLE MILK-4PT/2LTR,dairy,20,exact,γάλα φρέσκο πλήρες
+211710,MILK SEMI-PER 2 PINTS/1.136 L,dairy,21,exact,γάλα φρέσκο με χαμηλά λιπαρά
+211713,"MILK FLAVOURED, 180-500MLS/GMS",dairy,,,flavoured milk is not one of the four milk lines named
+211807,"YOGHURT/FROMAGE 4-6PK, 45-125G",dairy,25,equivalent,multipack yoghurt; the decision names plain cow yoghurt
+211814,YOGHURT-SMALL INDIVIDUAL,dairy,25,equivalent,as above
+211815,FRESH DOUBLE CREAM 250ML-300ML,dairy,,,cream is not named
+210905,FRESH/CHILLED CHICKEN  PER KG,poultry,15,exact,νωπό κοτόπουλο
+210910,FRESH BONELESS CHICKEN BREAST,poultry,15,exact,μέρη κοτόπουλου
+211019,FROZ CHICKEN NUGGETS 220-600G,poultry,,,not named
+211026,CHICKEN KIEV 2 PACK 240-325G,poultry,19,equivalent,a packaged prepared meal
+211029,COOKED MEAT TURKEY/CHICK SLICE,poultry,11,exact,γαλοπούλα (αλλαντικά)
+211101,FRESH WHITE FISH FILLETS KG,fresh_fish,13,exact,φρέσκα ψάρια
+211105,FRESH FISH-SALMON FILLETS-KG,fresh_fish,13,exact,φρέσκα ψάρια
+211106,FROZEN PRAWNS PER KG,fresh_fish,12,equivalent,shellfish rather than fish; frozen
+211816,POWDERED BABY FORMULA 400-900G,infant_formula,42,exact,γάλα βρεφικής ηλικίας
+320108,CIGARETTES 8,tobacco,,,not on the decision's list
+320115,CIGARETTES 15,tobacco,,,not on the decision's list
+320206,HAND ROLLING TOBACCO PACK 30GM,tobacco,,,not on the decision's list
+310401,WHISKY-70 CL BOTTLE,spirits,,,not on the decision's list
+310403,VODKA-70 CL BOTTLE,spirits,,,not on the decision's list
+310406,FORTIFIED WINE  (70-75CL),spirits,,,not on the decision's list
+310430,PRE MIXED SPIRIT 250-330ML,spirits,,,not on the decision's list

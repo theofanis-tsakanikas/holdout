@@ -1,0 +1,424 @@
+"""Break each gate on purpose, and demand a refusal from the gate that is named.
+
+The three rules, and what each one is defending against
+-------------------------------------------------------
+**1 · Green first.** Before a mutation is planted, the check it claims to trip must already
+be passing. A mutation whose target was red anyway proves nothing: the failure it produces
+was there before it arrived. That verdict is `NOT-ARMED`, and it is a failure of the run,
+not a skip.
+
+**2 · A non-zero exit is not proof.** The eval is run as a subprocess and its **JSON**
+reading is parsed. The mutation succeeds only when the *named* check reports `passed:
+false`. Anything else that goes red — an import error, a crash, a different check falling
+over — is `CRASHED`, and `CRASHED` fails. Without this rule the easiest way to pass
+`gate-proof` would be to write a mutation that makes the eval unimportable, and it would
+look identical to a gate biting.
+
+**3 · A mutation whose target moved is STALE, never passed.** The anchor text must appear in
+the source **exactly once**. Zero occurrences means the code it was written against has been
+edited and the mutation is now aimed at nothing; more than one means it is aimed at
+something ambiguous. Either way the answer is `STALE`. This is the rule that stops
+`gate-proof` decaying into a suite of mutations that no longer touch anything and pass
+because the thing they were meant to break is gone. The same rule applies to the *check* a
+mutation names: a target that no longer exists in the eval's output is `STALE`, not a pass.
+
+Where the independence is, and where it is not
+----------------------------------------------
+Claim 1's trap, restated for the planter: *if the thing that decides what to break reads the
+same source of truth as the thing that detects it, it is one function agreeing with itself.*
+
+Three separations, and only the third is strong:
+
+* the planter edits `src/holdout/`; the detector reads `corpus/real/`. Neither reads
+  `contracts/` to decide anything;
+* a mutation is written as a **behaviour change in domain terms** — "the margin floor rounds
+  the wrong way", "a frozen category is only a warning" — and never as "make check G2 fail".
+  The check it must trip is declared in advance, in the file, and if it survives that is
+  reported rather than adjusted;
+* **the planter cannot tune the inputs.** The corpus is committed and digest-checked, so the
+  only way to make a mutation catchable is to make the gate actually catch it. This is the
+  separation that does the work; the first two are hygiene.
+
+What this does not prove
+------------------------
+That every gate bites on every mutation. These are the breaks we thought of — the same
+honest limit the six adversarial worlds carry for claim 2 — and a curated set is not
+mutation testing. A gate can be perfect against all of them and still have a hole nobody
+imagined. What the set does prove is that each named gate is *load-bearing*: remove it and
+something goes red, by name, for the stated reason.
+
+Nothing here touches the working tree. Each run copies the source it needs into a temporary
+directory and mutates the copy, so an interrupted run cannot leave a planted mutation behind.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+from collections.abc import Sequence
+from dataclasses import dataclass
+from enum import StrEnum
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from evals.report import Check, Report
+
+HERE = Path(__file__).resolve().parent
+MUTATIONS_DIR = HERE / "mutations"
+REPO_ROOT = HERE.parents[1]
+
+#: What is copied into the workspace. `src/` is what gets mutated; `contracts/` and
+#: `generated/` are there because `holdout.contracts.loader` resolves them relative to the
+#: package, so a copied `src/` needs a copied contract directory beside it or every envelope
+#: fails to build for the wrong reason.
+COPIED = ("src", "contracts", "generated", "evals", "corpus")
+
+#: A run of the eval that takes longer than this has almost certainly been mutated into a
+#: loop rather than into a bug. Bounded so `make gate-proof` cannot hang CI.
+TIMEOUT_SECONDS = 300
+
+
+class Verdict(StrEnum):
+    BIT = "bit"
+    SURVIVED = "SURVIVED"
+    STALE = "STALE"
+    CRASHED = "CRASHED"
+    NOT_ARMED = "NOT-ARMED"
+
+
+@dataclass(frozen=True, slots=True)
+class Mutation:
+    source: Path
+    id: str
+    claim: int
+    eval_module: str
+    targets: tuple[str, ...]
+    breaks: str
+    file: str
+    anchor: str
+    replacement: str
+
+    @property
+    def ref(self) -> str:
+        return f"{self.source.parent.name}/{self.source.name}"
+
+
+@dataclass(frozen=True, slots=True)
+class Result:
+    mutation: Mutation
+    verdict: Verdict
+    detail: str
+    tripped: tuple[str, ...] = ()
+    also_fell: tuple[str, ...] = ()
+
+
+def load_mutations(claim: int | None = None) -> tuple[Mutation, ...]:
+    directories = sorted(MUTATIONS_DIR.glob("claim-*"))
+    if claim is not None:
+        directories = [d for d in directories if d.name == f"claim-{claim}"]
+    found: list[Mutation] = []
+    for directory in directories:
+        for path in sorted(directory.glob("*.yaml")):
+            document: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
+            found.append(
+                Mutation(
+                    source=path,
+                    id=document["id"],
+                    claim=int(document["claim"]),
+                    eval_module=document["eval_module"],
+                    targets=tuple(document["targets"]),
+                    breaks=document["breaks"].strip(),
+                    file=document["file"],
+                    anchor=document["anchor"],
+                    replacement=document["replacement"],
+                )
+            )
+    return tuple(found)
+
+
+# ------------------------------------------------------------------------------ the runner
+
+
+def _workspace(into: Path) -> Path:
+    workspace = into / "workspace"
+    workspace.mkdir()
+    for name in COPIED:
+        shutil.copytree(
+            REPO_ROOT / name,
+            workspace / name,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
+    return workspace
+
+
+def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str]:
+    """Run one eval inside the workspace and parse its JSON. `None` means it did not finish.
+
+    `PYTHONPATH` puts the workspace ahead of the editable install, so the subprocess imports
+    the **mutated** `holdout` rather than the one in the working tree. That is checked rather
+    than assumed: `_assert_workspace_is_what_ran` compares the module path the eval reports.
+    """
+    environment = {
+        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+        "PYTHONPATH": f"{workspace}:{workspace / 'src'}",
+        "PYTHONHASHSEED": "0",
+        "HOME": str(workspace),
+    }
+    try:
+        completed = subprocess.run(
+            [sys.executable, "-m", module, "--json"],
+            cwd=workspace,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return None, f"the eval did not finish within {TIMEOUT_SECONDS}s"
+    if completed.returncode not in (0, 1):
+        tail = (completed.stderr or completed.stdout).strip().splitlines()[-3:]
+        return None, f"exit {completed.returncode}: {' / '.join(tail)}"
+    try:
+        return json.loads(completed.stdout), ""
+    except json.JSONDecodeError:
+        tail = (completed.stderr or completed.stdout).strip().splitlines()[-3:]
+        return None, f"no JSON on stdout: {' / '.join(tail)}"
+
+
+def _states(payload: dict[str, Any]) -> dict[str, bool]:
+    return {check["id"]: bool(check["passed"]) for check in payload["checks"]}
+
+
+#: How deeply a planted anchor may be nested. Forty columns is well past anything this
+#: repository's line length admits, so a miss is a genuine miss rather than a search that
+#: gave up early.
+MAX_INDENT = 40
+
+
+def _at_indent(block: str, columns: int) -> str:
+    """A YAML block scalar, put back at the column its source sits in.
+
+    YAML strips the *common* leading indentation from a `|` block, so an anchor copied out
+    of a nested function arrives here flush left with its internal structure intact but its
+    absolute position lost. Re-adding a uniform prefix restores it exactly, which keeps rule
+    3 exact: the anchor's relative indentation must still match line for line, and only its
+    depth is searched for.
+    """
+    pad = " " * columns
+    return "".join(pad + line if line.strip() else line for line in block.splitlines(keepends=True))
+
+
+def locate(text: str, anchor: str) -> list[tuple[int, int]]:
+    """Every (indent, offset) at which `anchor` occurs. Exactly one is the only good answer.
+
+    A match must begin at the **start of a line**. Without that, an anchor dedented by YAML
+    matches at every indentation shallower than its own — the same single line found once at
+    four spaces, once at three, and so on — and a perfectly good mutation reports itself
+    `STALE` for five occurrences that are all the same occurrence.
+    """
+    hits: list[tuple[int, int]] = []
+    for columns in range(MAX_INDENT + 1):
+        needle = _at_indent(anchor, columns)
+        start = text.find(needle)
+        while start != -1:
+            if start == 0 or text[start - 1] == "\n":
+                hits.append((columns, start))
+            start = text.find(needle, start + 1)
+    return hits
+
+
+def _apply(workspace: Path, mutation: Mutation) -> str | None:
+    """Plant the mutation, or say why it is stale. Returns the original text on success."""
+    target = workspace / mutation.file
+    if not target.exists():
+        return None
+    original = target.read_text(encoding="utf-8")
+    hits = locate(original, mutation.anchor)
+    if len(hits) != 1:
+        return None
+    columns, start = hits[0]
+    needle = _at_indent(mutation.anchor, columns)
+    replacement = _at_indent(mutation.replacement, columns)
+    target.write_text(
+        original[:start] + replacement + original[start + len(needle) :], encoding="utf-8"
+    )
+    return original
+
+
+def _restore(workspace: Path, mutation: Mutation, original: str) -> None:
+    (workspace / mutation.file).write_text(original, encoding="utf-8")
+
+
+def run(claim: int | None = None) -> Report:
+    mutations = load_mutations(claim)
+    if not mutations:
+        return Report(
+            claim=claim or 0,
+            title="gate-proof — no mutation is declared",
+            checks=(
+                Check(
+                    id="gate-proof.mutations-exist",
+                    question="Is there at least one planted mutation for the claims that have evals?",
+                    passed=False,
+                    figure="0 mutations",
+                    detail=(
+                        "a gate-proof target with nothing to plant is a gate disarmed before "
+                        "it was ever armed"
+                    ),
+                ),
+            ),
+        )
+
+    results: list[Result] = []
+    with tempfile.TemporaryDirectory(prefix="holdout-gate-proof-") as scratch:
+        workspace = _workspace(Path(scratch))
+
+        baselines: dict[str, dict[str, bool] | None] = {}
+        baseline_errors: dict[str, str] = {}
+        for module in sorted({m.eval_module for m in mutations}):
+            payload, error = _run_eval(workspace, module)
+            baselines[module] = _states(payload) if payload else None
+            baseline_errors[module] = error
+
+        for mutation in mutations:
+            results.append(_judge(workspace, mutation, baselines, baseline_errors))
+
+    return _report(claim, results)
+
+
+def _judge(
+    workspace: Path,
+    mutation: Mutation,
+    baselines: dict[str, dict[str, bool] | None],
+    baseline_errors: dict[str, str],
+) -> Result:
+    baseline = baselines.get(mutation.eval_module)
+    if baseline is None:
+        # Rule 1, in its harshest form: the eval does not even run clean, so nothing planted
+        # against it can mean anything.
+        return Result(
+            mutation,
+            Verdict.NOT_ARMED,
+            f"{mutation.eval_module} does not run clean — {baseline_errors[mutation.eval_module]}",
+        )
+
+    unknown = [target for target in mutation.targets if target not in baseline]
+    if unknown:
+        # Rule 3, applied to the *check* rather than to the source: the mutation names a
+        # check the eval no longer publishes, so its target has moved.
+        return Result(
+            mutation,
+            Verdict.STALE,
+            f"names {', '.join(unknown)}, which {mutation.eval_module} does not publish",
+        )
+
+    already_red = [target for target in mutation.targets if not baseline[target]]
+    if already_red:
+        return Result(
+            mutation,
+            Verdict.NOT_ARMED,
+            f"{', '.join(already_red)} was already failing before anything was planted",
+        )
+
+    original = _apply(workspace, mutation)
+    if original is None:
+        # Rule 3 in its usual form: the anchor is gone, or is now ambiguous.
+        target = workspace / mutation.file
+        occurrences = (
+            len(locate(target.read_text(encoding="utf-8"), mutation.anchor))
+            if target.exists()
+            else 0
+        )
+        return Result(
+            mutation,
+            Verdict.STALE,
+            f"its anchor appears {occurrences} times in {mutation.file}, not once — "
+            "the code it was written against has moved",
+        )
+    try:
+        payload, error = _run_eval(workspace, mutation.eval_module)
+    finally:
+        _restore(workspace, mutation, original)
+
+    if payload is None:
+        # Rule 2: something went red, and it was not the gate.
+        return Result(mutation, Verdict.CRASHED, error)
+
+    states = _states(payload)
+    missing = [target for target in mutation.targets if target not in states]
+    if missing:
+        return Result(
+            mutation, Verdict.CRASHED, f"{', '.join(missing)} vanished from the mutated run"
+        )
+    survived = [target for target in mutation.targets if states[target]]
+    if survived:
+        return Result(
+            mutation,
+            Verdict.SURVIVED,
+            f"{', '.join(survived)} stayed green with the gate broken",
+        )
+    also = tuple(
+        check for check, passed in states.items() if not passed and check not in mutation.targets
+    )
+    return Result(mutation, Verdict.BIT, "", tripped=mutation.targets, also_fell=also)
+
+
+def _report(claim: int | None, results: list[Result]) -> Report:
+    checks: list[Check] = []
+    for result in results:
+        bit = result.verdict is Verdict.BIT
+        figure = result.verdict.value
+        if bit:
+            figure = f"bit · {', '.join(result.tripped)}"
+            if result.also_fell:
+                figure += f" (also {len(result.also_fell)} more)"
+        checks.append(
+            Check(
+                id=result.mutation.id,
+                question=(
+                    f"Break this on purpose — {result.mutation.breaks} — and does "
+                    f"{', '.join(result.mutation.targets)} refuse it?"
+                ),
+                passed=bit,
+                figure=figure,
+                detail=result.detail,
+                counterexamples=() if bit else (f"declared in {result.mutation.ref}",),
+            )
+        )
+    bit_count = sum(1 for r in results if r.verdict is Verdict.BIT)
+    return Report(
+        claim=claim or 0,
+        title=f"gate-proof — every gate bites, or it is not a gate ({bit_count}/{len(results)})",
+        checks=tuple(checks),
+        numbers=(
+            ("mutations planted", str(len(results))),
+            ("bit", f"{bit_count}/{len(results)}"),
+            *(
+                (f"  {verdict.value}", str(sum(1 for r in results if r.verdict is verdict)))
+                for verdict in Verdict
+                if verdict is not Verdict.BIT and any(r.verdict is verdict for r in results)
+            ),
+        ),
+        notes=(
+            "that every gate bites on every possible mutation — this is the set of breaks we "
+            "thought of, which is the same honest limit the six adversarial worlds carry",
+            "that a surviving mutation is harmless; SURVIVED means a gate did not bite and is "
+            "a finding, never something to widen an assertion around",
+        ),
+    )
+
+
+def main(argv: Sequence[str]) -> int:
+    claim: int | None = None
+    for index, argument in enumerate(argv):
+        if argument == "--claim" and index + 1 < len(argv):
+            claim = int(argv[index + 1])
+    from evals.report import main as render_main
+
+    return render_main(run(claim), argv)

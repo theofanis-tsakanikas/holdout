@@ -1,0 +1,40 @@
+# An earlier version of this file also named `G1.only-a-certificate-reaches-a-shelf`, on the
+# reasoning that `certified()` requires at least one lower bound and this is the only bound
+# `evaluate` appends unconditionally. `gate-proof` reported SURVIVED, and it was right: on
+# the markdown path the max-depth bound is also a lower bound, and wherever a cost is
+# supplied so is the margin floor. Removing the absolute floor never actually empties
+# `bounds.lower`. The target was narrowed to the check that does catch it rather than the
+# check it would have been satisfying to name — which is the reason rule 2 exists.
+
+id:          absolute-floor-is-not-applied
+claim:       1
+eval_module: evals.guardrail
+targets:     [G2.certified-price-inside-exact-bounds]
+
+breaks: >-
+  the absolute floor stops being applied at all. No certified price may fall below a fixed
+  amount whatever the cost says, and this removes the bound that says so.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+    lower.append(
+        Bound(
+            amount=envelope.floor.minimum_absolute_price,
+            guardrail=GuardrailId.FLOOR,
+            rule_id="minimum_absolute_price_eur",
+            code=RefusalCode.BELOW_ABSOLUTE_FLOOR,
+            why="the absolute minimum a certified decision may carry, whatever the cost says",
+        )
+    )
+replacement: |
+    if False:
+        lower.append(
+            Bound(
+                amount=envelope.floor.minimum_absolute_price,
+                guardrail=GuardrailId.FLOOR,
+                rule_id="minimum_absolute_price_eur",
+                code=RefusalCode.BELOW_ABSOLUTE_FLOOR,
+                why="the absolute minimum a certified decision may carry, whatever the cost says",
+            )
+        )
