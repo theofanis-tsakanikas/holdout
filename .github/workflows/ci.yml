@@ -41,7 +41,10 @@ jobs:
   gate:
     name: gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Raised from 15 when `claim-1` landed. `make check` is half a minute; the claim targets
+    # are minutes, because `gate-proof` runs a claim's whole eval once per planted mutation
+    # and that is the cost of the thing being proved rather than asserted.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -65,11 +68,15 @@ jobs:
       - name: make contracts
         run: make contracts
 
-      # The claim targets do not exist yet, and the Makefile explains at length why a green
-      # target that proves nothing is worse than a missing one. This step discovers them
-      # instead of listing them, so the day `claim-1` lands it is gated by CI without anyone
-      # remembering to edit this file - and a claim target that exists but is never run is
-      # impossible by construction.
+      # This step discovers the claim targets instead of listing them, so the day one lands
+      # it is gated by CI without anyone remembering to edit this file - and a claim target
+      # that exists but is never run is impossible by construction. `claim-1` and
+      # `gate-proof` arrived that way and this file did not change to admit them.
+      #
+      # `make claim-1` and `make gate-proof` both plant claim 1's mutations, so claim 1's
+      # eval runs twice here. That is deliberate: the alternative is a discovery step that
+      # knows which targets subsume which, and a gate with special cases is a gate with
+      # somewhere to hide.
       - name: every claim target that exists
         run: |
           set -euo pipefail
