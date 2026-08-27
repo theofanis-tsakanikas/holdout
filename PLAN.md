@@ -30,9 +30,11 @@ The phase that decides whether the project is worth building.
 - The reference implementation of truth: a deliberately slow Python loop over every event,
   written separately from the dbt path, so the two must agree. It doubles as a fourth independent
   check of claim 5.
-- The re-randomisation screen on declared pre-period covariates, and the matching inference — a
-  permutation test under the same restriction, or a covariate-adjusted estimate. CI coverage
-  drifting above nominal in the A/A harness is the symptom of getting this wrong.
+- Stratification on the declared pre-period covariates, and the matching inference — a
+  permutation test under the same restriction, drawn within the same strata, or a
+  covariate-adjusted estimate. CI coverage drifting above nominal in the A/A harness is the
+  symptom of getting this wrong. *Landed 2026-08-28, replacing a re-randomisation screen that
+  could not reach the declared α — see the progress note below.*
 - `evals/assignment/`, `evals/guardrail/`, `evals/censoring/` and their `gate-proof` mutations.
 - `evals/oversight/` — the decision key carries no customer dimension, and the test goes red if
   one appears. It costs minutes and needs nothing else, so it is proved here rather than left
@@ -379,6 +381,53 @@ start without meeting the number.
 
 **Deliberately not built:** no `claim-N` target, no `gate-proof` mutation, nothing under `evals/`.
 The suite went from 510 tests to 747 and `make claim-1` is still 9/9 with 13/13 mutations biting.
+
+**What stratified randomisation settled — the finding above, answered.** The remedy is the
+fourth of the four candidates, and it is a mechanism rather than a dial: units are matched into
+strata on a composite distance over the declared covariates, the lottery draws one control per
+stratum from the committed seed, and **nothing is screened**. Every candidate is admissible, so
+at the scenario's own shape the reference set fills to the contract's B = 1000 and the p-value
+floor `2 / (1 + B) ≈ 0.002` lands two orders of magnitude under α = 0.05. The paragraph above
+stays as written because doctrine rule 4 says a correction never erases what was previously
+stated; what changed is the mechanism it was describing.
+
+**The other three were priced before being refused**, and the prices are in `docs/DECISIONS.md`
+rather than in a conversation: a budget large enough to fill the reference set by screening
+costs about **400 hours** across 200 seeds and six worlds; a tolerance wide enough to accept at
+a usable rate is about **0.41** standardised differences, which is not a balance criterion at
+all; and a 50/50 holdout raises acceptance only to about **one draw in 800** — the same
+starvation, at twice the cost in treated units.
+
+**The contract moved as a restatement, not an edit.** `contracts/design/inference.yaml` is at
+v2: `balance_tolerance_smd` keeps its value and loses one of its two moments — it was the screen
+at design *and* the check at readout, and it is now **the check alone**, judged over the
+covariates as they actually arrived; `max_assignment_attempts` keeps its value and now budgets
+the reference-set scan rather than the screen's rejections. Both prior meanings are recoverable
+in the file, and `NO_ADMISSIBLE_ASSIGNMENT` carries the same restatement in the closed
+vocabulary: it meant *the screen rejected everything* and now means *no stratification gives
+every stratum both arms*.
+
+**The reference set did not change, and that is the load-bearing sentence.** Stratification is a
+restriction on the space of admissible assignments exactly as the screen was, so a permutation
+*within strata* is a draw "under the same restriction" in precisely the sense
+`balance_covariates.yaml` already required. What changed is that the restriction became
+constructive instead of rejective — the same claim about the inference, with arithmetic that can
+actually be run.
+
+**What it does not buy, measured in both directions.** Stratification does not make every draw
+pass the readout's balance check: with 20 controls, a covariate the others carry no information
+about keeps a sampling spread near the tolerance. On a roster whose covariates hang together the
+way a chain's do, a clear majority of stratified draws pass; on a deliberately orthogonal roster
+most do not, and both numbers are asserted in `tests/core/test_assignment.py` rather than the
+comfortable one alone. The direction is the honest one — a refusal with a reason code, never a
+number nobody can check — and it makes **W6's false-refusal rate a real figure for T003 to
+publish** instead of 100% by construction.
+
+**And one thing was deleted rather than kept.** `ordering` — the roster-wide sort the
+unstratified draw was built on — has no caller once the control is the minimum inside each
+stratum. Code that serves no claim is the fourth question on `CLAUDE.md`'s checklist, so it went
+with its test rather than staying as a public function nobody calls. The suite is 756 and
+`make claim-1` is still 9/9 with 13/13 mutations biting.
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 

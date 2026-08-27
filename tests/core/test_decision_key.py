@@ -241,6 +241,7 @@ EXACT_FIELDS: dict[type[Any], frozenset[str]] = {
             "_experiment_id",
             "_seed",
             "_draw_index",
+            "_strata",
             "_arms",
             "_form_digest",
             "_covariate_digest",

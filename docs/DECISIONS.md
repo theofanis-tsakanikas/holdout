@@ -740,6 +740,58 @@ the kind of after-the-fact choice the whole contract layer exists to prevent.
 suite rather than leaving it in this paragraph, and asserts the order of magnitude so that an
 improvement makes the *test* fail and this entry get re-read.
 
+> **Restated 2026-08-28 by T002B, which is the improvement that test was waiting for.** The
+> wording above stays because doctrine rule 4 says a correction never erases what was previously
+> stated, and because it is the honest record of what the values on this branch cost. The
+> remedy chosen is the fourth candidate: **stratified randomisation**. Strata are matched on a
+> composite distance over the declared balance covariates, one control is drawn per stratum from
+> the committed seed, and nothing is screened — so every candidate is admissible, the reference
+> set fills to the contract's B = 1000 at the scenario's own shape, and the floor
+> `2 / (1 + B) ≈ 0.002` sits two orders of magnitude **under** α = 0.05. The measurement moved
+> with it: `tests/core/test_assignment.py` now asserts that the set fills and that the floor is
+> under α, so the number is still in the suite rather than in this paragraph.
+>
+> **Why the other three were not chosen, recorded rather than passed over.** A far larger
+> attempt budget costs roughly 400 hours of screening across 200 seeds and six worlds, which is
+> not a budget but a different project. A tolerance wide enough to accept at a usable rate is
+> about 0.41 standardised differences — past the point where the screen is balancing anything,
+> so it would buy the p-value by abandoning the thing the p-value is about. A 50/50 holdout
+> raises acceptance only to roughly one draw in 800, which is the same starvation at twice the
+> cost in treated units. Each is a real option that was measured and refused; the fourth is a
+> mechanism rather than a dial, which is why it is the one that works.
+>
+> **What moved in the contract, and it is a restatement rather than an edit.**
+> `contracts/design/inference.yaml` is at v2. `balance_tolerance_smd` kept its value and lost
+> one of its two moments: it was the screen at design *and* the check at readout, and it is now
+> the check alone. `max_assignment_attempts` kept its value and changed what it budgets — the
+> screen's rejections, now the reference-set scan. Both prior meanings are stated in the file's
+> own header and in each entry's note, and `NO_ADMISSIBLE_ASSIGNMENT` carries the same
+> restatement in `contracts/vocabularies/reason_codes.yaml`: it used to mean *the screen
+> rejected everything*, and now means *no stratification gives every stratum both arms*.
+>
+> **The reference set did not change, and that is the load-bearing part.** Stratification is a
+> restriction on the space of admissible assignments, exactly as the screen was, and a
+> permutation *within strata* is a draw "under the same restriction" in precisely the sense
+> `balance_covariates.yaml` already required. What changed is that the restriction is now
+> constructive rather than rejective, so the same sentence about the inference is true and the
+> arithmetic underneath it is affordable.
+>
+> **What stratification does not buy, stated because the honest half is the half that gets
+> dropped.** It does not make every draw pass the readout's balance check. With 20 controls a
+> covariate the others carry no information about keeps a sampling spread near the tolerance,
+> so a minority of healthy stratified draws are refused as `IMBALANCED_PRE_PERIOD`: on a roster
+> whose covariates hang together the way a chain's do a clear majority pass, and on a
+> deliberately orthogonal one most do not. Both are measured in
+> `tests/core/test_assignment.py` rather than argued. The direction is the honest one — a
+> refusal with a reason code, never a number nobody can check — and it means **W6's
+> false-refusal rate is a real number to be published rather than 100% by construction**, which
+> is what this entry was created to prevent.
+>
+> **The revised condition:** T003 publishes that rate on `corpus/world/` — the false-refusal
+> rate on W6 beside the false-positive rate on A/A — measured on data this repository did not
+> write. Until then what is proved is that the arithmetic is now possible, not that it comes
+> out well.
+
 **Two of the four units of randomisation are refused by a declared assumption** · deferred
 2026-08-27
 `store_week` and `store_category` are refused with `UNIT_GUARANTEES_INTERFERENCE` before any

@@ -198,15 +198,17 @@ at_design:
 
   - code: NO_ADMISSIBLE_ASSIGNMENT
     meaning: >-
-      The re-randomisation screen accepted no candidate assignment within the declared
-      attempt budget, so no lottery satisfying the declared restriction exists for this
-      roster. The design is feasible on paper — the sample is there and the duration fits —
-      and there is still no draw that balances it, which happens when one or two units
-      dominate a covariate and land in whichever arm they are put.
+      No stratification of the roster gives every stratum both arms: the declared holdout
+      share asks for more control units than the roster can stratify at two or more units
+      each, so some stratum would hold a single unit — a unit whose arm nobody drew. The
+      design is feasible on paper — the sample is there and the duration fits — and there
+      is still no lottery to run. (Restated with inference.yaml v2: under v1 this code
+      meant the re-randomisation screen rejected every candidate within its budget; the
+      stratified draw screens nothing, so that reading can no longer occur.)
     what_would_fix_it: >-
-      A coarser unit of randomisation, a roster whose covariates are less extreme, or a
-      wider balance tolerance — which is a versioned contract change with a restatement,
-      not an exception granted to this experiment.
+      A larger roster, so every stratum holds at least two units at the declared share.
+      Lowering the holdout share is a versioned contract change with a restatement, not an
+      exception granted to this experiment.
 
 at_readout:
 

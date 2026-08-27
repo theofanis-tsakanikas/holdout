@@ -5,14 +5,18 @@
 # the degree of freedom, exactly as the closed reason codes and the pre-declared
 # decision_rule do. Anything that can be chosen after the fact will be chosen after the fact.
 #
-# Every covariate is measured on the pre-period only. Screening on anything measured inside
-# the comparison window uses the same data twice and biases the estimate toward zero.
+# Every covariate is measured on the pre-period only. Matching or checking on anything
+# measured inside the comparison window uses the same data twice and biases the estimate
+# toward zero.
 #
-# Because the space of admissible assignments is restricted by this screen, the ordinary
-# confidence interval is wrong — it assumes simple randomisation and comes out falsely wide.
-# The inference must be a permutation test under the same restriction, or an estimate
-# adjusted for exactly these covariates. That is the estimator's obligation, not this file's;
-# this file only fixes what the restriction is.
+# Assignment is stratified on these covariates: strata are matched on a composite distance
+# over exactly this list, and the lottery draws one control per stratum (since
+# inference.yaml v2 — under v1 the same list fed a re-randomisation screen). Because the
+# space of admissible assignments is restricted by the strata, the ordinary confidence
+# interval is wrong — it assumes simple randomisation and comes out falsely wide. The
+# inference must be a permutation test under the same restriction — within the same
+# strata — or an estimate adjusted for exactly these covariates. That is the estimator's
+# obligation, not this file's; this file only fixes what the restriction is built from.
 
 version:        1
 effective_from: 2026-03-01

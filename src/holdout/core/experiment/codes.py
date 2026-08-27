@@ -16,7 +16,7 @@ of them explains. The bijection is asserted in both directions by a test.
 
 `Arm` lives here rather than in `assignment`
 --------------------------------------------
-Both the lottery and the statistic it is screened by need it, and `assignment` calls
+Both the lottery and the statistic it is judged by need it, and `assignment` calls
 `balance`. Putting it in the module that names the vocabularies keeps the import direction
 one-way, and it is a closed vocabulary like the other two: there are two arms, and the
 holdout runs the *existing* policy rather than nothing.

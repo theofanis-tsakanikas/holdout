@@ -319,43 +319,50 @@ def test_a_design_that_needs_more_weeks_than_it_declared_is_refused_for_duration
     assert codes_of(outcome) == {DesignRefusalCode.UNDERPOWERED_FOR_DURATION}
 
 
-def test_a_roster_the_screen_can_never_balance_is_refused_by_name(
+def test_a_roster_that_cannot_be_stratified_is_refused_by_name(
     assess_design: AssessFactory,
     contracts: ContractSet,
     covariate_kinds: tuple[CovariateKind, ...],
 ) -> None:
-    """`NO_ADMISSIBLE_ASSIGNMENT` — the code this branch added to the vocabulary.
+    """`NO_ADMISSIBLE_ASSIGNMENT` — restated with inference.yaml v2, still a first-class code.
 
-    A roster where one unit dominates every numeric covariate has no draw that balances:
-    wherever that unit lands, the arm it lands in is different from the other one. The
-    design is feasible on paper — the sample is there and the duration fits — and there is
-    still no lottery, which is exactly the case that had no correct output before.
+    Under v1 it meant the re-randomisation screen rejected every candidate in its budget;
+    the stratified draw screens nothing, so the code now fires where no stratification
+    gives every stratum both arms — the holdout share asks for more controls than the
+    roster can stratify at two-plus units each. A 60% share over ten units wants six
+    strata, and six strata over ten units leave some stratum with a single unit, whose
+    arm nobody would have drawn. The design is feasible on paper — the sample is there and
+    the duration fits at the large MDE declared here — and there is still no lottery.
 
-    The attempt budget is cut to a hundred here so the test costs a moment rather than the
-    contract's ten thousand rejections; the code path is identical, and what the contract's
-    own budget buys is the subject of `test_assignment.py`.
+    The share is built here rather than read from the contract, because the contract's own
+    20% never produces the case: a fifth of any roster of two or more stratifies. That is
+    the honest status of this code — live at the engine's boundary, unreachable at the
+    contract's current values — the same standing `MARGIN_CAP_BASIS_UNEVALUABLE` already
+    has on the contract path.
     """
     rows: dict[str, tuple[Fraction | str, ...]] = {}
-    for index in range(12):
-        dominant = index == 0
+    for index in range(10):
         rows[f"store-{index:02d}"] = (
-            Fraction(10_000_000) if dominant else Fraction(1_000 + index),
-            "hypermarket" if dominant else "convenience",
-            Fraction(50_000) if dominant else Fraction(400),
-            Fraction(90, 100) if dominant else Fraction(2, 100),
-            "zone_north" if dominant else "zone_south",
+            Fraction(10_000 + 137 * index),
+            "convenience",
+            Fraction(400 + 10 * index),
+            Fraction(2 + index, 100),
+            "zone_south",
         )
     matrix = CovariateMatrix.of(contracts.balance_covariates.ids, covariate_kinds, rows)
     outcome = assess_design(
+        form=None,
         roster=tuple(sorted(rows)),
         matrix=matrix,
-        inference=_with_attempts(contracts.inference, 100),
+        inference=_with_share(contracts.inference, Decimal(60)),
     )
     assert codes_of(outcome) == {DesignRefusalCode.NO_ADMISSIBLE_ASSIGNMENT}
+    assert isinstance(outcome, DesignRefusal)
+    assert "larger roster" in outcome.what_would_fix_it()[0]
 
 
-def _with_attempts(inference: InferenceSettings, attempts: int) -> InferenceSettings:
-    """The contract's settings with a smaller attempt budget, built rather than replaced.
+def _with_share(inference: InferenceSettings, share: Decimal) -> InferenceSettings:
+    """The contract's settings with a different holdout share, built rather than replaced.
 
     Written out field by field on purpose: `dataclasses.replace` would silently carry a
     tenth setting the day one is added, and a test that quietly stopped exercising a new
@@ -371,10 +378,10 @@ def _with_attempts(inference: InferenceSettings, attempts: int) -> InferenceSett
         z_power=inference.z_power,
         balance_tolerance_smd=inference.balance_tolerance_smd,
         exposure_min_pct=inference.exposure_min_pct,
-        holdout_share_pct=inference.holdout_share_pct,
+        holdout_share_pct=share,
         neighbour_radius_m=inference.neighbour_radius_m,
         permutation_draws=inference.permutation_draws,
-        max_assignment_attempts=attempts,
+        max_assignment_attempts=inference.max_assignment_attempts,
         carryover=inference.carryover,
     )
 
