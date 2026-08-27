@@ -1,0 +1,113 @@
+# The gate.
+#
+# CLAUDE.md: "On a branch, the suite runs *before* anything lands. Pushed straight to
+# `main` it runs afterwards, and a check that runs afterwards is a notification, not a
+# gate." This file is what makes that sentence true rather than aspirational, and
+# `main` is protected so that a red run here blocks the merge.
+#
+# Everything below runs with no cloud account and no credentials, because every claim in
+# this repository is provable local. The day that stops being true, this file gets longer
+# and the claims get weaker.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+# A pull request and the push that created it are separate groups on purpose: collapsing
+# them would let one cancel the other, and the cancelled one is sometimes the required check.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The lockfile is an input, not an artefact: every `uv` invocation below asserts that
+  # uv.lock is up to date with pyproject.toml and refuses to re-resolve. A lockfile that has
+  # drifted is a red build, not a silent upgrade.
+  #
+  # UV_LOCKED rather than UV_FROZEN, and the difference is the whole point: FROZEN means
+  # "use the lockfile as it is", which would pass on a lockfile that no longer matches
+  # pyproject.toml. LOCKED means "the lockfile must already be correct". The first run of
+  # this workflow used FROZEN and died on its own contradiction with `uv sync --locked`,
+  # which is a better outcome than the two quietly disagreeing.
+  UV_LOCKED: "1"
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+
+      - name: install exactly what uv.lock pins
+        run: make setup-locked
+
+      # `make check` is the whole local gate - the same command a session runs before it
+      # commits. Running the identical target here is the point: if CI and a laptop can
+      # disagree, the laptop stops being evidence.
+      - name: make check
+        run: make check
+
+      # Deliberately overlapping with `make check`, which already ran it. `make contracts`
+      # is what claims 1, 5 and 6 rest on, and naming it as its own step means a contract
+      # failure is legible in the checks list instead of buried in a composite target.
+      - name: make contracts
+        run: make contracts
+
+      # The claim targets do not exist yet, and the Makefile explains at length why a green
+      # target that proves nothing is worse than a missing one. This step discovers them
+      # instead of listing them, so the day `claim-1` lands it is gated by CI without anyone
+      # remembering to edit this file - and a claim target that exists but is never run is
+      # impossible by construction.
+      - name: every claim target that exists
+        run: |
+          set -euo pipefail
+          targets="$(grep -oE '^(claim-[1-7]|gate-proof|preview-audit):' Makefile \
+                     | tr -d ':' | sort -u || true)"
+          if [ -z "$targets" ]; then
+            echo "No claim target exists yet. Nothing in this repository proves a claim."
+            {
+              echo "### Claim targets"
+              echo ""
+              echo "None exist yet. The Makefile declares them deliberately absent:"
+              echo "a green target that proves nothing is a gate disarmed before it was armed."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Claim targets"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          for t in $targets; do
+            echo "==> make $t"
+            make "$t"
+            echo "- \`make $t\` green" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Full history: a key committed and then removed is still a leaked key, and a
+      # shallow clone would report the repository clean.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # CLAUDE.md: "No long-lived credentials. OIDC for CI, service principals for
+      # services, `gitleaks` on push." A rule enforced by intention is not enforced.
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

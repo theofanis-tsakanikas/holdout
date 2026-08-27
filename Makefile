@@ -17,7 +17,7 @@ UV ?= uv
 RUN := $(UV) run
 
 .DEFAULT_GOAL := help
-.PHONY: help setup check test lint format typecheck contracts contracts-write clean
+.PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write clean
 
 help:  ## show this help
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -25,6 +25,9 @@ help:  ## show this help
 
 setup:  ## create the virtualenv and install everything
 	$(UV) sync
+
+setup-locked:  ## install exactly what uv.lock pins — what CI runs, and what refuses a drifted lock
+	$(UV) sync --locked
 
 check: lint typecheck contracts test  ## the whole local gate, in the order that fails fastest
 	@echo ""
