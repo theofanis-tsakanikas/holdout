@@ -52,17 +52,11 @@ putting it first.
 
 ### Progress
 
-| piece | branch | state |
-|---|---|---|
-| the repository skeleton, `contracts/`, the compilers, `make contracts`, `docs/REGULATORY.md` | `contracts/schemas` | **landed** |
-| `src/holdout/core/` — guardrails and the certificate type, scenario selection, the ladder | `core/guardrails-pricing-ladder` | **landed** |
-| `src/holdout/core/` — the design form, feasibility, assignment, the four checks, the estimator | `core/design-experiment` | open |
-| the generator and the six adversarial worlds | `corpus/adversarial-worlds` | open |
-| the A/A harness, the reference implementation of truth, the per-claim eval directories | `evals/aa-harness` | open |
-| `corpus/real/`, `evals/guardrail/`, `evals/gate_proof/`, `make claim-1`, `make gate-proof` | `evals/guardrail-and-gate-proof` | **landed** |
-| mutation ownership: `claim-N` executes, `gate-proof` audits | `evals/mutation-ownership` | **landed** |
-| the remaining `claim-N` and `preview-audit` targets | with the eval each proves | open |
-| CI, the protected `main`, and `docs/DECISIONS.md` | `ops/gate-and-decisions` | **landed** |
+**The atom-level status now lives in `TASKS.md`** — which piece is open, which has landed, its
+branch and its exact closing condition. Two answers to "what is still open" is the thing `TASKS.md`
+exists to prevent, so the table that used to sit here is gone and this section keeps only the record
+of what each landed piece settled and what the reviews cost. That record stays because doctrine rule
+4 says a correction never erases what was previously stated.
 
 **What the contract layer settled.** The four families are versioned with effective windows and
 resolve as-of, so a decision taken in April is judged by April's rule permanently. Every numeric
