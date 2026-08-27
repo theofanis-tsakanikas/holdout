@@ -20,13 +20,16 @@ an hour on top of a barrier that is already gone.
 
 from __future__ import annotations
 
+import importlib
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from ops.isolation import FORBIDDEN, POLICED, REFUSAL, offences
 from ops.isolation import _by_text as by_text_only
 
-CORPUS = Path(__file__).resolve().parents[2] / POLICED
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CORPUS = REPO_ROOT / POLICED
 
 
 def _modules() -> list[Path]:
@@ -114,3 +117,36 @@ def test_the_text_scan_is_exercised_in_both_directions(source: str, caught: bool
     a semicolon — is asserted here rather than discovered by whoever hits it.
     """
     assert bool(by_text_only(source)) is caught, source
+
+
+def test_every_corpus_module_imports_with_the_system_absent(
+    block_imports: Callable[..., None],
+) -> None:
+    """The dynamic half, which reading the source cannot see.
+
+    Everything above this line reads text, and `.claude/README.md` states the hole that leaves:
+    *"`corpus_isolation` reads imports, not behaviour. `importlib.import_module("holdout")` is
+    invisible to it."* It is invisible to `offences` for the same reason — there is no `Import`
+    node to find.
+
+    So this closes the module-level half of it from the other side: every module under
+    `corpus/` is imported with `holdout` unreachable through `sys.meta_path`, which is the
+    level every import mechanism goes through. A dynamic import taken at import time raises
+    here, whatever it was spelled as. The first version of this test blocked
+    `builtins.__import__` instead and **did not catch the case it was written for** — see
+    `tests/boundary/conftest.py` and `test_blocking.py`.
+
+    **What it still does not catch, and the reason the source scan stays.** A dynamic import
+    *inside a function* never runs during import, so nothing here executes it — which is
+    exactly the case the text scan was written for, pointing the other way. Neither check
+    subsumes the other, and this file needs both.
+    """
+    block_imports(FORBIDDEN, evict=(POLICED,))
+    names = [
+        f"{POLICED}." + str(path.relative_to(CORPUS).with_suffix("")).replace("/", ".")
+        for path in _modules()
+    ]
+    names = [name.removesuffix(".__init__") for name in names]
+    assert len(names) >= 10, "too few corpus modules for this to be worth asserting"
+    for name in sorted(set(names)):
+        importlib.import_module(name)

@@ -41,11 +41,9 @@ Each one now asserts it found something, so it can never silently return to that
 from __future__ import annotations
 
 import ast
-import builtins
-import sys
+import importlib
+from collections.abc import Callable
 from pathlib import Path
-
-import pytest
 
 CORE = Path(__file__).resolve().parents[2] / "src" / "holdout" / "core"
 
@@ -145,26 +143,17 @@ def test_core_imports_only_contract_model_from_the_contract_layer() -> None:
 
 
 def test_contract_model_imports_with_yaml_and_jsonschema_absent(
-    monkeypatch: pytest.MonkeyPatch,
+    block_imports: Callable[..., None],
 ) -> None:
-    real_import = builtins.__import__
+    """The dataclasses that cross into `core/` must not drag the parser that produced them.
 
-    def blocked(name: str, *args: object, **kwargs: object) -> object:
-        if name.split(".")[0] in BLOCKED_FOR_MODEL:
-            raise ModuleNotFoundError(f"blocked for this test: {name}")
-        return real_import(name, *args, **kwargs)  # type: ignore[arg-type]
-
-    for module in list(sys.modules):
-        if module.startswith("holdout.contracts") or module.split(".")[0] in BLOCKED_FOR_MODEL:
-            monkeypatch.delitem(sys.modules, module, raising=False)
-    monkeypatch.setattr(builtins, "__import__", blocked)
-
-    import importlib
-
-    model = importlib.import_module("holdout.contracts.model")
-    windows = importlib.import_module("holdout.contracts.windows")
-    assert model.Rounding(mode="half_even", decimals=2).canonical_integer("1.005") == 100
-    assert windows.resolve_as_of([], __import__("datetime").date(2026, 4, 1)) is None
+    Blocked through `sys.meta_path` rather than through `builtins.__import__`, which is what
+    this test used to do and which only ever covered the `import` statement: an
+    `importlib.import_module("yaml")` walked past it untouched. `tests/boundary/conftest.py`
+    holds the one implementation now and `test_blocking.py` drives it with that exact spelling.
+    """
+    block_imports(*BLOCKED_FOR_MODEL, evict=("holdout",))
+    importlib.import_module("holdout.contracts.model")
 
 
 def _core_modules() -> list[Path]:
@@ -273,28 +262,14 @@ def _names_float(annotation: ast.expr) -> bool:
 
 
 def test_every_core_module_imports_with_yaml_and_jsonschema_absent(
-    monkeypatch: pytest.MonkeyPatch,
+    block_imports: Callable[..., None],
 ) -> None:
-    """The dynamic half, over the whole package rather than over one module.
+    """Every core module, with the contract layer's two dependencies unreachable.
 
-    `holdout.core` takes a resolved contract as an argument. If any module in it reached
-    the parser — even transitively, even through a convenience import — the claims would
-    stop being provable in an interpreter that has neither library installed.
+    Same fixture, same reason: the block has to survive `importlib.import_module`, and the
+    `builtins.__import__` patch this test used to carry did not.
     """
-    real_import = builtins.__import__
-
-    def blocked(name: str, *args: object, **kwargs: object) -> object:
-        if name.split(".")[0] in BLOCKED_FOR_MODEL:
-            raise ModuleNotFoundError(f"blocked for this test: {name}")
-        return real_import(name, *args, **kwargs)  # type: ignore[arg-type]
-
-    for module in list(sys.modules):
-        if module.startswith("holdout") or module.split(".")[0] in BLOCKED_FOR_MODEL:
-            monkeypatch.delitem(sys.modules, module, raising=False)
-    monkeypatch.setattr(builtins, "__import__", blocked)
-
-    import importlib
-
+    block_imports(*BLOCKED_FOR_MODEL, evict=("holdout",))
     names = [
         "holdout.core." + str(path.relative_to(CORE).with_suffix("")).replace("/", ".")
         for path in _core_modules()

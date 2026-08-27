@@ -22,7 +22,8 @@ The phase that decides whether the project is worth building.
 - `corpus/world/` — the generator and the six adversarial worlds at **100 stores across three
   fresh categories over eight months** (~36M POS lines), with **no import path** to `core/` and a
   test that enforces it. The truth lives in a sealed file the grader opens only
-  after the estimate is produced.
+  after the estimate is produced. *Landed 2026-08-27: 36.7M POS lines at the declared scale, six
+  worlds, and the barrier holding over sixteen modules — see the progress note below.*
 - `evals/uplift/` — the A/A harness at K = 200 seeds with a one-sided binomial check against the
   declared α, and the six worlds including W6, the world where the correct answer is "yes, there
   was an effect". Every draw runs the whole system, not just the estimator.
@@ -252,6 +253,61 @@ armed by a planted entry in `tests/ops/test_expiry.py` and by nothing in the rea
 is the same shape as a `claim-N` target with no mutation planted against it, and it is answered
 the same way. The target prints every deferral's age in days, because that is the only number
 available about a condition nobody can evaluate.
+
+**What the corpus settled.** `corpus/world/` is a **stream**, not a directory: a world is a pure
+function of `(world, seed, scale)`, generated store by store with every draw keyed on what it is a
+draw *about* rather than on how many draws came before it. Three properties follow and all three are
+load-bearing — a world is reproducible by anyone who clones the repository, a restriction to three
+stores is a genuine window onto the same world rather than a smaller one, and **no key contains the
+arm**, so re-running under all-control redraws the identical numbers for every store whose policy did
+not change. That last one is what T003's independent measurement of truth rests on: the counterfactual
+differs from the observed world by the treatment effect and by nothing else, rather than by the effect
+plus Monte-Carlo noise. At the declared scale — 100 stores, 120 SKUs, 244 days — it produces **36.7M
+POS lines**, measured by the command in `corpus/world/README.md` rather than inferred from a smaller
+run. Nothing is committed; `corpus/real/` is committed and digest-checked precisely because it
+*cannot* be regenerated, and the two opposite rules are decided by that one question.
+
+The seal holds **behaviour** and never a number about money, because the effect on the metric does
+not exist anywhere until it is computed. It opens only against a readout already written to disk and
+appends that readout's digest to a ledger inside itself. It is an envelope rather than a lock and
+says so: the guarantee is that the truth is never in the harness's process — no function returns it,
+no object a caller holds carries it, and the file yields nothing to `grep`. Its limit is asserted by
+a test that performs the coordinated forgery and requires it to **succeed**.
+
+**What measuring found that reasoning did not, twice, and both would have passed a green suite.**
+Store placement was probabilistic and produced **zero** neighbour pairs at the smoke scale, so W2 was
+structurally unable to interfere and every test about it would have passed vacuously — a whole
+adversarial world reduced to a docstring. And W2's spillover direction was hard-coded as *control
+loses trade to treatment*, on the assumption that a candidate markdown policy cuts deeper. The
+candidate cuts **shallower**: measured against its own counterfactual, an aggressive ladder destroyed
+between 5% and 25% of category margin, because a store that marks down harder teaches its shoppers a
+lower normal price and loses more at full price the rest of the week than it saves in waste. A world
+whose interference points the wrong way still breaks SUTVA and would still have been detected by
+everything downstream, which is exactly why nothing would have caught it. The fix was not to flip the
+constant: the direction is now derived from the two schedules, and the test hands the neighbour a
+shallower ladder and then a deeper one — both built inside the test — and requires the watched store
+to move both ways. That is `CLAUDE.md`'s rule about a guard tested by its author, applied to a
+generator, and it is the first time in this repository the rule was applied before the defect rather
+than after it.
+
+**And a third thing, which was not this branch's to find.** The corpus barrier's gate grew a
+second half — every module under `corpus/` imported with `holdout` unreachable, closing at module
+level the `importlib.import_module` hole `.claude/README.md` names. The first version of that test
+blocked `builtins.__import__` and **did not catch the case it was written for**: that hook backs the
+`import` statement alone, and `importlib.import_module` goes through `sys.meta_path` instead. It was
+found by planting the call, which is the only way it could have been found. The same technique was
+in `tests/boundary/test_core_imports_nothing.py`, where it had been since `core/` was written, so
+both were rewired onto one implementation in `tests/boundary/conftest.py` — and that implementation
+is itself driven, in `tests/boundary/test_blocking.py`, by the exact spelling that defeated its
+predecessor. **When a guard is fixed, the gate behind it is re-read; they usually share the
+assumption.** This time they shared the technique.
+
+**What the corpus does not know, recorded rather than glossed.** It knows nothing about the guardrail
+envelope — no floor, no ceiling, no regulated basket — so it produces shelf prices `core/` would
+refuse, and the deepest rungs of `ladder_policy@v1` sell below the cost the ledger records. That is
+what independence costs, and it is the same gap the ladder-ceiling deferral already names from the
+other side. It is a deferral with the eval that closes it named, not a defect that was fixed by
+letting the corpus read a guardrail.
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
