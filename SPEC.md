@@ -245,6 +245,22 @@ unlock it: a **declared washout period** at least as long as the reference price
 `store_category`. Until one is declared and sourced, two of the four units the form admits are
 refused — by a paragraph in a contract, not by a calculation.
 
+**And a consequence for claim 6, recorded here because this is where it is created.**
+
+Two of the four units are refused *by construction*, before any judgment has been exercised on
+anything. So claim 6's headline — *N designs proposed, M refused, K of those would have produced a
+confidently wrong number* — must be **broken down by reason code, and never reported as a single
+aggregate M**. A `UNIT_GUARANTEES_INTERFERENCE` refusal is not the agent's judgment failing; it is a
+design falling outside a declared envelope, in exactly the way `CATEGORY_FROZEN` is not a pricing
+model failing. Adding the two kinds together flatters the engine — it counts as "caught" a design
+whose judgment nothing ever inspected — and it defames the proposer, by charging it with an error it
+did not make.
+
+**Consequence for T026:** `evals/design/` publishes M per code, and says which codes are *scope*
+refusals and which are *judgment* refusals, before it publishes any total. The same split governs
+K: only a judgment refusal can be a design that would have produced a confidently wrong number, and
+a scope refusal that was counted into K would be evidence of a catch that never happened.
+
 **Automatic exclusions**, applied before every count: every `Exclusion.store_id` in the form; the
 later-sorted member of each `neighbour_pair` (deterministic, so the same roster always yields the
 same survivors); and every unit in `committed_elsewhere`.
@@ -505,6 +521,10 @@ estimator and never runs an A/A through it is the same mistake, one module along
   and nothing else. What stops peeking is the readout's refusal to compute before the end.
 - **The seal is tamper-evident, not tamper-proof.** A coordinated rewrite of the arms, the seed and
   the digest is not caught. Every uncoordinated one is.
+- **Two of the four units are refused before any judgment is exercised**, so nothing here shows
+  that the engine catches a *bad* design — only that it refuses one outside the declared envelope.
+  A single "M refused" would conflate the two. Claim 6's numbers are per reason code, split into
+  scope refusals and judgment refusals — see §3.
 - **No world has run through this yet.** Every number in these tests comes from a table its author
   chose. The inputs its author did not choose arrive with T002 and T003 — which is the difference
   between a suite and an eval, and the reason this branch stops before `evals/`.
