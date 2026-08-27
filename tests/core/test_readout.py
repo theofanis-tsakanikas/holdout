@@ -66,8 +66,6 @@ def seal(matrix: CovariateMatrix, inference: InferenceSettings) -> SealedAssignm
         form_digest=FORM_DIGEST,
         matrix=matrix,
         control_size=control_size_for(len(matrix.units), inference.holdout_share_pct),
-        tolerance=inference.balance_tolerance_smd,
-        max_attempts=inference.max_assignment_attempts,
     )
     assert drawn is not None
     return drawn[0]
@@ -86,13 +84,7 @@ def outcomes(seal: SealedAssignment) -> dict[str, int]:
 def draws(
     seal: SealedAssignment, matrix: CovariateMatrix, inference: InferenceSettings
 ) -> tuple[Mapping[str, Arm], ...]:
-    return reference_set(
-        seal,
-        matrix,
-        tolerance=inference.balance_tolerance_smd,
-        draws=DRAWS,
-        max_attempts=inference.max_assignment_attempts,
-    )
+    return reference_set(seal, draws=DRAWS, max_attempts=inference.max_assignment_attempts)
 
 
 def close_it(

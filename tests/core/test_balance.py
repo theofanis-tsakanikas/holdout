@@ -1,4 +1,4 @@
-"""The standardised difference, worked by hand — and the check that is not the screen.
+"""The standardised difference, worked by hand — and the check that re-measures.
 
 Two halves.
 
@@ -6,11 +6,11 @@ The first is the arithmetic, on tables small enough to check by eye, on both cov
 types, plus the two degenerate cases that a "just divide" implementation gets wrong: zero
 spread with equal arms, and zero spread with unequal ones.
 
-The second is the half that matters. **The readout's balance check is not the screen re-run
-on the screen's own numbers.** A screened assignment re-checked against its own screening
-matrix passes by construction, which is a gate that cannot bite — the family of defect this
-project has now found four times, and the reason CLAUDE.md carries a section about it. So
-each of the three ways the data actually moves between design and readout is planted here
+The second is the half that matters. **The readout's balance check is not the design's
+figures read back.** An assignment re-checked against the matrix its strata were built from
+passes almost by construction, which is a gate that can barely bite — the family of defect
+this project has now found four times, and the reason CLAUDE.md carries a section about it.
+So each of the three ways the data actually moves between design and readout is planted here
 and the check has to go red: restated pre-period covariates, an attrited store, and a roster
 that gained one.
 """
@@ -27,12 +27,17 @@ from holdout.core.experiment import (
     BalanceError,
     CovariateKind,
     CovariateMatrix,
-    screen,
     standardised,
     worst_of,
 )
 
 TOLERANCE = Decimal("0.10")
+
+
+def within_tolerance(matrix: CovariateMatrix, arms: dict[str, Arm], tolerance: Decimal) -> bool:
+    """What the readout's balance check decides: no covariate exceeds the tolerance."""
+    return not any(s.exceeds(tolerance) for s in standardised(matrix, arms))
+
 
 NUMERIC_ONLY = (("revenue",), (CovariateKind.NUMERIC,))
 CATEGORICAL_ONLY = (("format",), (CovariateKind.CATEGORICAL,))
@@ -175,8 +180,8 @@ def test_an_empty_arm_is_an_error_and_not_a_small_number() -> None:
 
 
 def test_a_unit_with_covariates_and_no_arm_is_an_error() -> None:
-    """It would be balanced into neither arm, which is a unit silently dropped from the
-    screen — the shape of defect this whole file exists to catch."""
+    """It would be balanced into neither arm — a unit silently dropped from the check,
+    which is the shape of defect this whole file exists to catch."""
     matrix = numeric_matrix({"a": 10, "b": 20, "c": 30})
     with pytest.raises(BalanceError, match="covariates and no arm"):
         standardised(matrix, arms_of(("a",), ("b",)))
@@ -191,7 +196,7 @@ def test_a_unit_missing_a_covariate_is_refused_at_construction() -> None:
         )
 
 
-def test_a_float_never_reaches_the_screen() -> None:
+def test_a_float_never_reaches_the_statistic() -> None:
     """Numeric covariates arrive as `Fraction` so the comparison of squares stays exact.
     The first binary approximation would put a tolerance back into a comparison built to
     avoid one."""
@@ -208,26 +213,15 @@ def test_a_categorical_level_is_named_and_never_numbered() -> None:
         CovariateMatrix.of(("x",), (CovariateKind.CATEGORICAL,), {"a": (Fraction(1),), "b": ("b",)})
 
 
-def test_an_empty_covariate_list_would_make_the_screen_accept_everything() -> None:
+def test_an_empty_covariate_list_would_make_every_check_pass() -> None:
     with pytest.raises(BalanceError, match="at least one covariate"):
         CovariateMatrix.of((), (), {})
 
 
-# ------------------------------------------------------------------ screen and check
+# ------------------------------------------------------------------ the check
 
 
-def test_the_screen_and_the_check_are_the_same_function() -> None:
-    """One statistic, one tolerance. A screen and a check at two tolerances would let an
-    assignment be accepted at design and refused at readout for a reason nobody declared."""
-    matrix = numeric_matrix({"a": 10, "b": 20, "c": 30, "d": 40})
-    arms = arms_of(("a", "b"), ("c", "d"))
-    from_screen = screen(matrix, arms, tolerance=Decimal(10))
-    from_check = standardised(matrix, arms)
-    assert from_screen is not None
-    assert [s.squared for s in from_screen] == [s.squared for s in from_check]
-
-
-def test_the_screen_returns_none_where_any_covariate_is_out_of_tolerance() -> None:
+def test_the_check_judges_every_covariate_and_not_an_average() -> None:
     """Per covariate, not on average. An assignment balanced on four and badly wrong on the
     fifth is badly wrong."""
     matrix = CovariateMatrix.of(
@@ -240,69 +234,74 @@ def test_the_screen_returns_none_where_any_covariate_is_out_of_tolerance() -> No
             "d": (Fraction(20), Fraction(200)),
         },
     )
-    assert screen(matrix, arms_of(("a", "b"), ("c", "d")), tolerance=TOLERANCE) is None
+    arms = arms_of(("a", "b"), ("c", "d"))
+    differences = standardised(matrix, arms)
+    assert not differences[0].exceeds(TOLERANCE), "the balanced covariate is balanced"
+    assert differences[1].exceeds(TOLERANCE), "the skewed one is what fails the check"
+    assert not within_tolerance(matrix, arms, TOLERANCE)
 
 
 # ---------------------------------------- the check re-measures, and that is what bites
 
 
 @pytest.fixture
-def screened() -> tuple[CovariateMatrix, dict[str, Arm]]:
-    """A matrix and an assignment the screen accepted at design time."""
+def balanced() -> tuple[CovariateMatrix, dict[str, Arm]]:
+    """A matrix and an assignment inside the tolerance at design time."""
     matrix = numeric_matrix({f"s{i}": 100 + (i % 2) for i in range(12)})
     arms = arms_of(
         tuple(f"s{i}" for i in range(12) if i % 4 in (0, 1)),
         tuple(f"s{i}" for i in range(12) if i % 4 in (2, 3)),
     )
-    assert screen(matrix, arms, tolerance=TOLERANCE) is not None
+    assert within_tolerance(matrix, arms, TOLERANCE)
     return matrix, arms
 
 
-def test_re_checking_against_the_screen_s_own_matrix_passes_by_construction(
-    screened: tuple[CovariateMatrix, dict[str, Arm]],
+def test_re_checking_against_the_design_s_own_matrix_proves_nothing(
+    balanced: tuple[CovariateMatrix, dict[str, Arm]],
 ) -> None:
     """Stated as a test so the point of the three below is unmistakable.
 
-    This is the gate that cannot bite. If `close` re-checked the screening matrix, the
-    balance check would be green on every experiment that ever ran and would have proved
-    nothing about any of them.
+    This is the gate that cannot bite. If `close` re-checked the matrix the strata were
+    built from, the balance check would be green on every experiment whose design was, and
+    would have proved nothing about what actually arrived.
     """
-    matrix, arms = screened
-    assert screen(matrix, arms, tolerance=TOLERANCE) is not None
+    matrix, arms = balanced
+    assert within_tolerance(matrix, arms, TOLERANCE)
 
 
 def test_restated_covariates_turn_the_check_red(
-    screened: tuple[CovariateMatrix, dict[str, Arm]],
+    balanced: tuple[CovariateMatrix, dict[str, Arm]],
 ) -> None:
-    """Doctrine rule 4 in action: late data restates, and the pre-period revenue the screen
-    balanced on is not the pre-period revenue the readout reads. A restatement large enough
-    to unbalance the arms has to be visible, because the estimate is now carrying it."""
-    _, arms = screened
+    """Doctrine rule 4 in action: late data restates, and the pre-period revenue the strata
+    were built from is not the pre-period revenue the readout reads. A restatement large
+    enough to unbalance the arms has to be visible, because the estimate is now carrying
+    it."""
+    _, arms = balanced
     restated = numeric_matrix(
         {f"s{i}": (900 if arms[f"s{i}"] is Arm.TREATMENT else 100) for i in range(12)}
     )
-    assert screen(restated, arms, tolerance=TOLERANCE) is None
+    assert not within_tolerance(restated, arms, TOLERANCE)
 
 
 def test_an_attrited_store_turns_the_check_red(
-    screened: tuple[CovariateMatrix, dict[str, Arm]],
+    balanced: tuple[CovariateMatrix, dict[str, Arm]],
 ) -> None:
     """The units that reported are not the units that were assigned. Balance held over the
     assigned set says nothing about the set that actually produced the numbers."""
     matrix = numeric_matrix({f"s{i}": (1000 if i in (0, 1) else 100 + (i % 2)) for i in range(12)})
-    _, arms = screened
+    _, arms = balanced
     reported = frozenset(matrix.units) - {"s2", "s3", "s6"}
     remaining = {unit: arm for unit, arm in arms.items() if unit in reported}
-    assert screen(matrix.restricted_to(reported), remaining, tolerance=TOLERANCE) is None
+    assert not within_tolerance(matrix.restricted_to(reported), remaining, TOLERANCE)
 
 
 def test_a_roster_that_moved_turns_the_check_red(
-    screened: tuple[CovariateMatrix, dict[str, Arm]],
+    balanced: tuple[CovariateMatrix, dict[str, Arm]],
 ) -> None:
     """A store opened, or a store id changed, and the arms no longer describe the roster.
     A check that quietly balanced whatever it found would be balancing a different
     experiment."""
-    matrix, arms = screened
+    matrix, arms = balanced
     moved = dict(matrix.rows)
     moved["s99"] = (Fraction(50_000),)
     grown = CovariateMatrix.of(matrix.ids, matrix.kinds, moved)

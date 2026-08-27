@@ -46,8 +46,6 @@ def seal(matrix: CovariateMatrix, inference: InferenceSettings) -> SealedAssignm
         form_digest=FORM_DIGEST,
         matrix=matrix,
         control_size=control_size_for(len(matrix.units), inference.holdout_share_pct),
-        tolerance=inference.balance_tolerance_smd,
-        max_attempts=inference.max_assignment_attempts,
     )
     assert drawn is not None
     return drawn[0]
@@ -62,7 +60,8 @@ def test_a_drawn_assignment_is_sealed(seal: SealedAssignment) -> None:
     assert seal.seed == SEED
     assert seal.form_digest == FORM_DIGEST
     assert set(seal.arms.values()) == {Arm.TREATMENT, Arm.CONTROL}
-    assert seal.covariate_digest, "a seal records the matrix it was screened on"
+    assert seal.covariate_digest, "a seal records the matrix its strata were built from"
+    assert seal.strata, "a seal records the restriction the lottery drew under"
 
 
 # ------------------------------------------------------------------ the closed routes
@@ -181,6 +180,33 @@ def test_pointing_the_seal_at_another_design_is_detected(seal: SealedAssignment)
     assert not sealed(seal)
 
 
+def test_redrawing_the_strata_is_detected(seal: SealedAssignment) -> None:
+    """The subtlest edit of the three, and the reason the strata are inside the digest.
+
+    Merging two strata leaves every unit in the roster and every arm where it was, so an
+    eye on the arms table sees nothing — and the lottery that was committed to has still
+    changed, because a different set of draws was ever possible. Under the merged strata
+    the same seed draws one control where it drew two.
+    """
+    merged = (seal.strata[0] + seal.strata[1], *seal.strata[2:])
+    object.__setattr__(seal, "_strata", merged)
+    assert not sealed(seal), "the digest covers the strata, so a merged one contradicts it"
+
+    from holdout.core.experiment import contamination
+
+    found = contamination.check(
+        seal,
+        delivered=dict.fromkeys(seal.roster, "ladder_policy@v1"),
+        treatment_policy="ladder_policy@v1",
+        control_policy="ladder_policy@v1",
+        form_digest=seal.form_digest,
+    )
+    assert not found.redraw_matches, (
+        "the redraw is the half that does not consult the arms, so it has to notice a "
+        "restriction that moved even where the arms table was left alone"
+    )
+
+
 # ------------------------------------------------------------------ the declared limit
 
 
@@ -211,6 +237,7 @@ def test_a_coordinated_rewrite_is_a_declared_limit(seal: SealedAssignment) -> No
             experiment_id=seal.experiment_id,
             seed=seal.seed,
             form_digest=seal.form_digest,
+            strata=seal.strata,
             arms=arms,
         ),
     )

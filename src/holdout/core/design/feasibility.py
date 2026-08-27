@@ -5,8 +5,8 @@ clock: the signature discipline `holdout.core.__init__` states, applied to the o
 in the package with the most excuses to break it.
 
 Either a **refusal that names what would fix it**, or a `Feasible` carrying the committed
-lottery: the seed screened into an accepted draw, the assignment sealed, the pre-period
-balance measured and recorded.
+lottery: the strata matched on the declared covariates, the draw taken within them from the
+committed seed, the assignment sealed, the pre-period balance measured and recorded.
 
 The eight refusals
 ------------------
@@ -25,7 +25,8 @@ The eight refusals
                                         holdout share
 `UNDERPOWERED_FOR_DURATION`             the smallest window that reaches power is longer
                                         than `max_duration`
-`NO_ADMISSIBLE_ASSIGNMENT`              the screen accepted no candidate inside the budget
+`NO_ADMISSIBLE_ASSIGNMENT`              no stratification of the roster gives every
+                                        stratum both arms at the declared holdout share
 ======================================  =====================================================
 
 Every one that fired is carried; `codes.DESIGN_PRECEDENCE` decides only which one leads.
@@ -241,7 +242,7 @@ def assess(
       reads no clock, no environment and no random source, so it structurally cannot; the
       seed is committed alongside the design, which is the stronger position anyway. A seed
       the engine invented would be a seed nobody committed to in advance.
-    * **`matrix`** — the re-randomisation screen needs the covariate *values*, not only the
+    * **`matrix`** — the strata are matched on the covariate *values*, not only on the
       contract that names the columns.
     * **`experiment_id`** — a seal belongs to one experiment, and the digest that survives
       the round trip through a table says which.
@@ -397,8 +398,6 @@ def assess(
         form_digest=fingerprint,
         matrix=matrix.restricted_to(frozenset(available)),
         control_size=control_capacity,
-        tolerance=inference.balance_tolerance_smd,
-        max_attempts=inference.max_assignment_attempts,
     )
     if drawn is None:
         return DesignRefusal(
@@ -407,19 +406,18 @@ def assess(
                 DesignRefusalReason(
                     code=DesignRefusalCode.NO_ADMISSIBLE_ASSIGNMENT,
                     detail=(
-                        f"the re-randomisation screen rejected every one of "
-                        f"{inference.max_assignment_attempts} candidate assignments at a "
-                        f"tolerance of {inference.balance_tolerance_smd} standardised "
-                        f"differences over {len(available)} unit(s). The design is feasible "
-                        "on paper — the sample is there and the duration fits — and there is "
-                        "still no lottery that balances it."
+                        f"no stratification of {len(available)} unit(s) into "
+                        f"{control_capacity} strata gives every stratum both arms: at the "
+                        f"declared {inference.holdout_share_pct}% holdout share some "
+                        "stratum would hold a single unit, and a stratum of one is a unit "
+                        "whose arm nobody drew. The design is feasible on paper — the "
+                        "sample is there and the duration fits — and there is still no "
+                        "lottery to run."
                     ),
                     what_would_fix_it=(
-                        "A coarser unit of randomisation, or a roster whose covariates are "
-                        "less extreme: this happens when one or two units dominate a "
-                        "covariate and land in whichever arm they are put. Widening the "
-                        "tolerance is a contract change with a restatement, not an "
-                        "exception."
+                        "A larger roster, so every stratum holds at least two units at the "
+                        "declared share. Lowering the holdout share is a contract change "
+                        "with a restatement, not an exception granted to this experiment."
                     ),
                 ),
             ),
@@ -500,13 +498,13 @@ def _capacity(available: int, inference: InferenceSettings) -> tuple[int, int]:
 def _check_matrix_matches_the_contract(
     matrix: CovariateMatrix, covariates: BalanceCovariates
 ) -> None:
-    """The screen balances on exactly the contract's covariates — no more, no fewer.
+    """The strata are matched on exactly the contract's covariates — no more, no fewer.
 
     `contracts/design/balance_covariates.yaml` fixes the list precisely so that an
     experiment cannot pick which characteristics to balance on: that would be a new way to
     fish, trying combinations until a draw came out flattering. A matrix carrying a sixth
     column, or missing the fifth, would defeat that from the other side — so it is refused
-    here rather than screened on.
+    here rather than matched on.
     """
     if matrix.ids != covariates.ids:
         raise FeasibilityError(
@@ -526,8 +524,8 @@ def _check_roster(roster: tuple[str, ...], matrix: CovariateMatrix) -> None:
     if missing:
         raise FeasibilityError(
             f"{len(missing)} unit(s) in the roster carry no covariates: {missing[:8]}. A "
-            "unit that cannot be screened cannot be balanced, and balancing the rest around "
-            "it would be screening on a subset nobody declared."
+            "unit that cannot be measured cannot be stratified, and stratifying the rest "
+            "around it would be matching on a subset nobody declared."
         )
 
 

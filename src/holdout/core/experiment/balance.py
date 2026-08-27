@@ -1,4 +1,4 @@
-"""One statistic, two moments — the standardised difference between arms.
+"""One statistic, one moment that decides — the standardised difference between arms.
 
 Per covariate, a standardised difference:
 
@@ -11,24 +11,28 @@ One statistic, one tolerance (`balance_tolerance_smd`), no per-type special case
 categorical covariate is a set of indicators and an indicator's standard deviation is
 `sqrt(p(1-p))`, so the second formula is the first one written out, not a different rule.
 
-Nothing here takes a square root in the hot path
-------------------------------------------------
+Nothing here takes a square root
+--------------------------------
 The comparison is ``smd ≤ tolerance``, which for non-negative quantities is exactly
-``smd² ≤ tolerance²``. Both sides are exact in `Fraction`, so the screen — which runs up to
-`max_assignment_attempts` times — never leaves exact rational arithmetic. `Decimal.sqrt()`
-appears once, when a figure is reported to a human.
+``smd² ≤ tolerance²``. Both sides are exact in `Fraction`, so nothing ever leaves exact
+rational arithmetic. `Decimal.sqrt()` appears once, when a figure is reported to a human.
 
-The screen and the check are the same function, and the check is **not** vacuous
---------------------------------------------------------------------------------
-`screen` and the readout's balance check both call `standardised`. That is deliberate: a
-screen and a check at two tolerances would let an assignment be accepted at design and
-refused at readout for a reason nobody declared.
+Where the tolerance is judged, and where it is not
+--------------------------------------------------
+This module used to carry a `screen` as well — the rejection-sampling gate the old
+re-randomisation draw ran candidates through. The stratified lottery has no screen: the
+balance is built into the strata (`strata.py`), the design records the realised draw's
+figures without judging them, and `balance_tolerance_smd` is applied at exactly **one**
+moment — the readout's balance check. One moment, so an assignment cannot be accepted at
+design and refused at readout under two tolerances nobody declared; the restatement is in
+`contracts/design/inference.yaml`'s own notes.
 
-What is **not** shared is the data. The readout re-measures the covariates from what
-actually arrived, over the units that actually reported. A screened assignment re-checked
-against its own screening matrix passes by construction — a gate that cannot bite, which is
-the family of defect this project has now found four times. Restated pre-period revenue, an
-attrited store, a roster that moved: those are what `IMBALANCED_PRE_PERIOD` is for, and
+The check is **not** vacuous, because the data is not the design's. The readout re-measures
+the covariates from what actually arrived, over the units that actually reported. An
+assignment re-checked against the matrix its strata were built from would pass by
+construction almost always — a gate that can barely bite, which is the family of defect
+this project has now found four times. Restated pre-period revenue, an attrited store, a
+roster that moved: those are what `IMBALANCED_PRE_PERIOD` is for, and
 `tests/core/test_balance.py` plants each of the three.
 
 Zero spread is not a free pass
@@ -68,8 +72,9 @@ class CovariateKind(StrEnum):
 
 
 #: One unit's value for one covariate. A `Fraction` for a numeric covariate, the level's own
-#: name for a categorical one. Never a float: the screen compares squares exactly, and the
-#: first binary approximation would put a tolerance back into a comparison built to avoid one.
+#: name for a categorical one. Never a float: every comparison here is between exact
+#: squares, and the first binary approximation would put a tolerance back into a
+#: comparison built to avoid one.
 CovariateValue = Fraction | str
 
 
@@ -77,16 +82,16 @@ CovariateValue = Fraction | str
 class CovariateMatrix:
     """Pre-period covariates, per unit, in a fixed column order.
 
-    Fixed order because everything downstream — the screen, the check, the estimator's
-    design matrix — has to agree about which column is which, and because the covariates
-    themselves are fixed by `contracts/design/balance_covariates.yaml` rather than chosen
+    Fixed order because everything downstream — the strata, the readout's check, the
+    estimator's design matrix — has to agree about which column is which, and because the
+    covariates are fixed by `contracts/design/balance_covariates.yaml` rather than chosen
     per experiment.
 
-    `measured on the pre-period` is the contract's guarantee, not this type's: screening on
-    anything measured inside the comparison window uses the same data twice and biases the
-    estimate toward zero. What this type enforces is that every unit has every column,
-    because a missing covariate is a unit that would be silently balanced on less than the
-    others.
+    `measured on the pre-period` is the contract's guarantee, not this type's: matching or
+    checking on anything measured inside the comparison window uses the same data twice and
+    biases the estimate toward zero. What this type enforces is that every unit has every
+    column, because a missing covariate is a unit that would be silently balanced on less
+    than the others.
     """
 
     ids: tuple[str, ...]
@@ -103,8 +108,8 @@ class CovariateMatrix:
         if not ids:
             raise BalanceError(
                 "a balance matrix has at least one covariate. The list is fixed in "
-                "contracts/design/balance_covariates.yaml and an empty one would make the "
-                "screen accept every draw."
+                "contracts/design/balance_covariates.yaml and an empty one would make "
+                "every stratification perfect and every balance check pass."
             )
         if len(kinds) != len(ids):
             raise BalanceError("every covariate declares its kind")
@@ -115,7 +120,7 @@ class CovariateMatrix:
                 raise BalanceError(
                     f"unit {unit!r} carries {len(row)} value(s) for {len(ids)} covariate(s). "
                     "A unit balanced on fewer covariates than the others is a unit nobody "
-                    "screened."
+                    "measured."
                 )
             for index, value in enumerate(row):
                 expected = kinds[index]
@@ -123,7 +128,7 @@ class CovariateMatrix:
                     raise BalanceError(
                         f"{ids[index]!r} is numeric and unit {unit!r} carries "
                         f"{type(value).__name__}. Numeric covariates arrive as Fraction so "
-                        "the screen stays exact."
+                        "the arithmetic stays exact."
                     )
                 if expected is CovariateKind.CATEGORICAL and not isinstance(value, str):
                     raise BalanceError(
@@ -146,7 +151,7 @@ class CovariateMatrix:
         """Every level a categorical covariate takes, sorted.
 
         Sorted rather than first-seen, so the reference level the estimator drops and the
-        level a screen reports are the same on every machine and in every process.
+        level a check reports are the same on every machine and in every process.
         """
         index = self.ids.index(covariate_id)
         if self.kinds[index] is not CovariateKind.CATEGORICAL:
@@ -311,19 +316,3 @@ def worst_of(differences: tuple[Standardised, ...]) -> Standardised:
         if _worse(candidate, worst):
             worst = candidate
     return worst
-
-
-def screen(
-    matrix: CovariateMatrix, arms: Mapping[str, Arm], *, tolerance: Decimal
-) -> tuple[Standardised, ...] | None:
-    """The differences where the candidate assignment is admissible, otherwise `None`.
-
-    The re-randomisation screen. It looks at pre-period covariates and nothing else:
-    selecting on anything measured inside the comparison window would be using the same
-    data twice, and it biases the estimate toward zero — which is to say it hides effects,
-    which is the direction that looks responsible and is not.
-    """
-    differences = standardised(matrix, arms)
-    if any(d.exceeds(tolerance) for d in differences):
-        return None
-    return differences

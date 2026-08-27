@@ -1,15 +1,16 @@
 """The experiment core — the lottery, the four validity checks, and the design-based estimator.
 
-    draw(...)  -> SealedAssignment | None      the committed lottery, screened
+    draw(...)  -> SealedAssignment | None      the committed lottery, stratified
     close(...) -> Readout | ReadoutRefusal     four checks, then a number or a reason code
 
-`assignment` is the keyed-hash draw, the re-randomisation screen and the seal — **the one
-door with no key**. `balance` is the standardised difference, used once as the screen and
-once as the check, over different data both times. `exposure` is the ITT threshold and the
-argument for why there is no exposure-adjusted number. `contamination` re-derives the draw
-and compares what was delivered. `estimator` is Lin's adjustment, the studentized statistic,
-the permutation test under the same restriction, and the interval that inverts it.
-`readout` is moments 2 and 3.
+`strata` matches units into strata on a composite distance over the declared covariates —
+the restriction the lottery draws under. `assignment` is the keyed-hash draw within those
+strata and the seal — **the one door with no key**. `balance` is the standardised
+difference, judged once, at readout, over what actually arrived. `exposure` is the ITT
+threshold and the argument for why there is no exposure-adjusted number. `contamination`
+re-derives the draw and compares what was delivered. `estimator` is Lin's adjustment, the
+studentized statistic, the permutation test under the same restriction, and the interval
+that inverts it. `readout` is moments 2 and 3.
 
 **Validity comes from the lottery, not from the arithmetic.** A difference of means over
 randomly assigned units is unbiased under any data-generating process; what the code here
@@ -26,7 +27,6 @@ from holdout.core.experiment.assignment import (
     covariate_digest,
     digest_for,
     draw,
-    ordering,
     rank_of,
     redraw,
     reference_set,
@@ -38,7 +38,6 @@ from holdout.core.experiment.balance import (
     CovariateMatrix,
     CovariateValue,
     Standardised,
-    screen,
     standardised,
     worst_of,
 )
@@ -75,6 +74,7 @@ from holdout.core.experiment.readout import (
     close,
     may_read,
 )
+from holdout.core.experiment.strata import StrataError, composite_distance, strata_of
 
 __all__ = [
     "CHECK_OF",
@@ -103,10 +103,12 @@ __all__ = [
     "SealedAssignment",
     "Standardised",
     "Statistic",
+    "StrataError",
     "ValidityCheck",
     "adjusted_difference",
     "candidate",
     "close",
+    "composite_distance",
     "control_size_for",
     "covariate_digest",
     "design_of",
@@ -115,15 +117,14 @@ __all__ = [
     "draw",
     "interval",
     "may_read",
-    "ordering",
     "permutation_p",
     "plan_for",
     "rank_of",
     "redraw",
     "reference_set",
-    "screen",
     "sealed",
     "standardised",
+    "strata_of",
     "studentized",
     "worst_of",
 ]

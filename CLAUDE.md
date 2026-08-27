@@ -393,15 +393,27 @@ holidays, units already committed elsewhere), then feasibility against `max_dura
 capacity. Either a **refusal that names what would fix it**, or: generate the committed seed,
 write the assignment, check pre-period balance, lock the table read-only.
 
-**Balancing is re-randomisation, and the analysis must account for it.** Candidate assignments
-are drawn from the committed seed and screened on **pre-period covariates only** — category
-revenue over the previous 8 weeks, store format and size, waste rate, pricing zone. Selecting on
-anything measured inside the comparison window would be using the same data twice and would bias
-the estimate toward zero. Because the space of admissible assignments is restricted, the ordinary
-confidence interval is wrong — it assumes simple randomisation and comes out falsely wide. The
-inference is therefore a **permutation test under the same restriction**, or an estimate adjusted
-for the covariates that were balanced on. The A/A harness catches a violation here as CI coverage
-drifting above the nominal level, so the check exists in both places.
+**Balancing is stratification, and the analysis must account for it.** Units are matched into
+strata on a composite distance over **pre-period covariates only** — category revenue over the
+previous 8 weeks, store format and size, waste rate, pricing zone — and the lottery draws one
+control per stratum from the committed seed. Matching on anything measured inside the comparison
+window would be using the same data twice and would bias the estimate toward zero. Because the
+space of admissible assignments is restricted, the ordinary confidence interval is wrong — it
+assumes simple randomisation and comes out falsely wide. The inference is therefore a
+**permutation test under the same restriction** — re-drawing within the same strata — or an
+estimate adjusted for the covariates that were balanced on. The A/A harness catches a violation
+here as CI coverage drifting above the nominal level, so the check exists in both places.
+
+**The restriction is constructive, not rejective, and that is a measured decision.** It was
+re-randomisation: draw, screen against a balance tolerance, repeat. At the scenario's shape that
+screen accepted about one draw in a thousand, so the permutation reference set starved and the
+smallest attainable p-value sat **above** the declared α — no experiment could have reported a
+significant effect, for a reason with nothing to do with the estimator. The three alternatives
+were priced and refused (a budget of ~400 hours; a tolerance of ~0.41 SMD, which is no balancing
+at all; a 50/50 holdout, which reaches only ~1/800), and `docs/DECISIONS.md` records each.
+**The balance tolerance is therefore judged at exactly one moment — the readout's balance
+check** — over the covariates as they actually arrived, and a stratified draw that lands outside
+it is a refusal with a reason code rather than a design that was never allowed to exist.
 
 **2 · While it runs — *is it running as declared?***
 Routes each decision by arm. **Blocks any reading of results before the declared end.** Blocks any

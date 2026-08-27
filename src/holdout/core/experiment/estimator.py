@@ -34,9 +34,10 @@ null of no effect for any unit. A raw difference of means is exact only under th
 and W5 — heavy-tailed baskets, unequal arm variance — is precisely where that distinction
 stops being pedantic.
 
-**The p-value is** ``(1 + #{T²_b ≥ T²_obs}) / (1 + B)`` over the draws the same screen
-accepted. Exact at any B: B buys resolution, not validity, and the readout prints B beside
-the p-value so nobody has to guess which it was.
+**The p-value is** ``(1 + #{T²_b ≥ T²_obs}) / (1 + B)`` over draws taken under the same
+restriction — the strata the realised assignment was drawn within. Exact at any B: B buys
+resolution, not validity, and the readout prints B beside the p-value so nobody has to
+guess which it was.
 
 The interval inverts the same test
 ----------------------------------
@@ -461,7 +462,7 @@ def permutation_p(
     *,
     direction: MdeDirection,
 ) -> Fraction:
-    """`(1 + #{as extreme as observed}) / (1 + B)`, over the draws the same screen accepted.
+    """`(1 + #{as extreme as observed}) / (1 + B)`, over draws under the same restriction.
 
     Exact at any B — B buys resolution, not validity — and the `+1` on both sides is what
     makes it exact: it counts the realised assignment, which `reference_set` deliberately

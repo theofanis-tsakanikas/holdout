@@ -227,10 +227,66 @@ shelf prices the system would refuse. That is what independence costs and it is 
 deferral rather than quietly fixed.
 
 ```
+id            T002B         <- unblocks T003
+title         Stratified randomisation — the restriction the lottery draws under
+branch        experiment/stratified-randomisation
+depends_on    T001
+blocks        T003
+closes        The inherited condition below is settled, and settled by the mechanism rather
+              than by a number: assignment draws WITHIN strata, so every candidate is
+              admissible and the reference set fills to the contract's B instead of starving.
+              Specifically:
+              (1) src/holdout/core/experiment/strata.py — strata matched on a composite
+                  distance over the declared balance covariates, one control per stratum,
+                  with categorical levels held by proportional allocation to cells. A pure
+                  function of the matrix; it never sees the seed.
+              (2) assignment.py draws within them from the committed seed and returns None —
+                  a refusal, not an exception — where no stratification gives every stratum
+                  both arms. The strata are on the seal and inside its digest.
+              (3) balance_tolerance_smd becomes a readout check and stops being a design
+                  screen. That is a RESTATEMENT of contracts/design/inference.yaml, not an
+                  edit: v2, with the prior meaning recoverable in the file (doctrine rule 4).
+                  max_assignment_attempts is restated the same way — it budgeted the screen's
+                  rejections and now budgets the reference-set scan.
+              (4) The reference set does NOT change: stratification is a restriction, and a
+                  permutation within strata is "under the same restriction" exactly as the
+                  screened reference set was under the screen's.
+              The number that closes it: at the scenario's shape — 100 stores, the declared
+              20% holdout — the reference set reaches the contract's B = 1000, so the
+              p-value floor 2/(1+B) sits two orders of magnitude under alpha = 0.05.
+out_of_scope  The A/A harness, the six worlds, any claim-N target — all T003. The three
+              rejected remedies: a larger attempt budget (~400 hours of screening), a wider
+              tolerance (~0.41 SMD, which is no balancing at all), and a 50/50 holdout
+              (acceptance only reaches ~1/800). Each is recorded as rejected rather than
+              silently passed over.
+stop_at       When make check and make claim-1 are green and the reference set fills at the
+              scenario's shape, measured in the suite.
+review        yes
+status        closed
+```
+
+**Why a task of its own rather than the first hour of T003.** The remedy is a design change
+to `assignment.py` and a restatement of a contract — two things whose review question is
+*did the restriction move honestly*, which has nothing to do with whether an A/A harness
+measures a rate correctly. Folding it into T003 would have put a contract restatement inside
+a branch whose closing condition is a number, and the number would have been the thing
+reviewed.
+
+**What the measurement says, in both directions.** The reference set now fills, which is what
+the deferral asked for. What stratification does *not* buy is a draw that always passes the
+readout's balance check: with 20 controls a covariate the others carry no information about
+keeps a sampling spread near the tolerance, so a minority of healthy stratified draws are
+refused as `IMBALANCED_PRE_PERIOD`. On a roster whose covariates hang together the way a
+chain's do, a clear majority pass; on a deliberately orthogonal roster most do not, and
+`tests/core/test_assignment.py` measures both rather than asserting the comfortable one. The
+direction is the honest one — a refusal, never a wrong number — and the published rate is
+T003's to produce.
+
+```
 id            T003          <- closes Phase 1
 title         A/A harness (K=200), reference implementation of truth, make claim-2
 branch        evals/aa-harness
-depends_on    T000, T001, T002
+depends_on    T000, T001, T002, T002B
 closes        make claim-2 green. Four numbers published, not a tick: the false-positive rate on
               A/A against the declared alpha (one-sided binomial at a stated level); the
               false-refusal rate on W6; estimator bias; and CI coverage (~95% over K runs of W6).
@@ -248,7 +304,7 @@ status        open
 id            T004
 title         evals/assignment/ + gate-proof — make claim-3
 branch        evals/assignment
-depends_on    T000, T001
+depends_on    T000, T001, T002B
 closes        make claim-3 green. Assignment from a committed seed, exactly reproducible. The one
               door with no key — a test that no unit changes arm after its first observation, by
               anyone including an approver. The gate-proof mutation this claim owns bites by name.
@@ -257,6 +313,15 @@ stop_at       After claim-3 and its mutation refuse the planted break by name.
 review        yes
 status        open
 ```
+
+**What T002B changed about what claim 3 has to prove.** "Exactly reproducible" now takes **two**
+committed things, not one: the seed, and the **strata** the lottery drew within. The strata are a
+pure function of the covariate matrix, so they are recomputable by anyone — but only from the
+matrix as it stood at design, and a restatement moves that matrix. Both are on the seal and both
+are inside its digest, so the eval has to reproduce the assignment from the seal's own record and
+not from `strata_of` re-run on today's covariates: the second would pass on a day the first should
+have gone red. That is the same shape as the readout's balance check re-measuring rather than
+re-reading, one moment earlier.
 
 ```
 id            T005
@@ -648,6 +713,11 @@ L6  src/holdout/core/design/ and experiment/ — the nine-field form, the eight 
     refusals, the committed lottery and its seal, the four validity checks and the
     design-based estimator. contracts/design/inference.yaml as a fourth contract family.
                                           branch core/design-experiment         status closed
+L7  Stratified randomisation — strata matched on a composite distance, the lottery drawing
+    within them, and inference.yaml v2 restating balance_tolerance_smd as a readout check.
+    The reference set fills at the scenario's shape.
+                                          branch experiment/stratified-randomisation
+                                                                                status closed
 ```
 
 ---
@@ -655,17 +725,19 @@ L6  src/holdout/core/design/ and experiment/ — the nine-field form, the eight 
 ## The critical path
 
 ```
-T00A ─▶ T002 ─┐        (both closed)
-              ├─▶ T003 (claim-2, closes Phase 1) ─▶ T008 ─▶ Phase 2 ─▶ Phase 3 ─▶ Phase 4
-T001 ─────────┤        ▲     (T001 closed)
-T000 ─────────┴────────┘  (also blocks T004, T005, T006)
+T00A ─▶ T002 ─────┐    (both closed)
+                  ├─▶ T003 (claim-2, closes Phase 1) ─▶ T008 ─▶ Phase 2 ─▶ Phase 3 ─▶ Phase 4
+T001 ─▶ T002B ────┤    (both closed)
+T000 ─────────────┘    (also blocks T004, T005, T006)
 ```
 
 T000 and T00A gate the phase-1 evals and corpus respectively, and both had no upstream. **T00A,
-T002 and T001 have closed.** T003 — the A/A harness and `make claim-2`, which closes phase 1 — now
-waits on T000 alone, as does T005 (claim 4) on its corpus side.
+T002, T001 and T002B have closed.** T003 — the A/A harness and `make claim-2`, which closes phase
+1 — now waits on T000 alone, as does T005 (claim 4) on its corpus side.
 
-**T003 carries one inherited condition.** The screen's acceptance rate at the scenario's shape
-leaves the reference set too small for the declared α — see T001's record above and the deferral
-in `docs/DECISIONS.md`. T003 cannot produce a meaningful false-refusal rate on W6 until that is
-settled, so settling it is the first thing in it rather than a surprise in the middle.
+**T003's inherited condition is settled, and T002B is where.** The screen's acceptance rate at the
+scenario's shape left the reference set too small for the declared α; assignment is now stratified,
+so the reference set fills to the contract's B = 1000 and the p-value floor sits two orders of
+magnitude under α. What T003 still owes the deferral is the *published* rate — how often a
+stratified draw is refused at readout as `IMBALANCED_PRE_PERIOD` — measured on the corpus rather
+than on a roster this repository wrote.

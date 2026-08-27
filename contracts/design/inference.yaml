@@ -16,8 +16,16 @@
 # of the split: an alpha of 0.05 is a convention this repository adopts, not a fact anyone
 # verified in a gazette.
 
-version:        1
-effective_from: 2026-03-01
+# v2, 2026-08-28 — a restatement, not an edit. v1 declared balance_tolerance_smd as one
+# number for two moments: the re-randomisation screen at design and the balance check at
+# readout. The screen is gone — assignment is stratified (matching on a composite distance
+# over the declared covariates, one control drawn per stratum from the committed seed) and
+# the tolerance now governs the readout check alone. max_assignment_attempts, which
+# budgeted the screen's rejections, now budgets the candidate indices the permutation
+# reference set may scan. No value changed; what two of them mean did, and doctrine rule 4
+# says the prior meaning stays recoverable — it is stated here and in each entry's note.
+version:        2
+effective_from: 2026-08-28
 
 # ------------------------------------------------------------------ the declared level
 
@@ -87,12 +95,16 @@ balance_tolerance_smd:
     kind: scenario_assumption
     note: >-
       The largest standardised difference between arms, on any declared balance covariate,
-      that the pre-period screen and the readout check will admit. 0.10 is the threshold
-      most commonly cited as "negligible imbalance" in the matching literature and is
-      adopted as a convention. It is one number for both moments on purpose: a screen and a
-      check at different tolerances would let an assignment be accepted at design and
-      refused at readout for no reason anybody declared.
-    verified_on: 2026-08-27
+      that the readout's balance check will admit. 0.10 is the threshold most commonly
+      cited as "negligible imbalance" in the matching literature and is adopted as a
+      convention. Restated at v2: v1 applied this number at two moments — a re-randomisation
+      screen at design and the check at readout. At the scenario's shape the screen accepted
+      about one draw in a thousand and starved the permutation reference set below the
+      declared alpha (the deferral in docs/DECISIONS.md has the arithmetic), so the balance
+      moved into the restriction itself — stratified assignment — and the tolerance is now
+      judged at exactly one moment, the readout, over what actually arrived. One moment, so
+      an assignment cannot be accepted and refused under two tolerances nobody declared.
+    verified_on: 2026-08-28
 
 exposure_min_pct:
   value: 95
@@ -146,11 +158,14 @@ max_assignment_attempts:
   source:
     kind: scenario_assumption
     note: >-
-      How many candidate assignments the re-randomisation screen may reject before the
-      design is refused with NO_ADMISSIBLE_ASSIGNMENT. A budget rather than an unbounded
-      loop, because a roster on which the screen never accepts must produce a refusal that
-      names what would fix it and not a process that never returns.
-    verified_on: 2026-08-27
+      How many candidate indices the permutation reference set may scan. Restated at v2:
+      under v1 this budgeted the re-randomisation screen's rejections; the stratified draw
+      screens nothing, every candidate is admissible, and the budget survives as the cap on
+      the reference-set scan — a bound rather than an unbounded loop, kept as a contract
+      value because a bound nobody declared is a bound nobody can check. It must exceed
+      permutation_draws, and a reference set cut short by it is a smaller B on the readout,
+      never a padded one.
+    verified_on: 2026-08-28
 
 # ------------------------------------------------------------------ what carries across
 

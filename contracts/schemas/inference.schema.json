@@ -46,7 +46,7 @@
     },
 
     "balance_tolerance_smd": {
-      "description": "The largest standardised mean difference between arms, on any declared balance covariate, that the screen and the readout check will admit. One number for both moments: a screen and a check at different tolerances would let an assignment be accepted at design and refused at readout for no reason anybody declared.",
+      "description": "The largest standardised mean difference between arms, on any declared balance covariate, that the readout's balance check will admit. Judged at exactly one moment since v2: assignment is stratified, so the balance lives in the restriction and the tolerance governs the readout alone.",
       "$ref": "#/$defs/sourced_positive_number"
     },
     "exposure_min_pct": {
@@ -66,7 +66,7 @@
       "$ref": "#/$defs/sourced_positive_integer"
     },
     "max_assignment_attempts": {
-      "description": "How many candidates the re-randomisation screen may reject before the design is refused with NO_ADMISSIBLE_ASSIGNMENT. A budget rather than an unbounded loop.",
+      "description": "How many candidate indices the permutation reference set may scan. A budget rather than an unbounded loop; since v2 it budgets the reference-set scan, because the stratified draw screens nothing.",
       "$ref": "#/$defs/sourced_positive_integer"
     },
 

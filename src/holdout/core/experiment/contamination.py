@@ -5,7 +5,7 @@ Two questions, and they fail in different ways.
 **Did the assignment survive?** The seal is re-derived from its own committed seed and
 roster, and the digest is recomputed from its own fields. A seal whose arms were edited in a
 table no longer matches either. The redraw is the stronger of the two, because it consults
-the seal's arms not at all — only the seed, the roster and the accepted draw index — so it
+the seal's arms not at all — only the seed, the strata and the draw index — so it
 catches an edit even where somebody was careful enough to recompute the digest to match.
 
 **Did each unit get its own arm's policy?** Every delivered policy is compared against the
@@ -101,6 +101,7 @@ def check(
         experiment_id=seal.experiment_id,
         seed=seal.seed,
         form_digest=form_digest,
+        strata=seal.strata,
         arms=seal.arms,
     )
     digest_matches = recomputed == seal.digest and sealed(seal)
