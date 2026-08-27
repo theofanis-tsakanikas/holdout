@@ -24,6 +24,7 @@ from pathlib import Path
 
 import pytest
 from ops.isolation import FORBIDDEN, POLICED, REFUSAL, offences
+from ops.isolation import _by_text as by_text_only
 
 CORPUS = Path(__file__).resolve().parents[2] / POLICED
 
@@ -62,6 +63,13 @@ def test_the_barrier_catches_every_shape_of_the_import(source: str) -> None:
 
     The local import inside a function is the one that matters. An import test would miss it
     entirely — it only ever sees module level — which is why this reads the source instead.
+
+    **`src.holdout` is here because it works.** `src/` is an implicit namespace package and the
+    repository root is on `sys.path` under `uv run` and under pytest, so
+    `from src.holdout.core.guardrails import Envelope` imports and runs — and it is the
+    spelling that matches the path on disk, which makes it the one somebody reaches for. The
+    first version of this barrier looked for the installed name only, and carried a comment
+    explaining that the other spelling would not be used.
     """
     assert offences(source), source
 
@@ -74,8 +82,35 @@ def test_the_barrier_catches_every_shape_of_the_import(source: str) -> None:
         pytest.param("import random\nfrom pathlib import Path\n", id="the ordinary imports"),
         pytest.param('"""A docstring that says import holdout."""', id="the words, in prose"),
         pytest.param("# import holdout\n", id="the words, commented out"),
+        pytest.param("import srcs.holdout", id="a `src`-ish prefix that is not `src`"),
+        pytest.param("from source import holdout", id="and another"),
+        pytest.param(
+            'def f():\n    """The rule:\n\n    import holdout.core\n    """\n    return 1\n',
+            id="the words inside an indented docstring",
+        ),
     ],
 )
 def test_the_barrier_does_not_catch_what_it_should_not(source: str) -> None:
     """A barrier that fires on `# import holdout` gets widened until it stops firing at all."""
     assert not offences(source), source
+
+
+@pytest.mark.parametrize(
+    ("source", "caught"),
+    [
+        pytest.param(f"import {FORBIDDEN}", True, id="at the start of a line"),
+        pytest.param(f"import src.{FORBIDDEN}", True, id="the path spelling too"),
+        pytest.param(f"    from {FORBIDDEN} import core", True, id="indented"),
+        pytest.param(f"x = 1; import {FORBIDDEN}", False, id="after a semicolon — it cannot see"),
+        pytest.param(f"    import {FORBIDDEN}.core", True, id="indented, submodule"),
+    ],
+)
+def test_the_text_scan_is_exercised_in_both_directions(source: str, caught: bool) -> None:
+    """The last resort has its own tests, because every source above parses.
+
+    Twelve parsing sources all take the AST path, so `_by_text` could be deleted outright and
+    the parametrisations above would stay green. It is reached only when a fragment survives
+    both `ast.parse` and `ast.parse(dedent(...))`, and what it cannot do — see an import after
+    a semicolon — is asserted here rather than discovered by whoever hits it.
+    """
+    assert bool(by_text_only(source)) is caught, source

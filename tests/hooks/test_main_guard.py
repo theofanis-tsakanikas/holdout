@@ -56,6 +56,15 @@ REFUSED = [
     pytest.param("GIT_AUTHOR_NAME=x git commit -m 'y'", id="behind an environment assignment"),
     pytest.param("git --no-pager commit -m 'x'", id="behind a valueless option"),
     pytest.param("/usr/bin/git commit -m 'x'", id="by absolute path"),
+    # Everything below was allowed by the first version of this hook. `_SEPARATORS` listed a
+    # newline, but `shlex` with `whitespace_split` never produces a newline token, so every
+    # line after the first joined the first command and only its first `git` was looked at.
+    # The guard bit the form a reviewer would type into a test and missed the form a session
+    # actually writes.
+    pytest.param("git add -A\ngit commit -m 'x'", id="on the next line — the ordinary form"),
+    pytest.param("echo hi > f.txt\ngit commit -am 'x'", id="on the next line, after anything"),
+    pytest.param("if true; then git commit -m 'x'; fi", id="after a `then`"),
+    pytest.param("for f in a; do git commit -m 'x'; done", id="after a `do`"),
 ]
 
 
@@ -83,6 +92,10 @@ ALLOWED_ON_MAIN = [
     pytest.param('echo "git commit -m x"', id="the words, not the command"),
     pytest.param("grep -rn 'git commit' docs/", id="the words in an argument"),
     pytest.param("make check", id="nothing to do with git"),
+    pytest.param(
+        "cat > notes.md <<'EOF'\nDon't run git commit here\nEOF",
+        id="prose in a heredoc whose apostrophe breaks the lexer",
+    ),
 ]
 
 

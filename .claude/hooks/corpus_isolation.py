@@ -8,10 +8,13 @@ AI layer lives says a thing that must never happen is a hook, and this is that t
 
 Two events, because a file can be written by two very different routes:
 
-**PreToolUse** on the editing tools sees the content before it lands and refuses it. What it
-is handed is sometimes a fragment rather than a module — an indented block out of the middle
-of a function — so `ops.isolation` falls back to a textual read when the fragment does not
-parse.
+**PreToolUse** on the editing tools sees the content before it lands and refuses it. What an
+`Edit` hands over is a *fragment*, not a module, and a fragment read on its own is read badly:
+an indented block does not parse, an import after a semicolon is invisible to the textual
+fallback, and a line inside a docstring looks exactly like code. So the fragment is not read
+on its own — the file is read from disk and the edit applied to a copy of it, and what gets
+checked is the module the write would actually produce. Only when there is no file to read
+from does the fragment get judged alone.
 
 **PostToolUse** on `Bash` re-reads `corpus/` from disk. A heredoc, a `sed -i`, a `git
 checkout` of somebody else's branch and a code generator all write files without any editing
@@ -33,13 +36,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ops.isolation import REFUSAL, is_policed, offences, scan
 
-#: Every tool that hands over the content it is about to write, and the field it arrives in.
-#: `Edit` and `MultiEdit` hand over a fragment; see the module docstring.
-_CONTENT_FIELDS = {
-    "Write": ("content",),
-    "Edit": ("new_string",),
-    "NotebookEdit": ("new_source",),
-}
+#: The tool that hands over a whole file. `Edit` and `MultiEdit` hand over fragments and are
+#: reconstructed instead; see `_proposed_content`.
+#:
+#: `NotebookEdit` is deliberately absent. `is_policed` covers `*.py` only — which is what the
+#: gate behind this hook covers — so a notebook was never policed, and listing the tool here
+#: was wiring that could not fire. Advertising a guarantee that cannot run is worse than not
+#: having it.
+_WHOLE_FILE = {"Write": "content"}
 
 
 def _project_root(event: dict[str, object]) -> Path:
@@ -50,17 +54,45 @@ def _project_root(event: dict[str, object]) -> Path:
     return Path(cwd) if isinstance(cwd, str) else Path.cwd()
 
 
-def _proposed_content(tool_name: str, tool_input: dict[str, object]) -> list[str]:
-    """The text this call would put into the file, from whichever field carries it."""
-    texts: list[str] = []
-    for field in _CONTENT_FIELDS.get(tool_name, ()):
+def _edits(tool_input: dict[str, object]) -> list[tuple[str, str, bool]]:
+    """Every (old, new, replace_all) this call would apply, `Edit` and `MultiEdit` alike."""
+    listed = tool_input.get("edits")
+    raw = listed if isinstance(listed, list) else [tool_input]
+    out: list[tuple[str, str, bool]] = []
+    for edit in raw:
+        if not isinstance(edit, dict):
+            continue
+        old, new = edit.get("old_string"), edit.get("new_string")
+        if isinstance(old, str) and isinstance(new, str):
+            out.append((old, new, bool(edit.get("replace_all"))))
+    return out
+
+
+def _proposed_content(tool_name: str, tool_input: dict[str, object], target: Path) -> list[str]:
+    """The module this call would produce, or — failing that — the fragments it would insert.
+
+    Reconstructing the file is what makes an `Edit` exact: the AST then sees the edit in its
+    real context, so an import after a semicolon is caught and a line inside a docstring is
+    not mistaken for one. It falls back to the fragments only when there is no file on disk to
+    apply them to, which is the case that does not arise for an `Edit`.
+    """
+    field = _WHOLE_FILE.get(tool_name)
+    if field is not None:
         value = tool_input.get(field)
-        if isinstance(value, str):
-            texts.append(value)
-    edits = tool_input.get("edits")
-    if isinstance(edits, list):
-        texts += [e["new_string"] for e in edits if isinstance(e, dict) and "new_string" in e]
-    return texts
+        return [value] if isinstance(value, str) else []
+
+    edits = _edits(tool_input)
+    if not edits:
+        return []
+    try:
+        content = target.read_text(encoding="utf-8")
+    except OSError:
+        return [new for _, new, _ in edits]
+    for old, new, everywhere in edits:
+        if old not in content:
+            return [new for _, new, _ in edits]
+        content = content.replace(old, new) if everywhere else content.replace(old, new, 1)
+    return [content]
 
 
 def _refuse(message: str) -> None:
@@ -74,7 +106,7 @@ def _pre(event: dict[str, object], root: Path) -> None:
     tool_input = event.get("tool_input")
     if not isinstance(tool_name, str) or not isinstance(tool_input, dict):
         return
-    file_path = tool_input.get("file_path") or tool_input.get("notebook_path")
+    file_path = tool_input.get("file_path")
     if not isinstance(file_path, str):
         return
     target = Path(file_path)
@@ -82,7 +114,7 @@ def _pre(event: dict[str, object], root: Path) -> None:
         target = root / target
     if not is_policed(target, root=root):
         return
-    for text in _proposed_content(tool_name, tool_input):
+    for text in _proposed_content(tool_name, tool_input, target):
         broken = offences(text, filename=file_path)
         if broken:
             _refuse(REFUSAL.format(where=file_path, what=broken))

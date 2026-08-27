@@ -21,6 +21,7 @@ import pytest
 HOOK = "corpus_isolation.py"
 
 VIOLATION = "from holdout.core.guardrails import Envelope\n"
+BY_THE_PATH = "from src.holdout.core.guardrails import Envelope\n"
 CLEAN = "from __future__ import annotations\n\nimport random\n"
 
 
@@ -50,6 +51,22 @@ def test_it_refuses_a_write_that_imports_the_system(
     assert "belongs in evals/" in fired.stderr
 
 
+def test_it_refuses_the_spelling_that_matches_the_path_on_disk(
+    fire: Callable[..., Any], project: Path
+) -> None:
+    """`src.holdout` imports and runs, and it is the spelling the task description used.
+
+    `src/` is an implicit namespace package and the repository root is on `sys.path`, so this
+    is not a hypothetical import that would fail anyway — it is the one an author reaches for
+    because it matches what they see in the file tree.
+    """
+    fired = fire(
+        HOOK, _write(project, "corpus/world/generator.py", BY_THE_PATH), project_dir=project
+    )
+    assert fired.refused, fired.stdout
+    assert "src.holdout.core.guardrails" in fired.stderr
+
+
 def test_it_allows_a_write_that_does_not(fire: Callable[..., Any], project: Path) -> None:
     fired = fire(HOOK, _write(project, "corpus/world/generator.py", CLEAN), project_dir=project)
     assert fired.code == 0, fired.stderr
@@ -64,28 +81,88 @@ def test_it_catches_the_import_hidden_inside_a_function(
     assert fired.refused, fired.stdout
 
 
+def _edit(project: Path, relative: str, old: str, new: str) -> dict[str, Any]:
+    return {
+        "hook_event_name": "PreToolUse",
+        "cwd": str(project),
+        "tool_name": "Edit",
+        "tool_input": {
+            "file_path": str(project / relative),
+            "old_string": old,
+            "new_string": new,
+        },
+    }
+
+
 def test_it_catches_an_edit_fragment_that_does_not_parse_on_its_own(
     fire: Callable[..., Any], project: Path
 ) -> None:
     """An `Edit` hands over an indented block, not a module. The AST refuses to parse it.
 
-    This is the case the textual fallback exists for, and it is the ordinary case rather than
-    the exotic one: almost every edit to an existing file arrives indented.
+    This is the ordinary case rather than the exotic one: almost every edit to an existing
+    file arrives indented.
     """
+    target = project / "corpus" / "world" / "generator.py"
+    target.write_text("def demand(x: int) -> int:\n        return x\n", encoding="utf-8")
     fragment = "        from holdout.core.ladder import quote\n\n        return quote(x)\n"
-    event = {
-        "hook_event_name": "PreToolUse",
-        "cwd": str(project),
-        "tool_name": "Edit",
-        "tool_input": {
-            "file_path": str(project / "corpus" / "world" / "generator.py"),
-            "old_string": "        return x",
-            "new_string": fragment,
-        },
-    }
-    fired = fire(HOOK, event, project_dir=project)
+    fired = fire(
+        HOOK,
+        _edit(project, "corpus/world/generator.py", "        return x", fragment),
+        project_dir=project,
+    )
     assert fired.refused, fired.stdout
     assert "holdout.core.ladder" in fired.stderr
+
+
+def test_it_catches_an_import_the_text_scan_alone_would_miss(
+    fire: Callable[..., Any], project: Path
+) -> None:
+    """`x = 1; import holdout` — not at the start of a line, so no textual scan sees it.
+
+    The fragment is checked in context: the file is read from disk and the edit applied to a
+    copy of it, so what the AST reads is the module the write would actually produce.
+    """
+    target = project / "corpus" / "world" / "generator.py"
+    target.write_text("def demand(x: int) -> int:\n    return x\n", encoding="utf-8")
+    fired = fire(
+        HOOK,
+        _edit(
+            project,
+            "corpus/world/generator.py",
+            "    return x",
+            "    y = 1; import holdout.core as h\n    return x",
+        ),
+        project_dir=project,
+    )
+    assert fired.refused, fired.stdout
+
+
+def test_it_does_not_refuse_a_docstring_that_explains_the_barrier(
+    fire: Callable[..., Any], project: Path
+) -> None:
+    """The module that must not import the system may still describe what it must not do.
+
+    Every module in this repository carries a paragraph-length docstring, so this is not an
+    exotic case: it is what happens the first time somebody documents the barrier inside the
+    thing the barrier applies to. Read as a bare fragment, the indented line
+    `import holdout.core` is indistinguishable from code — which is why the fragment is never
+    read as a bare fragment when there is a file to put it back into.
+    """
+    target = project / "corpus" / "world" / "generator.py"
+    target.write_text(
+        'def demand(x: int) -> int:\n    """Old."""\n    return x\n', encoding="utf-8"
+    )
+    fired = fire(
+        HOOK,
+        _edit(
+            project,
+            "corpus/world/generator.py",
+            '    """Old."""',
+            '    """The rule is that no module here may do this:\n\n    import holdout.core\n    """',
+        ),
+        project_dir=project,
+    )
+    assert fired.code == 0, fired.stderr
 
 
 def test_it_catches_a_multiedit(fire: Callable[..., Any], project: Path) -> None:

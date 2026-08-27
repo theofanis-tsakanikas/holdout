@@ -170,3 +170,92 @@ def test_a_header_that_stopped_parsing_is_refused_rather_than_skipped(tmp_path: 
     copy = _with_section(text, section, tmp_path)
     with pytest.raises(RegistryError, match="silently under-reported"):
         check(copy, TODAY)
+
+
+ONE_HEADER = "**Branch protection covers `main` only** · deferred 2026-08-27"
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        pytest.param(
+            "### Branch protection covers `main` only · deferred 2026-08-27",
+            id="promoted to a heading",
+        ),
+        pytest.param(f"- {ONE_HEADER}", id="turned into a list item"),
+        pytest.param(f"> {ONE_HEADER}", id="quoted"),
+    ],
+)
+def test_a_header_that_lost_its_bold_is_refused_too(tmp_path: Path, replacement: str) -> None:
+    """The bold-line scan cannot see these, and on its own it reported them green.
+
+    It looks for a line starting with `**`, so any drift that also drops the bold is invisible
+    to it *and* to the entry regex — the registry shrinks by one and nothing notices. The
+    second count is what catches it: every deferral header carries `· deferred YYYY-MM-DD`
+    whatever else it is wrapped in, so the number of those and the number of entries read must
+    agree.
+    """
+    text = REGISTRY.read_text(encoding="utf-8")
+    section = text.split("## Deliberately deferred", 1)[1].replace(ONE_HEADER, replacement, 1)
+    copy = _with_section(text, section, tmp_path)
+    with pytest.raises(RegistryError, match="stopped being a header"):
+        check(copy, TODAY)
+
+
+WRAPPED_DATE = """
+**A planted deferral whose expiry date wrapped** · deferred 2026-01-01
+Planted by `tests/ops/test_expiry.py`. This file wraps at 100 columns and two of its real
+entry headers already wrap, so a date on the next line is not a hypothetical.
+*Expires:*
+2026-08-20
+"""
+
+IMPOSSIBLE_DATE = """
+**A planted deferral with a date that is not a date** · deferred 2026-13-45
+Planted by `tests/ops/test_expiry.py`.
+*Unlock condition:* never — it exists to be refused.
+"""
+
+
+def test_an_expiry_date_that_wrapped_is_still_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Read as "no date", it would fall back on its unlock condition and report green.
+
+    That is the failure this target exists for, arriving through the door the target's own
+    entry regex already documents: this file wraps, and two real headers wrap today.
+    """
+    code, out = _run(_planted(WRAPPED_DATE, tmp_path), TODAY, capsys)
+    assert code == 1, out
+    assert "EXPIRED" in out
+    assert "whose expiry date wrapped" in out
+
+
+def test_a_date_that_is_not_a_date_is_refused_legibly(tmp_path: Path) -> None:
+    """`2026-13-45` matches the digit pattern and is not a date.
+
+    `make expiry` is a named CI step so that a failure is legible as itself. A traceback is
+    still a red build, and it is still not legible.
+    """
+    with pytest.raises(RegistryError, match=r"month must be in 1\.\.12"):
+        check(_planted(IMPOSSIBLE_DATE, tmp_path), TODAY)
+
+
+def test_an_entry_deleted_outright_is_not_caught_and_is_not_claimed_to_be(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The honest limit, asserted rather than left for a reader to discover.
+
+    A deleted entry leaves nothing to compare against — no marker, no header, no gap. Deletion
+    is caught by the pull-request diff, which is where a deletion should be argued anyway. The
+    module docstring says so; this is the test that keeps it from quietly becoming untrue in
+    the other direction, by claiming a defence that does not exist.
+    """
+    text = REGISTRY.read_text(encoding="utf-8")
+    before = len(parse(text))
+    section = text.split("## Deliberately deferred", 1)[1]
+    start = section.index(ONE_HEADER)
+    copy = _with_section(text, section[:start] + section[start:].split("\n\n", 1)[1], tmp_path)
+    code, out = _run(copy, TODAY, capsys)
+    assert code == 0, out
+    assert f"{before - 1} deferred item(s)" in out

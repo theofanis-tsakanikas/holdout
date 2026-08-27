@@ -341,6 +341,46 @@ the point rather than a side effect: a deferral outlives its reason by the calen
 edit. It runs inside `make check` and is named as its own step in `ci`, so that when it does go
 red it is legible as itself.
 
+**What oversight level 2 cost this branch, and it was the whole of it.** · 2026-08-27
+A fresh-context reviewer read the diff against `CLAUDE.md` and found ten things, two of them
+fatal to the branch's own closing condition, on a suite that was green at 372 tests. Recorded
+because the pattern is now three for three: **every finding was prose asserting more than the
+code supported, and the code was wrong in exactly the place the prose was most confident.**
+
+1. **`main_guard` let the ordinary two-line commit through.** `_SEPARATORS` declared `"\n"` a
+   separator and `shlex` with `whitespace_split` never produces a newline token, so the entry
+   was dead: every line after the first joined the first command, and only its first `git` was
+   ever inspected. `git add -A` on one line and `git commit -m x` on the next was **allowed on
+   `main`**. The one-line `&&` form was caught — so the guard bit the shape a reviewer would
+   type into a test and missed the shape a session actually writes. Lines are split before
+   tokenising now, and `then`/`do` are skipped so a compound statement reaches the test.
+2. **The corpus barrier missed `src.holdout`, and that import runs.** `src/` is an implicit
+   namespace package and the repository root is on `sys.path`, so
+   `from src.holdout.core.guardrails import Envelope` imports and works — and it is the
+   spelling that matches the path on disk, which makes it the one somebody reaches for. The
+   barrier looked for the installed name only *and carried a comment explaining why the other
+   spelling would not be used*. `TASKS.md` had named the violation in those exact words. The
+   gate behind the hook had the same hole and this branch had rewritten that gate without
+   closing it.
+
+The other eight: the partial-drift defence was blind to any drift that also dropped the bold; a
+wrapped `*Expires:*` date read as no date and reported an expired deferral green; an impossible
+date crashed instead of going red legibly; the text fallback was wrong in both directions and
+had no test at all, because every one of the twelve sources in its parametrisation parses and
+takes the AST path; the `NotebookEdit` wiring could never fire and the README advertised it;
+`settings.json` was read by nothing, so a cleared exec bit or a misspelt path would leave the
+suite green and both guarantees dead; the coarse fallback grepped prose inside a heredoc; and
+`Deferral.is_expired` was dead code duplicated inline — in the same branch whose sibling
+module's whole argument is *one rule, one implementation*.
+
+*What was not found:* nothing out of scope, and no further plain defects. The seams that were
+composed — the hook against the real `ops.isolation`, `main_guard` against real git state —
+held. The one that was not composed was `settings.json`, and that is finding six.
+
+*The rule this repeats:* the branch's tests were written by the same person as the code, and
+they tested the shapes that person had in mind. Both fatal findings were shapes nobody had in
+mind, and both were named in the prose as impossible.
+
 *The standing limit, stated rather than papered over:* an unlock **condition** is prose — "the
 phase-1 integration session", "phase 2's gold layer" — and no checker can evaluate it. A
 condition-only deferral is therefore checked for existence and never for truth, and it cannot
@@ -352,7 +392,15 @@ belongs to the integration session rather than to a regex.
 *What it refuses beyond the two obvious cases:* a **partially** drifted section. If an entry
 header changes shape and eleven entries stop matching while two still do, the naive checker
 reports two deferrals and stays green — the registry silently shrinks without anyone deleting
-anything. So every line that looks like a header and was not read as one is a red build.
+anything. Two independent counts catch it, because either alone has a blind spot: every line
+that looks like a header must have been read as one, *and* the number of `· deferred YYYY-MM-DD`
+markers in the section must equal the number of entries read. The first catches a header whose
+`· deferred` changed shape; the second catches a header that dropped its bold — `### Title`, a
+list item, a block quote — which the first cannot see at all.
+
+*What it cannot refuse, and does not claim to:* an entry **deleted outright**. There is nothing
+left to compare against — no marker, no header, no gap. Deletion is caught by the pull-request
+diff, which is where a deletion should be argued anyway.
 
 ---
 

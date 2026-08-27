@@ -216,7 +216,35 @@ is committed, so the hooks go through a pull request and CI like everything else
 unlock condition — the section's own opening sentence, made checkable. It also refuses a
 *partially* drifted section, which is the dangerous case: eleven entries stop matching, two still
 do, and a naive checker reports two deferrals and stays green while the registry silently shrinks.
-It is the only target that can go red on a day nobody touched the repository, which is the point.
+Two independent counts do that, because either alone has a blind spot — one catches a header whose
+`· deferred` changed shape, the other catches a header that dropped its bold. What it cannot
+catch is an entry deleted outright: there is nothing left to compare against, and that is left to
+the pull-request diff rather than claimed. It is the only target that can go red on a day nobody
+touched the repository, which is the point.
+
+**What the review cost, a third time, and it was the same class.** Oversight level 2 read the
+branch against `CLAUDE.md` and found ten things on a suite that was green at 372 tests. Two were
+fatal to the branch's own closing condition, and **both were named in the prose as impossible**:
+
+- `main_guard` **allowed the ordinary two-line commit on `main`.** It listed a newline as a
+  command separator; `shlex` never produces one, so the entry was dead and every line after the
+  first joined the first command. `git add -A && git commit` on one line was refused; the same
+  two commands on two lines were not. The guard bit the shape a reviewer would type into a test
+  and missed the shape a session actually writes.
+- The corpus barrier **missed `src.holdout`, which imports and runs** — `src/` is an implicit
+  namespace package and the repository root is on `sys.path`. It is the spelling that matches the
+  path on disk, it is the spelling `TASKS.md` used to describe the violation, and the module
+  carried a comment explaining that it would not be used. The gate behind the hook had the same
+  hole, and this branch had rewritten that gate without closing it.
+
+The other eight are in `docs/DECISIONS.md`. The one worth repeating here: **the text fallback had
+no test at all**, because all twelve sources in its parametrisation parse and take the AST path —
+it could have been deleted outright and the suite would have stayed green. It was also wrong in
+both directions. That is a test passing for the wrong reason, in the file whose whole job is to be
+the gate.
+
+Every fix was made by correcting the code, never by widening prose to fit it, and every one landed
+with a test that fails on the un-fixed version. The suite went from 372 to 407.
 
 **Its limit is recorded as a deferral rather than glossed.** An unlock *condition* is prose and
 can never expire, and all thirteen existing entries carry one, so the expiry half of the target is

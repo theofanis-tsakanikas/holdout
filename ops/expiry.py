@@ -16,6 +16,13 @@ neither is refused, by the file's own sentence.
 it goes red on a day nobody touched the repository. That is the point of it: the alternative
 is a deferral that quietly outlives the reason it was taken.
 
+**A header that stopped being read goes red too**, by two independent counts — because the
+dangerous drift is the partial one, where eleven entries stop matching, two still do, and the
+target reports two deferrals and stays green. What it cannot notice is an entry **deleted
+outright**: there is nothing left to compare against. Deletion is caught by the pull-request
+diff, which is where a deletion should be argued anyway, and this target does not pretend
+otherwise.
+
 **The standing limit, stated rather than papered over.** An unlock *condition* is prose — "the
 phase-1 integration session", "phase 2's gold layer" — and no checker can evaluate it. So a
 condition-only deferral is checked for existence and never for truth, and it cannot expire.
@@ -50,7 +57,14 @@ _ENTRY = re.compile(
     re.MULTILINE,
 )
 _UNLOCK = re.compile(r"\*Unlock condition:\*", re.IGNORECASE)
-_EXPIRES = re.compile(r"\*Expires:\*[ \t]*(?P<date>\d{4}-\d{2}-\d{2})", re.IGNORECASE)
+#: The same newline tolerance as `_ENTRY`, and for the same reason: this file wraps at 100
+#: columns and a wrapped `*Expires:*` read as "no date" would report an expired deferral green.
+_EXPIRES = re.compile(r"\*Expires:\*[ \t]*(?:\n[ \t]*)?(?P<date>\d{4}-\d{2}-\d{2})", re.IGNORECASE)
+#: Every deferral header carries this, whatever else it is wrapped in. Counting it is what
+#: catches a header that dropped its bold — `### Title · deferred …`, `- **Title** · deferred …`
+#: — which the bold-line scan below cannot see and which would otherwise shrink the registry
+#: silently.
+_MARKER = re.compile(r"·[ \t]*(?:\n[ \t]*)?deferred[ \t]*(?:\n[ \t]*)?\d{4}-\d{2}-\d{2}")
 _SECTION = re.compile(rf"^##[ \t]+{re.escape(SECTION)}[ \t]*$", re.MULTILINE)
 _NEXT_SECTION = re.compile(r"^##[ \t]", re.MULTILINE)
 
@@ -73,6 +87,8 @@ class Deferral:
         return self.has_unlock or self.expires is not None
 
     def is_expired(self, as_of: date) -> bool:
+        """On the date, not the day after. An exception that lasts one day longer than it
+        declared is an exception nobody declared."""
         return self.expires is not None and self.expires <= as_of
 
     def age_in_days(self, as_of: date) -> int:
@@ -119,9 +135,10 @@ def parse(text: str) -> list[Deferral]:
             "shape and is being skipped silently, which is worse."
         )
     # A *partial* drift is the dangerous one: eleven entries stop matching, two still do, and
-    # the target reports two deferrals and stays green. So every line that looks like a header
-    # must have been read as one, and a header that was not read is a red build rather than a
-    # smaller registry.
+    # the target reports two deferrals and stays green while the registry silently shrinks.
+    # Two independent counts, because either alone has a blind spot. The bold-line scan
+    # catches a header whose `· deferred` changed shape; the marker count catches a header
+    # that dropped its bold, which the bold-line scan cannot see at all.
     read = {match.start() for match in matches}
     skipped = [line for offset, line in _header_offsets(body) if offset not in read]
     if skipped:
@@ -132,19 +149,34 @@ def parse(text: str) -> list[Deferral]:
             + f"\n({len(matches)} of {len(matches) + len(skipped)} were read.) "
             "An entry header is `**title** · deferred YYYY-MM-DD`."
         )
+    markers = len(_MARKER.findall(body))
+    if markers != len(matches):
+        raise RegistryError(
+            f"{markers} deferral marker(s) in the section and {len(matches)} entry header(s) "
+            "read. One of them has stopped being a header this target recognises — most "
+            "likely it lost its bold — and the registry would have been silently "
+            "under-reported. An entry header is `**title** · deferred YYYY-MM-DD`."
+        )
     deferrals: list[Deferral] = []
     for index, match in enumerate(matches):
         end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
         entry = body[match.end() : end]
         expires = _EXPIRES.search(entry)
-        deferrals.append(
-            Deferral(
-                title=match.group("title"),
-                deferred=date.fromisoformat(match.group("deferred")),
-                expires=date.fromisoformat(expires.group("date")) if expires else None,
-                has_unlock=bool(_UNLOCK.search(entry)),
+        title = match.group("title")
+        try:
+            deferrals.append(
+                Deferral(
+                    title=title,
+                    deferred=date.fromisoformat(match.group("deferred")),
+                    expires=date.fromisoformat(expires.group("date")) if expires else None,
+                    has_unlock=bool(_UNLOCK.search(entry)),
+                )
             )
-        )
+        except ValueError as error:
+            # `2026-13-45` matches the digit pattern and is not a date. Raised as a registry
+            # error so it comes out as the target's own RED line rather than a traceback —
+            # `make expiry` is a named CI step so that a failure is legible as itself.
+            raise RegistryError(f"{title}: {error}") from error
     return deferrals
 
 
@@ -160,7 +192,8 @@ def failures(deferrals: list[Deferral], as_of: date) -> list[str]:
                 '           "An item with no unlock condition is not deferred, it is '
                 'forgotten."'
             )
-        elif item.expires is not None and item.expires <= as_of:
+        elif item.is_expired(as_of):
+            assert item.expires is not None  # narrowed by is_expired, for mypy
             overdue = (as_of - item.expires).days
             reasons.append(
                 f"EXPIRED    {item.title}\n"

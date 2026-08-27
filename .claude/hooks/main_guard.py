@@ -30,7 +30,18 @@ PROTECTED = "main"
 #: Shell tokens that end one command and begin another. A `git commit` after any of these is
 #: still a `git commit`; a `git commit` inside `echo "..."` is not, which is why the command
 #: is tokenised rather than grepped.
-_SEPARATORS = {"&&", "||", ";", "|", "&", "(", ")", "{", "}", "\n"}
+#:
+#: A newline is **not** in this set, and cannot be: `shlex` with `whitespace_split` treats it
+#: as whitespace, so no newline token ever reaches here. The first version of this file listed
+#: it anyway, which made every line after the first join the first command — so the ordinary
+#: two-line `git add -A` / `git commit -m x` was waved through while the one-line `&&` form
+#: was caught. Lines are split before tokenising instead; see `_segments`.
+_SEPARATORS = {"&&", "||", ";", "|", "&", "(", ")", "{", "}"}
+
+#: Shell keywords that can stand in front of a command inside a compound statement. Without
+#: these, `if …; then git commit; fi` and `for …; do git commit; done` both start their
+#: segment with a keyword and never reach the `git` test.
+_KEYWORDS = {"then", "do", "else", "elif", "!", "time", "exec", "nohup"}
 
 #: `git`'s own options, before the subcommand. These two take their value as the next token,
 #: so the token after them is never the subcommand.
@@ -40,7 +51,16 @@ _TAKES_A_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec
 #: than the tokeniser and deliberately so: an unparsable command is the one case where
 #: guessing wrong in the safe direction costs a retry and guessing wrong in the other costs
 #: the branch.
-_COARSE = re.compile(r"\bgit\b[^|&;\n]*\bcommit\b")
+#: `git` at a plausible *command* position — start of a line, or after a separator, with only
+#: environment assignments in front of it. The looser `\bgit\b.*\bcommit\b` also matched
+#: prose inside a heredoc, and a heredoc with an apostrophe in it is exactly what unbalances
+#: the lexer and sends us here. A guard that refuses `Don't run git commit here` written into
+#: a file is a guard that gets switched off.
+_COARSE = re.compile(
+    r"(?:^|[|&;()]|\bthen\b|\bdo\b)[ \t]*(?:[A-Za-z_]\w*=\S*[ \t]+)*"
+    r"[\w./-]*\bgit\b[^|&;\n]*\bcommit\b",
+    re.MULTILINE,
+)
 
 _REFUSAL = (
     "Refusing `git commit` on `{branch}`.\n"
@@ -55,23 +75,33 @@ _REFUSAL = (
 
 
 def _segments(command: str) -> list[list[str]]:
-    """The command split into the individual commands it actually runs."""
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
-    tokens = list(lexer)
+    """The command split into the individual commands it actually runs.
+
+    Lines first, because `shlex` cannot see them: `whitespace_split` makes a newline
+    indistinguishable from a space, so `git add -A` and the `git commit` on the next line
+    would arrive as one segment and only the first `git` would ever be looked at.
+    """
     segments: list[list[str]] = [[]]
-    for token in tokens:
-        if token in _SEPARATORS:
+    for line in command.splitlines():
+        if segments[-1]:
             segments.append([])
-        else:
-            segments[-1].append(token)
+        lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        for token in lexer:
+            if token in _SEPARATORS:
+                segments.append([])
+            else:
+                segments[-1].append(token)
     return [s for s in segments if s]
 
 
 def _is_git_commit(segment: list[str]) -> bool:
     index = 0
-    # `FOO=bar git commit` runs git just as surely as `git commit` does.
-    while index < len(segment) and re.fullmatch(r"[A-Za-z_]\w*=.*", segment[index]):
+    # `FOO=bar git commit` runs git just as surely as `git commit` does, and so does the
+    # `git commit` that follows a `then` or a `do`.
+    while index < len(segment) and (
+        segment[index] in _KEYWORDS or re.fullmatch(r"[A-Za-z_]\w*=.*", segment[index])
+    ):
         index += 1
     if index >= len(segment) or Path(segment[index]).name != "git":
         return False

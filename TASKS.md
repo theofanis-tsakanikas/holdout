@@ -105,6 +105,12 @@ into `docs/DECISIONS.md` rather than left implied: an unlock **condition** is pr
 expire, so a condition-only deferral is checked for existence and never for truth. What the target
 does about that is print every deferral's age in days.
 
+**Oversight level 2 found ten things, two of them fatal to this task's own `closes` line** — the
+guard allowed the ordinary two-line `git commit` on `main`, and the barrier missed `src.holdout`,
+which is the spelling this task description itself used and which imports and runs. Both were
+fixed by correcting the code, each with a test that fails on the un-fixed version; the record is
+in `PLAN.md` and `docs/DECISIONS.md`.
+
 ```
 id            T00C
 title         Skill — defect-to-rule
