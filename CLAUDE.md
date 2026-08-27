@@ -786,6 +786,55 @@ condition that will unlock it. An item with no unlock condition is not deferred;
 
 ---
 
+## Where the AI layer lives
+
+Three mechanisms, three jobs. Choosing the wrong one is why `.claude/` directories bloat.
+
+| | is | acts |
+|---|---|---|
+| **`CLAUDE.md`**, layered | a **rule** | passively, wherever you are working |
+| **Skill** | a **procedure** | when you invoke it by name |
+| **Hook** | a **guarantee** | the harness enforces it, wanted or not |
+
+A rule that holds wherever you are → `CLAUDE.md`. A procedure that recurs and carries judgment →
+a skill. Something that must never happen → a hook.
+
+### The criterion for where a skill lives
+
+> **Does it shape the code in this repository → it lives in this repository.**
+> **Does it produce something outside the repository → it lives at user level.**
+
+| in `.claude/skills/` here | at `~/.claude/skills/` |
+|---|---|
+| `claim` — build a claim's eval, its `gate-proof`, its `make claim-N` | `banner`, `social-preview` |
+| `contract-change` — restatement? new window? which consumers? which past results? | `readme-standard` |
+| `integration-review` — bugs in the process, not the code | `linkedin-debut`, `linkedin-article`, `post-ideas` |
+| `defect-to-rule` — root cause, then the rule that stops the class recurring | `promo-guide`, `storyboard`, `aws-mask` |
+
+The right-hand column produces artefacts that live outside any repository. The left-hand column
+writes code and rules inside this one.
+
+`project-inception` and `project-architecture` stay at user level because they are needed *before*
+the repository exists; their output — `CLAUDE.md`, `PLAN.md`, `infra/` — is what lands here.
+
+### Why in the repository rather than shared
+
+**A skill committed here is not a copy of a shared one. It is the record of the method that built
+*this* project** — a lockfile for process. It is not supposed to match the next repository; it is
+supposed to be accurate about what happened here. Divergence between projects stops being drift and
+becomes history.
+
+Three projects are also not proof of generality. Extracting a universal skill from three samples is
+premature; extracting it from eight, once the shape has stopped moving, is not.
+
+And a skill that lives here **goes through a pull request and CI like everything else**. A change to
+the method is a commit with a reason, reviewed, and visible in `git log`. The method gets the same
+standing as the code: **nothing changes silently.**
+
+Anyone who clones this repository gets the whole thing — what was built *and* how.
+
+---
+
 ## Oversight — four levels
 
 Many small sessions carry one real risk: **conceptual drift**. Each session is locally correct,
