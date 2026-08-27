@@ -846,6 +846,34 @@ Anyone who clones this repository gets the whole thing — what was built *and* 
 
 ---
 
+## A guard tested by its author
+
+The project's most frequent defect, four times over:
+
+> **A guard tested by its author is tested in the shape the guard already handles.**
+
+| | what happened |
+|---|---|
+| `_exact_floor` | called `Money.as_lower_bound` while claiming to be an independent second implementation |
+| G3's tolerance | did not catch a bound that was *too strict* — the direction this project's own history says its bugs appear in |
+| `main_guard` | refused `git add -A && git commit` on one line and allowed the same two commands on two lines. It bit the shape a reviewer writes in a test and missed the shape a session actually writes |
+| the corpus barrier | missed `import src.holdout`, which works because `src/` is an implicit namespace package — the spelling that matches the file tree, and the one T00A's own description used. **The gate behind the hook had the same hole, and the branch that rewrote that gate did not close it** |
+
+Each of the first three was declared impossible by prose sitting beside the code.
+
+`gate-proof` catches this for gates, because a mutation is planted by something that is not the
+detector. **Nothing catches it for hooks, barriers, checks or tests**, and that is where it keeps
+happening.
+
+**So: the case a guard is tested on may not come from whoever built the guard's idea of the
+failure.** It comes from a shape the guard did not anticipate — a command somebody actually ran, an
+import somebody actually wrote, a price list nobody here drew. Where that is genuinely impossible,
+the test says so in one line, and the guard's docstring states what it therefore does not cover.
+
+**And when a guard is fixed, the gate behind it is re-read.** They usually share the assumption.
+
+---
+
 ## Oversight — four levels
 
 Many small sessions carry one real risk: **conceptual drift**. Each session is locally correct,
@@ -886,6 +914,7 @@ It is scheduled, not remembered: at the end of every phase, without exception.
 - Can it be validated with no cloud account? If not, why not?
 - Does it put a claim on a non-GA surface?
 - If it is a gate: is there a `gate-proof` mutation that proves it bites?
+- **If it is a guard, a barrier, a check or a hook: who wrote the case it is tested on?** See below.
 - If it touches a contract: does the change imply a restatement?
 - If it states a legal fact: which article, which instrument, verified when?
 - If the pattern comes from another project in this portfolio: **what problem did it solve there,
