@@ -8,7 +8,7 @@
 > itself → the gates are attacked from an independent corpus of real price lists.*
 
 ```
-make claim-1          the eval and the fourteen planted mutations
+make claim-1          the eval, and the thirteen mutations claim 1 owns
 make eval-guardrail   the eval alone, about ten seconds
 ```
 

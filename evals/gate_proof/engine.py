@@ -58,7 +58,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -160,8 +159,14 @@ def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str]
     """Run one eval inside the workspace and parse its JSON. `None` means it did not finish.
 
     `PYTHONPATH` puts the workspace ahead of the editable install, so the subprocess imports
-    the **mutated** `holdout` rather than the one in the working tree. That is checked rather
-    than assumed: `_assert_workspace_is_what_ran` compares the module path the eval reports.
+    the **mutated** `holdout` rather than the one in the working tree.
+
+    **That is relied on, not verified.** An earlier version of this docstring said it was
+    checked and named a function that has never existed in this repository, which is a worse
+    error than the gap it was covering. What makes the gap survivable is its failure mode: if
+    the workspace were not what ran, every mutation would report `SURVIVED` at once, because
+    every one of them would have been planted in a copy nothing imported. Thirteen
+    simultaneous survivals is not a failure anybody misses.
     """
     environment = {
         "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
@@ -233,9 +238,32 @@ def locate(text: str, anchor: str) -> list[tuple[int, int]]:
     return hits
 
 
+class MutationEscapesTheWorkspaceError(Exception):
+    """A mutation named a path outside the temporary copy.
+
+    The guarantee this harness makes — *nothing here touches the working tree* — rests on
+    every write landing inside the workspace, and `workspace / mutation.file` does not
+    enforce that on its own: an absolute path replaces the left side entirely, and `..`
+    walks out. No committed mutation does either, which is exactly why it would have gone
+    unnoticed. Raised rather than returned, because it is not a verdict about a gate: it is
+    a statement that the harness was asked to do something it must never do.
+    """
+
+
+def _inside(workspace: Path, relative: str) -> Path:
+    candidate = (workspace / relative).resolve()
+    root = workspace.resolve()
+    if not candidate.is_relative_to(root):
+        raise MutationEscapesTheWorkspaceError(
+            f"{relative!r} resolves to {candidate}, outside the workspace at {root}. "
+            "A mutation may only edit the copy."
+        )
+    return candidate
+
+
 def _apply(workspace: Path, mutation: Mutation) -> str | None:
     """Plant the mutation, or say why it is stale. Returns the original text on success."""
-    target = workspace / mutation.file
+    target = _inside(workspace, mutation.file)
     if not target.exists():
         return None
     original = target.read_text(encoding="utf-8")
@@ -252,14 +280,23 @@ def _apply(workspace: Path, mutation: Mutation) -> str | None:
 
 
 def _restore(workspace: Path, mutation: Mutation, original: str) -> None:
-    (workspace / mutation.file).write_text(original, encoding="utf-8")
+    _inside(workspace, mutation.file).write_text(original, encoding="utf-8")
 
 
-def run(claim: int | None = None) -> Report:
+def run(claim: int) -> Report:
+    """Execute one claim's mutations. A claim is required, and that is the design.
+
+    There is deliberately no "run everything" mode. A mutation is planted to prove that one
+    claim's gate bites, and `make claim-N` is where that claim is proved end to end — so a
+    mutation runs there and nowhere else. Making the claim mandatory means the duplication
+    this split removed cannot be reintroduced by dropping an argument, and it gives
+    `ledger.the-ledger-executes-nothing` something exact to look for: a recipe that names
+    this module *with* `--claim` executes, and one that names it without runs the ledger.
+    """
     mutations = load_mutations(claim)
     if not mutations:
         return Report(
-            claim=claim or 0,
+            claim=claim,
             title="gate-proof — no mutation is declared",
             checks=(
                 Check(
@@ -329,7 +366,7 @@ def _judge(
     original = _apply(workspace, mutation)
     if original is None:
         # Rule 3 in its usual form: the anchor is gone, or is now ambiguous.
-        target = workspace / mutation.file
+        target = _inside(workspace, mutation.file)
         occurrences = (
             len(locate(target.read_text(encoding="utf-8"), mutation.anchor))
             if target.exists()
@@ -369,7 +406,7 @@ def _judge(
     return Result(mutation, Verdict.BIT, "", tripped=mutation.targets, also_fell=also)
 
 
-def _report(claim: int | None, results: list[Result]) -> Report:
+def _report(claim: int, results: list[Result]) -> Report:
     checks: list[Check] = []
     for result in results:
         bit = result.verdict is Verdict.BIT
@@ -393,7 +430,7 @@ def _report(claim: int | None, results: list[Result]) -> Report:
         )
     bit_count = sum(1 for r in results if r.verdict is Verdict.BIT)
     return Report(
-        claim=claim or 0,
+        claim=claim,
         title=f"gate-proof — every gate bites, or it is not a gate ({bit_count}/{len(results)})",
         checks=tuple(checks),
         numbers=(
@@ -412,13 +449,3 @@ def _report(claim: int | None, results: list[Result]) -> Report:
             "a finding, never something to widen an assertion around",
         ),
     )
-
-
-def main(argv: Sequence[str]) -> int:
-    claim: int | None = None
-    for index, argument in enumerate(argv):
-        if argument == "--claim" and index + 1 < len(argv):
-            claim = int(argv[index + 1])
-    from evals.report import main as render_main
-
-    return render_main(run(claim), argv)
