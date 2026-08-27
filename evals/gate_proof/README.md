@@ -1,20 +1,48 @@
-# `make gate-proof` — break every gate on purpose
+# `gate-proof` — break every gate on purpose, and know who owns each break
 
-A gate that has never refused anything has not been tested. This is the target that refuses
-to take that on trust: it plants a deliberate break in `src/holdout/`, runs a claim's eval
-against it, and demands that **the check named in advance** goes red for the stated reason.
+A gate that has never refused anything has not been tested. This directory refuses to take
+that on trust: it plants a deliberate break in `src/holdout/`, runs a claim's eval against
+it, and demands that **the check named in advance** goes red for the stated reason.
+
+Two halves, and they are different jobs.
 
 ```
-make gate-proof             every claim's mutations
-make gate-proof CLAIM=1     ... or via  python -m evals.gate_proof --claim 1
+make claim-N     the executor · runs the eval, then plants the mutations claim N owns
+make gate-proof  the ledger   · runs nothing, audits that every mutation is owned once
 ```
+
+**A mutation belongs to exactly one claim.** It is planted to prove that one claim's gate
+bites, and `make claim-N` is where that claim is proved end to end — so that is where it
+runs, and nowhere else. `engine.run` requires a claim number; there is deliberately no "run
+everything" mode, which is what stops the duplication being reintroduced by dropping an
+argument.
+
+`make gate-proof` is then free to be an accountant instead of a second executor:
+
+* **no orphan** — a mutation no claim target would ever run. Nothing caught that before;
+  a YAML dropped into `mutations/claim-9/` with no `claim-9` target was planted and forgotten;
+* **no duplicate** — a mutation two targets both run. This one is not hypothetical either:
+  `claim-1` and `gate-proof` both ran claim 1's thirteen mutations, and the CI job took
+  **13m06s** to prove the same thing twice;
+* **no unproven gate** — a `claim-N` target with no mutations at all, which is CLAUDE.md's
+  checklist question made structural.
+
+It also asks the static half of rule 3 — does every anchor still occur exactly once in the
+source it names — because that costs milliseconds and does not need the eval to run.
+
+The ledger is itself a gate, and it is the one gate that cannot have a `gate-proof` mutation,
+because it *is* `gate-proof`. `tests/evals/test_ledger.py` breaks every one of its checks on
+a deliberately broken arrangement instead.
 
 Nothing here touches the working tree. Each run copies the source it needs into a temporary
-directory and mutates the copy, so an interrupted run cannot leave a planted mutation behind.
+directory and mutates the copy, so an interrupted run cannot leave a planted mutation behind
+— and a mutation whose `file:` resolves outside that copy raises rather than writing.
 
 ---
 
 ## The three rules
+
+These three govern the **executor**. The ledger runs nothing, so none of them applies to it.
 
 **1 · Green first.** Before a mutation is planted, the check it claims to trip must already
 be passing. A mutation whose target was red anyway proves nothing — the failure it produces

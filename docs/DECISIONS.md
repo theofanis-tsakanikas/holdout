@@ -250,6 +250,34 @@ recomputation. Good news about the design and useless as proof, so the eval gain
 that erases the bounds and the checks together — internally consistent, and refused by exactly
 one line.
 
+**A mutation is owned by exactly one claim, and `gate-proof` audits rather than executes.** ·
+2026-08-27
+`make claim-N` runs its eval and then plants the mutations that claim owns; `make gate-proof`
+runs nothing and checks the arrangement. `engine.run` requires a claim number, so there is no
+"run everything" mode to fall back into.
+
+*What prompted it:* `claim-1` and `gate-proof` both ran claim 1's thirteen mutations and the CI
+job took **13m06s** to prove the same thing twice — untenable once claims 2 to 4 land. Three
+alternatives were weighed and rejected: raising the timeout again (defers, does not fix);
+special-casing the discovery step so it knows which targets subsume which (*a gate with special
+cases is a gate with somewhere to hide*); and reducing `claim-N` to its eval alone (then no
+single command proves a claim end to end).
+
+*What it bought beyond the minutes:* **the orphan check, which nothing had before.** A mutation
+dropped into `mutations/claim-9/` when no `claim-9` target exists was planted, never run, and
+never missed. And the reverse — a `claim-N` target with no mutation planted against it — is now
+a build failure, which is CLAUDE.md's checklist question (*if it is a gate, is there a
+`gate-proof` mutation that proves it bites?*) made structural rather than remembered.
+
+Ownership is read out of the **Makefile**, because the Makefile is what CI runs. A registry or
+a naming convention would be a second source of truth about which command proves what.
+
+**The ledger is the one gate that cannot have a gate-proof mutation, because it is gate-proof.**
+· 2026-08-27
+So it is proved by unit tests that break each of its checks on a deliberately broken
+arrangement — `tests/evals/test_ledger.py`. A gate that has only ever been seen green has not
+been tested, and that applies to the accountant as much as to anything it counts.
+
 ---
 
 ## Deliberately deferred

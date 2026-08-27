@@ -41,10 +41,11 @@ jobs:
   gate:
     name: gate
     runs-on: ubuntu-latest
-    # Raised from 15 when `claim-1` landed. `make check` is half a minute; the claim targets
-    # are minutes, because `gate-proof` runs a claim's whole eval once per planted mutation
-    # and that is the cost of the thing being proved rather than asserted.
-    timeout-minutes: 30
+    # Back to 15 now that each mutation runs once. `make check` is seconds; `make claim-1`
+    # is minutes, because a claim's whole eval runs once per planted mutation and that is
+    # the cost of the thing being proved rather than asserted. It was briefly 30, when
+    # `claim-1` and `gate-proof` both ran claim 1's mutations and the job took 13m06s.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -73,10 +74,10 @@ jobs:
       # that exists but is never run is impossible by construction. `claim-1` and
       # `gate-proof` arrived that way and this file did not change to admit them.
       #
-      # `make claim-1` and `make gate-proof` both plant claim 1's mutations, so claim 1's
-      # eval runs twice here. That is deliberate: the alternative is a discovery step that
-      # knows which targets subsume which, and a gate with special cases is a gate with
-      # somewhere to hide.
+      # Each mutation runs exactly once, under the claim target that owns it. `gate-proof`
+      # runs nothing: it audits the ownership, and it is what catches an orphaned mutation
+      # that no claim target would ever plant. No special case is needed here for that -
+      # the loop still just runs every target it finds.
       - name: every claim target that exists
         run: |
           set -euo pipefail

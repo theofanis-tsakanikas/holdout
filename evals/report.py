@@ -58,7 +58,10 @@ class Check:
 class Report:
     """Everything one claim's eval has to say."""
 
-    claim: int
+    claim: int | None
+    """The claim this report is about, or `None` where it is about the arrangement of
+    several — `gate-proof`'s ledger audits every claim's mutations and belongs to none."""
+
     title: str
     checks: tuple[Check, ...]
     numbers: tuple[tuple[str, str], ...] = ()
@@ -85,7 +88,8 @@ def render(report: Report, stream: TextIO | None = None) -> None:
     """Print a report the way the terminal shots in CLAUDE.md's shot list want it."""
     out = stream if stream is not None else sys.stdout
     _rule(out)
-    print(f"claim {report.claim} · {report.title}", file=out)
+    heading = f"claim {report.claim} · " if report.claim is not None else ""
+    print(f"{heading}{report.title}", file=out)
     _rule(out)
 
     width = max((len(c.id) for c in report.checks), default=0)

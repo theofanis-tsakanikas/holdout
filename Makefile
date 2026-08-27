@@ -64,6 +64,8 @@ contracts-write:  ## recompile every consumer and write it to generated/
 
 # ------------------------------------------------------------------------- the claims
 
+# A claim target proves its claim end to end: the eval, then the mutations planted to show
+# that claim's gates bite. It is the only place claim 1's mutations run.
 claim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
 	$(RUN) python -m evals.guardrail
 	$(RUN) python -m evals.gate_proof --claim 1
@@ -71,7 +73,12 @@ claim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
 eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 	$(RUN) python -m evals.guardrail
 
-gate-proof:  ## break every gate on purpose and demand a refusal from the gate that is named
+# The ledger, not the executor. Each claim target plants its own mutations, so this one
+# runs nothing and instead checks the arrangement: every mutation owned by exactly one
+# claim target, no orphan, no duplicate, no claim target with nothing planted against it.
+# Before this split, `claim-1` and `gate-proof` both ran claim 1's thirteen mutations and
+# CI spent thirteen minutes proving the same thing twice.
+gate-proof:  ## audit mutation ownership — every planted break owned by exactly one claim
 	$(RUN) python -m evals.gate_proof
 
 corpus:  ## rebuild corpus/real/data from the sources MANIFEST.yaml cites — NEEDS THE NETWORK

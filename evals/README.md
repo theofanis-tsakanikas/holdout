@@ -26,7 +26,8 @@ evals/
     checks.py               the assertions, each with a stable id
     __main__.py             `python -m evals.<claim>` -> numbers, and an exit code
   gate_proof/
-    engine.py               the three rules
+    engine.py               the executor: the three rules
+    ledger.py               the accountant: ownership, and nothing unowned
     mutations/claim-N/      one YAML per planted break
 ```
 
@@ -40,6 +41,12 @@ claim-N:
 
 `ci` discovers `claim-*` and `gate-proof` by grepping the Makefile rather than by listing
 them, so a claim target that exists but is never run is impossible by construction.
+
+**A claim target owns its mutations and is the only place they run.** `make gate-proof`
+executes nothing; it audits that arrangement — every mutation owned by exactly one claim
+target, no orphan, no duplicate, no claim target with nothing planted against it. That last
+one is CLAUDE.md's checklist question made structural: *if it is a gate, is there a
+`gate-proof` mutation that proves it bites?*
 
 ---
 
@@ -95,9 +102,9 @@ matters:
 ## Running them
 
 ```
-make claim-1          the eval and its mutations         ~3 min
-make eval-guardrail   the eval alone                     ~10 s
-make gate-proof       every claim's mutations
+make claim-1          the eval and the mutations it owns   ~3 min
+make eval-guardrail   the eval alone                       ~10 s
+make gate-proof       the ownership audit, runs nothing    <1 s
 ```
 
 `make check` deliberately does **not** run them: it is the fast local gate and the claims
