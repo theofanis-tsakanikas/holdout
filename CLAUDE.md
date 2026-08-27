@@ -769,6 +769,18 @@ branch and required checks says something on its own.
 **The workflows that spend money dispatch from `main` only.** `deploy`, `backfill`, `run` and
 `destroy` never run from an unreviewed branch.
 
+**This repository is public. Every commit is a publication — at the moment of the commit, not at
+the moment of the announcement.** The protection is `gitleaks` as a required check, not the
+visibility setting, and it is already in place.
+
+**Evidence is scrubbed before it is committed.** Logs, assertion output and screenshots from `run`
+are never committed raw: screenshots go through `aws-mask`, and logs are filtered of workspace
+URLs and account identifiers first. This rule would be needed regardless of repository
+visibility — that evidence ends up in the README and the article, which are public either way.
+
+**Deferring is not forgetting.** Anything deliberately deferred names, in `docs/DECISIONS.md`, the
+condition that will unlock it. An item with no unlock condition is not deferred; it is forgotten.
+
 `PLAN.md` is updated at the end of every session: what closed, what is open.
 
 ---
