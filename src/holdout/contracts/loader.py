@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
@@ -26,12 +27,14 @@ from holdout.contracts.expression import ExpressionError
 from holdout.contracts.expression import parse as parse_expression
 from holdout.contracts.model import (
     BalanceCovariates,
+    Carryover,
     ContractSet,
     Covariate,
     FloorBehaviour,
     Guardrail,
     GuardrailRule,
     GuardrailWindow,
+    InferenceSettings,
     Metric,
     MetricSource,
     Policy,
@@ -86,13 +89,20 @@ CLAIMED_FILES = {
     "guardrails": None,  # every *.yaml
     "policies": None,  # every *.yaml
     "vocabularies": frozenset({REASON_CODES.name}),
-    "design": frozenset({"balance_covariates.yaml", "form.schema.yaml"}),
+    "design": frozenset({"balance_covariates.yaml", "form.schema.yaml", "inference.yaml"}),
 }
 
-#: Families whose numbers come from outside the repository, and which the independent
-#: provenance walk therefore descends. The design form is excluded deliberately: it is a
-#: JSON Schema, so its `value` keys are schema vocabulary rather than data.
-PROVENANCE_FAMILIES = ("guardrails", "policies")
+#: Families whose numbers the independent provenance walk descends. Originally "numbers
+#: that come from outside the repository", which is why `design` was absent; `inference.yaml`
+#: made that description too narrow. Its nine values come from *inside* — they are
+#: conventions this repository adopts — and every one of them still needs an argument beside
+#: it, because a threshold nobody justified is a dial that will be turned. `kind:
+#: scenario_assumption` is what carries them, and the walk is what makes it compulsory.
+#:
+#: The design *form* is still excluded from the walk in the only way that matters: it is a
+#: JSON Schema, read by `_check_form` rather than by `validated`, so its `value` keys — which
+#: are schema vocabulary and not data — are never descended.
+PROVENANCE_FAMILIES = ("guardrails", "policies", "design")
 
 
 def repo_relative(path: Path, base: Path = REPO_ROOT) -> str:
@@ -167,6 +177,20 @@ def _as_date(value: Any) -> date:
 
 def _as_date_or_none(value: Any) -> date | None:
     return None if value is None else _as_date(value)
+
+
+def _as_decimal(value: Any) -> Decimal:
+    """A contract number as an exact `Decimal`, through its text.
+
+    PyYAML has already turned `0.05` into a binary float by the time this sees it. `str()`
+    of that float is the shortest decimal string that round-trips to it, which for any
+    literal a person actually typed is the literal itself — so the number that reaches the
+    arithmetic is the number on disk. `holdout.core.guardrails.envelope` does the same
+    thing at its own boundary and for the same reason.
+    """
+    if isinstance(value, Decimal | int) and not isinstance(value, bool):
+        return Decimal(value)
+    return Decimal(str(value))
 
 
 def _provenance(raw: dict[str, Any]) -> Provenance:
@@ -320,6 +344,38 @@ def _balance_covariates(raw: dict[str, Any]) -> BalanceCovariates:
     )
 
 
+def _inference(raw: dict[str, Any]) -> InferenceSettings:
+    quantiles = raw["quantiles"]
+    carryover = raw["carryover"]
+
+    def number(key: str) -> Decimal:
+        return _as_decimal(raw[key]["value"])
+
+    def whole(key: str) -> int:
+        return int(raw[key]["value"])
+
+    return InferenceSettings(
+        version=raw["version"],
+        effective_from=_as_date(raw["effective_from"]),
+        alpha=number("alpha"),
+        target_power=number("target_power"),
+        z_two_sided_alpha=_as_decimal(quantiles["z_two_sided_alpha"]["value"]),
+        z_one_sided_alpha=_as_decimal(quantiles["z_one_sided_alpha"]["value"]),
+        z_power=_as_decimal(quantiles["z_power"]["value"]),
+        balance_tolerance_smd=number("balance_tolerance_smd"),
+        exposure_min_pct=number("exposure_min_pct"),
+        holdout_share_pct=number("holdout_share_pct"),
+        neighbour_radius_m=whole("neighbour_radius_m"),
+        permutation_draws=whole("permutation_draws"),
+        max_assignment_attempts=whole("max_assignment_attempts"),
+        carryover=Carryover(
+            reference_price_memory=carryover["reference_price_memory"]["value"],
+            cross_price_substitution=carryover["cross_price_substitution"]["value"],
+            washout_weeks=carryover["washout_weeks"]["value"],
+        ),
+    )
+
+
 # --------------------------------------------------------------------------- the load
 
 
@@ -396,6 +452,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
     covariate_pairs = validated(
         [design_dir / "balance_covariates.yaml"], "balance_covariates.schema.json", "design"
     )
+    inference_pairs = validated([design_dir / "inference.yaml"], "inference.schema.json", "design")
     form_path = design_dir / "form.schema.yaml"
     if form_path.is_file():
         form_raw = read(form_path)
@@ -418,6 +475,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
         policies=policies,
         reason_codes=_reason_codes(reason_codes_pairs[0][1]),
         balance_covariates=_balance_covariates(covariate_pairs[0][1]),
+        inference=_inference(inference_pairs[0][1]),
         design_form=MappingProxyType(form_raw),
         census=counted,
     )

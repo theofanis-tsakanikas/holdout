@@ -71,7 +71,8 @@
               "STOPPING_RULE_PERMITS_PEEKING",
               "EXCLUSIONS_DEFINED_POST_HOC",
               "METRIC_NOT_IN_CONTRACT",
-              "UNITS_ALREADY_COMMITTED"
+              "UNITS_ALREADY_COMMITTED",
+              "NO_ADMISSIBLE_ASSIGNMENT"
             ]
           },
           "meaning": { "type": "string", "minLength": 20 },

@@ -195,7 +195,7 @@ def test_the_provenance_ratio_is_reported_on_a_red_build_too(
     before = run(sandbox)
     assert before == 0
     green = capsys.readouterr().out
-    assert "45/45 values carry a source" in green
+    assert "59/59 values carry a source" in green
 
     def unsource(document: Any) -> Any:
         document["windows"][0]["rules"][0]["thresholds"] = {"value": 3}
@@ -204,7 +204,7 @@ def test_the_provenance_ratio_is_reported_on_a_red_build_too(
     edit_contract(sandbox / "contracts" / "guardrails" / "floor.yaml", unsource)
     assert run(sandbox) == 1
     red = capsys.readouterr().err
-    assert "45/46 values carry a source" in red, red.splitlines()[:2]
+    assert "59/60 values carry a source" in red, red.splitlines()[:2]
 
 
 def test_the_ratio_counts_values_and_not_sources() -> None:

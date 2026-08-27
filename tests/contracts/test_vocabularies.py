@@ -45,6 +45,11 @@ AT_DESIGN = {
     "EXCLUSIONS_DEFINED_POST_HOC",
     "METRIC_NOT_IN_CONTRACT",
     "UNITS_ALREADY_COMMITTED",
+    # Added with the design engine. Without it a roster on which the re-randomisation
+    # screen never accepts has no correct output at all: raising would make an infeasible
+    # design an error, and the whole point of the engine is that infeasibility is a refusal
+    # that names what would fix it.
+    "NO_ADMISSIBLE_ASSIGNMENT",
 }
 AT_READOUT = {
     "IMBALANCED_PRE_PERIOD",

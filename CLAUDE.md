@@ -466,7 +466,22 @@ experiment that used it becomes retroactively uninterpretable.
 
 ### `design/` — the form, and `vocabularies/` — the refusal codes
 
-`design/form.schema.yaml` (the nine fields, with closed lists) and `design/balance_covariates.yaml`.
+`design/form.schema.yaml` (the nine fields, with closed lists), `design/balance_covariates.yaml`
+and `design/inference.yaml`.
+
+**`inference.yaml` is where α, the target power, the balance tolerance, the exposure threshold, the
+holdout share and the two budgets live** — every one of them a `{value, source}` pair like any other
+contract number. The alternative was a `Decimal` constant in a `.py` file, which is precisely the
+"value without a source" this layer exists to refuse: doctrine rule 3 does not care what extension
+the file has. Nothing in it is law and every source says so. It compiles to no consumer and is
+still validated, claimed and provenance-walked, because a threshold nobody justified is a dial that
+will eventually be turned.
+
+It also carries a `carryover:` block — two declared facts about grocery retail and one mitigation
+declared *absent*. **The interference table over the four units of randomisation is derived from
+that block, never written out**, so a contract that declared a washout long enough to exhaust the
+reference price would admit `store_week` with no code change. A hard-coded table would pass every
+test while quietly being a second definition of a contract value.
 
 **`vocabularies/reason_codes.yaml` is deliberately not in `design/`**, because the system refuses at
 three moments and only one of them is a design. One file, three sections, and a test that no code
@@ -488,7 +503,8 @@ at_decision: CATEGORY_FROZEN · COST_STALE · BELOW_ABSOLUTE_FLOOR · BELOW_MARG
              PRIOR_PRICE_NOT_ESTABLISHED · INPUT_NOT_AVAILABLE
 at_design:   UNDERPOWERED_FOR_DURATION · UNDERPOWERED_FOR_CAPACITY ·
              UNIT_GUARANTEES_INTERFERENCE · STOPPING_RULE_PERMITS_PEEKING ·
-             EXCLUSIONS_DEFINED_POST_HOC · METRIC_NOT_IN_CONTRACT · UNITS_ALREADY_COMMITTED
+             EXCLUSIONS_DEFINED_POST_HOC · METRIC_NOT_IN_CONTRACT ·
+             UNITS_ALREADY_COMMITTED · NO_ADMISSIBLE_ASSIGNMENT
 at_readout:  IMBALANCED_PRE_PERIOD · EXPOSURE_BELOW_THRESHOLD ·
              CONTAMINATED_ASSIGNMENT · POWER_NOT_REACHED
 ```

@@ -126,6 +126,16 @@ def _summary(contracts: ContractSet, expected: dict[str, str]) -> list[str]:
         f" {len(contracts.reason_codes.at_design)} at design,"
         f" {len(contracts.reason_codes.at_readout)} at readout)"
         f" · balance covariates {len(contracts.balance_covariates.covariates)}",
+        # The inference settings compile to nothing — no consumer is generated from them —
+        # so this line is the only place the build says out loud that they were read at
+        # all. A contract validated by nobody's eye and consumed by no artefact is one
+        # nobody would notice going missing.
+        f"inference    alpha {contracts.inference.alpha}"
+        f" · power {contracts.inference.target_power}"
+        f" · holdout {contracts.inference.holdout_share_pct}%"
+        f" · exposure floor {contracts.inference.exposure_min_pct}%"
+        f" · SMD tolerance {contracts.inference.balance_tolerance_smd}"
+        f" · B {contracts.inference.permutation_draws}",
         _provenance_line(contracts.census),
         f"generated    {len(expected)} artefact(s) from {len(in_force)} metric(s)"
         f" and the design form",
