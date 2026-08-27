@@ -37,6 +37,34 @@ import pytest
 import holdout.core
 from holdout.contracts.model import ContractSet
 from holdout.core.decision import DecisionKey, DecisionPath
+from holdout.core.design import (
+    DecisionRule,
+    DesignForm,
+    DesignRefusal,
+    DesignRefusalReason,
+    Exclusion,
+    Feasible,
+    FilledBy,
+    Intervention,
+    MaxDuration,
+    Mde,
+    Scope,
+    StoppingRule,
+)
+from holdout.core.experiment import (
+    CheckResult,
+    Contamination,
+    CovariateMatrix,
+    Design,
+    Exposure,
+    Period,
+    Readout,
+    ReadoutRefusal,
+    ReferencePlan,
+    SealedAssignment,
+    Standardised,
+    Statistic,
+)
 from holdout.core.guardrails import Announcement, Assessment, CertifiedPrice, ProposedPrice, Refusal
 from holdout.core.guardrails.envelope import (
     Bound,
@@ -154,6 +182,121 @@ EXACT_FIELDS: dict[type[Any], frozenset[str]] = {
         {"perishable_exemption", "lookback_days", "progressive_reduction_window_days", "safe_state"}
     ),
     Money: frozenset({"cents"}),
+    # ------------------------------------------------------- the design engine
+    #
+    # Not on the decision path: an experiment design is about *which* units get *which
+    # policy*, never about who buys anything. Listed anyway, for the reason this file's
+    # docstring gives — an unlisted type is a place to put a field nobody asserted, and
+    # "it is only the experiment layer" is exactly how that would start. The vocabulary
+    # here is arm, unit, stratum and roster. Never cohort, never segment.
+    DesignForm: frozenset(
+        {
+            "hypothesis",
+            "intervention",
+            "scope",
+            "primary_metric",
+            "unit",
+            "mde",
+            "max_duration",
+            "exclusions",
+            "decision_rule",
+            "filled_by",
+        }
+    ),
+    Intervention: frozenset({"treatment", "control"}),
+    Scope: frozenset({"categories", "products", "stores"}),
+    Mde: frozenset({"kind", "value", "direction"}),
+    MaxDuration: frozenset({"weeks"}),
+    Exclusion: frozenset({"store_id", "reason"}),
+    DecisionRule: frozenset({"if_significant", "if_not_significant", "if_refused"}),
+    StoppingRule: frozenset({"kind", "spending_function", "looks"}),
+    FilledBy: frozenset({"kind", "name"}),
+    DesignRefusal: frozenset({"experiment_id", "reasons"}),
+    DesignRefusalReason: frozenset({"code", "detail", "what_would_fix_it"}),
+    Feasible: frozenset(
+        {
+            "experiment_id",
+            "form_digest",
+            "metric_ref",
+            "roster",
+            "declared_exclusions",
+            "automatic_exclusions",
+            "required_per_arm",
+            "weeks",
+            "mde_absolute",
+            "two_sided",
+            "assignment",
+            "balance",
+        }
+    ),
+    # ------------------------------------------------------- the experiment core
+    #
+    # `SealedAssignment` is the second type in this repository that is deliberately not a
+    # dataclass — its constructor raises, which is most of doctrine rule 7 — so it is
+    # `__slots__` that has to be read here. That is the hole a review found in an earlier
+    # version of this file for `CertifiedPrice`, and it stays closed by listing both.
+    SealedAssignment: frozenset(
+        {
+            "_witness",
+            "_experiment_id",
+            "_seed",
+            "_draw_index",
+            "_arms",
+            "_form_digest",
+            "_covariate_digest",
+            "_digest",
+        }
+    ),
+    CovariateMatrix: frozenset({"ids", "kinds", "rows"}),
+    Standardised: frozenset({"covariate_id", "level", "squared"}),
+    Contamination: frozenset(
+        {
+            "digest_matches",
+            "redraw_matches",
+            "reassigned",
+            "misdelivered",
+            "undelivered",
+            "comparison_is_vacuous",
+        }
+    ),
+    Exposure: frozenset({"assigned_treated", "exposed_treated"}),
+    Design: frozenset({"units", "columns", "rows"}),
+    Statistic: frozenset({"difference", "variance", "squared", "sign"}),
+    ReferencePlan: frozenset({"design", "grand_mean", "plans"}),
+    Period: frozenset({"opens_on", "ends_on"}),
+    CheckResult: frozenset({"check", "passed", "figure"}),
+    Readout: frozenset(
+        {
+            "experiment_id",
+            "metric_ref",
+            "data_version",
+            "period",
+            "seed",
+            "draw_index",
+            "digest",
+            "uplift",
+            "confidence_interval",
+            "p_value",
+            "draws",
+            "alpha",
+            "statistic",
+            "checks",
+            "balance",
+        }
+    ),
+    ReadoutRefusal: frozenset(
+        {
+            "experiment_id",
+            "metric_ref",
+            "data_version",
+            "period",
+            "seed",
+            "draw_index",
+            "digest",
+            "checks",
+            "balance",
+        }
+    ),
 }
 
 #: Substrings that name a person or a way of reaching one. Broad on purpose — a false

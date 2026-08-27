@@ -309,6 +309,77 @@ what independence costs, and it is the same gap the ladder-ceiling deferral alre
 other side. It is a deferral with the eval that closes it named, not a defect that was fixed by
 letting the corpus read a guardrail.
 
+**What the design engine and the experiment core settled.** A form, three sources, one answer:
+the engine does not know and does not care who filled it, and a test runs one identical design
+under all three attributions and asserts the three experiments are the same lottery. Moment 1
+returns a `Feasible` carrying the sealed assignment or a `DesignRefusal` carrying **every** code
+that fired; moment 2 refuses to compute anything before the declared end, consulting neither the
+decision rule nor the stopping rule nor who is asking; moment 3 runs all four checks always and
+reports four figures whether or not one of them failed. The estimator is Lin's adjustment,
+studentized against the **weak** null, with a permutation test over the draws the same screen
+accepts and an interval that inverts that test — exact in `Fraction` throughout, endpoints as
+integers in the metric's own unit, no tolerance anywhere. `SealedAssignment` is the certificate
+pattern one package along, and the digest is what survives the round trip through a table that a
+type cannot follow.
+
+**Two things are derived rather than written down, and both were nearly tables.** The
+interference refusal over the four units of randomisation is a pure function of
+`contracts/design/inference.yaml`'s `carryover:` block, so a contract declaring a washout long
+enough to exhaust the reference price admits `store_week` with **no code change** — asserted by
+handing the function an independently built block with the flag cleared. And the readout's
+balance check re-measures the covariates as they stood at close rather than re-running the screen
+on the screen's own matrix, which would have passed by construction. Restated covariates,
+attrition and a moved roster each turn it red in the suite.
+
+**A new contract family, because a `Decimal` constant in a `.py` file is a value without a
+source.** α, the target power, the balance tolerance, the exposure floor, the holdout share, the
+two budgets, the neighbour radius and three standard-normal quantiles now live in
+`contracts/design/inference.yaml`, every one a `{value, source}` pair, every one a
+`scenario_assumption` — none of this is law and the split is what keeps that legible. The
+quantiles are **computed twice**: written out as literals because `core/` may not import
+`statistics`, and recomputed in the contract test with `NormalDist().inv_cdf`. `design` joined
+`PROVENANCE_FAMILIES`, whose description had said "numbers that come from outside the
+repository" — too narrow, since a threshold invented *inside* needs an argument beside it just
+as much. The provenance census went from 45 values to 59.
+
+**One code was added to the closed vocabulary and the addition was a code change with a test.**
+`NO_ADMISSIBLE_ASSIGNMENT` — the re-randomisation screen accepted nothing inside the declared
+budget. Without it a roster the screen can never balance had *no correct output*: raising would
+have made an infeasible design an error, and the whole point of the engine is that infeasibility
+is a refusal that names what would fix it.
+
+**Three things the SPEC asserted that did not survive being written**, and each is corrected in
+the code rather than worked around. Moment 1 was to *generate* the committed seed; `core/` reads
+no clock, no environment and no random source, so the seed is an argument — which is also the
+stronger position, since a seed the engine invented is a seed nobody committed to in advance.
+The signature carried no covariate *values*, only the contract naming the columns, and the screen
+cannot run without them. And a one-sided design was to size on a one-sided quantile that the
+contract never declared, so `z_one_sided_alpha` joined it with its own source rather than being
+computed in Python. A fourth was an internal contradiction: `UNITS_ALREADY_COMMITTED` cannot both
+be an automatic exclusion and a refusal, and it is the refusal — the contract's own remedy says
+*exclude the committed units*, in the imperative, so dropping them here would be the engine
+answering a question it was asked to refuse.
+
+**And the finding that decides whether claim 2 can be computed at all.** The screen admits a
+candidate only when every declared covariate is inside a standardised difference of 0.10. At the
+scenario's own shape — 100 stores, a 20% holdout — the standardised difference has a spread of
+about 0.25, so each of seven comparisons passes about 31% of the time and all seven pass about
+**three times in ten thousand**. Measured, it is roughly one draw in a thousand. With
+`max_assignment_attempts` at 10,000 the reference set therefore holds single figures of draws,
+and the smallest attainable p-value — `2 / (1 + B)` inside an inverted interval, because the
+mirror of the realised assignment always ties under a large shift — is **above the declared α**.
+No experiment at the scenario's shape could report a significant effect, so **W6's false-refusal
+rate would be 100% by construction**, for a reason that has nothing to do with the estimator.
+Nothing in the code is wrong: `reference_set` returns what it found, the p-value divides by that,
+and the readout prints B. What is missing is a budget or a mechanism, and choosing between the
+four candidates — a far larger budget, a wider tolerance, a larger holdout share, or stratified
+randomisation instead of rejection sampling — is a contract or design change that belongs to
+T003. It is a `docs/DECISIONS.md` deferral **and** a test that measures the rate, so T003 cannot
+start without meeting the number.
+
+**Deliberately not built:** no `claim-N` target, no `gate-proof` mutation, nothing under `evals/`.
+The suite went from 510 tests to 747 and `make claim-1` is still 9/9 with 13/13 mutations biting.
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase

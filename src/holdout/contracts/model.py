@@ -265,6 +265,71 @@ class BalanceCovariates:
 
 
 @dataclass(frozen=True, slots=True)
+class Carryover:
+    """What a price moved in one place is still doing somewhere else.
+
+    Three declared facts about grocery retail, two present and one deliberately absent.
+    The interference table over the four units of randomisation is *derived* from this
+    block by `holdout.core.design.feasibility.interference_of` and is nowhere written out:
+    a hard-coded table would pass every test while quietly being a second definition of a
+    contract value.
+
+    `washout_weeks` is `None` where none is declared, and `None` is not zero. Zero would
+    assert that no washout is needed, which is a different claim and a much stronger one.
+    """
+
+    reference_price_memory: bool
+    cross_price_substitution: bool
+    washout_weeks: int | None
+
+    @property
+    def reference_price_is_exhausted(self) -> bool:
+        """Whether a declared washout outlasts the reference price the shopper carries.
+
+        A washout is only a mitigation if it is long enough, and "long enough" is exactly
+        what a declared number of weeks asserts. With no washout declared, nothing is
+        exhausted and the memory carries across every time boundary.
+        """
+        return self.washout_weeks is not None and self.washout_weeks > 0
+
+
+@dataclass(frozen=True, slots=True)
+class InferenceSettings:
+    """`contracts/design/inference.yaml`, resolved. `Decimal` and `int` only, never a float.
+
+    Fixed in a contract rather than as constants in a module, for the reason
+    `balance_covariates.yaml` gives about itself: anything that can be chosen after the
+    fact will be chosen after the fact. A `Decimal` constant in a `.py` file is precisely
+    the "value without a source" the contract layer exists to refuse — doctrine rule 3 does
+    not care what extension the file has.
+    """
+
+    version: int
+    effective_from: date
+    alpha: Decimal
+    target_power: Decimal
+    z_two_sided_alpha: Decimal
+    z_one_sided_alpha: Decimal
+    z_power: Decimal
+    balance_tolerance_smd: Decimal
+    exposure_min_pct: Decimal
+    holdout_share_pct: Decimal
+    neighbour_radius_m: int
+    permutation_draws: int
+    max_assignment_attempts: int
+    carryover: Carryover
+
+    def z_alpha(self, *, two_sided: bool) -> Decimal:
+        """The quantile the power calculation uses, named rather than chosen at the call site.
+
+        A one-sided design sizes on a smaller quantile and therefore needs fewer units, so
+        which one applies is a decision with consequences. Both are declared in the
+        contract and neither is computed here.
+        """
+        return self.z_two_sided_alpha if two_sided else self.z_one_sided_alpha
+
+
+@dataclass(frozen=True, slots=True)
 class ContractSet:
     """Every contract in the repository, validated and resolved.
 
@@ -279,6 +344,7 @@ class ContractSet:
     policies: tuple[Policy, ...]
     reason_codes: ReasonCodes
     balance_covariates: BalanceCovariates
+    inference: InferenceSettings
     design_form: MappingProxyType[str, Any]
     census: Any
     """The provenance walk's tally — see `holdout.contracts.provenance.Census`. Typed loosely

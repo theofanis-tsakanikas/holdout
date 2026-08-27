@@ -1,0 +1,200 @@
+# The inference settings. Fixed here, not chosen per experiment — for exactly the reason
+# balance_covariates.yaml is.
+#
+# An alpha chosen per experiment is a degree of freedom, and anything that can be chosen
+# after the fact will be chosen after the fact. The same argument covers the balance
+# tolerance, the exposure threshold and the number of permutation draws: every one of them
+# is a dial that, left loose, could be turned until a result came out flattering.
+#
+# Why a contract and not a Decimal constant in a .py file: a constant in code is precisely
+# the "value without a source" that the contract layer exists to refuse. Doctrine rule 3 —
+# nothing is invented, and a number with no argument beside it is invented whatever file it
+# sits in.
+#
+# Every value here is a `scenario_assumption`. None of them is law. This project's guardrail
+# contracts carry real legal instruments and these do not, and saying so is the whole point
+# of the split: an alpha of 0.05 is a convention this repository adopts, not a fact anyone
+# verified in a gazette.
+
+version:        1
+effective_from: 2026-03-01
+
+# ------------------------------------------------------------------ the declared level
+
+alpha:
+  value: 0.05
+  source:
+    kind: scenario_assumption
+    note: >-
+      The declared false-positive rate. 0.05 is the conventional level in industrial
+      experimentation and is adopted here as a convention, not as a fact. Claim 2 is that
+      on an A/A split the system reports a significant effect no more often than THIS
+      number, so the value has to be declared before the harness runs and never after.
+    verified_on: 2026-08-27
+
+target_power:
+  value: 0.80
+  source:
+    kind: scenario_assumption
+    note: >-
+      The power the feasibility check sizes for. 0.80 is the conventional target and is
+      adopted as a convention. It decides only whether a design may exist; it decides
+      nothing at readout, where the realised variance does.
+    verified_on: 2026-08-27
+
+quantiles:
+
+  z_two_sided_alpha:
+    value: 1.959964
+    source:
+      kind: scenario_assumption
+      note: >-
+        The standard normal quantile at 1 - alpha/2 = 0.975, to six decimal places. It is
+        written out because holdout.core may not import a statistics library, and it is
+        recomputed independently in tests/contracts/test_inference.py with
+        statistics.NormalDist().inv_cdf(0.975). A boundary that has to be known is computed
+        twice — the eval layer's rule 5, applied to a constant.
+      verified_on: 2026-08-27
+
+  z_one_sided_alpha:
+    value: 1.644854
+    source:
+      kind: scenario_assumption
+      note: >-
+        The standard normal quantile at 1 - alpha = 0.95, to six decimal places, recomputed
+        in the same test with statistics.NormalDist().inv_cdf(0.95). It is declared here
+        rather than computed in code for the reason the whole file exists: a one-sided
+        design sizes on a smaller quantile than a two-sided one, so writing 1.644854 into
+        a .py file would be a load-bearing number with no argument beside it.
+      verified_on: 2026-08-27
+
+  z_power:
+    value: 0.841621
+    source:
+      kind: scenario_assumption
+      note: >-
+        The standard normal quantile at target_power = 0.80, to six decimal places,
+        recomputed in the same test with statistics.NormalDist().inv_cdf(0.80). Six places
+        is the declared precision: the power calculation is a normal approximation and its
+        answer is a ceiling over units, so a seventh place could not move a decision.
+      verified_on: 2026-08-27
+
+# ------------------------------------------------------------------ the four thresholds
+
+balance_tolerance_smd:
+  value: 0.10
+  source:
+    kind: scenario_assumption
+    note: >-
+      The largest standardised difference between arms, on any declared balance covariate,
+      that the pre-period screen and the readout check will admit. 0.10 is the threshold
+      most commonly cited as "negligible imbalance" in the matching literature and is
+      adopted as a convention. It is one number for both moments on purpose: a screen and a
+      check at different tolerances would let an assignment be accepted at design and
+      refused at readout for no reason anybody declared.
+    verified_on: 2026-08-27
+
+exposure_min_pct:
+  value: 95
+  source:
+    kind: scenario_assumption
+    note: >-
+      The share of assigned treated units that must actually have been exposed — the ESL
+      acknowledgement arrived and the price reached the shelf — before any number may be
+      stated. Below it the readout refuses with EXPOSURE_BELOW_THRESHOLD. It is a stated
+      assumption about how much dilution an intention-to-treat estimate may carry before
+      it stops being worth reporting, and it is not derived from anything observed here.
+    verified_on: 2026-08-27
+
+holdout_share_pct:
+  value: 20
+  source:
+    kind: scenario_assumption
+    note: >-
+      The share of the admissible roster held back as control. A share of the estate is
+      deliberately held back and locked from the start, and this is that share. Assumed
+      for this scenario: no chain's own holdout policy was obtained and none is claimed.
+    verified_on: 2026-08-27
+
+neighbour_radius_m:
+  value: 1000
+  source:
+    kind: scenario_assumption
+    note: >-
+      Two stores closer together than this are assumed to share shoppers, so the later
+      sorted member of the pair is excluded automatically before any count is taken.
+      Assumed of grocery retail in a dense European market; not measured here. The pairs
+      themselves are supplied to the engine, which never computes a distance.
+    verified_on: 2026-08-27
+
+# ------------------------------------------------------------------ the two budgets
+
+permutation_draws:
+  value: 1000
+  source:
+    kind: scenario_assumption
+    note: >-
+      How many candidate assignments the permutation reference set holds. The p-value rule
+      (1 + hits) / (1 + B) is exact at any B, so B buys resolution and not validity: 1000
+      resolves a p-value to a thousandth, which is finer than any decision the decision_rule
+      makes. The draws are taken once per experiment and reused at every step of the
+      interval's bisection, which is what keeps the cost at about B rather than B x steps.
+    verified_on: 2026-08-27
+
+max_assignment_attempts:
+  value: 10000
+  source:
+    kind: scenario_assumption
+    note: >-
+      How many candidate assignments the re-randomisation screen may reject before the
+      design is refused with NO_ADMISSIBLE_ASSIGNMENT. A budget rather than an unbounded
+      loop, because a roster on which the screen never accepts must produce a refusal that
+      names what would fix it and not a process that never returns.
+    verified_on: 2026-08-27
+
+# ------------------------------------------------------------------ what carries across
+
+# Two declared facts about grocery retail, and one mitigation that is declared ABSENT.
+# The interference table over the four units of randomisation is derived from these three
+# entries by holdout.core.design.feasibility.interference_of, and is nowhere written out:
+# a hard-coded table would pass every test while quietly being a second definition of a
+# contract value.
+#
+# They are assumptions about the trade, with a source, and they are NOT observations of
+# anything in this repository. In particular they are not grounded in what corpus/world/
+# generates: the generator was written to have reference-price memory and cross-price
+# effects, so resting the refusal on them would be the generator and the engine agreeing
+# with each other — and holdout.core may not know that corpus/ exists at all.
+
+carryover:
+
+  reference_price_memory:
+    value: true
+    source:
+      kind: scenario_assumption
+      note: >-
+        A shopper's willingness to pay at a store carries the price they last saw at that
+        store, so a price moved in one week is still acting on demand in the next. Widely
+        described in the pricing literature as reference-price behaviour; no chain's own
+        measurement was obtained and none is claimed.
+      verified_on: 2026-08-27
+
+  cross_price_substitution:
+    value: true
+    source:
+      kind: scenario_assumption
+      note: >-
+        Fresh categories inside one store contain substitutes, so a price move in one
+        category shifts demand in another. Assumed of the trade; not measured here.
+      verified_on: 2026-08-27
+
+  washout_weeks:
+    value: null
+    source:
+      kind: scenario_assumption
+      note: >-
+        No washout period is declared. Declaring one at least as long as the reference
+        price persists is what would make a within-store, across-time unit admissible —
+        and until one is declared and sourced, store_week is refused by this paragraph
+        rather than by a calculation. Null is the honest value and it is not zero.
+      verified_on: 2026-08-27

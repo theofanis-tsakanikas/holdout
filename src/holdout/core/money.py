@@ -46,6 +46,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_EVEN, Decimal, localcontext
+from fractions import Fraction
 
 #: Enough precision that no intermediate in this repository is ever inexact, and small
 #: enough to stay honest about it. A price times a forecast quantity times a percentage is
@@ -57,6 +58,20 @@ ONE_CENT = Decimal(1)
 
 class MoneyError(TypeError):
     """A monetary amount that arrived in a representation this system does not accept."""
+
+
+def decimal_of(value: Fraction) -> Decimal:
+    """An exact rational as a `Decimal`, at the precision this module declares.
+
+    Here rather than in three modules that each needed it. `Fraction` is how the experiment
+    core stays exact — every sum an integer, every mean a rational — and a rational has to
+    become a `Decimal` at exactly one point: when a figure is printed for a human. `float()`
+    is refused everywhere in this package, so this is the conversion, and putting it beside
+    `PRECISION` means the precision cannot drift between the callers.
+    """
+    with localcontext() as context:
+        context.prec = PRECISION
+        return Decimal(value.numerator) / Decimal(value.denominator)
 
 
 def _exact(value: Decimal | int | str) -> Decimal:

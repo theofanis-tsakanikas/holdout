@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/inference.schema.json",
+  "title": "The inference settings",
+  "description": "Fixed here, not chosen per experiment, for exactly the reason balance_covariates.yaml is: an alpha chosen per experiment is a degree of freedom, and anything that can be chosen after the fact will be chosen after the fact. Every entry is a {value, source} pair — a bare number here would be the 'value without a source' the contract layer exists to refuse, and a Decimal constant in a .py file is the same thing wearing a different extension. Nothing in this file is law; every source is a scenario_assumption, and saying so is the point of the split.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "effective_from",
+    "alpha",
+    "target_power",
+    "quantiles",
+    "balance_tolerance_smd",
+    "exposure_min_pct",
+    "holdout_share_pct",
+    "neighbour_radius_m",
+    "permutation_draws",
+    "max_assignment_attempts",
+    "carryover"
+  ],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "effective_from": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date" },
+    "note": { "type": "string" },
+
+    "alpha": {
+      "description": "The declared false-positive rate. Claim 2 is stated against THIS number, so it is declared before the harness runs and never after.",
+      "$ref": "#/$defs/sourced_probability"
+    },
+    "target_power": {
+      "description": "The power the feasibility check sizes for. It decides whether a design may exist; it decides nothing at readout, where the realised variance does.",
+      "$ref": "#/$defs/sourced_probability"
+    },
+
+    "quantiles": {
+      "description": "Standard normal quantiles, written out because holdout.core may not import a statistics library. Both are recomputed independently in tests/contracts/test_inference.py — a boundary that has to be known is computed twice.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["z_two_sided_alpha", "z_one_sided_alpha", "z_power"],
+      "properties": {
+        "z_two_sided_alpha": { "$ref": "#/$defs/sourced_positive_number" },
+        "z_one_sided_alpha": { "$ref": "#/$defs/sourced_positive_number" },
+        "z_power": { "$ref": "#/$defs/sourced_positive_number" }
+      }
+    },
+
+    "balance_tolerance_smd": {
+      "description": "The largest standardised mean difference between arms, on any declared balance covariate, that the screen and the readout check will admit. One number for both moments: a screen and a check at different tolerances would let an assignment be accepted at design and refused at readout for no reason anybody declared.",
+      "$ref": "#/$defs/sourced_positive_number"
+    },
+    "exposure_min_pct": {
+      "description": "The share of assigned treated units that must actually have been exposed before any number may be stated.",
+      "$ref": "#/$defs/sourced_percent"
+    },
+    "holdout_share_pct": {
+      "description": "The share of the admissible roster held back as control. Strictly between 0 and 100: a holdout of nothing is not a holdout, and a holdout of everything leaves no treatment arm.",
+      "$ref": "#/$defs/sourced_strict_percent"
+    },
+    "neighbour_radius_m": {
+      "description": "Two stores closer together than this are assumed to share shoppers. The pairs are supplied to the engine, which never computes a distance.",
+      "$ref": "#/$defs/sourced_positive_integer"
+    },
+    "permutation_draws": {
+      "description": "How many candidate assignments the reference set holds. (1 + hits) / (1 + B) is exact at any B, so B buys resolution, not validity.",
+      "$ref": "#/$defs/sourced_positive_integer"
+    },
+    "max_assignment_attempts": {
+      "description": "How many candidates the re-randomisation screen may reject before the design is refused with NO_ADMISSIBLE_ASSIGNMENT. A budget rather than an unbounded loop.",
+      "$ref": "#/$defs/sourced_positive_integer"
+    },
+
+    "carryover": {
+      "description": "Declared facts about grocery retail, and the mitigations declared absent. The interference table over the four units of randomisation is DERIVED from this block and is nowhere written out: a hard-coded table would pass every test while quietly being a second definition of a contract value. These are assumptions about the trade, not observations of anything in this repository — in particular not of what corpus/world/ generates, which would be the generator and the engine agreeing with each other.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_price_memory", "cross_price_substitution", "washout_weeks"],
+      "properties": {
+        "reference_price_memory": {
+          "description": "Whether willingness to pay at a store carries the price last seen at that store. True is what refuses store_week while no washout is declared.",
+          "$ref": "#/$defs/sourced_flag"
+        },
+        "cross_price_substitution": {
+          "description": "Whether categories inside one store contain substitutes. True is what refuses store_category.",
+          "$ref": "#/$defs/sourced_flag"
+        },
+        "washout_weeks": {
+          "description": "A declared washout period at least as long as the reference price persists, or null where none is declared. Null is the honest value and it is not zero: zero would assert that no washout is needed, which is a different claim.",
+          "$ref": "#/$defs/sourced_optional_weeks"
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "source": {
+      "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/provenance"
+    },
+    "sourced_probability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_positive_number": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_percent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0, "maximum": 100 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_strict_percent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 100 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_positive_integer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "integer", "minimum": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_flag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "boolean" },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_optional_weeks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    }
+  }
+}

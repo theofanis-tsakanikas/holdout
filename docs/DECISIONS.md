@@ -482,6 +482,103 @@ list item, a block quote — which the first cannot see at all.
 left to compare against — no marker, no header, no gap. Deletion is caught by the pull-request
 diff, which is where a deletion should be argued anyway.
 
+**The inference settings are a contract, not constants in a module.** · 2026-08-27
+α, the target power, the balance tolerance, the exposure threshold, the holdout share, the
+permutation-draw count, the attempt budget, the neighbour radius and three standard-normal
+quantiles live in `contracts/design/inference.yaml`, each a `{value, source}` pair. The
+alternative was a block of `Decimal` constants in `holdout/core/experiment/`, and that is precisely
+the "value without a source" the contract layer exists to refuse — doctrine rule 3 does not care
+what extension the file has. The argument is `balance_covariates.yaml`'s, one level up: **anything
+that can be chosen after the fact will be chosen after the fact**, and an α chosen per experiment
+is the most valuable dial in the building.
+
+Every source is a `scenario_assumption`. None of these is law, this repository's guardrail
+contracts carry real instruments and these do not, and the split is what keeps the difference
+legible. `design` therefore joins `PROVENANCE_FAMILIES`, whose description had said "numbers that
+come from outside the repository" — too narrow, since a threshold invented *inside* needs an
+argument beside it just as much.
+
+The file **compiles to nothing.** No consumer is generated from it, so `compile_all` is untouched;
+it is still validated, claimed, provenance-walked and printed on the green summary, because a
+contract nothing mentions is one nobody would notice going missing.
+
+**Three quantiles are written out, and all three are recomputed by a different mechanism.** ·
+2026-08-27
+`holdout.core` may not import `statistics`, so `1.959964`, `1.644854` and `0.841621` are literals
+in a contract. A literal is the shape of number this repository refuses to take on trust, and a
+`note` saying "this is inv_cdf(0.975)" is prose. `tests/contracts/test_inference.py` recomputes all
+three with `statistics.NormalDist().inv_cdf` — legal outside `core/` — and asserts agreement at the
+six declared places. That is `evals/`'s rule 5, *a boundary that has to be known is computed
+twice*, applied to a constant; and the test asserts the three numbers against a normal table too,
+so a later edit that "fixed" the recomputation to read the YAML would have to walk past that line.
+
+**The one-sided quantile is declared, not derived.** The SPEC this branch was built from sized
+one-sided designs on a quantile it never declared. Computing `1.644854` in Python would have been a
+load-bearing number with no argument beside it, in a module written to refuse exactly that, so
+`z_one_sided_alpha` joined the contract with its own source.
+
+**Permutation under the restriction, with a covariate-adjusted statistic.** · 2026-08-27
+Validity comes from the lottery; precision comes from the adjustment. The re-randomisation screen
+restricts the space of admissible assignments, so the ordinary confidence interval — which assumes
+simple randomisation — comes out falsely wide. The reference set at readout is therefore **exactly
+the set of candidates the same screen accepts**, which is what makes the inference match the
+restriction instead of assuming it away.
+
+Four consequences, each a decision in its own right:
+
+- **The weak (Neyman) null, so the statistic is studentized.** A raw difference of means is exact
+  only under the sharp null of no effect for any unit. W5 is heavy tails and unequal arm variance,
+  which is where that assumption breaks and where an unstudentized permutation test stops holding
+  its level.
+- **The interval inverts the same test**, by bisection over a grid of constant shifts, reusing the
+  same draws at every step. Coverage is then correct by construction rather than by asymptotics,
+  the endpoints are integers in the metric's own canonical unit, and there is nothing to round.
+- **B = 1000, declared in the contract.** `(1 + hits) / (1 + B)` is exact at any B, so B buys
+  resolution and not validity — and the readout prints B beside the p-value so nobody has to guess
+  which it was.
+- **ITT is the only number.** Below `exposure_min_pct` the readout refuses with
+  `EXPOSURE_BELOW_THRESHOLD`; above it, the realised exposure rate is printed beside the estimate.
+  There is no exposure-adjusted estimator and no field for one: the readout vocabulary is closed,
+  and an exposure-adjusted number carries an exclusion restriction — an assumption, in a readout
+  built to avoid them.
+
+**The lottery is keyed hashing, not a PRNG.** · 2026-08-27
+`blake2b(unit_id, key=blake2b(seed || draw_index))` per unit, sorted by `(rank, unit_id)`. Claim 3's
+sentence is *exactly reproducible*, and hashing is strictly better at it than a seeded generator:
+reproducible from the committed seed alone with no interpreter or platform dependency, independent
+of the order the roster arrived in, and computable **per unit** — so a readout can re-derive one
+unit's arm without replaying a sequence. `random` and `secrets` are banned in `core/` anyway; this
+would have been the right mechanism regardless.
+
+**The seal is the certificate pattern *and* a digest, because they close different holes.** ·
+2026-08-27
+`SealedAssignment` copies `CertifiedPrice`: constructor raises, subclassing raises, no `__setattr__`,
+no `__reduce__`, fields read through a guarded accessor, filler in a closure beside a witness with
+no importable name. That protects the in-process path. It does nothing for the path that will
+actually be used to alter an assignment — writing it to `gold.experiment_assignment` and reading it
+back in another process a month later — which is what the digest over
+`(experiment_id, seed, form_digest, roster, arms)` is for. The contamination check recomputes it
+from the seed and the roster and compares.
+
+*The limit, in the docstring rather than glossed:* a forger who rewrites the arms, the seed and the
+digest in one coordinated edit is not caught, because a seal never held independent evidence of its
+own provenance. A test asserts that limit. What is caught is every edit that is **not** coordinated,
+which is every edit that happens by accident and most that do not.
+
+**The seed is supplied, never generated.** `core/` reads no clock, no environment and no random
+source, so it cannot mint a seed; the SPEC's moment 1 said "generate the committed seed", which
+`core/` structurally cannot do. The seed is an argument, committed alongside the design in
+`experiments/`, and that is also the stronger position: a seed the engine invented would be a seed
+nobody committed to in advance.
+
+**The readout's balance check re-measures; it is not the screen re-run on the screen's own numbers.**
+· 2026-08-27
+A screened assignment re-checked against its own screening matrix passes by construction — a gate
+that cannot bite, in the same family as the four findings under "a guard tested by its author".
+`close` therefore takes the covariates **as they stood at close**, over the units that actually
+reported. Restated pre-period revenue, an attrited store and a moved roster each turn the check red
+in `tests/core/test_balance.py`, and each of the three is a thing that happens.
+
 ---
 
 ## Deliberately deferred
@@ -603,6 +700,76 @@ instrument that again states no basis.
 *Unlock condition:* backdating the other three guardrails, which nothing currently needs. Recorded so
 that "the 2021 window refuses rather than borrowing a neighbour's arithmetic" is never claimed as
 something the repository demonstrates end to end.
+
+**The declared tolerance and holdout share leave the reference set too small to reach α** ·
+deferred 2026-08-27
+This is the finding that decides whether claim 2 can be computed at all, and it is recorded here
+because it was created by the values this branch put into `contracts/design/inference.yaml`.
+
+The re-randomisation screen admits a candidate only when **every** declared covariate is within
+`balance_tolerance_smd` = 0.10. The standardised difference between arms has a spread of roughly
+`sqrt(1/n_T + 1/n_C)`, which at the scenario's shape — 100 stores, a 20% holdout, so 80 against
+20 — is 0.25. Each of the seven comparisons the five covariates produce therefore passes about
+31% of the time, and all seven pass about **three times in ten thousand**. Measured on a
+hundred-store roster, `tests/core/test_assignment.py` finds roughly one draw in a thousand.
+
+The consequence is arithmetic rather than opinion. `max_assignment_attempts` is 10,000, so a
+reference set drawn inside that budget holds single figures of accepted draws. The smallest
+attainable p-value is `1 / (1 + B)` — and inside an inverted interval it is `2 / (1 + B)`,
+because the mirror image of the realised assignment ties with it under an arbitrarily large
+shift. At B in single figures both floors are **above** the declared α of 0.05, so no experiment
+at the scenario's own shape could ever report a significant effect. **W6's false-refusal rate
+would be 100% by construction**, and claim 2 would fail on the world where the correct answer is
+"yes, there was an effect" — for a reason that has nothing to do with the estimator.
+
+Nothing in the code is wrong and nothing here is papered over: `reference_set` returns what it
+actually found, `permutation_p` divides by that, and the readout prints B. What is missing is a
+budget, or a mechanism, that makes the two numbers compatible.
+
+*Why it is not fixed on this branch:* fixing it means choosing between four things that are all
+contract or design changes with their own arguments — a much larger attempt budget (a reference
+set of 1,000 at 10⁻³ costs about 10⁶ screens, roughly twenty minutes per experiment, times 200
+seeds times six worlds); a wider tolerance, which is a restatement; a larger holdout share, which
+is a restatement; or **stratified randomisation instead of rejection sampling**, which is the
+standard remedy and is a design change to `assignment.py` rather than a number. T001's scope is
+the core and its composition test, and quietly picking one of the four inside it would be exactly
+the kind of after-the-fact choice the whole contract layer exists to prevent.
+
+*Unlock condition:* T003, which cannot start without meeting the number —
+`test_the_screen_accepts_about_one_draw_in_a_thousand_at_the_scenario_s_shape` measures it in the
+suite rather than leaving it in this paragraph, and asserts the order of magnitude so that an
+improvement makes the *test* fail and this entry get re-read.
+
+**Two of the four units of randomisation are refused by a declared assumption** · deferred
+2026-08-27
+`store_week` and `store_category` are refused with `UNIT_GUARANTEES_INTERFERENCE` before any
+judgment has been exercised on anything. The refusal rests on `contracts/design/inference.yaml`'s
+`carryover:` block and on nothing else: `reference_price_memory: true` with `washout_weeks: null`
+crosses the dimension `store_week` splits arms along, and `cross_price_substitution: true` crosses
+the one `store_category` splits along. Both are `kind: scenario_assumption` with a note and a
+verification date. **Neither is an observation of anything in this repository** — and in particular
+neither is grounded in what `corpus/world/` generates, which would be the generator and the engine
+agreeing with each other while `core/` may not know `corpus/` exists at all.
+
+`interference_of(unit, carryover)` is a pure function of that block, so the refusals are derived and
+never written out. A contract declaring a washout long enough to exhaust the reference price would
+admit `store_week` with no code change, and `tests/core/test_design_engine.py` asserts exactly that
+by handing the function an independently built `carryover` with the flag cleared.
+
+*The consequence for claim 6, recorded here because this is where it is created:* claim 6's headline
+— *N proposed, M refused, K of those would have produced a confidently wrong number* — must be
+**broken down by reason code and never reported as a single aggregate M**. A
+`UNIT_GUARANTEES_INTERFERENCE` refusal is a design falling outside a declared envelope, exactly as
+`CATEGORY_FROZEN` is not a pricing model failing. Adding the two kinds together flatters the engine
+— it counts as "caught" a design whose judgment nothing inspected — and defames the proposer, by
+charging it with an error it did not make. The same split governs K: only a *judgment* refusal can
+be a design that would have produced a confidently wrong number.
+
+*Unlock condition:* a **declared washout period**, sourced, at least as long as the reference price
+persists, which makes `store_week` admissible; and a declared assortment separation, sourced, which
+does the same for `store_category`. Until one of them is declared, two of the four units the form
+admits are refused by a paragraph in a contract rather than by a calculation, and that is said out
+loud rather than presented as arithmetic.
 
 **The per-product-code cap is evaluated more strictly than the instrument requires** · deferred
 2026-08-27

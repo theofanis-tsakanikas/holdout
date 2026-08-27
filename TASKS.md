@@ -149,8 +149,38 @@ closes        src/holdout/core/design/ and experiment/ as pure functions over pl
 out_of_scope  The generator, the A/A harness, any claim-N target.
 stop_at       After the core modules and the composition test; before any eval is wired.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed.** `src/holdout/core/design/` (the nine-field form, the eight refusals, the
+sizing arithmetic) and `src/holdout/core/experiment/` (the keyed-hash lottery and its seal, the
+standardised difference, exposure, contamination, Lin's adjustment with a studentized permutation
+test and an interval that inverts it, and the two readout moments). Plus a new contract family,
+`contracts/design/inference.yaml`, and one new code in the closed vocabulary,
+`NO_ADMISSIBLE_ASSIGNMENT`. 510 tests to 747; `make check` green; `make claim-1` still 9/9 with
+13/13 mutations biting. What each piece settled is in `PLAN.md`'s prose.
+
+**Three corrections to the SPEC, made in the code rather than worked around**, and a fourth that
+was an internal contradiction. The seed is supplied, not generated — `core/` reads no random
+source, and a seed the engine invented is a seed nobody committed to in advance. The covariate
+*values* had to join the signature, because the screen cannot run on a contract that only names
+the columns. A one-sided quantile was used and never declared, so it joined the contract with its
+own source. And `UNITS_ALREADY_COMMITTED` was listed both as an automatic exclusion and as a
+refusal; it is the refusal, because the contract's own remedy says *exclude the committed units*,
+in the imperative.
+
+**The finding T003 has to act on before it starts.** At the scenario's shape — 100 stores, the
+declared 20% holdout, the declared 0.10 tolerance over five covariates — the re-randomisation
+screen accepts roughly **one draw in a thousand**, so a reference set inside the declared attempt
+budget holds single figures and the smallest attainable p-value sits above the declared α. **No
+experiment at that shape could ever report a significant effect**, which would make W6's
+false-refusal rate 100% for a reason unrelated to the estimator. Recorded as a deferral in
+`docs/DECISIONS.md` and measured by
+`tests/core/test_assignment.py::test_the_screen_accepts_about_one_draw_in_a_thousand_at_the_scenario_s_shape`,
+so it is a number in the suite rather than a paragraph. Choosing the remedy — a much larger
+budget, a wider tolerance, a larger holdout share, or stratified randomisation instead of
+rejection sampling — is a contract or design change and belongs to T003, not to a session whose
+scope was the core.
 
 ```
 id            T002
@@ -614,6 +644,10 @@ L4  Mutation ownership — a mutation belongs to exactly one claim and runs unde
                                           branch evals/mutation-ownership       status closed
 L5  CI, the protected main (a ruleset with no bypass actors), docs/DECISIONS.md.
                                           branch ops/gate-and-decisions         status closed
+L6  src/holdout/core/design/ and experiment/ — the nine-field form, the eight design
+    refusals, the committed lottery and its seal, the four validity checks and the
+    design-based estimator. contracts/design/inference.yaml as a fourth contract family.
+                                          branch core/design-experiment         status closed
 ```
 
 ---
@@ -623,11 +657,15 @@ L5  CI, the protected main (a ruleset with no bypass actors), docs/DECISIONS.md.
 ```
 T00A ─▶ T002 ─┐        (both closed)
               ├─▶ T003 (claim-2, closes Phase 1) ─▶ T008 ─▶ Phase 2 ─▶ Phase 3 ─▶ Phase 4
-T001 ─────────┤        ▲
+T001 ─────────┤        ▲     (T001 closed)
 T000 ─────────┴────────┘  (also blocks T004, T005, T006)
 ```
 
-T000 and T00A gate the phase-1 evals and corpus respectively, and both had no upstream. **T00A and
-T002 have closed.** T003 — the A/A harness and `make claim-2`, which closes phase 1 — now waits on
-T000 and T001 alone, and those two are independent of each other and can run in parallel. T005
-(claim 4) is also unblocked on its corpus side and waits on the same two.
+T000 and T00A gate the phase-1 evals and corpus respectively, and both had no upstream. **T00A,
+T002 and T001 have closed.** T003 — the A/A harness and `make claim-2`, which closes phase 1 — now
+waits on T000 alone, as does T005 (claim 4) on its corpus side.
+
+**T003 carries one inherited condition.** The screen's acceptance rate at the scenario's shape
+leaves the reference set too small for the declared α — see T001's record above and the deferral
+in `docs/DECISIONS.md`. T003 cannot produce a meaningful false-refusal rate on W6 until that is
+settled, so settling it is the first thing in it rather than a surprise in the middle.

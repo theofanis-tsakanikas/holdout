@@ -1,13 +1,20 @@
-"""The decision-time refusal vocabulary is closed, in all three places at once.
+"""Every refusal vocabulary is closed, in all three places at once.
 
 The set of codes lives in `contracts/schemas/reason_codes.schema.json`; their meanings live
-in `contracts/vocabularies/reason_codes.yaml`; the core branches on `RefusalCode`. A code added to
+in `contracts/vocabularies/reason_codes.yaml`; the core branches on an enum. A code added to
 one of the three and not the others turns this file red, which is the friction that stops a
 closed vocabulary becoming free text one exception at a time.
 
 Three places and not two on purpose. The core cannot read the contract at runtime — it may
 not import a YAML parser — and it cannot use free-text strings either, because claim 1's
-evidence is a *count* of which guardrails fired and nobody can count free text.
+evidence is a *count* of which guardrails fired and claim 6's is "N proposed, M refused,
+K would have been wrong". Nobody can count free text.
+
+**All three moments are checked here**, because the system refuses three different things —
+a price, an experiment and a number — and each has its own enum in `core/`. The design and
+readout halves were the ones with no core-side check until the design engine existed to
+branch on them, which is exactly how a vocabulary drifts: the half nothing reads is the half
+nobody notices moving.
 """
 
 from __future__ import annotations
@@ -18,11 +25,19 @@ import yaml
 
 from holdout.contracts.loader import CONTRACTS_DIR, REASON_CODES, SCHEMA_DIR
 from holdout.contracts.model import ContractSet
+from holdout.core.design import DESIGN_PRECEDENCE, DesignRefusalCode
+from holdout.core.experiment import CHECK_OF, CODE_OF, ReadoutRefusalCode, ValidityCheck
 from holdout.core.guardrails import PRECEDENCE, GuardrailId, RefusalCode
 
 SCHEMA = json.loads((SCHEMA_DIR / "reason_codes.schema.json").read_text(encoding="utf-8"))
 DOCUMENT = yaml.safe_load((CONTRACTS_DIR / REASON_CODES).read_text("utf-8"))
-SCHEMA_CODES = set(SCHEMA["properties"]["at_decision"]["items"]["properties"]["code"]["enum"])
+
+
+def schema_codes(moment: str) -> set[str]:
+    return set(SCHEMA["properties"][moment]["items"]["properties"]["code"]["enum"])
+
+
+SCHEMA_CODES = schema_codes("at_decision")
 
 
 def test_the_core_enum_and_the_schema_enumerate_the_same_codes() -> None:
@@ -81,4 +96,67 @@ def test_the_three_moments_do_not_share_a_code(contracts: ContractSet) -> None:
 
 def test_the_vocabulary_has_no_duplicates() -> None:
     listed = [entry["code"] for entry in DOCUMENT["at_decision"]]
+    assert len(listed) == len(set(listed))
+
+
+# ------------------------------------------------------------------ the design moment
+
+
+def test_the_design_enum_and_the_schema_enumerate_the_same_codes() -> None:
+    assert {code.value for code in DesignRefusalCode} == schema_codes("at_design")
+
+
+def test_every_design_code_in_the_schema_has_a_meaning_and_vice_versa(
+    contracts: ContractSet,
+) -> None:
+    assert {c.code for c in contracts.reason_codes.at_design} == schema_codes("at_design")
+
+
+def test_the_design_precedence_covers_the_design_vocabulary_exactly() -> None:
+    """The order decides which code leads a refusal, so a code missing from it would raise a
+    KeyError the first time it fired — which is a bad way to find out."""
+    assert set(DESIGN_PRECEDENCE) == set(DesignRefusalCode)
+    assert len(DESIGN_PRECEDENCE) == len(DesignRefusalCode)
+
+
+def test_the_design_vocabulary_has_no_duplicates() -> None:
+    listed = [entry["code"] for entry in DOCUMENT["at_design"]]
+    assert len(listed) == len(set(listed))
+
+
+# ------------------------------------------------------------------ the readout moment
+
+
+def test_the_readout_enum_and_the_schema_enumerate_the_same_codes() -> None:
+    assert {code.value for code in ReadoutRefusalCode} == schema_codes("at_readout")
+
+
+def test_every_readout_code_in_the_schema_has_a_meaning_and_vice_versa(
+    contracts: ContractSet,
+) -> None:
+    assert {c.code for c in contracts.reason_codes.at_readout} == schema_codes("at_readout")
+
+
+def test_the_four_checks_and_the_four_codes_are_a_bijection() -> None:
+    """A code with two checks, or a check producing none, would be a readout that reports
+    four figures and refuses for a reason none of them explains."""
+    assert set(CHECK_OF) == set(ReadoutRefusalCode)
+    assert set(CODE_OF) == set(ValidityCheck)
+    for code, check in CHECK_OF.items():
+        assert CODE_OF[check] is code
+
+
+def test_the_core_and_the_contract_agree_on_which_check_produces_which_code(
+    contracts: ContractSet,
+) -> None:
+    """The contract carries a `check` field for exactly this, and until the readout existed
+    nothing compared the two. A mapping asserted in one place and used in the other is a
+    mapping that drifts."""
+    declared = {c.code: c.check for c in contracts.reason_codes.at_readout}
+    for code, check in CHECK_OF.items():
+        assert declared[code.value] == check.value, code
+
+
+def test_the_readout_vocabulary_has_no_duplicates() -> None:
+    listed = [entry["code"] for entry in DOCUMENT["at_readout"]]
     assert len(listed) == len(set(listed))
