@@ -1,0 +1,23 @@
+# Claim 1 in one line: *the actuation type cannot be constructed without a guardrail
+# certificate*. `dispatch_to_shelf` asking `certified()` is the whole of that sentence in
+# code. Without it the annotation still reads `CertifiedPrice`, mypy is still satisfied on
+# every honest caller, and anything at all reaches the shelf at runtime.
+
+id:          the-actuator-takes-the-caller-at-their-word
+claim:       1
+eval_module: evals.guardrail
+targets:     [G1.only-a-certificate-reaches-a-shelf]
+
+breaks: >-
+  the actuator stops verifying that what it was handed is a certificate this process issued,
+  and trusts the type annotation instead. A refusal, or any object with the right shape,
+  then dispatches.
+
+file: src/holdout/core/guardrails/certificate.py
+
+anchor: |
+    if not certified(price):
+        raise CertificateForgeryError(
+replacement: |
+    if False and not certified(price):
+        raise CertificateForgeryError(

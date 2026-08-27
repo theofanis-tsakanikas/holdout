@@ -1,0 +1,26 @@
+# The bug this is shaped after actually happened in this repository, one module along: the
+# ladder rounded its quote as a price while the guardrail rounded the same number as a
+# bound, and the declared safe state produced a price the envelope refused. This is the same
+# mistake made in the guardrail instead of the ladder, where it fails the other way — a
+# floor that rounds down admits prices below itself.
+
+id:          margin-floor-rounds-the-wrong-way
+claim:       1
+eval_module: evals.guardrail
+targets:     [G2.certified-price-inside-exact-bounds]
+
+breaks: >-
+  the margin floor rounds half-to-even, like a price, instead of rounding up, like a bound.
+  A floor that rounds toward what it forbids admits a price up to half a cent below cost
+  plus the declared minimum margin, and every other check still passes.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+                amount=Money.as_lower_bound(
+                    Decimal(cost.cents) + cost.pct(envelope.floor.minimum_gross_margin_pct)
+                ),
+replacement: |
+                amount=Money.as_price(
+                    Decimal(cost.cents) + cost.pct(envelope.floor.minimum_gross_margin_pct)
+                ),

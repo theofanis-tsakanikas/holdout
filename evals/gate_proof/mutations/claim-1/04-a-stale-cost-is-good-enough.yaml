@@ -1,0 +1,19 @@
+# CLAUDE.md: the freshness gate runs before the model is called at all. A floor computed
+# from a stale cost is a floor in the wrong place, and every price above it still passes
+# every other check — which is exactly why nothing else in the system catches this.
+
+id:          a-stale-cost-is-good-enough
+claim:       1
+eval_module: evals.guardrail
+targets:     [G2.certified-price-inside-exact-bounds]
+
+breaks: >-
+  the cost staleness limit is read as days rather than hours, so a cost that arrived well
+  outside the declared window is treated as fresh and the decision proceeds on it unmarked.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+    return Freshness.STALE if age_seconds > floor.cost_staleness_hours * 3600 else Freshness.FRESH
+replacement: |
+    return Freshness.STALE if age_seconds > floor.cost_staleness_hours * 86400 else Freshness.FRESH

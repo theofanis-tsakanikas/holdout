@@ -40,7 +40,7 @@ package = true
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["src", "tests"]
+src = ["src", "tests", "evals", "corpus"]
 
 [tool.ruff.lint]
 select = [
@@ -73,17 +73,25 @@ allowed-confusables = [
     "\u03b1", "\u03b5", "\u03b7", "\u03b9", "\u03ba", "\u03bc", "\u03bd", "\u03bf",
     "\u03c1", "\u03c4", "\u03c5", "\u03c7", "\u03ac", "\u03ad", "\u03af", "\u03cc",
     "\u03cd", "\u0384", "\u00b7",
+    # \u00d7 MULTIPLICATION SIGN. The evals write arithmetic in prose — `cost x (1 - m)` reads
+    # as a variable named x, and the whole point of those docstrings is that the derivation
+    # can be checked by eye.
+    "\u00d7",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ARG001", "ARG002"]
+# The eval reaches for `object.__setattr__` and reads `_witness`-adjacent slots on purpose:
+# `G9` attacks the certificate through the one route `certificate.py` declares open and does
+# not pretend to have closed. Forbidding that here would forbid the attack, not the forgery.
+"evals/guardrail/checks.py" = ["SLF001"]
 
 [tool.ruff.format]
 quote-style = "double"
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src", "tests"]
+files = ["src", "tests", "evals", "corpus"]
 strict = true
 warn_unreachable = true
 warn_return_any = true
@@ -100,5 +108,5 @@ addopts = "-q --strict-markers --strict-config"
 pythonpath = ["src"]
 
 [tool.coverage.run]
-source = ["src/holdout"]
+source = ["src/holdout", "evals", "corpus"]
 branch = true

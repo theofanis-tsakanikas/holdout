@@ -1,0 +1,30 @@
+# The cap on gross margin is the one guardrail in the envelope that is a *ceiling*. A
+# ceiling appended to the lower bounds is still a bound, still attributed, still counted —
+# it simply forbids the opposite half of the number line, and nothing about the shape of the
+# assessment looks wrong.
+
+id:          the-margin-cap-becomes-a-floor
+claim:       1
+eval_module: evals.guardrail
+targets:
+  - G2.certified-price-inside-exact-bounds
+  - G3.refusal-supported-by-exact-arithmetic
+
+breaks: >-
+  the regulated basket's margin cap is applied as a lower bound instead of an upper one, so
+  a price above the capped margin is admitted and a price below it is refused.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+            upper.append(
+                Bound(
+                    amount=Money.as_upper_bound(
+                        Decimal(cost.cents) + cost.pct(proposal.benchmark_margin_pct)
+                    ),
+replacement: |
+            lower.append(
+                Bound(
+                    amount=Money.as_upper_bound(
+                        Decimal(cost.cents) + cost.pct(proposal.benchmark_margin_pct)
+                    ),

@@ -1,0 +1,329 @@
+# The independent corpus — what is in it, where each number came from, and what it is not.
+#
+# Claim 1's declared trap is that *a planter reading the same contract as the detector is
+# one function agreeing with itself*. This file is the answer. Every price, every category
+# and every margin below was published by somebody who has never seen this repository, and
+# `corpus/real/` imports nothing from `src/holdout/` — a test enforces that.
+#
+# Four rules, the same four the contract layer lives by:
+#
+#   1. every number carries a source, a URL and a `retrieved_on` date;
+#   2. a value is either `observed` — it is in the source as published — or `derived`, in
+#      which case it states the arithmetic and the observed inputs it came from. There is
+#      no third kind, and nothing here is assumed;
+#   3. what was dropped is counted, not silently truncated;
+#   4. the committed files carry a digest, and CI recomputes it. A corpus that can be
+#      edited without anything going red is not evidence.
+
+version: 1
+retrieved_on: 2026-08-27
+
+# ---------------------------------------------------------------------------- the sources
+
+sources:
+
+  - id: ons_price_quotes
+    kind: observed
+    title: >-
+      Consumer price inflation consumption segment indices and price quotes — individual
+      price quotes, February to July 2025
+    publisher: Office for National Statistics (UK)
+    url: https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/consumerpriceindicescpiandretailpricesindexrpiitemindicesandpricequotes
+    licence: Open Government Licence v3.0
+    attribution: >-
+      Contains public sector information licensed under the Open Government Licence v3.0.
+      Source: Office for National Statistics licensed under the Open Government Licence.
+    retrieved_on: 2026-08-27
+    file: data/ons-price-quotes-2025.csv.gz
+    sha256: cba5e61b47bcc3162504f7e20c1784040517e178159f8fab152f01c871e67df6
+    rows: 32480
+
+    what_it_is: >-
+      Individual price quotes collected by hand in outlets across the United Kingdom, used
+      by the ONS in producing the CPI. One row is one product, in one outlet, in one month:
+      the price a person wrote down in a shop. It is not a survey average and it is not
+      modelled. That is exactly why it is here — the distribution of real shelf prices, real
+      price endings, real dispersion between outlets and real observed markdowns cannot be
+      obtained from any generator this project could write.
+
+    files_downloaded:
+      - month: "202502"
+        url: https://www.ons.gov.uk/file?uri=/economy/inflationandpriceindices/datasets/consumerpriceindicescpiandretailpricesindexrpiitemindicesandpricequotes/pricequotesfebruary2025/upload-pricequotes202502.csv
+        sha256: 9c331b79484c31f0
+        note: leading 16 hex digits, as printed by `corpus/real/fetch.py`
+      - month: "202503"
+        url: https://www.ons.gov.uk/file?uri=/economy/inflationandpriceindices/datasets/consumerpriceindicescpiandretailpricesindexrpiitemindicesandpricequotes/pricequotesmarch2025/upload-pricequotes202503.csv
+        sha256: fc7b0d2cbbce390f
+      - month: "202505"
+        url: https://www.ons.gov.uk/file?uri=/economy/inflationandpriceindices/datasets/consumerpriceindicescpiandretailpricesindexrpiitemindicesandpricequotes/pricequotesmay2025/upload-pricequotes202505.csv
+        sha256: efe6e86cd71167cc
+      - month: "202506"
+        url: https://www.ons.gov.uk/file?uri=/economy/inflationandpriceindices/datasets/consumerpriceindicescpiandretailpricesindexrpiitemindicesandpricequotes/pricequotesjune2025/upload-pricequotes202506.csv
+        sha256: e24f539796a2a366
+      - month: "202507"
+        url: https://www.ons.gov.uk/file?uri=/economy/inflationandpriceindices/datasets/consumerpriceindicescpiandretailpricesindexrpiitemindicesandpricequotes/pricequotesjuly2025/upload-pricequotes202507.csv
+        sha256: e95ad443ec8db9e6
+
+    columns_used:
+      quote_month:    the ONS `QUOTE_DATE`, YYYYMM
+      item_id:        the ONS representative-item code
+      item_desc:      the ONS item description, verbatim
+      cs_id:          the ONS consumption-segment code, carried unchanged
+      cs_desc:        the consumption-segment description, carried unchanged
+      shop_code:      the outlet code
+      region:         the ONS region code, carried as an opaque stratum label
+      shop_type:      the ONS shop-type code, carried as an opaque stratum label
+      stratum_cell:   the ONS stratum cell, carried as an opaque stratum label
+      price:          the price collected, in GBP
+      indicator_box:  the collector's indicator code — see `indicator_codes` below
+      base_price:     the ONS `BASE_PRICE_CPI`, the reference price the quote is compared to
+
+    indicator_codes:
+      source: >-
+        Consumer Price Indices Technical Manual, 2014 edition, §5.3.3 "Indicator Codes",
+        reproduced verbatim. https://doc.ukdataservice.ac.uk/doc/7022/mrdoc/pdf/7022_technical_manual_2014.pdf
+      retrieved_on: 2026-08-27
+      S: sale or special offer (explains a reduction in price)
+      R: recovery from S (explains a price jump); is not necessarily the same price as before the sale
+      N: >-
+        non-comparable product or variety to represent an item (implying that the original
+        product's or variety's base price is not suitable for comparison)
+      C: >-
+        changed product or variety but not significantly different from old one (C for
+        comparable, implying that the original base price is suitable for comparison)
+      T: temporarily out of stock
+      M: item missing from outlet and not likely to be stocked again in the near future
+      Q: >-
+        a special note has been made (Q for query) by the collector for ONS staff to examine
+        and respond as required
+      W: >-
+        weight/size change, e.g. manufacturer has made a permanent change to the weight of a
+        product; used only as and when instructed by ONS
+
+    what_was_dropped_and_why:
+      - reason: items outside the 37 kept
+        count: 717348
+        why: >-
+          The kept set is listed in `corpus/real/fetch.py` and mapped in
+          `data/item_categories.csv`. Everything else in the CPI basket — clothing,
+          transport, restaurant meals — has no place on a supermarket shelf.
+      - reason: VALIDITY is not TRUE
+        count: 6078
+        why: >-
+          The ONS does not use these quotes in index production. Reading them as observed
+          shelf prices would be reading the source as saying something it does not say. The
+          indicator codes `T` and `M` — temporarily out of stock, item missing — arrive with
+          a price of zero, and a zero here is an *absence*. Doctrine rule 3: an absence read
+          as €0.00 is a lie with a plausible shape, and it would drive the absolute floor
+          from the wrong side.
+      - reason: January 2025 excluded
+        count: null
+        why: >-
+          **The ONS changed the file schema between January and February 2025.** January
+          carries `VALIDITY` as an integer status and a single `BASE_PRICE`; from February
+          the file adds `CS_ID`/`CS_DESC`, splits the base price into `BASE_PRICE_CPI` and
+          `BASE_PRICE_RPI`, and reports `VALIDITY` as `TRUE`/`FALSE`. Normalising the two
+          into one table would mean deciding what January's status `3` and `4` mean in
+          February's vocabulary, and that decision is not in the source. Five months of one
+          schema is worth more than six of two.
+      - reason: April 2025 unavailable
+        count: null
+        why: >-
+          Published as `.xlsx` rather than `.csv`. Reading it would add a spreadsheet
+          dependency to a corpus that otherwise needs only the standard library. The gap
+          means the consecutive-month pairs are Feb→Mar, May→Jun and Jun→Jul, three rather
+          than four, and every place a pair is used says so.
+      - reason: item 210914 (FRESH TURKEY DICED/MIN PER KG) left the basket
+        count: 0
+        why: >-
+          It was selected from the January file and does not appear in any February-to-July
+          file. The CPI basket is revised annually and this item was dropped. Recorded rather
+          than quietly deleted, because "the corpus shrank and nobody noticed" is the failure
+          this section exists to prevent.
+
+    caveat_from_the_publisher: >-
+      The ONS states these figures are provided for research purposes only, are not
+      accredited official statistics, and that users should exercise caution when drawing
+      conclusions from their use. Nothing in this repository draws a conclusion about UK
+      inflation. The corpus is used for the *shape* of real retail prices, and that is stated
+      wherever it is used.
+
+  - id: greek_regulated_basket_2026
+    kind: observed
+    title: >-
+      The 63 categories of goods necessary for consumers' nutrition and living, under the
+      gross-margin cap
+    instrument: >-
+      Υπουργική Απόφαση 21330/12.03.2026, «Περιστολή φαινομένων αθέμιτης κερδοφορίας…»,
+      άρθρο 6, Πίνακας Κατηγοριών Προϊόντων
+    gazette: ΦΕΚ Β΄ 1411/12.03.2026
+    enabling_act: >-
+      Πράξη Νομοθετικού Περιεχομένου της 11.03.2026 (ΦΕΚ Α΄ 37/11.03.2026), άρθρο δεύτερο,
+      ratified by ν. 5289/2026 (ΦΕΚ Α΄ 45/20.03.2026)
+    url: https://www.taxheaven.gr/circulars/52390/21330-12-03-2026
+    retrieved_on: 2026-08-27
+    file: data/greek-regulated-basket-2026.csv
+    sha256: 30dfba10e7fb10258ab6a98cf6b57d49699146135e0d94f93b406610eaa653e2
+    rows: 63
+
+    how_it_was_verified: >-
+      The decision's text was read at the URL above and the table of άρθρο 6 transcribed
+      verbatim, ordinal by ordinal, to 63 rows. The gazette reference ΦΕΚ Β΄ 1411/12.03.2026
+      is stated identically by three independent legal databases — taxheaven.gr,
+      e-nomothesia.gr and nomotelia.gr — and the list's contents were cross-checked against
+      an independent prose enumeration in the press (efsyn.gr, 13.03.2026), which agrees item
+      for item.
+
+    declared_limit: >-
+      **The ΦΕΚ PDF itself was not reached.** `search.et.gr` responds but no direct-download
+      URL for this issue could be constructed, and `e-nomothesia.gr` refuses a non-browser
+      client outright. This is the same limit `docs/REGULATORY.md` already records for every
+      Greek citation in this repository, and it is on the publication checklist. What is
+      asserted here is what was read at a legal-database reproduction and corroborated twice,
+      not what was read in the Gazette.
+
+    why_it_is_here: >-
+      `contracts/guardrails/regulated_basket.yaml` names three categories — `dairy`, `bakery`,
+      `poultry` — and declares them a `scenario_assumption`, because when that contract was
+      written this decision *had not been obtained*. It has now. The corpus therefore
+      disagrees with the contract, and that is the point: an independent corpus that agreed
+      with the contract in every particular would not be independent. The eval decides which
+      corpus rows are regulated from **this** list, by the ordinal recorded in
+      `data/item_categories.csv`, and never from the contract.
+
+    margin_definition_read_in_the_instrument:
+      article: άρθρο 4 παρ. 4
+      quote_el: >-
+        Περιθώριο Μικτού Κέρδους Προϊόντος (ΠΜΚ): ο λόγος της διαφοράς της Τιμή Πώλησης από
+        το Μέσο Κόστος Πωληθέντων προς την Τιμή Πώλησης
+      meaning: >-
+        (selling price − average cost of goods sold) ÷ **selling price**, both excluding VAT.
+        The margin is a fraction of the *price*, not a mark-up on the cost.
+      reference_period: >-
+        άρθρο 4 παρ. 5 — the last closed financial year of 2025, or 01.01.2025 to 31.12.2025.
+      why_it_matters_here: see `derived.benchmark_markup_on_cost_pct` below.
+
+  - id: eurostat_sbs_gross_margin
+    kind: observed
+    title: >-
+      Gross margin on goods for resale, and turnover, for NACE 47.11 (retail sale in
+      non-specialised stores with food, beverages or tobacco predominating), Greece
+    publisher: Eurostat
+    dataset: sbs_na_dt_r2 — Annual detailed enterprise statistics for trade (NACE Rev. 2 G) (2005-2020)
+    url: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/sbs_na_dt_r2?format=JSON&geo=EL&nace_r2=G4711&indic_sb=V12110&indic_sb=V12130&lang=EN
+    licence: >-
+      Eurostat reuse policy — reuse authorised provided the source is acknowledged.
+    dataset_last_updated: 2024-03-01
+    retrieved_on: 2026-08-27
+    file: data/eurostat-sbs-gross-margin-el.csv
+    sha256: 93586b7c2861170db2234d4bdd88e792aa8f275236d737222663686c22c12dbb
+    rows: 13
+
+    why_it_is_here: >-
+      **A retailer's unit cost is not public and never will be.** It is the one input the
+      guardrails need that no open source carries, because it is the thing a buyer negotiates
+      and a competitor would pay for. Rather than write a plausible number — which is exactly
+      what doctrine rule 3 forbids — the corpus takes a *real, published* margin for the
+      right industry in the right country, and derives a cost from it with the arithmetic
+      written out below.
+
+    the_2018_observation: >-
+      2018 reports a gross margin of 47.77% of turnover against roughly 16-19% in every other
+      year. It is a break in the series, and it is left in the file exactly as Eurostat
+      publishes it. The derivation below uses the **median** of the thirteen years rather
+      than the mean, so the break moves nothing — which is why a median was chosen, and it is
+      said here rather than the row being deleted.
+
+# ------------------------------------------------------------------------ what is derived
+
+derived:
+
+  unit_cost:
+    from: [ons_price_quotes, eurostat_sbs_gross_margin]
+    formula: unit_cost = price × (1 − m), where m = 0.1681
+    m_is: >-
+      the median of `gross_margin_pct_of_turnover` over the thirteen published years,
+      2008-2020 — 16.81%. Eurostat's ratio is gross margin on goods for resale over turnover,
+      which is the same quantity άρθρο 4 παρ. 4 of ΥΑ 21330/2026 calls ΠΜΚ: a margin over the
+      selling price.
+    what_this_is_not: >-
+      **This is not an observed cost, and the eval says so wherever it reports a number that
+      depends on it.** It is one industry-wide ratio applied to every item, so it carries no
+      information about which products a retailer earns more on. What it does carry is the
+      right *order of magnitude*, from a real published statistic for Greek supermarkets,
+      which is enough to place the margin floor and the margin cap where a real one would sit
+      against real prices.
+    which_direction_it_errs: >-
+      A cost derived from a single median margin is too high for high-margin lines and too
+      low for low-margin ones. Too high moves the floor **up**, so the gate refuses more
+      often; too low moves it down, so the gate refuses less often. The corpus therefore
+      cannot manufacture a pass for the *system* — but it can manufacture one for an
+      individual row, and the eval's headline count of refusals is reported as "against this
+      derived cost" for that reason and never as a property of real Greek costs.
+
+  benchmark_markup_on_cost_pct:
+    from: [eurostat_sbs_gross_margin, greek_regulated_basket_2026]
+    formula: markup = m ÷ (1 − m) = 0.1681 ÷ 0.8319 = 20.21%
+    why_a_conversion_is_needed: >-
+      άρθρο 4 παρ. 4 defines the capped margin as a fraction of the **selling price**.
+      `holdout.core.guardrails.envelope` bounds the price at `cost + cost × benchmark_margin_pct`,
+      which is a mark-up on **cost**. The two are the same constraint expressed in different
+      denominators, and the conversion above is exact.
+    a_finding_for_the_author: >-
+      `ProposedPrice.benchmark_margin_pct` does not say which denominator it is in, and
+      `contracts/guardrails/regulated_basket.yaml` names its benchmark `average_gross_margin_2025`
+      — a name whose instrument defines it over the selling price. Feeding that number
+      straight into the core's arithmetic would apply 16.81% where 20.21% was meant, which is
+      a **stricter** cap and therefore fails safe; but it is an ambiguity in a load-bearing
+      field and it was found by reading the instrument this corpus cites, not by reading the
+      contract. It is reported rather than fixed here: the denominator is a contract question
+      with a restatement attached, and this branch is an eval.
+
+  ladder_base_price:
+    from: [ons_price_quotes]
+    formula: the row's own `price`, taken as the shelf base price the ladder marks down from
+    note: >-
+      The ONS `base_price` is a CPI reference price from an earlier period, not the price on
+      the shelf beside the quote. Using the quote itself as the base price is the honest
+      reading: it is the price that was on the shelf on the day.
+
+  week_opening_price:
+    from: [ons_price_quotes]
+    formula: >-
+      the price of the same (item_id, shop_code) in the immediately preceding month, where
+      the two months are consecutive — Feb→Mar, May→Jun, Jun→Jul
+    note: >-
+      A real observed price move by a real retailer in the same outlet, one month apart
+      rather than one week. It is used where a base-price decision needs the price in force
+      at the start of the pricing week, and a month is a **wider** window than a week, so a
+      move that clears the weekly bound over a month would have cleared it over a week too.
+      Where the direction of that inequality matters, the eval states it.
+
+  prior_price:
+    from: [ons_price_quotes]
+    formula: >-
+      the lowest price observed for the same (item_id, shop_code) across every earlier month
+      in the corpus
+    note: >-
+      Article 6a of Directive 98/6/EC defines the prior price as the lowest price applied over
+      not less than thirty days. Five monthly observations are not a thirty-day daily series,
+      so this is the lowest price *this corpus saw*, which is an upper bound on the true prior
+      price. Announcing a reduction against it is therefore at least as hard as announcing
+      against the real one.
+
+# --------------------------------------------------------------------- what is ours alone
+
+ours:
+
+  - file: data/item_categories.csv
+    sha256: b1090bf4128041216eacb0fd1886edd9a74bbe664fdb265dfd3e91e8852238f0
+    rows: 37
+    what_it_is: >-
+      The map from an ONS representative item to (a) one of this scenario's categories and
+      (b) an ordinal of the Greek decision's table. **Both columns are judgments made in this
+      repository**, which is why they are in a separate file from the data rather than folded
+      into it. `match: exact` means the decision names this product; `match: equivalent` means
+      it names the commercial slot the product occupies in another country's basket — a UK
+      cheddar against «τυρί γκούντα». Every row carries its reasoning, so a reader who
+      disagrees can see precisely what they are disagreeing with, and the eval reports the
+      exact and equivalent counts separately.

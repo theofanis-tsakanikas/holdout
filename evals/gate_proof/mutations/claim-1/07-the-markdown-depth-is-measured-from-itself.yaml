@@ -1,0 +1,24 @@
+# One identifier. `base_price` becomes `price`, the bound becomes a fraction of the number
+# it is bounding, and the guardrail can never refuse anything again — while still appearing
+# in the assessment, still attributed to `max_delta/markdown_max_depth_pct`, and still
+# looking in a diff like a guardrail that is present.
+
+id:          the-markdown-depth-is-measured-from-itself
+claim:       1
+eval_module: evals.guardrail
+targets:     [G2.certified-price-inside-exact-bounds]
+
+breaks: >-
+  the maximum markdown depth is measured against the proposed price instead of the shelf
+  base price, so any markdown of any depth satisfies it.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+                amount=Money.as_lower_bound(
+                    Decimal(proposal.base_price.cents) - proposal.base_price.pct(depth)
+                ),
+replacement: |
+                amount=Money.as_lower_bound(
+                    Decimal(proposal.price.cents) - proposal.price.pct(depth)
+                ),

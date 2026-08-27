@@ -1,0 +1,24 @@
+# This is not a hypothetical. A review found exactly this hole: `certified()` re-checked
+# containment and emptiness but not whether any bound existed, so an empty `PriceBounds()`
+# satisfied both vacuously and a certified 2.00 EUR became 0.01 EUR on a shelf while the
+# certificate still named three guardrails that no longer bound anything. The fix was three
+# lines; this mutation removes them again and asks whether the eval would have caught it.
+
+id:          an-erased-answer-is-as-good-as-a-checked-one
+claim:       1
+eval_module: evals.guardrail
+targets:     [G9.no-tampered-certificate-reaches-a-shelf]
+
+breaks: >-
+  the actuator stops requiring a certificate to carry the bounds it was checked against, so
+  a forgery can lower a price by *erasing* the answer rather than by writing a new one — and
+  an erasure is invisible in a diff in a way a forgery is not.
+
+file: src/holdout/core/guardrails/certificate.py
+
+anchor: |
+        if not bounds.lower:
+            return False
+replacement: |
+        if False and not bounds.lower:
+            return False
