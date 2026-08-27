@@ -26,9 +26,16 @@ permissions:
   contents: read
 
 env:
-  # No `uv run` in this file may re-resolve dependencies. The lockfile is the input, and a
-  # lockfile that has drifted from pyproject.toml is a red build, not a silent upgrade.
-  UV_FROZEN: "1"
+  # The lockfile is an input, not an artefact: every `uv` invocation below asserts that
+  # uv.lock is up to date with pyproject.toml and refuses to re-resolve. A lockfile that has
+  # drifted is a red build, not a silent upgrade.
+  #
+  # UV_LOCKED rather than UV_FROZEN, and the difference is the whole point: FROZEN means
+  # "use the lockfile as it is", which would pass on a lockfile that no longer matches
+  # pyproject.toml. LOCKED means "the lockfile must already be correct". The first run of
+  # this workflow used FROZEN and died on its own contradiction with `uv sync --locked`,
+  # which is a better outcome than the two quietly disagreeing.
+  UV_LOCKED: "1"
 
 jobs:
   gate:
