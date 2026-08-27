@@ -40,7 +40,7 @@ package = true
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["src", "tests", "evals", "corpus"]
+src = ["src", "tests", "evals", "corpus", "ops", ".claude/hooks"]
 
 [tool.ruff.lint]
 select = [
@@ -91,7 +91,7 @@ quote-style = "double"
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src", "tests", "evals", "corpus"]
+files = ["src", "tests", "evals", "corpus", "ops", ".claude/hooks"]
 strict = true
 warn_unreachable = true
 warn_return_any = true
@@ -108,5 +108,5 @@ addopts = "-q --strict-markers --strict-config"
 pythonpath = ["src"]
 
 [tool.coverage.run]
-source = ["src/holdout", "evals", "corpus"]
+source = ["src/holdout", "evals", "corpus", "ops"]
 branch = true

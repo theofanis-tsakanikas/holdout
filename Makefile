@@ -17,14 +17,15 @@
 UV ?= uv
 RUN := $(UV) run
 
-#: Everything that is Python and is ours. `evals/` and `corpus/` are linted and type-checked
-#: exactly as `src/` is: an eval is the evidence a claim rests on, and evidence held to a
-#: lower standard than the code it judges is not evidence for long.
-PYTHON_DIRS := src tests evals corpus
+#: Everything that is Python and is ours. `evals/`, `corpus/`, `ops/` and the harness hooks
+#: are linted and type-checked exactly as `src/` is: an eval is the evidence a claim rests on,
+#: a hook is a guarantee, and evidence or a guarantee held to a lower standard than the code
+#: it judges is not one for long.
+PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        claim-1 eval-guardrail gate-proof corpus clean
+        expiry claim-1 eval-guardrail gate-proof corpus clean
 
 help:  ## show this help
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -36,9 +37,9 @@ setup:  ## create the virtualenv and install everything
 setup-locked:  ## install exactly what uv.lock pins — what CI runs, and what refuses a drifted lock
 	$(UV) sync --locked
 
-check: lint typecheck contracts test  ## the whole local gate, in the order that fails fastest
+check: lint typecheck contracts expiry test  ## the whole local gate, in the order that fails fastest
 	@echo ""
-	@echo "OK      lint · typecheck · contracts · tests"
+	@echo "OK      lint · typecheck · contracts · expiry · tests"
 	@echo "        the claim targets are NOT in here — they take minutes, and CI discovers"
 	@echo "        and runs every one of them. Run 'make claim-1' before a claim's own PR."
 
@@ -61,6 +62,15 @@ contracts:  ## validate every contract and refuse a stale or hand-edited generat
 
 contracts-write:  ## recompile every consumer and write it to generated/
 	$(RUN) holdout-contracts compile
+
+# Doctrine rule 6: "Exceptions expire. On expiry the finding returns and CI goes red again."
+# This is the only target in the file that can go red on a day nobody touched the repository,
+# and that is what it is for — a deferral that outlives its reason does so by the calendar,
+# not by an edit. It refuses a deferred item that carries neither an unlock condition nor a
+# date, in `docs/DECISIONS.md`'s own words: an item with no unlock condition is not deferred,
+# it is forgotten.
+expiry:  ## refuse an expired deferral, or one that never said how it ends
+	$(RUN) python -m ops.expiry
 
 # ------------------------------------------------------------------------- the claims
 

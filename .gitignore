@@ -22,6 +22,11 @@ uv.lock.bak
 coverage.xml
 htmlcov/
 
+# The AI layer travels with the repository — `.claude/settings.json` and `.claude/hooks/` are
+# committed on purpose, so a guarantee is not something that lives on one laptop. The local
+# override file is the exception: it is per-machine and per-person by design.
+.claude/settings.local.json
+
 # Editors / OS
 .DS_Store
 .idea/
