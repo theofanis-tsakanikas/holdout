@@ -1,0 +1,22 @@
+# The change budget is an inequality, and an inequality has exactly one input that tells
+# `>=` from `>`: the one that lands on the bound. The eval's declared sweep of dispatch
+# counts contains `4` for that reason and for no other, and two of its envelopes carry a
+# budget of 4. Without that value in the grid this mutation would survive, and it would
+# survive silently.
+
+id:          the-daily-change-budget-is-off-by-one
+claim:       1
+eval_module: evals.guardrail
+targets:     [G2.certified-price-inside-exact-bounds]
+
+breaks: >-
+  a SKU that has already used its whole daily change budget is allowed one more. The
+  guardrail still fires, still counts, still appears in the readout — it is simply one
+  price change too late every day, in every store.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+        elif proposal.changes_dispatched_today >= budget:
+replacement: |
+        elif proposal.changes_dispatched_today > budget:

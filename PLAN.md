@@ -59,7 +59,9 @@ putting it first.
 | `src/holdout/core/` — the design form, feasibility, assignment, the four checks, the estimator | `core/design-experiment` | open |
 | the generator and the six adversarial worlds | `corpus/adversarial-worlds` | open |
 | the A/A harness, the reference implementation of truth, the per-claim eval directories | `evals/aa-harness` | open |
-| the `claim-N`, `gate-proof` and `preview-audit` targets | with the eval each proves | open |
+| `corpus/real/`, `evals/guardrail/`, `evals/gate_proof/`, `make claim-1`, `make gate-proof` | `evals/guardrail-and-gate-proof` | **landed** |
+| mutation ownership: `claim-N` executes, `gate-proof` audits | `evals/mutation-ownership` | **landed** |
+| the remaining `claim-N` and `preview-audit` targets | with the eval each proves | open |
 | CI, the protected `main`, and `docs/DECISIONS.md` | `ops/gate-and-decisions` | **landed** |
 
 **What the contract layer settled.** The four families are versioned with effective windows and
@@ -106,6 +108,10 @@ tested only alone.
 green target that proves nothing is a gate disarmed before it was ever armed. Claim 1 is not proved
 by the core — it is made provable; the eval that attacks the gates from an independent corpus of
 real price lists is still open, and the seam it needs is built and verified.
+*Since 2026-08-27: that eval exists and claim 1 has closed. `claim-2` … `claim-7` and
+`preview-audit` are still absent, on exactly the same reasoning. The seam held — the eval builds
+`Envelope` objects from literal numbers without opening `contracts/`, which is what let a sweep
+reach the `unspecified_in_the_instrument` branch that no contract date can reach.*
 
 **Oversight level 1 is now structural.** `main` is protected by a ruleset with **no bypass actors**,
 so the rule binds the owner: changes only through a pull request, `gate` and `secrets` both required
@@ -123,11 +129,81 @@ on. The publication *checklist* has not run, so the repository is public and **u
 README, no banner, no article, no post. `docs/DECISIONS.md` records the trade and restates the
 condition it overtook.
 
+**What claim 1 cost, and what it bought.** The eval attacks the gates from 32,480 individual price
+quotes the UK Office for National Statistics collected by hand in shops and published under the Open
+Government Licence, the 63 categories of ΥΑ 21330/12.03.2026 (ΦΕΚ Β΄ 1411) — the Greek margin cap's
+own list, which the contract does **not** name — and Eurostat's gross margin for Greek supermarkets.
+232,373 decisions across eight envelopes, **all twelve `at_decision` codes reached**, and nine
+checks green. The load-bearing one is a **second implementation** of the envelope arithmetic, in
+exact `Decimal` euros against the core's integer cents, with no tolerance: zero certified prices fell
+outside it, and zero refusals were unsupported by it.
+
+`make gate-proof` plants **thirteen** deliberate breaks and every one is refused by the check named
+in advance. Three rules make that mean something: green first, a parsed JSON reading rather than an
+exit code, and `STALE` — never a pass — when a mutation's anchor or its named check has moved.
+
+**What the corpus found that nothing else could.** Two things, both recorded in `docs/DECISIONS.md`
+with unlock conditions rather than quietly fixed. The **ladder takes a floor and no ceiling**, so
+where the margin cap binds below the base price the declared safe state produces prices the envelope
+refuses — 7,366 of 26,600 ladder quotes. The guardrails were right to refuse; doctrine rule 1 is what
+is incomplete, and it is the same class as the composition finding a review made earlier. And
+`benchmark_margin_pct` **does not say which denominator it is in**: the Greek instrument defines the
+capped margin over the selling price, the core bounds it as a mark-up on cost, and the contract's
+field name points at the first while the arithmetic wants the second. It fails safe. It is still an
+ambiguity in a load-bearing field, and it was found by reading the instrument rather than the
+contract.
+
+**Two mutations survived before they bit**, and both are kept in the record. One named a check that
+could not catch it; one was caught by a *different* check, so it proved nothing about the line it was
+aimed at. Each was fixed by correcting the eval, never by widening an assertion — **a gate can only
+be shown to bite where it is the gate that refuses.** A mutation set that never surprises its author
+was written after looking at the answers.
+
+**What the ownership split settled.** A mutation belongs to exactly one claim and runs under
+that claim's target. `make gate-proof` stopped executing and became the accountant: no
+orphan, no duplicate, and no `claim-N` target with nothing planted against it — CLAUDE.md's
+checklist question, made structural. The CI job goes from **13m06s to roughly half**, and the
+timeout goes back to 15 minutes; but the reason to do it is the orphan, which nothing caught
+before. A mutation dropped into `mutations/claim-9/` with no `claim-9` target was planted,
+never run, and never missed.
+
+**Oversight level 2 has read the claim-1 branch.** Its verdict on closure: *substantively yes;
+as currently written up, not quite.* The actuation half is genuinely proved. Three things must
+move before this file's claim of closure is fully earned, and all three are the same class the
+phase-1 review found — **prose asserting more than the code supports**:
+
+1. **The "7,366 ladder quotes refused by a ceiling" figure is misattributed.** 6,650 of them
+   are `MARGIN_CAP_BASIS_UNEVALUABLE`, a predicate with no bound at all, which a ceiling on the
+   ladder would not change. The supportable figure is **716 of 26,600**, from one envelope. That
+   wrong number is now carried by a deferred `docs/DECISIONS.md` entry the phase-1 integration
+   session is instructed to act on.
+2. **`_exact_floor` in the eval calls `Money.as_lower_bound`** — the core's own rounding — while
+   its docstring claims independence. Patching that primitive leaves G2, G3 and G6 all green, so
+   a defect in the rounding rule this project chose money's representation for is invisible to
+   every check that calls itself a second implementation. Relatedly, G3's one-cent tolerance
+   cannot catch a bound that is one cent **too strict** — which is precisely the shape of the
+   ladder bug its own docstring cites as motivation.
+3. **"The 2025 benchmark margin" is a 2008–2020 industry median.** ΥΑ 21330/2026 άρθρο 4 παρ. 5
+   defines the benchmark as the trader's own average, per product code, over 2025. The corpus
+   documents describe the Eurostat figure as something its sources never state, and
+   `corpus/real/README.md` reads an equivalence into άρθρο 4 παρ. 4 that the article does not
+   contain.
+
+Also found, not blocking: the margin-cap ceiling is algebraically the item's median price, so
+the Eurostat figure cancels out of the cap entirely; `which_direction_it_errs` argues only the
+floor and is wrong for the cap; the regulated list's independence is largely nominal, since the
+three `contract.*` envelopes take their basket from the contract; and "the planter cannot tune
+the inputs" is tamper-**evident**, not tamper-proof.
+
+*Two of the reviewer's findings were in `evals/gate_proof/` and are fixed on this branch: a
+docstring naming a verification function that has never existed, and `_apply` joining a
+mutation's declared path with no containment check. The rest is a separate piece of work.*
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase
 
-Claims 1, 2, 3, 4 and 7 — all provable local, with no account.
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claim 1 has closed.**
 
 **Then an integration session**, before the next phase opens: read the whole repository against
 `CLAUDE.md` and report conceptual drift. It builds nothing.

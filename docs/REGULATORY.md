@@ -275,7 +275,7 @@ URL in `contracts/`. A test enforces that last point.
 | `guardrails/floor.yaml` | a refusal is the correct output when no legal price sells the item | doctrine, not statute |
 | `guardrails/max_delta.yaml` | markdown depth **≤ 70%**; **≤ 4** changes per SKU per store per day; base price **+10% / −20%** per pricing week | commercial and operational bounds of the scenario. The depth and the change budget are set to the ladder's deepest step and step count, so the envelope binds the policy rather than trailing it |
 | `guardrails/frozen_categories.yaml` | tobacco, spirits, infant formula, pharmacy — and fresh fish from 01.11.2025 | each of these is subject to price or marketing rules in real markets and **none of those rules was verified here**. They are frozen because the scenario declines to automate them, not because an instrument was read |
-| `guardrails/regulated_basket.yaml` | the basket's categories are `dairy`, `bakery`, `poultry` | the real scope is fixed by a ministerial decision under άρθρο τέταρτο, reported to name 63 categories. **That decision was not obtained**, so its list is not reproduced |
+| `guardrails/regulated_basket.yaml` | the basket's categories are `dairy`, `bakery`, `poultry` | the real scope is fixed by a ministerial decision under άρθρο τέταρτο, reported to name 63 categories. **That decision was not obtained**, so its list is not reproduced. *Restated 2026-08-27: it has since been read, and its 63 categories are transcribed in `corpus/real/`. The contract still names three, still as an assumption — see item 6 under "Not verified" and the deferred entry in `docs/DECISIONS.md`* |
 | `guardrails/regulated_basket.yaml` | no cap in force 01.01.2022–05.03.2022, 01.07.2022–11.03.2026, and from 01.07.2026 | see [Not verified](#not-verified). These windows record what this repository verified, **not** a claim that no cap existed |
 | `policies/ladder_policy@v1.yaml` | ladder depths 20 / 35 / 50 / 70% at 24 / 12 / 6 / 3 hours to expiry | shaped to resemble publicly described fresh-markdown practice; **no chain's actual schedule was obtained** and none is claimed |
 
@@ -317,6 +317,24 @@ it is encoded in `contracts/`.**
    for the 2026 cap. Never opened. The reported 63 categories, the reported margin formula
    `(selling price − average cost of goods sold) / selling price` and the reported 2025
    reference period are **secondary only** and none of them is encoded.
+
+   > **Restated 2026-08-27.** It has now been opened — at a legal-database reproduction,
+   > which is not the Gazette, and the distinction is kept. The decision's text was read
+   > directly: **άρθρο 6** carries the table of 63 categories, transcribed verbatim into
+   > `corpus/real/data/greek-regulated-basket-2026.csv`; **άρθρο 4 παρ. 4** defines
+   > `ΠΜΚ = (Τιμή Πώλησης − Μέσο Κόστος Πωληθέντων) / Τιμή Πώλησης`, confirming the reported
+   > formula and, importantly, that the margin is a fraction of the **selling price** rather
+   > than a mark-up on cost; **άρθρο 4 παρ. 5** fixes the reference period as the last closed
+   > financial year of 2025, or 01.01.2025–31.12.2025. The gazette reference ΦΕΚ Β΄ 1411/
+   > 12.03.2026 is stated identically by taxheaven.gr, e-nomothesia.gr and nomotelia.gr, and
+   > the category list agrees item for item with an independent prose enumeration in the
+   > press (efsyn.gr, 13.03.2026).
+   >
+   > **Still none of it is encoded in `contracts/`.** The list lives in `corpus/real/`, which
+   > is the independent corpus claim 1 attacks the gates *from*, and a corpus is not a
+   > contract. Moving it into `regulated_basket.yaml` opens a new effective window and a
+   > restatement chain; `docs/DECISIONS.md` records that as deferred, with its unlock
+   > condition. What changes today is only this: the decision is no longer unread.
 
 ### Other
 

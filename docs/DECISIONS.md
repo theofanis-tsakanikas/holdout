@@ -131,6 +131,11 @@ CI **discovers** claim targets by grepping the Makefile rather than listing them
 lands it is gated without anyone remembering to edit the workflow — and a claim target that exists
 but is never run is impossible by construction.
 
+> **Restated 2026-08-27, later the same day.** `claim-1` and `gate-proof` now exist, because the
+> eval that earns them exists. The rule is unchanged and the other six targets are still absent:
+> the discovery grep in `ci` picked both up with no edit to the workflow, which is the property the
+> original decision was written for.
+
 **One branch per closed piece of work, squash-merged.** · 2026-08-24
 Not ceremony for a solo repository: `main`'s log is part of the portfolio and will be read; the gate
 is structural only when the suite runs *before* anything lands; and the fresh-context reviewer needs
@@ -182,6 +187,96 @@ layer exists to prevent.
 Never a plausible percentage with a plausible citation. `value` without `source` is a build failure;
 `source` requires either `kind: legal_instrument` with an instrument, article, URL and verification
 date, or `kind: scenario_assumption`. 45 values: 30 legal, 19 assumed at last count.
+
+**An eval is not a test, and `evals/` is shaped so the difference stays visible.** · 2026-08-27
+The suite asks whether a module does what its author meant. An eval asks whether a **claim**
+is true, on inputs its author did not choose, and publishes numbers rather than a tick. Six
+rules, set by claim 1's eval and inherited by claims 2, 3 and 4: a check has a stable id, so
+`gate-proof` can name it; a check states a falsifiable question rather than a label; numbers
+are published pass or fail; **coverage is itself a check**, so an unreached refusal code is
+red rather than a footnote; a boundary that has to be known is computed **twice**, in a
+different unit and a different structure; and "what this does not prove" is printed on every
+run rather than kept in a README where it can quietly stop being true.
+
+**`gate-proof` has three rules, and each one closes a way of passing without proving.** ·
+2026-08-27
+*Green first* — a mutation whose target was already red proves nothing, and that is
+`NOT-ARMED`, a failure rather than a skip. *A non-zero exit is not proof* — the eval's JSON is
+parsed and the **named** check must be the one that fell; a crash is `CRASHED` and `CRASHED`
+fails, because otherwise the easiest way to pass would be a mutation that makes the eval
+unimportable. *A mutation whose target moved is `STALE`, never passed* — the anchor must occur
+exactly once and the named check must still exist, which is what stops the set decaying into
+mutations that no longer touch anything.
+Thirteen mutations, all thirteen refused by the gate named in advance. Nothing is mutated in
+the working tree: each run copies the source into a temporary directory.
+
+**Where claim 1's independence actually lives — and the one separation that carries it.** ·
+2026-08-27
+Three are hygiene: the corpus is published by people who have never seen this repository; a
+test forbids `corpus/` from importing `holdout`; a mutation is written as a behaviour change
+in domain terms rather than as "make G2 fail". The one that does the work is that **the
+planter cannot tune the inputs** — `corpus/real/MANIFEST.yaml` carries a digest for every
+committed file and CI recomputes it, so the only way to make a mutation catchable is to make
+the gate actually catch it.
+*What it does not prove, stated because it is the honest half:* that the numbers in
+`contracts/guardrails/` are the right numbers. No eval can, and `make contracts` cannot
+either — it checks the shape of provenance, never its content. The eval shows the machinery
+honours whatever envelope it is handed.
+
+**A retailer's unit cost is not public, so it is derived and the derivation is argued.** ·
+2026-08-27
+No open source carries a supermarket's cost — it is what a buyer negotiates. Rather than a
+plausible number, the corpus takes Eurostat's gross margin on goods for resale over turnover
+for NACE 47.11 in Greece and derives `unit_cost = price × (1 − 0.1681)`. A **median** of the
+thirteen published years, not a mean, because the 2018 observation is a break in the series
+at 47.8% against roughly 17% either side; the row stays in the file, and a test asserts it is
+still there, because deleting it would have made the number honest by accident.
+The cost is derived from the item's **median price across the corpus**, not from each row's
+own price. That is the choice that makes the corpus work at all: a cost from the row's own
+price makes the margin identical on every row, and the floor answers the same question thirty
+thousand times. From the item, the real dispersion between 811 outlets drives it, and about a
+fifth of rows land below their item's cost.
+
+**Two survivals are kept in the record, because a mutation set that never surprises its
+author was written after looking at the answers.** · 2026-08-27
+`absolute-floor-is-not-applied` survived twice. First on a target that was simply wrong — the
+markdown path has other lower bounds, so removing the absolute floor never empties
+`bounds.lower`. Then on the right target, for a better reason: with a 0% margin floor the
+derived cost was always the higher bound, so the absolute floor never decided anything.
+**A gate can only be shown to bite where it is the gate that refuses**, and the fix was to the
+eval's sweep, not to the assertion. `an-erased-answer-is-as-good-as-a-checked-one` survived
+because the certificate has defence in depth: blanking `_bounds` is caught by the *checks*
+recomputation. Good news about the design and useless as proof, so the eval gained a tamper
+that erases the bounds and the checks together — internally consistent, and refused by exactly
+one line.
+
+**A mutation is owned by exactly one claim, and `gate-proof` audits rather than executes.** ·
+2026-08-27
+`make claim-N` runs its eval and then plants the mutations that claim owns; `make gate-proof`
+runs nothing and checks the arrangement. `engine.run` requires a claim number, so there is no
+"run everything" mode to fall back into.
+
+*What prompted it:* `claim-1` and `gate-proof` both ran claim 1's thirteen mutations and the CI
+job took **13m06s** to prove the same thing twice — untenable once claims 2 to 4 land. Three
+alternatives were weighed and rejected: raising the timeout again (defers, does not fix);
+special-casing the discovery step so it knows which targets subsume which (*a gate with special
+cases is a gate with somewhere to hide*); and reducing `claim-N` to its eval alone (then no
+single command proves a claim end to end).
+
+*What it bought beyond the minutes:* **the orphan check, which nothing had before.** A mutation
+dropped into `mutations/claim-9/` when no `claim-9` target exists was planted, never run, and
+never missed. And the reverse — a `claim-N` target with no mutation planted against it — is now
+a build failure, which is CLAUDE.md's checklist question (*if it is a gate, is there a
+`gate-proof` mutation that proves it bites?*) made structural rather than remembered.
+
+Ownership is read out of the **Makefile**, because the Makefile is what CI runs. A registry or
+a naming convention would be a second source of truth about which command proves what.
+
+**The ledger is the one gate that cannot have a gate-proof mutation, because it is gate-proof.**
+· 2026-08-27
+So it is proved by unit tests that break each of its checks on a deliberately broken
+arrangement — `tests/evals/test_ledger.py`. A gate that has only ever been seen green has not
+been tested, and that applies to the accountant as much as to anything it counts.
 
 ---
 
@@ -278,6 +373,59 @@ for 2026, because the real aggregate needs a gold table rather than a pure funct
 `MarginCapRule`, in `regulated_basket.yaml` and in `REGULATORY.md`, so no reader takes it for
 implemented compliance.
 *Unlock condition:* phase 2's gold layer, which can supply the realised per-code margin.
+
+**The ladder knows about a floor and not about a ceiling** · deferred 2026-08-27
+`ladder.quote()` takes a `floor` and clamps to it, per `floor_behaviour: clamp_to_floor` in
+`ladder_policy@v1`. It takes no ceiling and the policy declares none. So wherever the margin cap
+binds below the base price, the shallow rungs of the declared safe state produce prices the
+envelope refuses — **7,366 of 26,600 ladder quotes** in claim 1's eval, on this repository's own
+contract envelope among others.
+
+The guardrail set behaved correctly: it refused, by name, for a true reason. What is incomplete is
+**doctrine rule 1**. For an expiring product the safe state is the ladder, and here the ladder's own
+answer is refused, so there is nowhere left to fall. It is the same class as the finding a review
+made by composing two modules that had only ever been tested alone — and it was found the same way,
+by composing them over inputs nobody chose.
+
+`G6` therefore asserts only the three bounds the ladder is built to satisfy and publishes the
+ceiling count beside it as a number, rather than widening an assertion until the finding fits.
+
+*Why it is not fixed here:* the frequency depends on the corpus's derived cost, so the first
+question is how often it would happen against real costs, not how to make the number smaller. And a
+ladder that took a ceiling would need `floor_behaviour`'s counterpart in the policy contract, which
+is a contract change with a restatement.
+*Unlock condition:* the phase-1 integration session, which reads the whole repository against
+`CLAUDE.md` and is allowed to propose a restatement — or phase 2's gold layer, which supplies a
+realised per-code margin and would replace the derived cost with a measured one.
+
+**`benchmark_margin_pct` does not say which denominator it is in** · deferred 2026-08-27
+ΥΑ 21330/2026 άρθρο 4 παρ. 4 defines the capped margin as
+`(Τιμή Πώλησης − Μέσο Κόστος Πωληθέντων) / Τιμή Πώλησης` — a fraction of the **selling price**.
+`evaluate` bounds the price at `cost + cost × benchmark_margin_pct`, a mark-up on **cost**. The two
+express the same constraint and `m / (1 − m)` converts exactly, which is what claim 1's eval does.
+
+But `contracts/guardrails/regulated_basket.yaml` names its benchmark `average_gross_margin_2025`,
+and the instrument that defines that quantity defines it over the price. A caller feeding it
+straight in would apply 16.81% where 20.21% was meant. That **fails safe** — a stricter cap — but it
+is an ambiguity in a load-bearing field, and it was found by reading the instrument the corpus cites
+rather than by reading the contract, which is exactly what an independent corpus is for.
+*Unlock condition:* the next change to `regulated_basket.yaml`, which opens a window and carries a
+restatement anyway. The field's name or its documentation gains the denominator then. Until it does,
+`corpus/real/MANIFEST.yaml` and `evals/guardrail/README.md` both state it.
+
+**The contract's regulated basket still names three categories, not the decision's sixty-three** ·
+deferred 2026-08-27
+`regulated_basket.yaml` declares `dairy`, `bakery`, `poultry` as a `scenario_assumption`, on the
+stated grounds that ΥΑ 21330/2026 "was not obtained". It has now been obtained and its 63 categories
+are transcribed in `corpus/real/`, with the limit that the ΦΕΚ PDF itself was still not reached.
+*Why it is not moved into the contract:* a corpus is not a contract. `corpus/real/` is the
+independent evidence claim 1 attacks the gates **from**, and the moment the contract is populated
+from it, the eval's regulated set and the envelope's regulated set have the same author again — the
+trap, restored. Separately, the change opens a new effective window on a live guardrail and pulls a
+restatement chain with it.
+*Unlock condition:* a decision that the scenario's basket should mirror the real one, taken
+deliberately and with the eval's independence re-argued — the phase-1 integration session is the
+right place. `docs/REGULATORY.md` item 6 carries the restatement in the meantime.
 
 **Branch protection covers `main` only** · deferred 2026-08-27
 `main` is protected by a repository ruleset with **no bypass actors**, so the rule binds the owner
