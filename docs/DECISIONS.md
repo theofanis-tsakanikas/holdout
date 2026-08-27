@@ -524,6 +524,14 @@ simple randomisation — comes out falsely wide. The reference set at readout is
 the set of candidates the same screen accepts**, which is what makes the inference match the
 restriction instead of assuming it away.
 
+> **Restated 2026-08-28.** The restriction is no longer a screen: assignment is **stratified**, so
+> the reference set is exactly the set of candidates the same **strata** admit — one control per
+> stratum, drawn from the same committed seed. Everything the paragraph above claims about the
+> inference is unchanged and for the same reason, because stratification restricts the space of
+> admissible assignments exactly as the screen did. What changed is that the restriction became
+> constructive rather than rejective, which is what made the reference set affordable to fill; see
+> the deferral below.
+
 Four consequences, each a decision in its own right:
 
 - **The weak (Neyman) null, so the statistic is studentized.** A raw difference of means is exact
@@ -578,6 +586,14 @@ that cannot bite, in the same family as the four findings under "a guard tested 
 `close` therefore takes the covariates **as they stood at close**, over the units that actually
 reported. Restated pre-period revenue, an attrited store and a moved roster each turn the check red
 in `tests/core/test_balance.py`, and each of the three is a thing that happens.
+
+> **Restated 2026-08-28, and the argument got stronger rather than weaker.** There is no screen any
+> more, so the balance tolerance is judged at exactly one moment — this check. The sentence above
+> now reads: an assignment re-checked against the matrix its **strata** were built from would pass
+> almost by construction, which is the same gate that cannot bite. The three planted movements are
+> unchanged and still turn it red. What is new is that this check is where the tolerance actually
+> decides something, so `IMBALANCED_PRE_PERIOD` is now a refusal a healthy experiment can genuinely
+> receive rather than an outcome the design screen had already made unlikely.
 
 ---
 

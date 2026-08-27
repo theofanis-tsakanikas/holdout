@@ -540,7 +540,7 @@ def test_a_covariate_matrix_that_is_not_the_contract_s_is_an_error(
 ) -> None:
     """The fixed list is what stops an experiment fishing for a flattering draw. A matrix
     that chose its own columns would be the same degree of freedom entering by the back
-    door, so it is refused rather than screened on."""
+    door, so it is refused rather than matched on."""
     trimmed = CovariateMatrix.of(
         matrix.ids[:-1],
         matrix.kinds[:-1],
