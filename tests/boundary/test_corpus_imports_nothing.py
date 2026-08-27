@@ -4,28 +4,29 @@
 mirror of it, pointing the other way: it keeps the *system* out of the data that is supposed
 to be independent of the system.
 
-CLAUDE.md states the barrier for `corpus/world/` and gives the reason — a generator sharing
-a "compute margin" function with the estimator would cancel a bug in it and both would agree
-on a wrong number. The same argument applies a sentence earlier to `corpus/real/`: a corpus
-that can reach the gates it exists to attack has stopped being an independent corpus, and it
-would stop being one gradually, by the ordinary drift of whoever is editing both.
+CLAUDE.md states the barrier for `corpus/world/` and gives the reason — a generator sharing a
+"compute margin" function with the estimator would cancel a bug in it and both would agree on
+a wrong number. The same argument applies a sentence earlier to `corpus/real/`: a corpus that
+can reach the gates it exists to attack has stopped being an independent corpus, and it would
+stop being one gradually, by the ordinary drift of whoever is editing both.
 
-Checked by reading the source rather than by importing, for two reasons. An import test only
-catches a *module-level* import, and the dangerous one is the local import inside a function
-that somebody added in a hurry. And a `corpus` module that imported `holdout` successfully
-would leave the test passing while the barrier was gone.
+**The rule itself lives in `ops.isolation`, and this test is one of its two callers.** The
+other is `.claude/hooks/corpus_isolation.py`, which refuses the write before it lands. Two
+hand-written copies of one rule drift, and the copy that drifts is the one nobody reads — so
+there is one copy, called at two moments. This test is the gate: it runs on every push and
+`main` cannot take a violation. The hook is the convenience that stops a session building for
+an hour on top of a barrier that is already gone.
 """
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 import pytest
+from ops.isolation import FORBIDDEN, POLICED, REFUSAL, offences
+from ops.isolation import _by_text as by_text_only
 
-CORPUS = Path(__file__).resolve().parents[2] / "corpus"
-
-FORBIDDEN = "holdout"
+CORPUS = Path(__file__).resolve().parents[2] / POLICED
 
 
 def _modules() -> list[Path]:
@@ -34,28 +35,82 @@ def _modules() -> list[Path]:
 
 def test_the_corpus_directory_has_modules_to_police() -> None:
     """A barrier over an empty directory is a barrier that has never been tested."""
-    assert _modules(), "corpus/ contains no Python at all — this test would pass vacuously"
+    assert _modules(), f"{POLICED}/ contains no Python at all — this test would pass vacuously"
 
 
 @pytest.mark.parametrize("module", _modules(), ids=lambda p: str(p.relative_to(CORPUS)))
 def test_no_corpus_module_imports_the_system(module: Path) -> None:
-    tree = ast.parse(module.read_text(encoding="utf-8"), filename=str(module))
-    offences: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            offences += [
-                a.name
-                for a in node.names
-                if a.name == FORBIDDEN or a.name.startswith(f"{FORBIDDEN}.")
-            ]
-        elif (
-            isinstance(node, ast.ImportFrom)
-            and node.module
-            and (node.module == FORBIDDEN or node.module.startswith(f"{FORBIDDEN}."))
-        ):
-            offences.append(node.module)
-    assert not offences, (
-        f"{module.relative_to(CORPUS)} imports {offences}. The corpus is the independent "
-        "evidence claim 1 is attacked with; the moment it can see the guardrails it is "
-        "attacking, it starts agreeing with them. The join belongs in evals/, not here."
-    )
+    broken = offences(module.read_text(encoding="utf-8"), filename=str(module))
+    assert not broken, REFUSAL.format(where=module.relative_to(CORPUS), what=broken)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param(f"import {FORBIDDEN}", id="plain"),
+        pytest.param(f"import {FORBIDDEN}.core.ladder as ladder", id="submodule, aliased"),
+        pytest.param(f"from {FORBIDDEN} import core", id="from the package"),
+        pytest.param(f"from {FORBIDDEN}.core.guardrails import Envelope", id="from deep inside"),
+        pytest.param(f"def f():\n    import {FORBIDDEN}\n", id="inside a function"),
+        pytest.param(f"if True:\n    from {FORBIDDEN} import core\n", id="inside a branch"),
+        pytest.param(
+            f"try:\n    import {FORBIDDEN}\nexcept ImportError:\n    pass\n", id="in a try"
+        ),
+    ],
+)
+def test_the_barrier_catches_every_shape_of_the_import(source: str) -> None:
+    """The barrier is the evidence; evidence that has never been shown to bite is a claim.
+
+    The local import inside a function is the one that matters. An import test would miss it
+    entirely — it only ever sees module level — which is why this reads the source instead.
+
+    **`src.holdout` is here because it works.** `src/` is an implicit namespace package and the
+    repository root is on `sys.path` under `uv run` and under pytest, so
+    `from src.holdout.core.guardrails import Envelope` imports and runs — and it is the
+    spelling that matches the path on disk, which makes it the one somebody reaches for. The
+    first version of this barrier looked for the installed name only, and carried a comment
+    explaining that the other spelling would not be used.
+    """
+    assert offences(source), source
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param("import holdouts", id="a package whose name merely starts the same"),
+        pytest.param("from holdout_extras import x", id="and another"),
+        pytest.param("import random\nfrom pathlib import Path\n", id="the ordinary imports"),
+        pytest.param('"""A docstring that says import holdout."""', id="the words, in prose"),
+        pytest.param("# import holdout\n", id="the words, commented out"),
+        pytest.param("import srcs.holdout", id="a `src`-ish prefix that is not `src`"),
+        pytest.param("from source import holdout", id="and another"),
+        pytest.param(
+            'def f():\n    """The rule:\n\n    import holdout.core\n    """\n    return 1\n',
+            id="the words inside an indented docstring",
+        ),
+    ],
+)
+def test_the_barrier_does_not_catch_what_it_should_not(source: str) -> None:
+    """A barrier that fires on `# import holdout` gets widened until it stops firing at all."""
+    assert not offences(source), source
+
+
+@pytest.mark.parametrize(
+    ("source", "caught"),
+    [
+        pytest.param(f"import {FORBIDDEN}", True, id="at the start of a line"),
+        pytest.param(f"import src.{FORBIDDEN}", True, id="the path spelling too"),
+        pytest.param(f"    from {FORBIDDEN} import core", True, id="indented"),
+        pytest.param(f"x = 1; import {FORBIDDEN}", False, id="after a semicolon — it cannot see"),
+        pytest.param(f"    import {FORBIDDEN}.core", True, id="indented, submodule"),
+    ],
+)
+def test_the_text_scan_is_exercised_in_both_directions(source: str, caught: bool) -> None:
+    """The last resort has its own tests, because every source above parses.
+
+    Twelve parsing sources all take the AST path, so `_by_text` could be deleted outright and
+    the parametrisations above would stay green. It is reached only when a fragment survives
+    both `ast.parse` and `ast.parse(dedent(...))`, and what it cannot do — see an import after
+    a semicolon — is asserted here rather than discovered by whoever hits it.
+    """
+    assert bool(by_text_only(source)) is caught, source

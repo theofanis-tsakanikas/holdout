@@ -84,11 +84,32 @@ out_of_scope  Any hook that duplicates a check CI already makes green-or-red.
 stop_at       When the two hooks fire on a deliberate violation, settings.json is committed, and
               make expiry goes red on a planted expired deferral.
 review        yes
-status        open
+status        closed
 ```
 
 The import barrier must exist **before** `corpus/world/` is written — otherwise T002 can land a
 violation that only a later test catches. That is why T00A blocks T002.
+
+**What it landed, and where it went wider than the line above.** The barrier is policed over the
+whole of `corpus/`, not `corpus/world/` alone, because that is what
+`tests/boundary/test_corpus_imports_nothing.py` has always policed and a hook that policed *less*
+than its own gate would wave through the violation it was added to catch early. The rule now has
+**one** implementation, `ops/isolation.py`, with the test and the hook as its two callers — a hook
+carrying its own copy of the AST walk would have been the copy nobody reads. And the hook is
+registered on `PostToolUse` for `Bash` as well: a heredoc or a `sed -i` reaches no `PreToolUse`
+hook with a `file_path` at all, so a Pre-only hook would have been blind to the route this session
+itself writes files by. That half cannot un-write the file and is not the guarantee; the test is.
+
+`make expiry` runs inside `make check` and is named as its own step in `ci`. Its limit is written
+into `docs/DECISIONS.md` rather than left implied: an unlock **condition** is prose and can never
+expire, so a condition-only deferral is checked for existence and never for truth. What the target
+does about that is print every deferral's age in days.
+
+**Oversight level 2 found ten things, two of them fatal to this task's own `closes` line** — the
+guard allowed the ordinary two-line `git commit` on `main`, and the barrier missed `src.holdout`,
+which is the spelling this task description itself used and which imports and runs. Both were
+fixed by correcting the code, each with a test that fails on the un-fixed version; the record is
+in `PLAN.md` and `docs/DECISIONS.md`.
 
 ```
 id            T00C
@@ -571,12 +592,12 @@ L5  CI, the protected main (a ruleset with no bypass actors), docs/DECISIONS.md.
 ## The critical path
 
 ```
-T00A ─▶ T002 ─┐
+T00A ─▶ T002 ─┐        (T00A closed)
               ├─▶ T003 (claim-2, closes Phase 1) ─▶ T008 ─▶ Phase 2 ─▶ Phase 3 ─▶ Phase 4
 T001 ─────────┤        ▲
 T000 ─────────┴────────┘  (also blocks T004, T005, T006)
 ```
 
-T000 and T00A gate the phase-1 evals and corpus respectively, and both have no upstream — so the
-next session can be T000, T00A, T001, or T002 (once T00A lands). T001 and T002 are the only
-fully independent build tasks and can run in parallel.
+T000 and T00A gate the phase-1 evals and corpus respectively, and both had no upstream. **T00A has
+closed**, so `corpus/world/` may now be written: the next session can be T000, T001 or T002, and
+T001 and T002 are the only fully independent build tasks and can run in parallel.

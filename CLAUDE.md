@@ -535,6 +535,9 @@ corpus/world/          the six adversarial worlds — NO import path to core/
 corpus/real/           real published prices — claim 1's independent corpus, digest-checked
 evals/                 one directory per claim · report.py is the shared shape
   gate_proof/          the planted mutations: green first, named target, STALE on a moved one
+ops/                   the rules the product code is measured by — the corpus barrier
+                       (one implementation, two callers) and the deferral registry
+.claude/               the AI layer that ships with the repository: the hooks, and settings.json
 pipelines/ingest/      Zerobus driver · Lakeflow Connect · the S3 bulk load
 pipelines/silver/      Spark Declarative Pipelines
 pipelines/gold/        dbt
@@ -668,7 +671,7 @@ reading a workflow's exit code.
 
 | | runs | does |
 |---|---|---|
-| `ci` | every push | the suite, every eval, `gate-proof`, `make contracts`, `make preview-audit`, `terraform validate` |
+| `ci` | every push | the suite, every eval, `gate-proof`, `make contracts`, `make expiry`, `make preview-audit`, `terraform validate` |
 | `deploy` | dispatch | the whole suite **first**, then apply five layers |
 | `backfill` | dispatch | load history, build silver and gold, train, gate, register, apply `serving` |
 | `run` | dispatch | drive the day, run both experiments, answer a live question, assert against the account |
@@ -798,6 +801,14 @@ Three mechanisms, three jobs. Choosing the wrong one is why `.claude/` directori
 
 A rule that holds wherever you are → `CLAUDE.md`. A procedure that recurs and carries judgment →
 a skill. Something that must never happen → a hook.
+
+**And a hook has a second bar, because the first one is too easy to clear.** A hook exists only
+where the gate that already covers the rule **cannot run at the moment the mistake is made**. A
+hook that duplicates a check CI already makes green-or-red is a second, unversioned test suite
+that nobody runs and nobody trusts. The two that clear it are the corpus barrier — whose gate is a
+test that runs on every push and cannot run *now* — and `git commit` on `main`, whose gate is a
+ruleset that refuses the *push* and cannot stop the commit being made. `.claude/README.md` names
+what each does not catch.
 
 ### The criterion for where a skill lives
 
