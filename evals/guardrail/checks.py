@@ -40,10 +40,12 @@ from holdout.core.ladder import step_thresholds_minutes
 from holdout.core.money import Money
 
 
-#: Minutes-to-expiry values that land on every rung of `ladder_policy@v1`, plus one before
-#: the first rung fires and one past expiry. Derived from the policy at run time rather
-#: than written out, so a contract that adds a rung is exercised without anyone remembering.
 def _rung_minutes(policy: Policy) -> tuple[int, ...]:
+    """Every rung of the policy, plus one before the first fires and one past expiry.
+
+    Read off the contract at run time rather than written out here, so a policy that grows a
+    rung is exercised without anyone remembering to come back.
+    """
     thresholds = [minutes for _step, minutes in step_thresholds_minutes(policy)]
     return (max(thresholds) + 60, *thresholds, 0)
 
@@ -619,8 +621,8 @@ def run() -> Report:
         check_frozen_category_never_certified(outcomes),
         ladder.check,
         check_closed_vocabulary_only(outcomes),
-        check_no_tampered_certificate_reaches_a_shelf(outcomes),
         check_every_code_is_reachable(every),
+        check_no_tampered_certificate_reaches_a_shelf(outcomes),
     )
 
     rows = list(quotes())
