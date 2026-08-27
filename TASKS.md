@@ -304,7 +304,7 @@ status        open
 id            T004
 title         evals/assignment/ + gate-proof — make claim-3
 branch        evals/assignment
-depends_on    T000, T001
+depends_on    T000, T001, T002B
 closes        make claim-3 green. Assignment from a committed seed, exactly reproducible. The one
               door with no key — a test that no unit changes arm after its first observation, by
               anyone including an approver. The gate-proof mutation this claim owns bites by name.
@@ -313,6 +313,15 @@ stop_at       After claim-3 and its mutation refuse the planted break by name.
 review        yes
 status        open
 ```
+
+**What T002B changed about what claim 3 has to prove.** "Exactly reproducible" now takes **two**
+committed things, not one: the seed, and the **strata** the lottery drew within. The strata are a
+pure function of the covariate matrix, so they are recomputable by anyone — but only from the
+matrix as it stood at design, and a restatement moves that matrix. Both are on the seal and both
+are inside its digest, so the eval has to reproduce the assignment from the seal's own record and
+not from `strata_of` re-run on today's covariates: the second would pass on a day the first should
+have gone red. That is the same shape as the readout's balance check re-measuring rather than
+re-reading, one moment earlier.
 
 ```
 id            T005
