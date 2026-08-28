@@ -121,7 +121,9 @@ def test_a_refusal_a_cent_inside_the_bound_is_no_longer_supported() -> None:
     on_the_floor = dataclasses.replace(
         case, proposal=dataclasses.replace(case.proposal, price=floor.rounded)
     )
-    supported, detail = reference.refusal_is_supported(on_the_floor, RefusalCode.BELOW_MARGIN_FLOOR)
+    supported, detail = reference.refusal_is_supported(
+        reference.constraints(on_the_floor), RefusalCode.BELOW_MARGIN_FLOOR
+    )
     assert not supported, (
         "a refusal at a price that satisfies this eval's own rounded floor was accepted as "
         f"supported — {detail}"

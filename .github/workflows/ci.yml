@@ -41,11 +41,19 @@ jobs:
   gate:
     name: gate
     runs-on: ubuntu-latest
-    # Back to 15 now that each mutation runs once. `make check` is seconds; `make claim-1`
-    # is minutes, because a claim's whole eval runs once per planted mutation and that is
-    # the cost of the thing being proved rather than asserted. It was briefly 30, when
-    # `claim-1` and `gate-proof` both ran claim 1's mutations and the job took 13m06s.
-    timeout-minutes: 15
+    # `make check` is seconds; `make claim-1` is minutes, because a claim's whole eval runs
+    # once per planted mutation and that is the cost of the thing being proved rather than
+    # asserted. The history: 30 while `claim-1` and `gate-proof` both ran claim 1's
+    # mutations and the job took 13m06s, then 15 once each mutation ran once.
+    #
+    # 25 since T000, which cancelled a run at 15m16s while an identical one had passed at
+    # 11m00s — the same commit, two runners, four minutes apart. Two things moved: claim 1
+    # went from 13 mutations to 15, and its eval got ~15% slower because `G10` makes a full
+    # independent pass over every bound. That is ~30% more work against a budget the fast
+    # runner was already using two thirds of, so the number was wrong rather than the run.
+    # A timeout is a guard against a hang, not a performance budget; 25 still catches a hang
+    # and stops flagging a slow runner as a broken gate.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

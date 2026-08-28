@@ -54,9 +54,27 @@ class Outcome:
     case: build.Case
     result: CertifiedPrice | Refusal
 
+    constraints: reference.Constraints
+    """This eval's own opinion about every rule, computed **once** per decision.
+
+    Five checks ask five different questions of the same answer, and an earlier version let
+    each of them recompute it — `G3` did so once per *reason*, which over 321,261 reasons is
+    a quarter of a million second implementations of the same envelope. `gate-proof` then
+    runs the whole eval once per mutation, so the waste multiplied by sixteen and the CI job
+    reached its timeout. It is computed here, at the one place a decision is taken, and
+    passed down.
+    """
+
 
 def _run(cases: Iterator[build.Case]) -> list[Outcome]:
-    return [Outcome(case=case, result=certify(case.proposal, case.envelope)) for case in cases]
+    return [
+        Outcome(
+            case=case,
+            result=certify(case.proposal, case.envelope),
+            constraints=reference.constraints(case),
+        )
+        for case in cases
+    ]
 
 
 def _fraction(numerator: int, denominator: int) -> str:
@@ -114,7 +132,7 @@ def check_certified_price_inside_exact_bounds(outcomes: list[Outcome]) -> Check:
         if isinstance(outcome.result, Refusal):
             continue
         checked += 1
-        for constraint in reference.violated(outcome.case):
+        for constraint in reference.violated(outcome.constraints):
             failures.append(
                 f"{outcome.case.origin} [{outcome.case.envelope_id}] "
                 f"certified but {constraint.name} says no — {constraint.detail}"
@@ -143,7 +161,7 @@ def check_refusal_supported_by_exact_arithmetic(outcomes: list[Outcome]) -> Chec
             if reason.code in _NOT_MODELLED_HERE:
                 continue
             checked += 1
-            supported, detail = reference.refusal_is_supported(outcome.case, reason.code)
+            supported, detail = reference.refusal_is_supported(outcome.constraints, reason.code)
             if not supported:
                 failures.append(
                     f"{outcome.case.origin} [{outcome.case.envelope_id}] refused "
@@ -191,7 +209,7 @@ def check_bounds_land_where_the_independent_arithmetic_puts_them(outcomes: list[
     for outcome in outcomes:
         expected = {
             c.rule_id: c
-            for c in reference.constraints(outcome.case)
+            for c in outcome.constraints
             if c.rule_id is not None and c.rounded is not None
         }
         placed = {
@@ -244,8 +262,8 @@ def check_empty_range_is_really_empty(outcomes: list[Outcome]) -> Check:
         if not outcome.result.is_disposal:
             continue
         claimed += 1
-        floors = reference.rounded_lower_bounds(outcome.case)
-        ceilings = reference.rounded_upper_bounds(outcome.case)
+        floors = reference.rounded_lower_bounds(outcome.constraints)
+        ceilings = reference.rounded_upper_bounds(outcome.constraints)
         if not ceilings:
             failures.append(
                 f"{outcome.case.origin} [{outcome.case.envelope_id}] claims an empty range "

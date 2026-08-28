@@ -118,26 +118,21 @@ def _price(case: Case) -> Decimal:
     return case.proposal.price.euros
 
 
-def lower_bounds(case: Case) -> tuple[Decimal, ...]:
-    return tuple(c.bound for c in constraints(case) if c.side == "lower" and c.bound is not None)
+#: What `constraints` returns, passed around rather than recomputed. Every function below
+#: takes this instead of a `Case`, because five checks ask five questions of the same answer
+#: and computing it five times made the eval — and therefore `gate-proof`, which runs it once
+#: per mutation — five times slower for nothing.
+Constraints = tuple[Constraint, ...]
 
 
-def upper_bounds(case: Case) -> tuple[Decimal, ...]:
-    return tuple(c.bound for c in constraints(case) if c.side == "upper" and c.bound is not None)
-
-
-def rounded_lower_bounds(case: Case) -> tuple[Money, ...]:
+def rounded_lower_bounds(found: Constraints) -> tuple[Money, ...]:
     """Every floor at the cent — what the core's own lower bounds must equal."""
-    return tuple(
-        c.rounded for c in constraints(case) if c.side == "lower" and c.rounded is not None
-    )
+    return tuple(c.rounded for c in found if c.side == "lower" and c.rounded is not None)
 
 
-def rounded_upper_bounds(case: Case) -> tuple[Money, ...]:
+def rounded_upper_bounds(found: Constraints) -> tuple[Money, ...]:
     """Every ceiling at the cent — what the core's own upper bounds must equal."""
-    return tuple(
-        c.rounded for c in constraints(case) if c.side == "upper" and c.rounded is not None
-    )
+    return tuple(c.rounded for c in found if c.side == "upper" and c.rounded is not None)
 
 
 def _lower(
@@ -362,12 +357,12 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
     return tuple(found)
 
 
-def violated(case: Case) -> tuple[Constraint, ...]:
+def violated(found: Constraints) -> Constraints:
     """The constraints this module says the case breaks. Exact — no tolerance."""
-    return tuple(c for c in constraints(case) if not c.satisfied)
+    return tuple(c for c in found if not c.satisfied)
 
 
-def refusal_is_supported(case: Case, code: RefusalCode) -> tuple[bool, str]:
+def refusal_is_supported(found: Constraints, code: RefusalCode) -> tuple[bool, str]:
     """Whether this module's own arithmetic agrees that `code` had something to refuse.
 
     Agreement is the price falling outside the bound **this module rounded**, or a predicate
@@ -377,7 +372,7 @@ def refusal_is_supported(case: Case, code: RefusalCode) -> tuple[bool, str]:
     and this function is what says so — which the one-cent tolerance it replaced could not,
     because that was the only case the tolerance ever admitted.
     """
-    matching = [c for c in constraints(case) if c.code is code]
+    matching = [c for c in found if c.code is code]
     if not matching:
         return False, f"nothing in this eval's own arithmetic corresponds to {code.value}"
     for constraint in matching:

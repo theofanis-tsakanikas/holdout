@@ -17,20 +17,22 @@ statement of it, and the arithmetic that carries it out shares nothing with the 
 ============  ====================================  ==============================
               `holdout.core.money`                   here
 ============  ====================================  ==============================
-carrier       `Decimal`, at a declared precision      `Fraction`, exact by
-              of 34 significant digits                construction, no precision
-                                                      to declare
-mechanism     `quantize(ONE_CENT, ROUND_CEILING)`     integer division of a
+carrier       `Decimal`, at a declared precision      the value's exact integer
+              of 34 significant digits                ratio — two `int`s, and no
+                                                      precision to declare
+mechanism     `quantize(ONE_CENT, ROUND_CEILING)`     integer floor division of a
               / `ROUND_FLOOR`                         numerator by a denominator
-failure mode  a value with more than 34 significant   none available: `Fraction`
-              digits is rounded before it is          has no rounding step to get
+failure mode  a value with more than 34 significant   none available: an `int` has
+              digits is rounded before it is          no rounding step to get
               quantised                               wrong
 ============  ====================================  ==============================
 
-`Fraction` was not chosen because it is nicer. It was chosen because it is the one
-representation in the standard library that **cannot** share a bug with `Decimal`: there is
-no precision, no context and no quantisation, so a defect in any of those cannot cancel out
-between the two. Integer floor division is the whole implementation.
+The rational was not chosen because it is nicer. It was chosen because it is the one
+representation available that **cannot** share a bug with `Decimal`: there is no precision,
+no context and no quantisation, so a defect in any of those cannot cancel out between the
+two. `as_integer_ratio` is exact on `Decimal`, on `Fraction` and on `int` — it is the same
+pair `Fraction` would have been built from — and after it there is nothing here but integer
+floor division, which is the whole implementation.
 
 What this still does not prove, said plainly
 --------------------------------------------
@@ -64,8 +66,8 @@ def floor_cents(euros: Decimal | Fraction | int) -> int:
     A floor that rounds down rounds into what it forbids, so this rounds up. `-(-a // b)` is
     integer ceiling division: exact, total, and with nothing to configure.
     """
-    exact = Fraction(euros) * CENTS_PER_EURO
-    return -(-exact.numerator // exact.denominator)
+    numerator, denominator = euros.as_integer_ratio()
+    return -(-numerator * CENTS_PER_EURO // denominator)
 
 
 def ceiling_cents(euros: Decimal | Fraction | int) -> int:
@@ -74,8 +76,8 @@ def ceiling_cents(euros: Decimal | Fraction | int) -> int:
     The same argument in the other direction: a ceiling that rounds up admits a price the
     rule forbids.
     """
-    exact = Fraction(euros) * CENTS_PER_EURO
-    return exact.numerator // exact.denominator
+    numerator, denominator = euros.as_integer_ratio()
+    return numerator * CENTS_PER_EURO // denominator
 
 
 def as_floor(euros: Decimal | Fraction | int) -> Money:

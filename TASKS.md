@@ -98,6 +98,17 @@ rather than asserted: `make claim-1` now plants `Money.as_lower_bound` rounding 
 margin floor built a cent too strict, and both are refused by a check named in advance. The second
 also trips `G3`, which is the evidence that the tolerance is really gone.
 
+**And CI's timeout was wrong rather than the run.** The first PR run was cancelled at 15m16s
+while an identical run on the same commit passed at 11m00s, four minutes apart, on a different
+runner. Two things moved: 13 mutations became 15, and the eval got ~15% slower because `G10`
+makes a full independent pass over every bound — about 30% more work against a budget the *fast*
+runner was already using two thirds of. `reference.constraints` is now computed once per decision
+instead of once per check (`G3` was recomputing it per *reason*, a quarter of a million times),
+and `rounding` works on the value's exact integer ratio rather than building a `Fraction` per
+bound: **16.5s → 12.1s**, against 10.5s on `main`. The job's `timeout-minutes` went 15 → 25,
+with the arithmetic in the workflow: a timeout is a guard against a hang, not a performance
+budget.
+
 `make check` green at 767 tests · `make claim-1` **10/10 with 15/15 mutations biting**.
 
 ```
