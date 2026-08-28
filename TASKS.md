@@ -190,6 +190,172 @@ Three phase-1 defects were already fixed — the empty `PriceBounds()`, the ladd
 split, the `legal_instrument` asserting a basis its article never states — and not one of them became
 a rule. The skill is what turns the next one into a rule instead of a memory.
 
+### The two atoms T003 stopped on — 2026-08-28
+
+T003 built the A/A harness far enough to run the whole system once on the corpus, and stopped at the
+first measurement. **End to end, on this repository's own corpus, the system produces no number.**
+Two independent causes, neither of them in a file that is wrong on its own, and both invisible until
+the corpus and the design engine were run against each other for the first time:
+
+| | measured |
+|---|---|
+| the estate | 100 stores → **109 neighbour pairs** → 55 automatic exclusions → **roster 45**, control arm 9 |
+| the design | **4 of 5 world seeds refuse** at moment 1 with `UNDERPOWERED_FOR_DURATION` on a roster of 45 |
+| the readout | on the one seed that survives, **0 of 200 lotteries** pass the balance check; on the full 100-store roster with no exclusions, 30 of 100 |
+| and it does not scale out | 400 stores leave a roster of 130; **1,200 stores leave 212**. The surviving roster saturates |
+
+`corpus/world/chain.py` opens *every second* store within 990 m of one the chain already has, so
+that W2 always has interference to detect. `feasibility._neighbour_exclusions` removes one member of
+every pair inside the declared 1 km radius, so that no store measures its neighbour. Both are
+deliberate, both are documented, and together they delete half the estate — and what is left cannot
+carry a 20% holdout at a 0.10 standardised difference.
+
+The second cause is smaller and sharper. At 25 controls on the same roster,
+`store_format=hypermarket` sits at a **constant 0.1734** and `pricing_zone=zone_c` at a constant
+0.1122, for every draw: a categorical covariate's balance is fixed by how the strata are allocated
+to cells, not by the lottery. So there are rosters on which **no admissible assignment can ever pass
+the readout's balance check**, and `assess` returns `Feasible` for them without a word. That is the
+same shape as the deferral T002B closed — an experiment that could never have reported anything, for
+a reason with nothing to do with the estimator — one moment earlier.
+
+They are two tasks rather than one because they are independent: T00D is arithmetic inside
+`holdout.core` and needs no corpus, T00E is the corpus's geography and needs no contract.
+
+```
+id            T00D          <- do this one first
+title         A design that can never pass its own balance check is refused at moment 1
+branch        core/attainable-balance
+depends_on    T001, T002B
+blocks        T003
+closes        assess() refuses NO_ADMISSIBLE_ASSIGNMENT when no draw within the strata it
+              built could satisfy balance_tolerance_smd on a categorical covariate. The
+              bound is exact and computed with the readout's own arithmetic: for each level,
+              the control count is between the number of strata that are pure in that level
+              and the number that contain it at all, and the best standardised difference
+              attainable over that range is a number, not an estimate.
+              It is SOUND and INCOMPLETE, and says so: it never refuses a design some draw
+              could have saved, and it does not catch a roster that fails on the numeric
+              covariates by sampling spread — that one is a rate, and it is T003's to publish.
+              The vocabulary does not grow: NO_ADMISSIBLE_ASSIGNMENT already says exactly
+              this sentence, and its meaning in contracts/vocabularies/reason_codes.yaml is
+              restated rather than replaced.
+out_of_scope  The neighbour exclusion and the corpus's geography (T00E). Any change to
+              balance_tolerance_smd or holdout_share_pct — a threshold that moves because it
+              bound is the shape oversight level 3 exists to catch.
+stop_at       When the refusal fires on a control count found by SEARCH rather than chosen —
+              the case comes from the lottery, not from whoever wrote the guard — and when a
+              brute-force draw over every control count it accepts confirms it refused
+              nothing that could have passed.
+review        yes
+status        closed
+```
+
+**What it landed.** `balance.attainable` — the best standardised difference any lottery within a
+given stratification could reach, per categorical covariate — and a `NO_ADMISSIBLE_ASSIGNMENT`
+refusal in `assess` when it already exceeds `balance_tolerance_smd`. The vocabulary entry was
+restated rather than replaced, and it now carries both readings with the date.
+
+The bound is computed with `_standardised` itself — the readout's own function, not a second
+implementation of it — because the question is *predictive*: a prediction that used different
+arithmetic from the thing it predicts would be worth nothing. It is sound and incomplete, and both
+files say which: the per-level optima need not be simultaneously attainable, and numeric covariates
+are not bounded at all, because almost any numeric imbalance is attainable by *some* draw and the
+question about them is a rate rather than a possibility. That rate is claim 2's to publish.
+
+**The case came from the corpus and the breaking size from a loop.** The test roster's composition is
+laid out by `corpus.world.chain`'s own keyed hashing, and the control counts are scanned rather than
+named. On a 100-store roster the scan reproduces the defect exactly as it was found in the field:
+
+```
+ 20 controls  reachable      best attainable store_format=hypermarket 0.0792
+ 21 controls  OUT OF REACH   best attainable pricing_zone=zone_b      0.1356
+ 25 controls  OUT OF REACH   best attainable store_format=hypermarket 0.1734   <- the finding
+ 26 controls  reachable      best attainable pricing_zone=zone_b      0.0463
+```
+
+Three tests hold it, and none of them takes the arithmetic's word for anything: every control count
+the bound refuses is checked against 200 real draws and none may pass; every count it accepts is
+checked so that no draw comes in *under* the floor; and the scan must come back mixed, because a
+guard that refused everything would pass the first test and destroy the engine.
+
+`CLAUDE.md`'s checklist asks whether a `gate-proof` mutation proves the gate bites. **There is none
+and there cannot be yet** — design-engine mutations belong to claim 6, which has no Makefile target,
+and the ledger refuses a mutation no claim target would run. The gap is written into
+`feasibility.py`'s own docstring rather than left for someone to notice.
+
+```
+id            T00E
+title         The corpus's clustering becomes a declared per-world parameter, and HARNESS is
+              chosen on the surviving roster
+branch        corpus/declared-clustering
+depends_on    T00A, T00D
+blocks        T003
+closes        corpus/world/chain.py stops opening every second store inside the exclusion
+              radius as a hidden constant. Two declared assumptions, each with the argument
+              beside it in the corpus's own voice:
+              (1) clustered_pct, per world — realistic in W1/W3/W4/W5/W6, HIGH in W2, which
+                  is the only world that needs interference to exist. W2 is still required to
+                  ESTIMATE ON WHAT IS LEFT, so its surviving roster must work too;
+              (2) the placement radius scales with the stores a town holds, so the density of
+                  the estate — and therefore the number of chance pairs — does not change
+                  with the scale. Today it does, which is why the surviving roster saturates
+                  at 212 however many stores are added. That is a pathology of the generator,
+                  not a fact about retail.
+              Then HARNESS is chosen so the SURVIVING roster is >= 200 in EVERY world,
+              measured per world and recorded in corpus/world/README.md with the command.
+              The scenario-scale figures in that README are restated, not overwritten
+              (doctrine rule 4): the chain moved, so the counts moved.
+out_of_scope  The balance tolerance, the holdout share, the neighbour radius. The A/A harness
+              itself (T003).
+stop_at       When every world's surviving roster is measured and >= 200, and when the
+              balance pass rate at that roster is measured and recorded — so T003 starts from
+              a number rather than from a hope.
+review        yes
+status        closed
+```
+
+**What it landed, and the numbers it closes on.** `clustered_pct` is a field on `World` — 15% in
+the five that need no interference, **30% in W2** — and `chain.AREA_PER_STORE_M2` fixes the estate's
+density so the town's placement square grows with the stores it holds. `HARNESS` is
+**320 x 12 SKUs x 112 days**, and it has *more* stores than `scenario` rather than fewer, which is
+the whole restatement in one line: the roster is what the lottery draws over.
+
+```
+make roster --scale harness            seed holdout-w-0001, 20% holdout share
+ world   cluster   stores    pairs   excluded   roster   controls
+    W2       30%      320      148         98      222         44      <- the binding world
+ others      15%      320       59         51      269         53
+```
+
+Across eight world seeds the worst world never falls below 218. The figure that decides whether an
+experiment can report anything moved with it:
+
+| roster | control arm | draws inside the 0.10 tolerance |
+|---|---:|---|
+| 45 — 100 stores, before T00E | 9 | **0 of 200** |
+| 265–269 — W1, W3–W6 | 53 | **145–192 of 200**, three world seeds |
+| 218–222 — W2 | 43–44 | **121–172 of 200**, three world seeds |
+
+Three properties are held by tests rather than by the docstring that claims them: the clustering is
+**nested**, so W2's estate is the realistic estate with more of the same; **only the geography moves
+between worlds** — same shops, same formats, same sizes, same zones, same products — which the
+generator gets only because the coordinates are drawn in both branches and overridden rather than
+skipped; and the estate's **density does not move with the scale**, which is the half that had no
+test at all before and is what capped the usable roster at 212 however many stores were added.
+
+`corpus/world/README.md`'s scenario figures are **restated, not overwritten**: 36.7M POS lines
+became 39.2M, because the chain moved. `demand.BASE_LINES_PER_SKU_DAY` was left where it was —
+re-tuning a measured constant to land back on a prose figure is fitting the corpus to a sentence.
+
+**What T003 inherits, and the one decision it does not have to take.** A refusal rate on balance
+alone of roughly 4% to 40% depending on the world seed and the roster. `false_refusal_max_pct`
+**stays at 10 and is not touched** — it was written before anything was measured — and what it binds
+is settled instead: the refusals the machinery produces, every `at_readout` code but
+`IMBALANCED_PRE_PERIOD`. The imbalance rate is published beside it as a number with **no threshold**
+in this phase, because the only evidence for a bigger threshold would be the measurement that raised
+the question. `docs/DECISIONS.md` carries the deferral with what the rate is a function of and what
+would give grounds to set one; its unlock is T008.
+
 ---
 
 ## Phase 1 — the core, the contracts, and the hardest claim
@@ -346,7 +512,7 @@ T003's to produce.
 id            T003          <- closes Phase 1
 title         A/A harness (K=200), reference implementation of truth, make claim-2
 branch        evals/aa-harness
-depends_on    T000, T001, T002, T002B
+depends_on    T000, T001, T002, T002B, T00D, T00E
 closes        make claim-2 green. Four numbers published, not a tick: the false-positive rate on
               A/A against the declared alpha (one-sided binomial at a stated level); the
               false-refusal rate on W6; estimator bias; and CI coverage (~95% over K runs of W6).
@@ -802,10 +968,16 @@ L7  Stratified randomisation — strata matched on a composite distance, the lot
 
 ```
 T00A ─▶ T002 ─────┐    (both closed)
-                  ├─▶ T003 (claim-2, closes Phase 1) ─▶ T008 ─▶ Phase 2 ─▶ Phase 3 ─▶ Phase 4
+                  ├─▶ T00D ─▶ T00E ─▶ T003 (claim-2, closes Phase 1) ─▶ T008 ─▶ Phase 2 ─▶ …
 T001 ─▶ T002B ────┤    (both closed)
 T000 ─────────────┘    (also blocks T004, T005, T006)
 ```
+
+**T00D and T00E were inserted on 2026-08-28, by T003 stopping on its first measurement.** They are
+above, with the numbers. The short version: the corpus's geography and the design engine's
+neighbour exclusion were each written correctly and never run against each other, and together they
+leave a roster no holdout can be drawn from. Nothing downstream of that is worth building, which is
+why T003 stops rather than tunes.
 
 T000 and T00A gate the phase-1 evals and corpus respectively, and both had no upstream. **T00A,
 T002, T001 and T002B have closed.** T003 — the A/A harness and `make claim-2`, which closes phase

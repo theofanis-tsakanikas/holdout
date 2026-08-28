@@ -9,19 +9,25 @@ import pytest
 import yaml
 from corpus.world import chain as chain_module
 from corpus.world.chain import NEIGHBOUR_RADIUS_M
-from corpus.world.scale import CATEGORIES, REHEARSAL, SCENARIO, SMOKE
+from corpus.world.scale import CATEGORIES, HARNESS, REHEARSAL, SCENARIO, SMOKE, Scale
+from corpus.world.worlds import INTERFERING_CLUSTERED_PCT, REALISTIC_CLUSTERED_PCT
+
+#: What the fixtures below build their chain at. The realistic rate, because a chain test
+#: is about the estate the five ordinary worlds happen in; W2's rate is named where it is
+#: the point.
+CLUSTERED_PCT = REALISTIC_CLUSTERED_PCT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(scope="module")
 def built() -> chain_module.Chain:
-    return chain_module.build("test-chain", SMOKE)
+    return chain_module.build("test-chain", SMOKE, clustered_pct=CLUSTERED_PCT)
 
 
 def test_the_chain_is_a_function_of_seed_and_scale_alone() -> None:
-    one = chain_module.build("same", SMOKE)
-    other = chain_module.build("same", SMOKE)
+    one = chain_module.build("same", SMOKE, clustered_pct=CLUSTERED_PCT)
+    other = chain_module.build("same", SMOKE, clustered_pct=CLUSTERED_PCT)
     assert [s.__dict__ if not hasattr(s, "__slots__") else s for s in one.stores] == list(
         other.stores
     )
@@ -30,7 +36,10 @@ def test_the_chain_is_a_function_of_seed_and_scale_alone() -> None:
 
 
 def test_a_different_seed_is_a_different_chain() -> None:
-    assert chain_module.build("a", SMOKE).stores != chain_module.build("b", SMOKE).stores
+    assert (
+        chain_module.build("a", SMOKE, clustered_pct=CLUSTERED_PCT).stores
+        != chain_module.build("b", SMOKE, clustered_pct=CLUSTERED_PCT).stores
+    )
 
 
 def test_the_three_categories_are_the_three_the_contract_names() -> None:
@@ -55,16 +64,120 @@ def test_the_three_categories_are_the_three_the_contract_names() -> None:
     )
 
 
-def test_every_scale_has_stores_inside_the_interference_radius() -> None:
+def test_every_scale_has_stores_inside_the_interference_radius_at_w2_s_clustering() -> None:
     """W2 exists to be detected, so every scale has to contain the thing it detects.
 
-    This is the assertion that made the placement rule deterministic. A probabilistic cluster
+    This is the assertion that keeps the placement rule deterministic. A probabilistic cluster
     left the smoke scale with **zero** neighbour pairs, so the interference world was
-    structurally unable to interfere and every test about it would have passed vacuously.
+    structurally unable to interfere and every test about it would have passed vacuously; the
+    quota per town in `chain._clustered` is what replaced the coin.
+
+    **It is asked at W2's clustering and not at the realistic one, since T00E.** Interference
+    is a property of one world, not of the corpus: at 15% a smoke-scale town of two stores
+    rounds to no cluster at all, and that is correct — W1 and W6 have nothing to interfere.
+    What must never be empty is the estate of the world whose whole content is interference.
     """
-    for scale in (SMOKE, REHEARSAL, SCENARIO):
-        pairs = chain_module.build("radius", scale).neighbour_pairs
+    for scale in (SMOKE, REHEARSAL, HARNESS, SCENARIO):
+        pairs = chain_module.build(
+            "radius", scale, clustered_pct=INTERFERING_CLUSTERED_PCT
+        ).neighbour_pairs
         assert pairs, f"{scale.name} has no store within {NEIGHBOUR_RADIUS_M} m of another"
+
+
+def test_the_estate_s_density_does_not_move_with_the_scale() -> None:
+    """T00E's other half, and the one that had no test at all before it.
+
+    The share of an estate that sits inside the exclusion radius is the share no experiment
+    may use. Before T00E the placement square was a fixed 10 km across, so every store added
+    made the estate denser and that share rose without limit: 100 stores gave 109 pairs and a
+    usable roster of 45, and **1,200 stores gave 4,380 pairs and a roster of 212** — three
+    times the estate for less than five times the roster, saturating. The square now grows
+    with the stores it holds, so the share is a property of `clustered_pct` and not of how
+    big the corpus happens to be.
+
+    Measured over store counts rather than over the declared scales, because the declared
+    scales differ in SKUs and days as well and only one of the three dimensions is the
+    subject. Asserted as a band rather than a number: chance still puts some stores together,
+    and the claim is that the trend is flat rather than that the figure is fixed.
+    """
+    shares = {}
+    for stores in (100, 400, 1_200):
+        scale = Scale("density", stores, 1, 7, SMOKE.start_date)
+        chain = chain_module.build("density", scale, clustered_pct=REALISTIC_CLUSTERED_PCT)
+        paired = {store for pair in chain.neighbour_pairs for store in pair}
+        shares[stores] = len(paired) / stores
+    assert max(shares.values()) - min(shares.values()) < 0.10, (
+        f"the share of the estate inside the exclusion radius moves with the scale: {shares}. "
+        "That is the pathology T00E removed, and it caps the usable roster however many "
+        "stores are added"
+    )
+    assert max(shares.values()) < 2 * REALISTIC_CLUSTERED_PCT / 100 + 0.10, (
+        f"the estate is more crowded than its declared clustering asks for: {shares}. Each "
+        "clustered store makes one pair, so about twice the declared share should be inside "
+        "the radius and the rest is chance"
+    )
+
+
+def test_only_where_the_shops_stand_moves_between_worlds() -> None:
+    """W2's estate is the same chain, more clustered — not a different chain.
+
+    `clustered_pct` is per world since T00E, so the six worlds no longer share one geography.
+    They must still share everything else: the same shops, of the same format and size, in the
+    same zone, opened on the same day, selling the same products at the same prices. Otherwise
+    a difference between W2 and W6 could be a difference in the estate rather than in the
+    pathology, and every comparison between them would be measuring two things.
+
+    The generator gets that for free only because it is written for it: the coordinates are
+    drawn from the store's own stream in both branches and *overridden* when the store is
+    clustered, so the stream is consumed identically whatever the clustering is. A version that
+    skipped the draw instead would pass every other test in this file.
+    """
+    quiet = chain_module.build("both", SMOKE, clustered_pct=REALISTIC_CLUSTERED_PCT)
+    crowded = chain_module.build("both", SMOKE, clustered_pct=INTERFERING_CLUSTERED_PCT)
+    assert list(quiet.products) == list(crowded.products)
+    for one, other in zip(quiet.stores, crowded.stores, strict=True):
+        assert one.store_id == other.store_id
+        assert (one.store_format, one.size_index, one.pricing_zone, one.opened_on, one.town) == (
+            other.store_format,
+            other.size_index,
+            other.pricing_zone,
+            other.opened_on,
+            other.town,
+        )
+
+
+def test_a_more_clustered_estate_is_the_same_estate_with_more_of_the_same() -> None:
+    """The nesting: whoever is clustered at 15% is still clustered at 30%.
+
+    Asserted on the declaration rather than on the placement, because the placement cannot show
+    it — a store clustered at both rates may be opened beside a *different* neighbour, since
+    which shops are already standing has changed. What must be nested is the set, and the set
+    is what `clustered_pct` declares.
+    """
+    scale = Scale("nesting", 400, 1, 7, SMOKE.start_date)
+    quiet = chain_module._clustered("nest", scale, REALISTIC_CLUSTERED_PCT)
+    crowded = chain_module._clustered("nest", scale, INTERFERING_CLUSTERED_PCT)
+    assert quiet, "nothing is clustered at the realistic rate — the test proves nothing"
+    assert quiet < crowded, (
+        "a higher clustering rate dropped stores the lower one had clustered, so W2's estate "
+        "is a different estate rather than the same one with more shops opened side by side"
+    )
+
+
+def test_no_clustering_leaves_only_what_chance_puts_together() -> None:
+    """The floor, so the two tests above cannot be passing on chance alone.
+
+    At 0% every neighbour pair is an accident of placement, and `AREA_PER_STORE_M2` is chosen
+    so accidents are rare. If this ever stopped being a small number, the declared clustering
+    would have stopped being what decides the roster.
+    """
+    scale = Scale("nobody", 400, 1, 7, SMOKE.start_date)
+    chain = chain_module.build("nobody", scale, clustered_pct=0)
+    paired = {store for pair in chain.neighbour_pairs for store in pair}
+    assert len(paired) / scale.stores < 0.15, (
+        f"{len(paired)} of {scale.stores} stores are inside the radius with nothing clustered "
+        "at all — the estate is crowded by its own density and the declared rate is decoration"
+    )
 
 
 def test_neighbourhood_is_symmetric_and_never_reflexive(built: chain_module.Chain) -> None:

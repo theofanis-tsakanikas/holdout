@@ -17,17 +17,25 @@ that gained one.
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from fractions import Fraction
+from hashlib import blake2b
 
 import pytest
+from corpus.world.chain import build as build_chain
+from corpus.world.scale import Scale
+from corpus.world.worlds import REALISTIC_CLUSTERED_PCT
 
 from holdout.core.experiment import (
     Arm,
     BalanceError,
     CovariateKind,
     CovariateMatrix,
+    attainable,
+    candidate,
     standardised,
+    strata_of,
     worst_of,
 )
 
@@ -313,3 +321,157 @@ def test_restricting_to_units_that_do_not_exist_is_an_error() -> None:
     matrix = numeric_matrix({"a": 1, "b": 2})
     with pytest.raises(BalanceError, match="no covariates for"):
         matrix.restricted_to(frozenset({"a", "zzz"}))
+
+
+# ------------------------------- what no draw could have reached (T00D)
+#
+# The guard's case is not this file's idea of a bad roster. The categorical composition
+# comes from `corpus.world.chain`, drawn by the corpus's own keyed hashing with nobody
+# choosing it, and the control count that breaks is found by **search** rather than named:
+# the defect it was written for was found on a roster nobody designed either, at 25 controls
+# on the corpus, where `store_format=hypermarket` sat at a constant 0.1734 across two
+# hundred draws. CLAUDE.md's checklist asks who wrote the case a guard is tested on; the
+# answer here is the chain's rng and a loop.
+#
+# Only the two categorical covariates decide the bound. The two numeric columns are filled
+# from a hash so the matcher has something to separate on — they change which unit lands in
+# which stratum and they can change nothing about `attainable`, which never reads them.
+
+CORPUS_IDS = ("category_revenue_8w", "store_format", "store_size_sqm", "waste_rate", "pricing_zone")
+#: The contract's declared order — numeric, categorical, numeric, numeric, categorical.
+CORPUS_KINDS = (
+    CovariateKind.NUMERIC,
+    CovariateKind.CATEGORICAL,
+    CovariateKind.NUMERIC,
+    CovariateKind.NUMERIC,
+    CovariateKind.CATEGORICAL,
+)
+
+
+#: One SKU over one week: `chain.build` never emits an event, so this costs milliseconds and
+#: the stores it lays out are exactly the ones the scenario scale would.
+def corpus_roster(stores: int) -> CovariateMatrix:
+    chain = build_chain(
+        "holdout-w-0001",
+        Scale("t00d", stores, 1, 7, date(2025, 9, 1)),
+        clustered_pct=REALISTIC_CLUSTERED_PCT,
+    )
+
+    def vary(tag: str, store_id: str, span: int) -> int:
+        return (
+            int.from_bytes(blake2b(f"{tag}-{store_id}".encode(), digest_size=4).digest(), "big")
+            % span
+        )
+
+    rows: dict[str, tuple[Fraction | str, ...]] = {}
+    for store in chain.stores:
+        size = round(store.size_index * 1000)
+        rows[store.store_id] = (
+            Fraction(size * 12 + vary("revenue", store.store_id, size * 3)),
+            store.store_format,
+            Fraction(size),
+            Fraction(200 + vary("waste", store.store_id, 400), 10_000),
+            store.pricing_zone,
+        )
+    return CovariateMatrix.of(CORPUS_IDS, CORPUS_KINDS, rows)
+
+
+def _reaches(
+    matrix: CovariateMatrix, strata: tuple[tuple[str, ...], ...], tolerance: Decimal
+) -> bool:
+    reachable = attainable(matrix, strata)
+    return not any(s.exceeds(tolerance) for s in reachable)
+
+
+def _scan(matrix: CovariateMatrix, tolerance: Decimal) -> dict[int, bool]:
+    """Every control count from a fifth of the roster down and up, and whether it is reachable."""
+    out: dict[int, bool] = {}
+    for controls in range(len(matrix.units) // 6, len(matrix.units) // 3):
+        strata = strata_of(matrix, controls)
+        if strata is None:
+            continue
+        out[controls] = _reaches(matrix, strata, tolerance)
+    return out
+
+
+def test_some_control_count_is_out_of_reach_and_it_was_not_chosen() -> None:
+    """The non-vacuity half: searching finds at least one, and at least one the other way.
+
+    A guard that refused every control count would be indistinguishable from a broken one,
+    and a guard that refused none would never have caught the defect it was written for. So
+    the scan has to come back mixed, and neither side is named in advance.
+    """
+    matrix = corpus_roster(100)
+    scanned = _scan(matrix, TOLERANCE)
+    assert scanned, "no control count produced a stratification at all"
+    unreachable = sorted(c for c, ok in scanned.items() if not ok)
+    reachable = sorted(c for c, ok in scanned.items() if ok)
+    assert unreachable, (
+        f"every control count in {sorted(scanned)} is reachable, so this roster cannot arm "
+        "the guard and the two tests below would pass vacuously"
+    )
+    assert reachable, (
+        f"no control count in {sorted(scanned)} is reachable — the bound is refusing "
+        "everything, which is a broken guard rather than a strict one"
+    )
+
+
+def test_nothing_the_bound_refuses_could_have_been_drawn() -> None:
+    """Soundness, corroborated by the lottery rather than by the arithmetic that claims it.
+
+    For every control count the bound calls unreachable, two hundred real draws are taken
+    and every one of them must fail the readout's balance check. If a single draw passed,
+    the bound would have refused a design that could have run — which is the one direction
+    a refusal must never err in.
+    """
+    matrix = corpus_roster(100)
+    for controls, reachable in _scan(matrix, TOLERANCE).items():
+        if reachable:
+            continue
+        strata = strata_of(matrix, controls)
+        assert strata is not None
+        passed = [
+            index
+            for index in range(200)
+            if within_tolerance(
+                matrix, dict(candidate(strata, seed="t00d-lottery", draw_index=index)), TOLERANCE
+            )
+        ]
+        assert not passed, (
+            f"at {controls} controls the bound says no draw can pass and draws {passed[:5]} "
+            "do. The refusal is unsound, which is worse than no refusal at all"
+        )
+
+
+def test_the_bound_is_never_beaten_by_a_real_draw() -> None:
+    """The same soundness, per covariate, against every draw rather than against a verdict.
+
+    `attainable` claims a floor for each categorical covariate. A realised draw is a member
+    of the set that floor is over, so no draw may come in under it — and this is checked on
+    the control counts the bound *accepts*, where a wrong floor would otherwise never show.
+    """
+    matrix = corpus_roster(100)
+    categorical = [
+        index for index, kind in enumerate(CORPUS_KINDS) if kind is CovariateKind.CATEGORICAL
+    ]
+    checked = 0
+    for controls, reachable in _scan(matrix, TOLERANCE).items():
+        if not reachable:
+            continue
+        strata = strata_of(matrix, controls)
+        assert strata is not None
+        floors = attainable(matrix, strata)
+        for index in range(50):
+            realised = standardised(
+                matrix, dict(candidate(strata, seed="t00d-floor", draw_index=index))
+            )
+            for position, column in enumerate(categorical):
+                floor, here = floors[position], realised[column]
+                assert floor.covariate_id == here.covariate_id
+                if floor.squared is None:
+                    continue  # undefined is the worst there is; nothing can be under it
+                assert here.squared is None or here.squared >= floor.squared, (
+                    f"{here} beat the floor {floor} at {controls} controls, draw {index}"
+                )
+                checked += 1
+    assert checked, "no floor was compared against a draw — the test proved nothing"

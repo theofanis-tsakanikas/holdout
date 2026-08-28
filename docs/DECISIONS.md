@@ -358,6 +358,63 @@ So it is proved by unit tests that break each of its checks on a deliberately br
 arrangement — `tests/evals/test_ledger.py`. A gate that has only ever been seen green has not
 been tested, and that applies to the accountant as much as to anything it counts.
 
+### The fourth finding — two files, each correct, never multiplied together · 2026-08-28
+
+The first three findings were each a defect inside one artefact, found by reading it. **This one
+is not in any file.** `corpus/world/chain.py` opened every second store within 990 m of one the
+chain already had, on purpose, so that W2 would always have interference to detect.
+`holdout.core.design.feasibility` excluded the later-sorted member of every pair inside the
+declared 1 km radius, on purpose, so that no store would measure its neighbour. Each is right,
+each is documented, each has tests. **Their product is that half the estate disappears**, and
+nobody had computed it — because computing it requires running the corpus through the engine,
+which is exactly what T003 was the first task to do.
+
+What it measured, at the scale claim 2 was to be proved at:
+
+```
+100 stores -> 109 neighbour pairs -> 55 exclusions -> roster 45 -> control arm 9
+0 of 200 lotteries pass the readout's balance check
+4 of 5 world seeds refused at moment 1 with UNDERPOWERED_FOR_DURATION
+```
+
+And it did not scale out: 400 stores left a roster of 130, 1,200 left **212**. The towns were a
+fixed size, so every store added made the estate denser rather than larger and the share the
+engine excludes rose without limit.
+
+*Caught by neither level 1 nor level 2.* CI was green — every test passed, because every test was
+about one of the two files. A fresh-context reviewer reading either diff would have found nothing
+either, for the same reason. It was caught by **running the two together for the first time**,
+which is what an eval is for and why claim 2's eval was worth building before its estimator.
+
+**The rule that follows, and it is the sibling of the two CLAUDE.md already carries.** A guard
+tested by its author fails in the shape its author imagined. A sentence written by its author has
+no gate behind it at all. And: **two components each correct on its own have no test between
+them, and the number that would have shown it is a product nobody was computing.** So — *where
+two deliberate decisions meet on a quantity, that quantity gets a name, a command and a figure.*
+Here it is the **surviving roster**, `make roster`, and a table in `corpus/world/README.md`.
+`CLAUDE.md`'s scale paragraph is restated to say that the surviving roster, not the store count,
+is the number a claim rests on.
+
+**A second, sharper thing fell out of the same measurement.** At 25 controls on that roster,
+`store_format=hypermarket` sat at a **constant 0.1734** across two hundred draws: a categorical
+covariate's balance is decided by how the strata are allocated to cells, not by the lottery. So
+there are rosters on which no admissible assignment can ever pass the readout's balance check —
+and `assess` returned `Feasible` for them without a word, to be refused identically at every
+readout forever. That is the same shape as the starved reference set T002B closed, one moment
+earlier, and it is T00D: `balance.attainable` computes what any draw could reach and
+`NO_ADMISSIBLE_ASSIGNMENT` is returned when the answer is already outside the tolerance.
+
+**What the two fixes bought, measured.** The balance pass rate on the corpus's own roster went
+from **0 of 200** to **145–192 of 200** over three world seeds in the five ordinary worlds, and
+**121–172 of 200** in W2, whose estate is deliberately the most clustered. The residue is
+sampling spread on the numeric covariates, which `strata.py` already owned as a limit — and it
+is a rate claim 2 publishes rather than a wall it stops at.
+
+**What was not done, and deliberately.** No threshold moved. `balance_tolerance_smd` stayed at
+0.10 and `holdout_share_pct` at 20%, which `inference.yaml` says move only by a versioned
+contract change with a restatement and never as an exception granted to one experiment. The
+refusal T00D added names the roster as the remedy and does not point at the dial.
+
 ### The AI layer — what earns a hook
 
 **A hook must not duplicate a check CI already makes green-or-red.** · 2026-08-27
@@ -665,6 +722,78 @@ only route between them — a named call in a diff somebody reads. The field is
 `benchmark_markup_on_cost` and it refuses a bare `Decimal` **at runtime**, not only where mypy runs,
 because a bare number is exactly the shape the mistake arrives in. The half of the ambiguity that
 lives in `regulated_basket.yaml` is a contract change with a restatement chain and stays deferred.
+
+---
+
+**Three of the six worlds' declared correct behaviours were prose the code did not support.** · 2026-08-28
+
+Three files said the same untrue thing. `CLAUDE.md`'s six-worlds table, `corpus/world/README.md` and
+the `correct_behaviour` field of `W2` in `corpus/world/worlds.py` all read some version of *"detect
+and refuse, never estimate"*, which reads as a detector at readout — and which is sealed into every
+world's `truth.sealed.json`, so it is a promise the package makes about the system rather than a
+comment.
+
+There is no such detector, and the design never wanted one. `holdout.core.experiment.contamination`
+asks two questions — does the recomputed digest describe the arms it carries, and did each unit
+receive its own arm's policy — and neither can see a neighbour's trade crossing the road. The
+defence against interference is at **moment 1**: `_neighbour_exclusions` drops the later-sorted
+member of every pair inside `neighbour_radius_m` before the lottery is drawn, and the closed
+vocabulary's only interference code, `UNIT_GUARANTEES_INTERFERENCE`, is filed under `at_design`. The
+vocabulary was right and the prose was wrong.
+
+So W2's correct behaviour is restated: **exclude the interfering units at design, then estimate on
+what is left** — and `evals/uplift/` publishes the *pair*, the estimate with the neighbour pairs
+declared beside the bias that arrives when they are withheld, because a mitigation nobody ever
+measures the absence of is a mitigation nobody can price. The prior wording stays in all three
+files, per doctrine rule 4.
+
+**Then the whole table was read, because one bad row is a row and two is a method.** All six were
+checked against the function that would make them true, and two more did not stand.
+
+**W3** read *"exposure-adjust or refuse — never silently dilute"* in `CLAUDE.md`. There is nothing to
+adjust with, and the repository already said so in the module that would have done it:
+`exposure.py`'s docstring reads *"There is no CACE, no instrumental-variable estimate and no
+exposure-adjusted alternative in this repository, and the absence is deliberate rather than
+pending"* — the closed vocabulary has no code for it, a `Readout` has no field for it, and it would
+carry an exclusion restriction this readout is built to avoid. **A row of the six-worlds table
+contradicted a module in the same repository, and both had been green since they were written.**
+Restated to *"report ITT with the realised exposure rate printed, or refuse below the declared
+threshold — never silently dilute"*. `corpus/world/`'s two copies were not wrong, only half a
+sentence — they said what happens below the threshold and never what happens above it — and they are
+aligned to the same wording.
+
+**W4** read *"report the declared window's average, not the first week extrapolated"*, which reads as
+arithmetic the estimator performs. It does not. `close` takes `outcomes` as given and **cannot
+verify that what it was handed spans the declared period**; what is guaranteed is `may_read`, which
+refuses to compute anything before the declared end, and `STOPPING_RULE_PERMITS_PEEKING` at design.
+Restated to name that: *"no result before the declared end, then report what the declared window
+aggregated"*. The aggregation is the caller's obligation and `evals/uplift/`'s `U8` is where it is
+checked rather than assumed — a gap now written down instead of a guarantee now assumed.
+
+**W1, W5 and W6 stand**, against `Readout.is_significant`, `Statistic.detects` on the realised
+variance, and `close` returning a `Readout` when all four checks passed. W5 is the best-supported
+row in the table: both halves of *"the power check fails, or the interval is honestly wide"* have a
+named function behind them.
+
+**The class of defect, which is the part worth keeping.** `CLAUDE.md` already carries *"a guard
+tested by its author is tested in the shape the guard already handles"*. This is that defect one
+layer up: **prose that claims a check nobody wrote.** It cannot be caught by reading, because every
+document agreed with every other document — all three sites were written from the same sentence. It
+was caught by reading `contamination.py` and asking which of its two questions would fire, which is
+the only way it can be caught. The rule that follows: **a sentence naming what the system does when
+something goes wrong is written against the function that would do it — named — and not against the
+table it came from.** Where no such function exists, that is the finding, and the sentence says so
+instead.
+
+The rule lives in `CLAUDE.md`'s **Before any change** checklist, beside *"who wrote the case it is
+tested on?"*, and not only here — a rule only the decision record carries is a rule a session never
+reads. `CLAUDE.md` also carries it as the sibling of *"a guard tested by its author"*, because that
+is what it is: a guard tested by its author fails in the shape its author imagined, and a sentence
+written by its author has **no gate behind it at all**.
+
+It applies hardest to text that ships. `corpus/world/worlds.py`'s `correct_behaviour` is sealed into
+every `truth.sealed.json`, so it is not a comment — it is a promise the package makes about the
+system, carried in the artefact the grader opens after the readout is written.
 
 ---
 
@@ -1031,6 +1160,39 @@ instruction inside T003's `stop_at`, where a session will actually read it.
 *Expires:* 2026-09-30 — because an unlock condition is prose and can never expire, and this
 registry's own entry below says that is the half of `make expiry` nothing real was arming. This is
 the first entry that arms it.
+
+**W6's `IMBALANCED_PRE_PERIOD` rate is published with no threshold on it** · deferred 2026-08-28
+`false_refusal_max_pct` — claim 2's statement that *a world where everything works produces the
+number* — stays at **10%** and is left exactly as it was written, before anything was measured. What
+changed is what it binds: **only the refusals the machinery produces**, which is every readout
+refusal that is not `IMBALANCED_PRE_PERIOD`. The share of W6 draws refused for pre-period imbalance
+is published beside it as a **number with no threshold** in this phase.
+
+*Why the split rather than a bigger number.* T00E measured the balance pass rate on the corpus's own
+roster at 145–192 of 200 over three world seeds — so the imbalance rate is roughly 4% to 27%, and on
+W2's smaller roster up to 40%. A single threshold covering both would have had to move from 10 to
+something that admits it, and **the only evidence for the new number would be the measurement that
+raised the question**. That is a gate fitted to its own result, which is the shape oversight level 3
+exists to catch and which `inference.yaml` refuses in as many words for the two thresholds it owns.
+Publishing the figure unthresholded hides nothing, adjusts nothing, and leaves the question where it
+belongs.
+
+*What the rate is a function of, so that whoever sets a threshold knows what they are setting it
+against:* the size of the control arm (53 at the harness scale, 43–44 in W2), the five covariates
+`balance_covariates.yaml` fixes, and the 0.10 `balance_tolerance_smd`. It is sampling spread on the
+**numeric** covariates and nothing else — the categorical half is pinned by the strata and is
+refused at design since T00D, so what is left is the residue `strata.py` already declares as its own
+limit: with a finite control arm, a covariate the others carry no information about keeps a spread
+near the tolerance.
+
+*What would give grounds to set one.* Two things this phase does not have. The rate measured across
+more than one roster size, so its dependence on the control arm is a **measured curve** rather than
+one point with an argument attached; and a declared statement, with a source, of how often a healthy
+world may be refused before the system stops being worth running — which is a judgment about the
+product and not an output of the harness.
+*Unlock condition:* the phase-1 integration session (T008), which is the level empowered to ask
+whether a gate has stopped biting and to propose a restatement, with T003's published rate over all
+five world seeds and both rosters in front of it.
 
 **Branch protection covers `main` only** · deferred 2026-08-27
 `main` is protected by a repository ruleset with **no bypass actors**, so the rule binds the owner

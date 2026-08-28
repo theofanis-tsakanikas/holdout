@@ -23,7 +23,7 @@ system does not run. `policy.py` says more about where that line sits.
 What is in here
 ---------------
 =================  ==========================================================================
-`scale`            how big a world is: `SMOKE`, `REHEARSAL`, `SCENARIO`
+`scale`            how big a world is: `SMOKE`, `REHEARSAL`, `HARNESS`, `SCENARIO`
 `rng`              keyed hashing — reproducible, order-independent, common random numbers
 `chain`            stores, products, the cost ledger, and who is next door to whom
 `policy`           markdown schedules as plain data; the contract read as data
@@ -66,6 +66,7 @@ from corpus.world.generate import StoreExposure
 from corpus.world.policy import MarkdownPolicy
 from corpus.world.scale import (
     CATEGORIES,
+    HARNESS,
     REHEARSAL,
     SCALES,
     SCENARIO,
@@ -78,6 +79,7 @@ from corpus.world.worlds import WORLDS, World, world_by_id
 
 __all__ = [
     "CATEGORIES",
+    "HARNESS",
     "REHEARSAL",
     "SCALES",
     "SCENARIO",
@@ -150,7 +152,7 @@ def prepare(
     """
     the_world = world if isinstance(world, World) else world_by_id(world)
     the_scale = scale if isinstance(scale, Scale) else scale_by_name(scale)
-    built = chain_module.build(seed, the_scale)
+    built = chain_module.build(seed, the_scale, clustered_pct=the_world.clustered_pct)
     ladder = control if control is not None else policy_module.contract_ladder()
     if treatment is not None:
         candidate = treatment
@@ -221,6 +223,7 @@ def _truth(
             "steps": [asdict(s) for s in run.treatment.steps],
         },
         injection={
+            "clustered_pct": world.clustered_pct,
             "treats": world.treats,
             "spillover_pct": world.spillover_pct,
             "ack_failure_pct_treated": world.ack_failure_pct_treated,

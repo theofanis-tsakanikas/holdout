@@ -19,10 +19,22 @@ from dataclasses import replace
 from datetime import date
 
 import pytest
-from corpus.world import Arm, Run, all_control, events, prepare
+from corpus.world import SEAL_FILENAME, Arm, Run, all_control, events, prepare
 from corpus.world.events import EslAck, PosLine, ShelfDay
 from corpus.world.policy import LadderStep, MarkdownPolicy
-from corpus.world.worlds import BASELINE_ACK_FAILURE_PCT, W1, W2, W3, W4, W5, W6, WORLDS
+from corpus.world.seal import open_after_readout
+from corpus.world.worlds import (
+    BASELINE_ACK_FAILURE_PCT,
+    INTERFERING_CLUSTERED_PCT,
+    REALISTIC_CLUSTERED_PCT,
+    W1,
+    W2,
+    W3,
+    W4,
+    W5,
+    W6,
+    WORLDS,
+)
 
 SEED = "worlds"
 
@@ -70,6 +82,35 @@ def test_every_other_world_actually_intervenes(world_id: str) -> None:
     run = prepare(world_id, seed=SEED, scale="smoke")
     assert run.control.policy_id != run.treatment.policy_id
     assert run.control.steps != run.treatment.steps
+
+
+def test_only_w2_declares_a_more_clustered_estate() -> None:
+    """`clustered_pct` is a declaration about a world, and only one world needs it high.
+
+    It is here rather than only in `test_world_chain.py` because the number is a claim about
+    *which world*, not about the chain: a corpus where every world clustered like W2 would
+    have thrown away most of its roster in five worlds that never needed interference at all,
+    and one where W2 clustered like the rest would have no interference to detect.
+    """
+    assert W2.clustered_pct == INTERFERING_CLUSTERED_PCT
+    assert {w.clustered_pct for w in (W1, W3, W4, W5, W6)} == {REALISTIC_CLUSTERED_PCT}
+    assert INTERFERING_CLUSTERED_PCT > REALISTIC_CLUSTERED_PCT
+
+
+def test_the_clustering_is_sealed_with_the_rest_of_the_injection(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """It is part of what was injected, so it goes in the seal like everything else.
+
+    Not because it is secret — `worlds.py` states every rate in the open — but because a seal
+    that recorded the spillover and not the estate the spillover happened on would describe
+    half a world, and the harness opens it to explain a number rather than to discover one.
+    """
+    run = prepare("W2", seed=SEED, scale="smoke")
+    for _ in events(run, seal_into=tmp_path):
+        pass
+    readout = tmp_path / "readout.json"
+    readout.write_text("{}", encoding="utf-8")
+    truth = open_after_readout(tmp_path / SEAL_FILENAME, readout)
+    assert truth.injection["clustered_pct"] == INTERFERING_CLUSTERED_PCT
 
 
 def test_w2_a_neighbours_arm_changes_a_stores_outcome() -> None:
@@ -150,8 +191,15 @@ def test_w6_leaves_the_neighbour_alone() -> None:
 
     Without this, the two tests above would pass on any world in which a treated neighbour's
     existence perturbed anything at all, including a bug that had nothing to do with W2.
+
+    **W6 is given W2's clustering for this one comparison**, since T00E made the clustering a
+    per-world declaration: at W6's own 15% a smoke-scale estate has no neighbour pair to
+    manipulate, so there would be nothing to leave alone. Handing it W2's estate is the
+    stronger control anyway — the geography is now held fixed and `spillover_pct` is the only
+    thing that differs, where before the two worlds differed in nothing at all and the test
+    could not have told which half it was measuring.
     """
-    run = prepare("W6", seed=SEED, scale="smoke")
+    run = prepare(replace(W6, clustered_pct=INTERFERING_CLUSTERED_PCT), seed=SEED, scale="smoke")
     neighbour, watched = _one_pair(run)
     isolated = all_control(run.chain)
     exposed = dict(isolated, **{neighbour: Arm.TREATMENT})

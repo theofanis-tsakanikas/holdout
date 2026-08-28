@@ -6,7 +6,8 @@
 `strata` matches units into strata on a composite distance over the declared covariates —
 the restriction the lottery draws under. `assignment` is the keyed-hash draw within those
 strata and the seal — **the one door with no key**. `balance` is the standardised
-difference, judged once, at readout, over what actually arrived. `exposure` is the ITT
+difference, judged once, at readout, over what actually arrived — and `attainable`, the
+bound that says whether any draw within the strata could have met it. `exposure` is the ITT
 threshold and the argument for why there is no exposure-adjusted number. `contamination`
 re-derives the draw and compares what was delivered. `estimator` is Lin's adjustment, the
 studentized statistic, the permutation test under the same restriction, and the interval
@@ -38,6 +39,7 @@ from holdout.core.experiment.balance import (
     CovariateMatrix,
     CovariateValue,
     Standardised,
+    attainable,
     standardised,
     worst_of,
 )
@@ -106,6 +108,7 @@ __all__ = [
     "StrataError",
     "ValidityCheck",
     "adjusted_difference",
+    "attainable",
     "candidate",
     "close",
     "composite_distance",

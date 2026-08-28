@@ -687,3 +687,91 @@ def test_the_balance_covariates_the_engine_screens_on_are_the_contract_s(
 ) -> None:
     covariates: BalanceCovariates = contracts.balance_covariates
     assert matrix.ids == covariates.ids
+
+
+# --------------------------------- the design no lottery could have saved (T00D)
+#
+# The roster is not this file's idea of a hard one and the size that breaks is not named:
+# the composition comes from `corpus.world.chain`, laid out by the corpus's own keyed
+# hashing, and the roster size is found by scanning. `tests/core/test_balance.py` carries
+# the same discipline one layer down, on the bound itself.
+
+
+def _outcome_by_roster_size(
+    assess_design: AssessFactory, sizes: range
+) -> dict[int, Feasible | DesignRefusal]:
+    from tests.core.test_balance import corpus_roster
+
+    out: dict[int, Feasible | DesignRefusal] = {}
+    for size in sizes:
+        matrix = corpus_roster(size)
+        out[size] = assess_design(roster=matrix.units, matrix=matrix)
+    return out
+
+
+def test_a_design_no_draw_could_have_saved_is_refused_at_moment_one(
+    assess_design: AssessFactory,
+) -> None:
+    """Found by search: some roster size refuses, and it refuses for the right reason.
+
+    Everything else about these designs is admissible — the metric is in the contract, the
+    unit is `store`, the stopping rule declares a single readout, the sizing is comfortable.
+    The only thing that moves is how many stores are on the roster, and therefore how the
+    strata fall across the two categorical covariates.
+    """
+    outcomes = _outcome_by_roster_size(assess_design, range(100, 140, 4))
+    refused = {
+        size: outcome for size, outcome in outcomes.items() if isinstance(outcome, DesignRefusal)
+    }
+    assert refused, (
+        f"every roster in {sorted(outcomes)} was accepted, so this test cannot tell a "
+        "working guard from an absent one"
+    )
+    assert len(refused) < len(outcomes), (
+        "every roster was refused — a guard that refuses everything is not a strict guard, "
+        "it is a broken one"
+    )
+    for size, outcome in refused.items():
+        assert codes_of(outcome) == {DesignRefusalCode.NO_ADMISSIBLE_ASSIGNMENT}, (
+            f"roster of {size} refused for {codes_of(outcome)}, which is not what this "
+            "roster is meant to be hard about"
+        )
+        reason = next(iter(outcome.reasons))
+        assert "best" in reason.detail and "each stratum" in reason.detail
+        assert "store_format" in reason.detail or "pricing_zone" in reason.detail
+
+
+def test_the_refusal_names_what_would_fix_it_and_does_not_offer_the_tolerance(
+    assess_design: AssessFactory,
+) -> None:
+    """A refusal that named "widen the tolerance" as the remedy would be an invitation.
+
+    `inference.yaml` is explicit that the holdout share and the balance tolerance move by a
+    versioned contract change with a restatement and never as an exception granted to one
+    experiment, so the remedy has to say so rather than point at the dial.
+    """
+    outcomes = _outcome_by_roster_size(assess_design, range(100, 140, 4))
+    refusals = [o for o in outcomes.values() if isinstance(o, DesignRefusal)]
+    assert refusals
+    for refusal in refusals:
+        remedy = next(iter(refusal.reasons)).what_would_fix_it
+        assert "roster" in remedy
+        assert "not an exception granted to this experiment" in remedy
+
+
+def test_an_accepted_design_still_carries_its_sealed_lottery(
+    assess_design: AssessFactory,
+) -> None:
+    """The other half of the search: what the guard accepts is still a whole design.
+
+    A guard that turned every roster into a refusal would satisfy the test above and destroy
+    the engine. So the sizes it lets through must come back as `Feasible`, with the seal, the
+    strata and the recorded balance the design's next moment reads.
+    """
+    outcomes = _outcome_by_roster_size(assess_design, range(100, 140, 4))
+    accepted = [o for o in outcomes.values() if isinstance(o, Feasible)]
+    assert accepted, "no roster was accepted"
+    for feasible in accepted:
+        assert feasible.assignment.strata
+        assert feasible.control_size == len(feasible.assignment.strata)
+        assert feasible.balance

@@ -4,12 +4,13 @@
 
 ==  ==========================================  ================================================
 W1  pure noise, true effect zero                no significant uplift, at a rate <= alpha
-W2  real effect + interference between          **detect and refuse**, never estimate
-    neighbouring stores
-W3  real effect + exposure fails on 30% of      exposure-adjust or refuse — never silently
-    treated units                               dilute
-W4  an effect that decays (novelty)             report the declared window's average, not the
-                                                first week extrapolated
+W2  real effect + interference between          **refuse the interfering units at design**,
+    neighbouring stores                         then estimate on what is left
+W3  real effect + exposure fails on 30% of      report ITT with the realised rate printed, or
+    treated units                               refuse below the declared threshold — never
+                                                silently dilute
+W4  an effect that decays (novelty)             no result before the declared end, then report
+                                                what the declared window aggregated
 W5  heavy-tailed baskets — variance far above   the power check fails, or the interval is
     what the power calculation assumed          honestly wide
 W6  everything works, a real effect is present  **produce the number.** No refusal
@@ -51,6 +52,27 @@ from dataclasses import dataclass
 #: reached every shelf would make exposure a column nobody ever had to look at.
 BASELINE_ACK_FAILURE_PCT = 2
 
+#: What share of a town's stores are opened inside the declared 1 km neighbour radius of one
+#: the chain already has there. Declared per world since T00E, because **it is the size of the
+#: roster**: the design engine excludes the later-sorted member of every such pair, so every
+#: clustered store is one no experiment may use.
+#:
+#: 15% in the five worlds that need no interference — a chain covering a dense neighbourhood
+#: with two small shops rather than one large one is real, and roughly one store in seven being
+#: that second shop is the assumption. It is an assumption about the trade; no chain's real
+#: footprint was obtained and none is claimed, which is the same sentence `CATEGORY_SHAPE` and
+#: `demand.py` make about themselves.
+REALISTIC_CLUSTERED_PCT = 15
+
+#: **W2 alone.** Interference has to exist for W2 to be a world at all, so its estate is
+#: deliberately more clustered — and it is 30% rather than higher because W2's declared correct
+#: behaviour is to *estimate on what is left*, and a world that excluded so much that nothing
+#: was left would pass the interference half while making the estimate impossible. The two
+#: halves of that sentence pull in opposite directions and this number is where they meet;
+#: `ops.roster` measures the surviving roster, so the meeting point is a figure rather than a
+#: hope.
+INTERFERING_CLUSTERED_PCT = 30
+
 
 @dataclass(frozen=True, slots=True)
 class World:
@@ -60,6 +82,12 @@ class World:
     title: str
     violates: str
     correct_behaviour: str
+
+    #: What share of a town's stores sit inside the declared neighbour radius of another —
+    #: see `REALISTIC_CLUSTERED_PCT`. It is not a pathology like the fields below it: every
+    #: world declares one, and it is on `World` rather than in `chain.py` because it is the
+    #: number that decides how much estate an experiment has left to run on.
+    clustered_pct: int = REALISTIC_CLUSTERED_PCT
 
     #: Does the treatment arm get a different markdown schedule at all? False in W1 alone:
     #: *"Both arms get the same policy — nothing is applied."* An A/A world needs no ground
@@ -102,11 +130,40 @@ W1 = World(
     treats=False,
 )
 
+# ---------------------------------------------------------------- restated 2026-08-28
+#
+# Three of the six `correct_behaviour` strings below were changed, and the prior wording is kept
+# here because doctrine rule 4 says a correction never erases what was previously stated. These
+# strings are **sealed into every truth.sealed.json**, so each is a promise this package makes
+# about the system rather than a comment about it — which is why they are now written against the
+# function that would keep the promise, named, rather than against `CLAUDE.md`'s table.
+#
+#   W2  read "detect the contamination and refuse; never estimate". There is no interference
+#       detector: `holdout.core.experiment.contamination` compares the digest, the redraw and the
+#       delivered policy, and no one of the three can see a neighbour's trade crossing the road.
+#       The defence is at design — the engine excludes the later-sorted member of every
+#       neighbouring pair at moment 1 — and the closed vocabulary's only interference code is
+#       `at_design`. What W2 proves is that the exclusion is load-bearing.
+#
+#   W3  read "refuse below the declared exposure threshold; never silently dilute", which was true
+#       and said only half of it: it never said what happens **above** the threshold. `exposure.py`
+#       does — the estimate is intention-to-treat and the realised rate is printed beside it, pass
+#       or fail. `CLAUDE.md`'s row said "exposure-adjust or refuse", which was not half a sentence
+#       but a wrong one, and it is restated there too.
+#
+#   W4  read "report the declared window's average, not the first week extrapolated", which reads
+#       as arithmetic the estimator performs. It does not: `close` takes `outcomes` as given and
+#       cannot verify they span the declared period. What is guaranteed is `may_read` — the result
+#       cannot be **asked for** early. The aggregation is the caller's obligation.
+#
+# W1, W5 and W6 were read against `Readout.is_significant`, `Statistic.detects` and `close`
+# respectively, and stand unchanged.
 W2 = World(
     id="W2",
     title="Interference between neighbouring stores",
     violates="SUTVA — a control store's outcome depends on its neighbour's assignment",
-    correct_behaviour="detect the contamination and refuse; never estimate",
+    correct_behaviour="exclude the interfering units at design, then estimate on what is left",
+    clustered_pct=INTERFERING_CLUSTERED_PCT,
     spillover_pct=18,
 )
 
@@ -114,7 +171,10 @@ W3 = World(
     id="W3",
     title="Exposure fails on a third of treated units",
     violates="the assumption that assignment and exposure are the same thing",
-    correct_behaviour="refuse below the declared exposure threshold; never silently dilute",
+    correct_behaviour=(
+        "report ITT with the realised exposure rate printed, or refuse below the "
+        "declared threshold; never silently dilute"
+    ),
     ack_failure_pct_treated=30,
 )
 
@@ -122,7 +182,9 @@ W4 = World(
     id="W4",
     title="An effect that decays",
     violates="the assumption that an effect is constant over the declared window",
-    correct_behaviour="report the declared window's average, not the first week extrapolated",
+    correct_behaviour=(
+        "no result before the declared end, then report what the declared window aggregated"
+    ),
     novelty_half_life_days=9,
     novelty_boost_pct=55,
 )

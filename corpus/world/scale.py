@@ -4,7 +4,7 @@
 three fresh categories over eight months, about 36M POS lines. That is the **scenario** scale,
 and it is the one figure in this package that costs real minutes to produce.
 
-Three scales exist because three different things need to be true at once:
+Four scales exist because four different things need to be true at once:
 
 ============  ==================================================================
 `SMOKE`       the suite. Small enough that a test generates a whole world in
@@ -13,6 +13,8 @@ Three scales exist because three different things need to be true at once:
               expiry, a neighbour pair inside the interference radius.
 `REHEARSAL`   a laptop. Big enough that an estimator has something to estimate
               and small enough to run K seeds over a coffee.
+`HARNESS`     `evals/uplift/`. The **roster** of the declared corpus, on a
+              calendar the A/A harness can afford K = 200 times.
 `SCENARIO`    the declared corpus. 100 stores x 3 categories x 8 months.
 ============  ==================================================================
 
@@ -91,6 +93,37 @@ REHEARSAL = Scale(
     start_date=date(2025, 9, 1),
 )
 
+#: The A/A harness's scale, and every dimension of it is set by a measurement rather than by a
+#: preference.
+#:
+#: **320 stores, because the surviving roster is what the lottery draws over.** Not the store
+#: count: the design engine excludes the later-sorted member of every pair inside the declared
+#: 1 km radius, so what an experiment may use is what `ops.roster` prints. At 100 stores — the
+#: figure this scale first carried — the roster was 45 and the control arm 9, and no lottery in
+#: two hundred passed the readout's balance check. 320 is the smallest round count whose
+#: **worst** world clears 200 across eight world seeds, and W2 is always the worst because its
+#: estate is deliberately the most clustered. `make roster` is the command and
+#: `corpus/world/README.md` records what it printed.
+#:
+#: **112 days**, and it is load-bearing twice. Eight pre-period weeks — the declared
+#: `lookback_weeks` of the balance covariates — plus eight period weeks, which is the form's
+#: `max_duration`; and an *even* number of weeks, which is what makes the window mean a place
+#: where the metric contract's `rounding` decides a cent rather than a place where half_even
+#: and half_up cannot differ.
+#:
+#: **4 SKUs per category is what pays for the stores.** Generation cost is linear in all three
+#: dimensions, and the roster is the one that cannot be traded away. A thinner assortment
+#: raises per-store variance relative to the mean, so it makes this world *harder* to detect an
+#: effect in rather than easier — the honest direction, and if it ever costs W6 a readout the
+#: cost appears as the published false-refusal rate rather than as a tuned number.
+HARNESS = Scale(
+    name="harness",
+    stores=320,
+    skus_per_category=4,
+    days=112,
+    start_date=date(2025, 9, 1),
+)
+
 SMOKE = Scale(
     name="smoke",
     stores=12,
@@ -99,7 +132,7 @@ SMOKE = Scale(
     start_date=date(2025, 9, 1),
 )
 
-SCALES: dict[str, Scale] = {s.name: s for s in (SMOKE, REHEARSAL, SCENARIO)}
+SCALES: dict[str, Scale] = {s.name: s for s in (SMOKE, REHEARSAL, HARNESS, SCENARIO)}
 
 
 def scale_by_name(name: str) -> Scale:

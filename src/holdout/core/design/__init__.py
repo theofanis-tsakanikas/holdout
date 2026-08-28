@@ -28,6 +28,7 @@ from holdout.core.design.feasibility import (
     assess,
     form_digest_of,
     interference_of,
+    neighbour_exclusions,
 )
 from holdout.core.design.form import (
     DecisionRule,
@@ -75,4 +76,5 @@ __all__ = [
     "assess",
     "form_digest_of",
     "interference_of",
+    "neighbour_exclusions",
 ]
