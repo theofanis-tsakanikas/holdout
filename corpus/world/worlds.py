@@ -4,12 +4,13 @@
 
 ==  ==========================================  ================================================
 W1  pure noise, true effect zero                no significant uplift, at a rate <= alpha
-W2  real effect + interference between          **detect and refuse**, never estimate
-    neighbouring stores
-W3  real effect + exposure fails on 30% of      exposure-adjust or refuse — never silently
-    treated units                               dilute
-W4  an effect that decays (novelty)             report the declared window's average, not the
-                                                first week extrapolated
+W2  real effect + interference between          **refuse the interfering units at design**,
+    neighbouring stores                         then estimate on what is left
+W3  real effect + exposure fails on 30% of      report ITT with the realised rate printed, or
+    treated units                               refuse below the declared threshold — never
+                                                silently dilute
+W4  an effect that decays (novelty)             no result before the declared end, then report
+                                                what the declared window aggregated
 W5  heavy-tailed baskets — variance far above   the power check fails, or the interval is
     what the power calculation assumed          honestly wide
 W6  everything works, a real effect is present  **produce the number.** No refusal
@@ -102,11 +103,39 @@ W1 = World(
     treats=False,
 )
 
+# ---------------------------------------------------------------- restated 2026-08-28
+#
+# Three of the six `correct_behaviour` strings below were changed, and the prior wording is kept
+# here because doctrine rule 4 says a correction never erases what was previously stated. These
+# strings are **sealed into every truth.sealed.json**, so each is a promise this package makes
+# about the system rather than a comment about it — which is why they are now written against the
+# function that would keep the promise, named, rather than against `CLAUDE.md`'s table.
+#
+#   W2  read "detect the contamination and refuse; never estimate". There is no interference
+#       detector: `holdout.core.experiment.contamination` compares the digest, the redraw and the
+#       delivered policy, and no one of the three can see a neighbour's trade crossing the road.
+#       The defence is at design — the engine excludes the later-sorted member of every
+#       neighbouring pair at moment 1 — and the closed vocabulary's only interference code is
+#       `at_design`. What W2 proves is that the exclusion is load-bearing.
+#
+#   W3  read "refuse below the declared exposure threshold; never silently dilute", which was true
+#       and said only half of it: it never said what happens **above** the threshold. `exposure.py`
+#       does — the estimate is intention-to-treat and the realised rate is printed beside it, pass
+#       or fail. `CLAUDE.md`'s row said "exposure-adjust or refuse", which was not half a sentence
+#       but a wrong one, and it is restated there too.
+#
+#   W4  read "report the declared window's average, not the first week extrapolated", which reads
+#       as arithmetic the estimator performs. It does not: `close` takes `outcomes` as given and
+#       cannot verify they span the declared period. What is guaranteed is `may_read` — the result
+#       cannot be **asked for** early. The aggregation is the caller's obligation.
+#
+# W1, W5 and W6 were read against `Readout.is_significant`, `Statistic.detects` and `close`
+# respectively, and stand unchanged.
 W2 = World(
     id="W2",
     title="Interference between neighbouring stores",
     violates="SUTVA — a control store's outcome depends on its neighbour's assignment",
-    correct_behaviour="detect the contamination and refuse; never estimate",
+    correct_behaviour="exclude the interfering units at design, then estimate on what is left",
     spillover_pct=18,
 )
 
@@ -114,7 +143,10 @@ W3 = World(
     id="W3",
     title="Exposure fails on a third of treated units",
     violates="the assumption that assignment and exposure are the same thing",
-    correct_behaviour="refuse below the declared exposure threshold; never silently dilute",
+    correct_behaviour=(
+        "report ITT with the realised exposure rate printed, or refuse below the "
+        "declared threshold; never silently dilute"
+    ),
     ack_failure_pct_treated=30,
 )
 
@@ -122,7 +154,9 @@ W4 = World(
     id="W4",
     title="An effect that decays",
     violates="the assumption that an effect is constant over the declared window",
-    correct_behaviour="report the declared window's average, not the first week extrapolated",
+    correct_behaviour=(
+        "no result before the declared end, then report what the declared window aggregated"
+    ),
     novelty_half_life_days=9,
     novelty_boost_pct=55,
 )

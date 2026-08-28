@@ -25,9 +25,9 @@ function, a bug in it would cancel out and both would agree on a wrong number.
 | | the world | what it violates | the correct behaviour |
 |---|---|---|---|
 | **W1** | pure noise, true effect zero | nothing — this is the null | no significant uplift, at a rate ≤ α |
-| **W2** | real effect + interference between neighbouring stores | SUTVA | **detect and refuse**, never estimate |
-| **W3** | real effect + exposure fails on 30% of treated units | assignment ≠ exposure | refuse below the threshold — never silently dilute |
-| **W4** | an effect that decays (novelty) | a constant effect over the window | report the window's average, not the first week extrapolated |
+| **W2** | real effect + interference between neighbouring stores | SUTVA | **exclude the interfering units at design**, then estimate on what is left |
+| **W3** | real effect + exposure fails on 30% of treated units | assignment ≠ exposure | report ITT with the realised rate printed, or refuse below the declared threshold — never silently dilute |
+| **W4** | an effect that decays (novelty) | a constant effect over the window | no result before the declared end, then report what the declared window aggregated |
 | **W5** | heavy-tailed baskets | the variance the power calculation assumed | the power check fails, or the interval is honestly wide |
 | **W6** | everything works, a real effect is present | nothing — and that is the point | **produce the number.** No refusal |
 

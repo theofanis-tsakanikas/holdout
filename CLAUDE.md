@@ -117,14 +117,42 @@ acknowledgements that sometimes fail. It **injects a known effect on behaviour**
 | | the world | the correct behaviour |
 |---|---|---|
 | W1 | pure noise, true effect zero | no significant uplift, at a rate ≤ α |
-| W2 | real effect + interference between neighbouring stores | **detect and refuse**, never estimate |
-| W3 | real effect + exposure fails on 30% of treated units | exposure-adjust or refuse — never silently dilute |
-| W4 | an effect that decays (novelty) | report the declared window's average, not the first week extrapolated |
+| W2 | real effect + interference between neighbouring stores | **refuse the interfering units at design**, then estimate on what is left — and, run blind, publish the bias |
+| W3 | real effect + exposure fails on 30% of treated units | report ITT with the realised exposure rate printed, or refuse below the declared threshold — never silently dilute |
+| W4 | an effect that decays (novelty) | no result before the declared end, then report what the declared window aggregated — the first week is never available to extrapolate from |
 | W5 | heavy-tailed baskets — variance far above what the power calculation assumed | the power check fails, or the interval is honestly wide |
 | W6 | **everything works, a real effect is present** | **produce the number.** No refusal |
 
 **W6 matters as much as W1.** A system that refuses everything passes every other world and is
 worthless. The **false-refusal rate is published beside the false-positive rate.**
+
+> **W2's row restated 2026-08-28. It claimed more than the code supports.** It read *"detect and
+> refuse, never estimate"*, which reads as a detector at readout. There is none, and there was
+> never meant to be one: `contamination.check` compares the digest, the redraw and the delivered
+> policy, and none of the three can see a neighbour's trade crossing the road. The system's whole
+> defence against interference is **at design** — `_neighbour_exclusions` drops the later-sorted
+> member of every pair inside `neighbour_radius_m` at moment 1, and the only interference code in
+> the closed vocabulary, `UNIT_GUARANTEES_INTERFERENCE`, is `at_design`. So W2 is not a world the
+> readout refuses; it is a world the **design** disarms, and the eval publishes the pair — the
+> estimate with the neighbour pairs declared, and the bias that arrives when they are withheld.
+> The prior wording stays here because doctrine rule 4 says a correction never erases what was
+> previously stated, and because the delta *is* the finding: prose that claims a check nobody
+> wrote is the same defect as a guard tested by its author, one layer up. It was found by reading
+> `contamination.py`, not by reading this file — which is the only way it can be found.
+
+> **And then all six rows were read against the function that would make them true, 2026-08-28,
+> because one defective row in a table is a defective row and two is a method.** Two more did not
+> stand and are restated above; three did, and naming what holds them up is the point of the
+> exercise.
+>
+> | row | the function that makes it true | verdict |
+> |---|---|---|
+> | W1 | `Readout.is_significant` — `p_value <= alpha`, where `permutation_p`'s `(1 + hits)/(1 + B)` rule is exact at any B | **stands** |
+> | W2 | `feasibility._neighbour_exclusions`, at moment 1. Nothing at readout | restated above |
+> | W3 | `exposure.measure` → `Exposure.meets` → `EXPOSURE_BELOW_THRESHOLD` | **restated.** It read *"exposure-adjust or refuse"*, and there is nothing to adjust with: `exposure.py`'s own docstring says *"There is no CACE, no instrumental-variable estimate and no exposure-adjusted alternative in this repository, and the absence is deliberate rather than pending"* — no code for it in the closed vocabulary, no field for it on a `Readout`, and it would carry an exclusion restriction this readout exists to avoid. **This row contradicted a module in the same repository.** |
+> | W4 | `may_read`, raising `PeekError` before the declared end, and `STOPPING_RULE_PERMITS_PEEKING` at design | **restated.** It read *"report the declared window's average"*, which reads as arithmetic the estimator performs. It does not: `close` takes `outcomes` as given and **cannot verify that what it was handed spans the declared period**. What is guaranteed is that the result cannot be *asked for* early. The aggregation is the caller's obligation, and `evals/uplift/`'s `U8` is where it is checked rather than assumed. |
+> | W5 | `Statistic.detects`, judged on the **realised** variance → `POWER_NOT_REACHED`; and `interval`, which widens by inversion rather than by an asymptotic formula | **stands** — the best-supported row in the table |
+> | W6 | `close` returning a `Readout` when all four `CheckResult.passed` | **stands** |
 
 **The A/A harness.** Both arms get the same policy — nothing is applied. The same data, re-drawn
 under K = 200 seeds. Every draw runs the **whole system** — assignment, exposure collection, the
@@ -900,6 +928,23 @@ the test says so in one line, and the guard's docstring states what it therefore
 
 **And when a guard is fixed, the gate behind it is re-read.** They usually share the assumption.
 
+### The same defect one layer up — prose that claims a check nobody wrote
+
+A guard tested by its author fails in the shape its author imagined. **A sentence written by its
+author fails the same way, and there is no gate at all behind it.** The six-worlds table said W2 was
+*"detect and refuse"* when the only interference code in the closed vocabulary is `at_design`, and
+said W3 was *"exposure-adjust or refuse"* when `exposure.py`'s own docstring says in as many words
+that there is no exposure-adjusted number and never will be. Three files agreed with each other
+every time, because all three were written from the same sentence — so **no amount of reading the
+documents could find it.** It was found by reading `contamination.py` and asking which of its two
+questions would fire.
+
+**So: a sentence naming what the system does when something goes wrong is written against the
+function that would do it — named — and not against the table it came from.** Where no such function
+exists, that is the finding, and the sentence says so instead. It applies hardest to text that
+*ships*: `corpus/world/worlds.py`'s `correct_behaviour` is sealed into every `truth.sealed.json`, so
+it is a promise the package makes about the system rather than a comment about it.
+
 ---
 
 ## Oversight — four levels
@@ -943,6 +988,7 @@ It is scheduled, not remembered: at the end of every phase, without exception.
 - Does it put a claim on a non-GA surface?
 - If it is a gate: is there a `gate-proof` mutation that proves it bites?
 - **If it is a guard, a barrier, a check or a hook: who wrote the case it is tested on?** See below.
+- **If it is a sentence about what the system does when something goes wrong: which function does it, named?** A sentence written against the table it came from rather than against the code is the same defect one layer up. See below.
 - If it touches a contract: does the change imply a restatement?
 - If it states a legal fact: which article, which instrument, verified when?
 - If the pattern comes from another project in this portfolio: **what problem did it solve there,

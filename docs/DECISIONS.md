@@ -668,6 +668,78 @@ lives in `regulated_basket.yaml` is a contract change with a restatement chain a
 
 ---
 
+**Three of the six worlds' declared correct behaviours were prose the code did not support.** · 2026-08-28
+
+Three files said the same untrue thing. `CLAUDE.md`'s six-worlds table, `corpus/world/README.md` and
+the `correct_behaviour` field of `W2` in `corpus/world/worlds.py` all read some version of *"detect
+and refuse, never estimate"*, which reads as a detector at readout — and which is sealed into every
+world's `truth.sealed.json`, so it is a promise the package makes about the system rather than a
+comment.
+
+There is no such detector, and the design never wanted one. `holdout.core.experiment.contamination`
+asks two questions — does the recomputed digest describe the arms it carries, and did each unit
+receive its own arm's policy — and neither can see a neighbour's trade crossing the road. The
+defence against interference is at **moment 1**: `_neighbour_exclusions` drops the later-sorted
+member of every pair inside `neighbour_radius_m` before the lottery is drawn, and the closed
+vocabulary's only interference code, `UNIT_GUARANTEES_INTERFERENCE`, is filed under `at_design`. The
+vocabulary was right and the prose was wrong.
+
+So W2's correct behaviour is restated: **exclude the interfering units at design, then estimate on
+what is left** — and `evals/uplift/` publishes the *pair*, the estimate with the neighbour pairs
+declared beside the bias that arrives when they are withheld, because a mitigation nobody ever
+measures the absence of is a mitigation nobody can price. The prior wording stays in all three
+files, per doctrine rule 4.
+
+**Then the whole table was read, because one bad row is a row and two is a method.** All six were
+checked against the function that would make them true, and two more did not stand.
+
+**W3** read *"exposure-adjust or refuse — never silently dilute"* in `CLAUDE.md`. There is nothing to
+adjust with, and the repository already said so in the module that would have done it:
+`exposure.py`'s docstring reads *"There is no CACE, no instrumental-variable estimate and no
+exposure-adjusted alternative in this repository, and the absence is deliberate rather than
+pending"* — the closed vocabulary has no code for it, a `Readout` has no field for it, and it would
+carry an exclusion restriction this readout is built to avoid. **A row of the six-worlds table
+contradicted a module in the same repository, and both had been green since they were written.**
+Restated to *"report ITT with the realised exposure rate printed, or refuse below the declared
+threshold — never silently dilute"*. `corpus/world/`'s two copies were not wrong, only half a
+sentence — they said what happens below the threshold and never what happens above it — and they are
+aligned to the same wording.
+
+**W4** read *"report the declared window's average, not the first week extrapolated"*, which reads as
+arithmetic the estimator performs. It does not. `close` takes `outcomes` as given and **cannot
+verify that what it was handed spans the declared period**; what is guaranteed is `may_read`, which
+refuses to compute anything before the declared end, and `STOPPING_RULE_PERMITS_PEEKING` at design.
+Restated to name that: *"no result before the declared end, then report what the declared window
+aggregated"*. The aggregation is the caller's obligation and `evals/uplift/`'s `U8` is where it is
+checked rather than assumed — a gap now written down instead of a guarantee now assumed.
+
+**W1, W5 and W6 stand**, against `Readout.is_significant`, `Statistic.detects` on the realised
+variance, and `close` returning a `Readout` when all four checks passed. W5 is the best-supported
+row in the table: both halves of *"the power check fails, or the interval is honestly wide"* have a
+named function behind them.
+
+**The class of defect, which is the part worth keeping.** `CLAUDE.md` already carries *"a guard
+tested by its author is tested in the shape the guard already handles"*. This is that defect one
+layer up: **prose that claims a check nobody wrote.** It cannot be caught by reading, because every
+document agreed with every other document — all three sites were written from the same sentence. It
+was caught by reading `contamination.py` and asking which of its two questions would fire, which is
+the only way it can be caught. The rule that follows: **a sentence naming what the system does when
+something goes wrong is written against the function that would do it — named — and not against the
+table it came from.** Where no such function exists, that is the finding, and the sentence says so
+instead.
+
+The rule lives in `CLAUDE.md`'s **Before any change** checklist, beside *"who wrote the case it is
+tested on?"*, and not only here — a rule only the decision record carries is a rule a session never
+reads. `CLAUDE.md` also carries it as the sibling of *"a guard tested by its author"*, because that
+is what it is: a guard tested by its author fails in the shape its author imagined, and a sentence
+written by its author has **no gate behind it at all**.
+
+It applies hardest to text that ships. `corpus/world/worlds.py`'s `correct_behaviour` is sealed into
+every `truth.sealed.json`, so it is not a comment — it is a promise the package makes about the
+system, carried in the artefact the grader opens after the readout is written.
+
+---
+
 ## Deliberately deferred
 
 Each entry says what would unlock it. An item with no unlock condition is not deferred, it is
