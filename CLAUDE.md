@@ -42,9 +42,34 @@ The problem it solves is not "make better decisions". It is the slide that says 
 
 **The scenario is 1,200 stores. The corpus is 100.** Roughly 100 stores across three fresh
 categories over eight months — about 36M POS lines, a few GB of Parquet. The scale of the corpus is
-a cost decision and nothing else: **claim 2 does not get stronger with 1,200 stores**, it gets
+a cost decision and nothing else: **claim 2 does not get stronger with a larger estate**, it gets
 stronger with 200 seeds and six adversarial worlds, which run local and cost nothing. Where a
 figure depends on corpus size it is reported as such, never extrapolated to the full estate.
+
+> **The size that decides whether anything is provable is the surviving roster, not the store
+> count. Restated 2026-08-28.** This paragraph read *"claim 2 does not get stronger with 1,200
+> stores"*, and treated the scale as purely a cost decision. It is not. **Two units of scale exist
+> and only the second one is load-bearing**: the *nominal* estate, and the roster that survives the
+> design engine's automatic exclusions — the units a lottery is actually drawn over. The first has
+> never decided anything; the second decides whether an experiment can exist at all, because the
+> control arm is a share of it and the balance tolerance is judged on that arm.
+>
+> Measured, on this repository's own corpus: **100 stores → 109 neighbour pairs → a surviving
+> roster of 45 → a control arm of 9**, on which no lottery in two hundred passed the readout's
+> balance check, and on which four of five world seeds were refused at design outright. Adding
+> stores does not fix it — 1,200 leave a roster of 212 — because the towns are fixed and the estate
+> gets denser rather than larger.
+>
+> Neither half was wrong on its own. `corpus/world/chain.py` clusters stores deliberately so W2
+> always has interference to detect; `feasibility._neighbour_exclusions` removes one member of
+> every pair deliberately so no store measures its neighbour. **They had never been run against
+> each other**, and the sentence above is what let nobody look: it said the number was a cost
+> decision, so nobody computed the other number. T00D and T00E in `TASKS.md` carry the fix, and
+> the prior wording stays here per doctrine rule 4 — the delta *is* the finding.
+>
+> **So: a figure about scale names the surviving roster.** "100 stores" is a bill; "a roster of 45
+> with a control arm of 9" is the thing a claim rests on, and only one of the two can be checked
+> against a claim.
 
 ### The real envelope — what a supermarket may actually do
 

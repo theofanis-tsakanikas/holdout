@@ -23,7 +23,7 @@ system does not run. `policy.py` says more about where that line sits.
 What is in here
 ---------------
 =================  ==========================================================================
-`scale`            how big a world is: `SMOKE`, `REHEARSAL`, `SCENARIO`
+`scale`            how big a world is: `SMOKE`, `REHEARSAL`, `HARNESS`, `SCENARIO`
 `rng`              keyed hashing — reproducible, order-independent, common random numbers
 `chain`            stores, products, the cost ledger, and who is next door to whom
 `policy`           markdown schedules as plain data; the contract read as data
@@ -66,6 +66,7 @@ from corpus.world.generate import StoreExposure
 from corpus.world.policy import MarkdownPolicy
 from corpus.world.scale import (
     CATEGORIES,
+    HARNESS,
     REHEARSAL,
     SCALES,
     SCENARIO,
@@ -78,6 +79,7 @@ from corpus.world.worlds import WORLDS, World, world_by_id
 
 __all__ = [
     "CATEGORIES",
+    "HARNESS",
     "REHEARSAL",
     "SCALES",
     "SCENARIO",

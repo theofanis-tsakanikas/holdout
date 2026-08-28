@@ -4,7 +4,7 @@
 three fresh categories over eight months, about 36M POS lines. That is the **scenario** scale,
 and it is the one figure in this package that costs real minutes to produce.
 
-Three scales exist because three different things need to be true at once:
+Four scales exist because four different things need to be true at once:
 
 ============  ==================================================================
 `SMOKE`       the suite. Small enough that a test generates a whole world in
@@ -13,6 +13,8 @@ Three scales exist because three different things need to be true at once:
               expiry, a neighbour pair inside the interference radius.
 `REHEARSAL`   a laptop. Big enough that an estimator has something to estimate
               and small enough to run K seeds over a coffee.
+`HARNESS`     `evals/uplift/`. The **roster** of the declared corpus, on a
+              calendar the A/A harness can afford K = 200 times.
 `SCENARIO`    the declared corpus. 100 stores x 3 categories x 8 months.
 ============  ==================================================================
 
@@ -91,6 +93,30 @@ REHEARSAL = Scale(
     start_date=date(2025, 9, 1),
 )
 
+#: The A/A harness's scale, and the two dimensions are set by two different costs.
+#:
+#: **Stores are what the statistics see** — the roster, the 20% holdout, the strata, the
+#: standard error — so this is 100, unchanged from `SCENARIO`. `REHEARSAL`'s 20 stores give a
+#: control arm of four, and a control arm of four cannot land inside a 0.10 standardised
+#: difference on a binary covariate at all: its proportions move in steps of a quarter.
+#: `tests/core/conftest.py` records that arithmetic, one roster size up.
+#:
+#: **SKUs and days are what the clock sees.** Eight pre-period weeks — the declared
+#: `lookback_weeks` of the balance covariates — plus up to eight period weeks, which is
+#: `max_duration`, is 112 days; 12 SKUs per category is enough for a fresh assortment to churn.
+#:
+#: **A thinner assortment raises per-store variance relative to the mean**, which makes this
+#: world *harder* to detect an effect in rather than easier. That is the honest direction: the
+#: power check is judged on the realised variance, so if it costs W6 a readout the cost appears
+#: as the published false-refusal rate rather than as a tuned number.
+HARNESS = Scale(
+    name="harness",
+    stores=100,
+    skus_per_category=12,
+    days=112,
+    start_date=date(2025, 9, 1),
+)
+
 SMOKE = Scale(
     name="smoke",
     stores=12,
@@ -99,7 +125,7 @@ SMOKE = Scale(
     start_date=date(2025, 9, 1),
 )
 
-SCALES: dict[str, Scale] = {s.name: s for s in (SMOKE, REHEARSAL, SCENARIO)}
+SCALES: dict[str, Scale] = {s.name: s for s in (SMOKE, REHEARSAL, HARNESS, SCENARIO)}
 
 
 def scale_by_name(name: str) -> Scale:

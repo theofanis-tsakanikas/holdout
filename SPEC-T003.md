@@ -53,6 +53,32 @@ confidence interval is 85% of it while the p-value is 3%. **F4 says every worker
 re-derive its own lottery from the seed** — nothing crosses a process boundary except a seed going
 in and a small plain record coming back, which is a better shape anyway.
 
+### Re-measured 2026-08-28, on the harness's own inputs — F1 and F2 were both optimistic
+
+The table above stands as what was measured; it was measured on the *wrong inputs*, and the prior
+figures stay per doctrine rule 4. F2 and F3 were taken on `tests/core/conftest.py`'s blocked
+fixture, whose design matrix has rank two — three of its five covariates are dropped as linearly
+dependent, so it exercises the column-dropping path and prices the estimator at **less than half**
+what the harness's own full-rank covariates cost. F1's harness projection was an extrapolation from
+the rehearsal scale rather than a measurement.
+
+| | projected | **measured** | how |
+|---|---|---|---|
+| **F1′** | `HARNESS` ≈ 0.14 × scenario ≈ **14 s** | **≈ 20 s** per world, 5.3M POS lines | `count` over each of the six worlds |
+| **F2′** | 13.5 s | **29.5 s** for one readout, 100 units, B = 1000 | `draw` → `reference_set` → `plan_for` → `permutation_p` → `interval` on the corpus's own covariates |
+| **F3′** | `interval` 11.5 s (85%) | **`interval` 25.8 s (87%)**, `plan_for` 3.1 s, `permutation_p` 0.53 s | the same run, timed per call |
+
+**F3's *proportion* is the durable fact and it survived**: the interval is ~87% of a readout either
+way, so §9 is still the whole lever. What did not survive is the absolute budget — §13 was
+optimistic by about a factor of two before anything else changed, and is restated below.
+
+**And a fourth measurement, which is why this branch stopped.** A readout costs 29.5 s only when it
+*produces a number*. On this corpus almost none do: the design engine's automatic neighbour
+exclusion leaves a roster of 45 from 100 stores, four of five world seeds are then refused at
+moment 1, and on the seed that survives **no lottery in two hundred passes the readout's balance
+check**. `TASKS.md`'s T00D and T00E carry the two fixes, and **T003 does not start until both have
+landed** — its `depends_on` says so.
+
 ---
 
 ## 2 · The decisions
@@ -62,7 +88,7 @@ in and a small plain record coming back, which is a better shape anyway.
 | 1 | how does the CI job fit? | **Matrix job per claim target, *and* multiprocessing inside `claim-2`.** Neither alone is enough. `gate` returns to `timeout-minutes: 15`. |
 | 2 | where do the 45–90 CPU-minutes go? | **Both levers: multiprocessing over seeds, and `estimator.interval` made cheap.** §9 shows the interval's statistic is affine in the shift, so each bisection step becomes O(B) instead of O(B·n·p). No answer changes. |
 | 3 | what does "the same data, re-drawn" mean? | **Hybrid: few world seeds × many lotteries.** 5 world seeds × 40 lotteries = K = 200. The world seed stops being one choice somebody made, without paying for 200 generations. |
-| 4 | at what scale? | **A new `HARNESS` scale** — 100 stores, because the roster is what the statistics see; fewer SKUs and fewer days, because the calendar is what the clock sees. §5. |
+| 4 | at what scale? | **A new `HARNESS` scale** — sized on the **surviving roster**, not the store count, because the roster is what the lottery draws over; fewer SKUs and fewer days, because the calendar is what the clock sees. *Answered as "100 stores" and restated 2026-08-28 — §5 has the measurement and T00E owns the choice.* |
 | 5 | what is "the truth on the metric"? | **The ATE over the roster, from two counterfactual worlds** — all-control and all-treatment under common random numbers — so every unit has both potential outcomes. §8. |
 | 6 | what does the slow reference implementation agree with? | **The harness's grouped path**, integer-exact, no tolerance. The SQL leg is a declared deferral unlocked by T011/T012. §8. |
 | 7 | what runs under a gate-proof mutation? | **Two entry points.** `evals.uplift` is the published harness; `evals.uplift.machinery` is the same checks at a small declared configuration, and it is the only module a mutation names. §11. |
@@ -165,33 +191,66 @@ numbers, two jobs, and collapsing them would be the estimator grading its own ho
 
 ---
 
-## 5 · The `HARNESS` scale
+## 5 · The `HARNESS` scale — chosen on the surviving roster
 
-`corpus/world/scale.py` gains a fourth scale. The reasoning is that the two dimensions cost
-different things:
+**Restated 2026-08-28.** This section read:
 
-- **stores** are what the statistics see — the roster, the 20% holdout, the strata, the standard
-  error. **100, unchanged from `SCENARIO`.** A 20-store `REHEARSAL` gives a control arm of four, and
-  a control arm of four cannot land inside a 0.10 SMD tolerance on a binary covariate: the
-  proportions move in steps of ¼. `tests/core/conftest.py` already records that arithmetic.
-- **SKUs and days** are what the clock sees. Eight pre-period weeks (the covariates' declared
-  `lookback_weeks`) plus up to eight period weeks (`max_duration`) is **112 days**, and **12 SKUs per
-  category** is enough for a fresh assortment to churn.
+> `corpus/world/scale.py` gains a fourth scale. The reasoning is that the two dimensions cost
+> different things: **stores** are what the statistics see — the roster, the 20% holdout, the
+> strata, the standard error — **100, unchanged from `SCENARIO`**. A 20-store `REHEARSAL` gives a
+> control arm of four, and a control arm of four cannot land inside a 0.10 SMD tolerance on a
+> binary covariate: the proportions move in steps of ¼. **SKUs and days** are what the clock sees:
+> 112 days and 12 SKUs per category.
+>
+> ```
+> HARNESS = Scale(name="harness", stores=100, skus_per_category=12, days=112,
+>                 start_date=date(2025, 9, 1))
+> ```
 
-```
-HARNESS = Scale(name="harness", stores=100, skus_per_category=12, days=112,
-                start_date=date(2025, 9, 1))
-```
+**The principle was right and the variable was wrong.** The paragraph reasons about the control
+arm, which is correct — and then sizes it from the *nominal* store count, which the lottery never
+sees. What the lottery draws over is the roster **after** `feasibility._neighbour_exclusions` has
+run, and on this corpus that exclusion removes more than half the estate:
 
-Projected from F1 at ≈ 0.14 × scenario, so **≈ 14 s per world**. That is a projection; the build
-measures it and `corpus/world/README.md` records the measured figure with its command, exactly as
-the scenario figures are recorded.
+| nominal stores | neighbour pairs | excluded | **surviving roster** | control arm |
+|---:|---:|---:|---:|---:|
+| 100 | 109 | 55 | **45** | 9 |
+| 200 | 247 | 119 | 81 | 16 |
+| 400 | 824 | 270 | 130 | 26 |
+| 1,200 | 4,380 | 988 | **212** | 42 |
 
-**Fewer SKUs per store raises per-store variance relative to the mean.** That is honest and it is
-stated: the power check is judged on the realised variance, so a thinner assortment makes the
-harness's world *harder* to detect an effect in, not easier. If it turns out to make W6 refuse
-outright, that appears as the published false-refusal rate and is reported, not tuned away — see
-§15.
+So the SPEC's own argument, applied to the number it should have been applied to, says a control
+arm of **nine** — which is worse than the `REHEARSAL` arm of four that the paragraph rejected. It
+is also why "just use more stores" is not the answer: the towns are fixed, the estate gets denser
+rather than larger, and the surviving roster saturates around 212.
+
+**The variable is therefore the surviving roster, per world, and `HARNESS` is chosen against it.**
+That choice belongs to **T00E**, which makes the corpus's clustering a declared per-world parameter
+and fixes the density so it does not move with the scale — high in W2, which is the only world that
+needs interference to exist, and realistic in the other five, with W2's surviving roster still
+required to work because W2 must *estimate on what is left*. T00E's closing condition is a
+surviving roster of **≥ 200 in every world**, measured per world and recorded in
+`corpus/world/README.md` with the command that produced it.
+
+What stands from the original section, unchanged:
+
+- **112 days.** Eight pre-period weeks — the declared `lookback_weeks` of the balance covariates —
+  plus eight period weeks, which is `max_duration`. It is now load-bearing for a second reason:
+  the unit outcome is the window **mean** over an even number of weeks, which is the one place in
+  this harness where the metric's `rounding` decides a cent, and therefore the only place
+  mutation 07 can bite.
+- **A thinner assortment raises per-unit variance relative to the mean**, so it makes the world
+  *harder* to detect an effect in rather than easier. That is the honest direction, and if it costs
+  W6 a readout the cost appears as the published false-refusal rate rather than as a tuned number.
+- The measured figure goes in `corpus/world/README.md` with its command, exactly as the scenario
+  figures are.
+
+**Two numbers this branch already has, so T003 does not start blind.** On a 100-store roster with
+no exclusions at all, 30% of stratified draws pass the 0.10 balance tolerance; the pass rate rises
+with the control arm and is **not monotone in it** — 20 controls 30%, 25 controls **0%**, 33
+controls 72%, 40 controls 86%. The zero is not sampling: at 25 controls `store_format=hypermarket`
+sits at a constant 0.1734 across every draw, because a categorical covariate's balance is fixed by
+the allocation of strata to cells and not by the lottery. That is **T00D**.
 
 ---
 
@@ -448,27 +507,55 @@ the measured figure that replaced it.
 
 ---
 
-## 13 · The budget
+## 13 · The budget — restated on the measured figures
 
-Per-readout cost after §9, projected from F2 and F3: `13.5 − 11.5 + 0.3 ≈ 2.3 s` on the laptop.
+**The original table is kept below and it was wrong twice over.** It priced a readout at 2.3 s
+after §9, from an F2 that was itself measured on a rank-two design matrix; and it counted 125
+generations at a projected 14 s. Both halves are restated here rather than edited, per doctrine
+rule 4.
 
-| | draws | readouts | generations | CPU-min |
-|---|---|---|---|---|
-| A/A (W1) | 5 × 40 | 200 | 5 | ~8 |
-| W6 — coverage, bias, false refusal | 5 × 40 | 200 | 10 | ~9 |
-| W3, W4, W5 | 5 × 40 each | 600 | 30 | ~25 |
-| W2 — both arms of the pair | 5 × 8 × 2 | 80 | 80 | ~22 |
-| **total** | | **1,080** | **125** | **~64** |
+> Per-readout cost after §9, projected from F2 and F3: `13.5 − 11.5 + 0.3 ≈ 2.3 s` on the laptop.
+>
+> | | draws | readouts | generations | CPU-min |
+> |---|---|---|---|---|
+> | A/A (W1) | 5 × 40 | 200 | 5 | ~8 |
+> | W6 — coverage, bias, false refusal | 5 × 40 | 200 | 10 | ~9 |
+> | W3, W4, W5 | 5 × 40 each | 600 | 30 | ~25 |
+> | W2 — both arms of the pair | 5 × 8 × 2 | 80 | 80 | ~22 |
+> | **total** | | **1,080** | **125** | **~64** |
+>
+> On four runner cores, ~16 minutes wall — over a 15-minute job.
 
-On four runner cores, ~16 minutes wall — **over a 15-minute job**, so headroom comes from the two
-levers already declared rather than from the timeout: W3/W4/W5 share the A/A world seeds' generations
-where the world permits, and `per_world_min_correct_pct` is measurable on 5 × 20 for the three
-non-rate worlds. The build order measures the runner **before** the contract's counts are fixed, and
-if the honest answer is that 200 draws for W3–W5 do not earn their minutes, the contract says 20 and
-says why. **What does not happen is a third timeout increase.**
+The measured unit costs, on the laptop, at `HARNESS` as it stood:
 
-Without §9, the same table is ~370 CPU-minutes and nothing fits. That is why the optimisation is in
-this branch and not a follow-up.
+| | measured | note |
+|---|---|---|
+| one generation | **≈ 20 s** | 100 stores × 36 SKUs × 112 days ≈ 5.3M POS lines. Aggregating the metric on the way past adds ≈ 1.3 s, so the grouped path is free next to the generator |
+| one readout that **produces a number** | **≈ 29.5 s** before §9, **≈ 6 s** after it | `plan_for` 3.1 s is then the largest remaining term, and it is what an equivalent identity makes cheap — `Normal_T = Normal_all − Normal_C`, so each draw accumulates the control arm only |
+| one readout that **refuses** | **≈ 0.15 s** | `close` returns before `plan_for`: the estimate is never computed on a refusal, which is a design decision in `readout.py` and not an accident |
+
+**Three consequences, and each of them is now a constraint on T00E rather than a knob here.**
+
+1. **The mix matters more than the unit cost.** A refused draw is 40× cheaper than a produced one,
+   so the budget is a function of the false-refusal rate — the very number the harness exists to
+   publish. A budget that only fits because the system refuses is not a budget; it is the failure
+   being cheap. So the budget below is priced at the rate T00E measures, and it is priced **as if
+   every draw produced a number**, which is the honest worst case and the one we want to be true.
+2. **Generation is linear in the surviving roster and so is the estate.** T00E raises the store
+   count to reach a roster ≥ 200, and generation cost rises with it — so `skus_per_category` is the
+   dimension that pays for it, and §5's note about a thinner assortment is the price.
+3. **`plan_for` and `interval` are super-linear in the roster.** A roster of 300 is not three times
+   a roster of 100 for the estimator; the normal equations are accumulated per unit and solved per
+   draw. The identity in the table above is what keeps that affordable, and it earns the same guard
+   §9 declares: **bit-identical bounds or it is abandoned.**
+
+**The counts in §4 are therefore not fixed here.** They are fixed at build step 6, on the runner,
+against T00E's measured roster and measured false-refusal rate — and if the honest answer is that
+200 draws for W3–W5 do not earn their minutes, the contract says 20 and says why. What does not
+happen is a third timeout increase.
+
+Without §9, none of this fits at all. That is why the optimisation is in this branch and not a
+follow-up.
 
 ---
 
@@ -476,9 +563,14 @@ this branch and not a follow-up.
 
 Each step is a commit. The branch is squash-merged.
 
+0. **T00D, then T00E.** *Inserted 2026-08-28.* Neither is T003 work and T003 cannot start without
+   either: T00D refuses at moment 1 a design no draw could ever have saved, T00E gives the corpus a
+   declared clustering per world and a density that does not move with the scale, so that a
+   surviving roster exists to draw a holdout from. `TASKS.md` carries both, with the numbers.
 1. **The restatement.** ✅ *Landed.* `CLAUDE.md`, `corpus/world/worlds.py`, `corpus/world/README.md`,
    `docs/DECISIONS.md`. §3.
-2. **`HARNESS` scale** + the measured generation figure in `corpus/world/README.md`. §5.
+2. **`HARNESS` scale** + the measured generation figure in `corpus/world/README.md`. §5. **Its store
+   count comes from T00E's measured surviving roster, not from this document.**
 3. **The composition property** — `potential.py`, and the two tests, including the one that must
    fail on W2. §6. *Nothing downstream is affordable until this holds.*
 4. **`contracts/design/aa_harness.yaml`** + schema + loader + provenance walk + `make contracts`. §4.
