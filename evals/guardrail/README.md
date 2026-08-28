@@ -8,7 +8,7 @@
 > itself → the gates are attacked from an independent corpus of real price lists.*
 
 ```
-make claim-1          the eval, and the fifteen mutations claim 1 owns
+make claim-1          the eval, and the sixteen mutations claim 1 owns
 make eval-guardrail   the eval alone, about ten seconds
 ```
 
@@ -35,9 +35,12 @@ and driven through `certify` against eight envelopes. Then one question, asked t
 
 `G2` is the one that carries the claim. The rest bound the ways it could be passing for the
 wrong reason — and `G10` is there because `G2` and `G3` both go through a *price*, so both
-are blind wherever no corpus price happens to sit in the one-cent gap a misplaced bound
-opens. `G10` compares the bounds themselves, on every case, and needs no price to land
-anywhere.
+see a misplaced bound only where a corpus price sits in the gap it opens. Measured, on an
+absolute floor moved a cent loose: `G2` reports **3** violations in 28,485 certified prices,
+`G10` reports **232,373** disagreements in 824,790 bounds. Three cases out of twenty-eight
+thousand is a gate that holds until the corpus is reshuffled. And one break is caught by
+`G10` alone — a bound at exactly the right amount wearing another rule's id, which moves no
+arithmetic at all and destroys the record of which guardrail was checked.
 
 ---
 
@@ -75,14 +78,27 @@ attributed bounds. The two share the rule *values* and nothing else.
 That last sentence used to be false in one place, and it is the fourth instance of the defect
 `CLAUDE.md` names: **a guard tested by its author is tested in the shape the guard already
 handles.** The eval's own floor ended in `Money.as_lower_bound` — the core's rounding
-primitive — under a docstring claiming the direction had been arrived at independently. Patch
-the primitive and both floors moved, so `G2`, `G3` and `G6` all stayed green while every
-lower bound in the system was in the wrong place. `rounding.py` now re-decides the direction
-and carries it out by integer division of a `Fraction`: no precision, no context, no
-quantisation, so a defect in any of those cannot cancel out between the two.
+primitive — under a docstring claiming the direction had been arrived at independently.
 
-`make gate-proof` plants that exact break — `Money.as_lower_bound` rounding half-to-even —
-and demands a named check refuse it.
+*What that cost, planted against the tree that had it rather than argued about:*
+
+| | `main`, unmutated | `main`, `as_lower_bound` rounding half-to-even |
+|---|---|---|
+| `G2` | pass · 0 violations in 28,482 | **FAIL · 199 violations in 28,681** |
+| `G3` · `G4` | pass | pass |
+| `G6` | pass · 7,366 refused by a ceiling | pass · **7,365**, moved in silence |
+
+`G2` compares against `reference.py`'s **exact** `Decimal` bound, which never went through
+`Money`'s rounding, so `G2` was never blind to this. The check that shared the primitive was
+`G6`, and `G6` stayed green while the number it publishes moved. An earlier version of this
+section claimed all three stayed green — an order of magnitude too large, and written without
+being run, which is the same defect one level up in the layer that is supposed to be the
+evidence.
+
+`rounding.py` now re-decides the direction and carries it out on the value's exact integer
+ratio: no precision, no context, no quantisation, so a defect in any of those cannot cancel
+out between the two. `make gate-proof` plants that exact break and demands a named check
+refuse it.
 
 ---
 
@@ -160,8 +176,8 @@ prices.
 
 ## 6 · Two findings
 
-Neither is fixed here, and both are recorded in `docs/DECISIONS.md` with the condition that
-unlocks them. An eval that quietly widened an assertion to swallow what it found would be
+Neither is fully fixed here — the second is half closed and half deferred, and both are
+recorded in `docs/DECISIONS.md` with the condition that unlocks what remains. An eval that quietly widened an assertion to swallow what it found would be
 worse than no eval.
 
 **The first figure below was wrong when this file first carried it, and by an order of

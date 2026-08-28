@@ -4,10 +4,10 @@ The defect this module exists to close
 --------------------------------------
 `reference.py` calls itself a second implementation of the envelope's arithmetic. It was
 one, for the arithmetic; it was not one for the **rounding**, because the eval's own floor
-was obtained by calling `Money.as_lower_bound` — the very primitive the core uses. A review
-put it plainly: patch that primitive and the eval's bound moves with it, so the core and
-the eval agree on a wrong number and every check that calls itself independent stays green.
-`CLAUDE.md` names the class of defect and this is its fourth instance:
+was obtained by calling `Money.as_lower_bound` — the very primitive the core uses. Patch
+that primitive and the eval's bound moved with it, so on the one check that used it the core
+and the eval agreed on a wrong number. `CLAUDE.md` names the class of defect and this is its
+fourth instance:
 
 > **A guard tested by its author is tested in the shape the guard already handles.**
 
@@ -34,14 +34,33 @@ two. `as_integer_ratio` is exact on `Decimal`, on `Fraction` and on `int` — it
 pair `Fraction` would have been built from — and after it there is nothing here but integer
 floor division, which is the whole implementation.
 
+What was actually invisible, measured rather than asserted
+----------------------------------------------------------
+An earlier draft of this docstring said that patching `Money.as_lower_bound` left every
+check green. That is false, and it was written without being run — which is the same defect
+one level up, in the layer that is supposed to *be* the evidence. Planted against `main`:
+
+    main, unmutated      G2 pass · 0 violations in 28,482 certified prices
+    main + half-even     G2 FAIL · 199 violations in 28,681 certified prices
+                         G3 pass · G4 pass · G6 pass, its published ceiling
+                                   count moving 7,366 -> 7,365 in silence
+
+`G2` compares a certified price against `reference`'s **exact** `Decimal` bound, which never
+went through `Money`'s rounding at all, so `G2` was never blind to this. The check that
+shared the primitive was `G6`, through `_exact_floor` — and `G6` stayed green while the
+number it publishes moved. That is the real finding: an order of magnitude smaller than the
+one first written down, and still a check agreeing with itself.
+
 What this still does not prove, said plainly
 --------------------------------------------
 Both implementations were written in this repository, so agreement between them is not
-independence in the strong sense claim 1's corpus has. What it is, is *non-shared*: no line
-of the core runs when this module computes a bound, so a change to the core's rounding
-shows up as a disagreement instead of as silence. That is the property the eval lost and
-this module gives back, and it is checked by `make gate-proof`, which plants a break in
-`Money.as_lower_bound` itself and demands a named check refuse it.
+independence in the strong sense claim 1's corpus has. What it is, is *non-shared*: **no line
+of the core's rounding** runs when this module places a bound, so a change to it shows up as
+a disagreement instead of as silence. Not "no line of the core" — `Money.euros` produced the
+input and `Money.__post_init__` runs on the way out; the claim is about the rounding
+decision, which is made here and nowhere else. That is the property the eval lost and this
+module gives back, and `make gate-proof` plants a break in `Money.as_lower_bound` itself and
+demands a named check refuse it.
 
 `Money(cents)` is constructed here, and that is not a rounding call: it is the integer the
 decision above produced, wearing the type the rest of the eval passes around. The decision

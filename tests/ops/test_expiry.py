@@ -1,11 +1,14 @@
 """`make expiry` goes red on a planted expired deferral, and on one that never said how it ends.
 
 Doctrine rule 6 — *exceptions expire; on expiry the finding returns and CI goes red again* —
-was enforced nowhere before this. The target that enforces it has the problem every new gate
-has: today's registry carries thirteen deferrals and not one of them carries a date, so the
-target is green and would stay green if its arithmetic were nonsense. These tests are what arm
+was enforced nowhere before this. The target that enforces it had the problem every new gate
+has: when it was written, not one deferral in the registry carried a date, so the target was
+green and would have stayed green if its arithmetic were nonsense. These tests are what arm
 it, in the same way `gate-proof`'s mutations arm claim 1's checks: a planted break, refused by
-the check named in advance.
+the check named in advance. Since 2026-08-28 one real entry carries a date as well, which is
+why the planted dates below are **computed from the registry** rather than written out: a
+literal date is a second opinion about what the registry contains, and the first version of
+these tests went red the day the registry gained its first real expiry.
 
 Every negative case starts from the **real** `docs/DECISIONS.md` and breaks exactly one thing
 in a copy of it, which is the rule `tests/conftest.py` already applies to the contracts. A
@@ -15,7 +18,7 @@ the failure mode a test suite is supposed to catch rather than exhibit.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -82,10 +85,27 @@ Planted by `tests/ops/test_expiry.py`. It carries neither an unlock condition no
 by DECISIONS.md's own opening sentence it is not deferred — it is forgotten.
 """
 
-STILL_RUNNING = """
+
+#: A date that is still in the future on `TODAY` and **earlier than every real expiry**, so the
+#: planted entry is the one the target reports as next and the one whose day-of decides the
+#: verdict. Derived, because a literal would silently stop being the earliest.
+def _binds_before_every_real_expiry() -> date:
+    real = [d.expires for d in parse(REGISTRY.read_text(encoding="utf-8")) if d.expires]
+    ceiling = min(real) if real else date(2026, 12, 31)
+    planted = ceiling - timedelta(days=30)
+    assert planted > TODAY, (
+        f"the registry's earliest expiry is {ceiling}, which leaves no room to plant one "
+        f"between {TODAY} and it. Move TODAY, or plant against a nearer horizon."
+    )
+    return planted
+
+
+STILL_RUNNING_ON = _binds_before_every_real_expiry()
+
+STILL_RUNNING = f"""
 **A planted deferral that has not expired yet** · deferred 2026-01-01
 Planted by `tests/ops/test_expiry.py`.
-*Expires:* 2026-12-31
+*Expires:* {STILL_RUNNING_ON.isoformat()}
 """
 
 
@@ -112,7 +132,7 @@ def test_a_deferral_that_has_not_expired_yet_is_green(
 ) -> None:
     code, out = _run(_planted(STILL_RUNNING, tmp_path), TODAY, capsys)
     assert code == 0, out
-    assert "next expiry 2026-12-31" in out
+    assert f"next expiry {STILL_RUNNING_ON.isoformat()}" in out
 
 
 def test_it_expires_on_the_date_and_not_the_day_after(
@@ -120,8 +140,8 @@ def test_it_expires_on_the_date_and_not_the_day_after(
 ) -> None:
     """An exception that lasts one day longer than it declared is an exception nobody declared."""
     registry = _planted(STILL_RUNNING, tmp_path)
-    assert _run(registry, date(2026, 12, 30), capsys)[0] == 0
-    assert _run(registry, date(2026, 12, 31), capsys)[0] == 1
+    assert _run(registry, STILL_RUNNING_ON - timedelta(days=1), capsys)[0] == 0
+    assert _run(registry, STILL_RUNNING_ON, capsys)[0] == 1
 
 
 def test_the_age_of_a_condition_only_deferral_is_reported(

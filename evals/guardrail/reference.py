@@ -183,7 +183,11 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
     envelope = case.envelope
     proposal = case.proposal
     price = _price(case)
-    cost = case.unit_cost.euros if proposal.unit_cost is not None else None
+    # Read off the *proposal*, which is what `evaluate` sees. `Case` carries the same amount
+    # in `unit_cost`, and gating on one field while taking the value from the other means a
+    # family that ever set them apart would have this module bounding on an input the core
+    # was never handed — a second implementation checking a different question.
+    cost = proposal.unit_cost.euros if proposal.unit_cost is not None else None
     found: list[Constraint] = []
 
     found.append(

@@ -58,6 +58,17 @@ def _percentage(value: Decimal, what: str) -> Decimal:
             f"{what} is a Decimal percentage, not {type(value).__name__}. A binary float "
             "cannot represent most of them exactly; see holdout.core.money."
         )
+    # `Decimal` carries `Infinity` and `NaN`, and neither is a percentage. Without this an
+    # infinite mark-up passed every check here and became a `decimal.InvalidOperation` three
+    # modules later, inside the envelope's rounding — a crash where the contract of this
+    # layer is a refusal. `NaN` is worse: it compares false against everything, so `< 0`
+    # waved it through. Checked before the sign test for that reason.
+    if not value.is_finite():
+        raise BenchmarkError(
+            f"{what} is a finite percentage; {value} is not a number this can bound a price "
+            "with. Doctrine rule 3: nothing is invented, and a bound computed from an "
+            "infinity is not a bound."
+        )
     if value < 0:
         raise BenchmarkError(f"{what} is not negative; {value} was supplied")
     return value

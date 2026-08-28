@@ -30,22 +30,42 @@ from holdout.contracts.loader import load
 from holdout.core.guardrails import Refusal, RefusalCode, certify
 from holdout.core.money import Money
 
-#: The eval modules that compute a bound the core's own bounds are then compared against.
-#: `build.py` is deliberately not among them: it rounds *inputs* — a derived unit cost, a
-#: benchmark — and an input is not a second opinion about where a bound sits.
-THE_SECOND_IMPLEMENTATION = ("reference.py", "rounding.py", "checks.py")
+#: Modules under `evals/guardrail/` that may reach the core's rounding, each with the reason.
+#: An **exclusion list, not an inclusion list** — every other module in the package is scanned,
+#: found by a glob rather than named here. That inversion is the whole point: the first version
+#: of this rule named three modules, and the branch that wrote it added a fourth the rule could
+#: not see. A guard that has to be remembered when a file is added is a guard that will not be.
+MAY_ROUND_WITH_THE_CORE = {
+    #: Rounds *inputs* — a unit cost derived from a published margin, a benchmark. An input is
+    #: not a second opinion about where a bound sits, and rounding one the way the core would
+    #: is correct rather than circular. The limit this leaves open is named in the docstring.
+    "build.py",
+    #: The module that re-decides the direction. It constructs `Money(cents)` from the integer
+    #: its own arithmetic produced, which is a representation and not a rounding call.
+    "rounding.py",
+}
 
 #: `Money`'s three rounding constructors. Between them they are every decision the core makes
 #: about which way a number goes when it reaches the cent.
 THE_CORE_S_ROUNDING = frozenset({"as_lower_bound", "as_upper_bound", "as_price"})
 
+#: What a module in this package may take from `holdout.core.money`. `Money` is the type the
+#: eval passes around and `PRECISION` is a declared constant; anything else — `_quantise` above
+#: all — is the core's rounding reached by a name instead of by an attribute, which the
+#: attribute scan below cannot see.
+MAY_BE_IMPORTED_FROM_MONEY = frozenset({"Money", "MoneyError", "PRECISION", "ZERO", "decimal_of"})
 
-def _calls_to_the_core_s_rounding(source: Path) -> list[str]:
+
+def _reaches_the_core_s_rounding(source: Path) -> list[str]:
     tree = ast.parse(source.read_text(encoding="utf-8"))
     found: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Attribute) and node.attr in THE_CORE_S_ROUNDING:
             found.append(f"{source.name}:{node.lineno} {ast.unparse(node)}")
+        if isinstance(node, ast.ImportFrom) and node.module == "holdout.core.money":
+            for alias in node.names:
+                if alias.name not in MAY_BE_IMPORTED_FROM_MONEY:
+                    found.append(f"{source.name}:{node.lineno} imports {alias.name} from money")
     return found
 
 
@@ -56,25 +76,59 @@ def test_the_second_implementation_never_rounds_with_the_core_s_own_primitive() 
     repository — `Money.as_lower_bound(highest.scaleb(2))`, the last statement of
     `checks._exact_floor`, under a docstring that said the direction had been "arrived at
     independently, which is what makes the agreement between them worth checking". A review
-    in fresh context read the docstring against the code and found they disagreed. Patching
-    the primitive moved the eval's floor and the core's floor together, and G2, G3 and G6 all
-    stayed green.
+    in fresh context read the docstring against the code and found they disagreed.
 
-    This runs over `checks.py` as well as the two modules where the arithmetic now lives,
-    because that is where the offending line was, and a rule scoped to the file the fix
-    happens to have landed in would pass on the tree that had the bug.
+    The rule scans **every** module under `evals/guardrail/` except the two named above, and
+    that includes `checks.py`, because `checks.py` is where the offending line was: a rule
+    scoped to the file the fix happens to have landed in would pass on the tree that had the
+    bug. Verified against `main` rather than assumed — the rule reports `checks.py:400`
+    there.
+
+    What it does not cover
+    ----------------------
+    `CLAUDE.md` requires a guard to state this rather than leave a reader to assume the
+    guard is total. Three routes reach the core's rounding without tripping it, and all
+    three are real rather than theoretical:
+
+    * **a rounding helper inside `build.py`, called from here.** `build.py` is excluded
+      because it rounds inputs, and `reference` already imports it. Nothing enforces that
+      the exclusion stays true to its reason.
+    * **`getattr(Money, "as_lower_bound")`**, or any other name computed at run time. The
+      scan is syntactic.
+    * **arithmetic that reproduces `Decimal.quantize` inline** without naming anything the
+      core owns. A second implementation that re-derives the core's rounding by hand is
+      still one implementation in two places, and no import graph can see it.
+
+    The first is the one to watch, because it is the shape a *convenience* takes rather than
+    the shape an evasion takes. What catches all three, after the fact, is `G10` and
+    `make gate-proof`: a mutation planted in `Money.as_lower_bound` must still be refused by
+    a check named in advance, however the eval happens to reach its own bound.
     """
-    here = Path(reference.__file__).parent
-    offending = [
-        hit
-        for name in THE_SECOND_IMPLEMENTATION
-        for hit in _calls_to_the_core_s_rounding(here / name)
-    ]
+    package = Path(reference.__file__).parent
+    scanned = sorted(
+        path for path in package.glob("*.py") if path.name not in MAY_ROUND_WITH_THE_CORE
+    )
+    assert {p.name for p in scanned} >= {"reference.py", "checks.py"}, (
+        "the modules that compute a bound must be among those scanned; the glob found "
+        f"{[p.name for p in scanned]}"
+    )
+    offending = [hit for path in scanned for hit in _reaches_the_core_s_rounding(path)]
     assert not offending, (
         "a module that computes a bound the core's bounds are checked against reached for "
         "the core's own rounding. Two implementations that share the primitive are one "
         "implementation, and a defect in it cancels out:\n  " + "\n  ".join(offending)
     )
+
+
+def test_every_module_that_may_round_with_the_core_still_exists() -> None:
+    """An exclusion list that names a file nobody has is an exclusion nobody argued for.
+
+    Deleting or renaming `build.py` would silently leave a permission standing for a module
+    that no longer exists, and the next file to take that name would inherit it.
+    """
+    package = Path(reference.__file__).parent
+    missing = sorted(name for name in MAY_ROUND_WITH_THE_CORE if not (package / name).exists())
+    assert not missing, f"the exclusion list names modules that are not there: {missing}"
 
 
 def test_the_eval_rounds_a_bound_without_the_core_agreeing_that_it_did() -> None:

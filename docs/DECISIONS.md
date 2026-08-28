@@ -600,11 +600,17 @@ in `tests/core/test_balance.py`, and each of the three is a thing that happens.
 `evals/guardrail/reference.py` calls itself a second implementation of the envelope's arithmetic. It
 was one for the arithmetic and not for the **rounding**: the eval's own floor ended in
 `Money.as_lower_bound`, the core's primitive, under a docstring saying the direction had been
-"arrived at independently". Patch the primitive and both floors move together, so `G2`, `G3` and
-`G6` all stay green while every lower bound in the system sits in the wrong place. That is the
-fourth instance of `CLAUDE.md`'s *a guard tested by its author is tested in the shape the guard
-already handles*, and the first three were each declared impossible by prose sitting beside the
-code — as this one was.
+"arrived at independently". That is the fourth instance of `CLAUDE.md`'s *a guard tested by its
+author is tested in the shape the guard already handles*, and the first three were each declared
+impossible by prose sitting beside the code — as this one was.
+
+What it cost, planted against `main` rather than argued about: `G2` **fails**, with 199 violations
+in 28,681 certified prices, because `G2` compares against `reference.py`'s exact `Decimal` bound
+and that never went through `Money`'s rounding at all. `G3` and `G4` stay green. The check that
+shared the primitive was `G6`, and `G6` stayed green while its published ceiling count moved
+7,366 → 7,365 in silence. This entry first said all three stayed green; oversight level 2 ran the
+mutation and found the claim an order of magnitude too large. It is restated rather than deleted,
+because a wrong number in the evidence layer is exactly the thing this repository is about.
 
 `evals/guardrail/rounding.py` re-decides the direction from the contract's own statement of it and
 carries it out by **integer division of a `Fraction`**. `Fraction` was not chosen because it is
@@ -623,17 +629,27 @@ this eval rounded itself, with nothing tolerated anywhere.
 
 **A check that goes through a price is blind where no price lands in the gap.** · 2026-08-28
 `G2` asks whether a certified price escaped a bound and `G3` whether a refused one had something to
-refuse. A bound a single cent out of place opens a gap exactly one cent wide, and twenty-eight
-thousand certified prices can miss it — which is why a mutation that moves a bound can survive both.
+refuse. A bound a single cent out of place opens a gap exactly one cent wide, so both see it only
+where a corpus price happens to sit in that gap. Measured, on an absolute floor moved a cent loose:
+
+    G2   FAIL ·       3 violations in    28,485 certified prices
+    G10  FAIL · 232,373 disagreements in 824,790 bounds compared
+
+Three real prices out of twenty-eight thousand is a gate that holds until the corpus is reshuffled.
 `G10` therefore does not go through a price at all: every `Bound` the envelope attributed to a rule
 is compared with the edge this eval computed for the same rule, **as integer cents with no
-tolerance**, on all 824,790 of them. The two mutations planted against it are the rounding primitive
-changing direction and the margin floor built a cent too strict; the second also trips `G3`, and it
-is named on both for that reason.
+tolerance**, on all 824,790 of them.
 
-The cost is honest and small: `G10` is one more pass over the same outcomes, and it is the only
-check here that can catch a misplaced bound on a case where nothing was ever certified or refused
-because of it.
+*Three mutations, and the third is the one that settles it.* The rounding primitive changing
+direction and the margin floor built a cent too strict are both caught elsewhere as well — the
+second trips `G3`, which is the evidence that its tolerance is really gone. Oversight level 2 asked
+the fair question: does `gate-proof` show `G10` catches anything nothing else does? It did not, so a
+third was planted. **A bound at exactly the right amount carrying another rule's id** moves no
+arithmetic whatsoever — no price wrongly certified, no refusal unsupported, no ladder rung changed —
+and `G10` is the only check in the eval that goes red. Claim 1's evidence is *which* guardrail
+fired, and a certificate's recorded checks are derived from those ids, so a misattributed bound
+asserts a check that never ran. It is also the only mutation that exercises `G10`'s second
+direction: a rule the eval bounds and the envelope did not.
 
 **The denominator of a percentage is carried in the type.** · 2026-08-28
 A gross margin over the **selling price** and a mark-up over the **cost** are the same constraint and
@@ -976,7 +992,14 @@ right place. `docs/REGULATORY.md` item 6 carries the restatement in the meantime
 deferred 2026-08-27
 All thirteen existing entries carry an unlock **condition**, which is prose and can never expire.
 So the half of `make expiry` that refuses an expired deferral has nothing in the real registry to
-act on, and would stay green today if its arithmetic were nonsense. That is the same shape as a
+act on, and would stay green today if its arithmetic were nonsense.
+
+Partly answered on 2026-08-28 by T000: the CI-timeout entry above carries an expiry date alongside
+its condition, so the dated half now has one real entry to act on and the target can go red on a day
+nobody touched the repository. (Naming the marker in prose here is deliberately avoided — the first
+draft of this paragraph spelled it out and `make expiry` read it, dating *this* entry too. A
+registry parsed by a regex is a registry whose prose has to stay out of the way.) The general point stands — nineteen of twenty entries
+are still condition-only — so this stays deferred rather than closed. That is the same shape as a
 `claim-N` target with no mutation planted against it, and it is answered the same way:
 `tests/ops/test_expiry.py` plants an expired entry into a copy of this file and asserts the target
 goes red, by name and with the number of days it is overdue.
@@ -985,6 +1008,29 @@ Recorded rather than quietly accepted, because "the target is green" and "the ta
 are different statements and only the second one is worth anything.
 *Unlock condition:* the first deferral taken with a date rather than a condition — at which point
 the registry arms the target itself and the planted entry stops being the only evidence.
+
+**CI's gate job runs on a temporary 25-minute timeout** · deferred 2026-08-28
+It was 15. T000 raised it after a run was cancelled at 15m16s — but the cancelled run is not the
+evidence and should not be read as it. The evidence is the **spread between runners on the same
+commit**: 11m00s passing and 15m16s cancelled, four minutes apart, on identical work. That is ~40%
+variance, and a budget only the fast runner fits is a gate that reports which machine it drew
+rather than the state of the code. Claim 1 did grow — 13 mutations to 16, and ~15% slower per eval
+because `G10` makes a full independent pass over every bound — but that is the smaller half of the
+arithmetic.
+
+*Why it is a deferral and not a decision:* a guard loosened by 66% because it bound is the shape
+oversight level 3 looks for, and answering "has any gate stopped biting, and for what reason?" with
+"we raised it" twice in a row is how a gate becomes advice. It is recorded so the next session
+inherits the argument rather than the number.
+
+*What must not happen:* a third increase. T003 puts K = 200 seeds and six adversarial worlds into
+this same job, and the answer there is **parallelising the mutations or splitting the claim targets
+into their own jobs**, with the limit coming back down in that same change. `TASKS.md` carries the
+instruction inside T003's `stop_at`, where a session will actually read it.
+*Unlock condition:* T003, which cannot land without touching the job this bounds.
+*Expires:* 2026-09-30 — because an unlock condition is prose and can never expire, and this
+registry's own entry below says that is the half of `make expiry` nothing real was arming. This is
+the first entry that arms it.
 
 **Branch protection covers `main` only** · deferred 2026-08-27
 `main` is protected by a repository ruleset with **no bypass actors**, so the rule binds the owner

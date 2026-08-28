@@ -24,6 +24,7 @@ from holdout.contracts.loader import load
 from holdout.contracts.model import Policy
 from holdout.core.decision import DecisionKey, DecisionPath, PriceSource
 from holdout.core.guardrails import (
+    Bound,
     CertificateForgeryError,
     CertifiedPrice,
     PriceBounds,
@@ -170,13 +171,13 @@ def check_refusal_supported_by_exact_arithmetic(outcomes: list[Outcome]) -> Chec
     return Check(
         id="G3.refusal-supported-by-exact-arithmetic",
         question=(
-            "For every guardrail that refused, does this eval's own exact arithmetic agree "
-            "the rule was broken — or place the price within the one cent the core's "
-            "conservative rounding is allowed to claim?"
+            "For every guardrail that refused, does this eval's own arithmetic agree the "
+            "rule was broken — the price outside the bound this eval rounded itself, with "
+            "no tolerance anywhere?"
         ),
         passed=not failures,
         figure=f"{len(failures)} unsupported in {checked:,} refusal reasons",
-        detail="a refusal further inside the exact bound than a cent is a bound in the wrong place",
+        detail="a refusal at a price this eval's own rounded bound admits is a bound in the wrong place",
         counterexamples=tuple(failures),
     )
 
@@ -185,20 +186,26 @@ def check_bounds_land_where_the_independent_arithmetic_puts_them(outcomes: list[
     """G10 — every bound the core placed, against the same bound computed here. As integers.
 
     `G2` and `G3` ask about *prices*: was this price wrongly certified, was that refusal
-    supported. Both are therefore blind wherever no price in the corpus happens to sit in
-    the gap a misplaced bound opens, and a bound one cent out opens a gap exactly one cent
-    wide. Twelve thousand certified prices can miss it.
+    supported. Both therefore see a misplaced bound only where a corpus price happens to sit
+    in the gap it opens, and a bound one cent out opens a gap exactly one cent wide.
 
-    So this check does not go through a price at all. For every decision, every `Bound` the
-    envelope attributed to a rule is compared with the edge `reference` computed for the
-    same rule and `rounding` put on a cent — **as integer cents, with no tolerance**, which
-    is the comparison claim 5 makes about the metric and the same argument applies here.
-    A rounding primitive that changed direction, or a bound built a cent too strict, is a
-    disagreement on every case it touches rather than on the ones a price happens to catch.
+    That is not a hypothetical weakness, and the numbers are the argument. Planted against
+    this eval, an absolute floor a cent loose gives:
 
-    That is the check that did not exist when a review found `_exact_floor` calling
-    `Money.as_lower_bound`: the eval's floors were the core's floors, so patching the
-    primitive moved both and nothing anywhere went red.
+        G2   FAIL ·      3 violations in    28,485 certified prices
+        G10  FAIL · 232,373 disagreements in 824,790 bounds compared
+
+    Three real prices out of twenty-eight thousand is a gate that holds until the corpus is
+    reshuffled. So this check does not go through a price at all: for every decision, every
+    `Bound` the envelope attributed to a rule is compared with the edge `reference` computed
+    for the same rule and `rounding` put on a cent — **as integer cents, with no tolerance**,
+    the comparison claim 5 makes about the metric, for the same reason.
+
+    And one break is caught **here and nowhere else**: a bound at exactly the right amount
+    carrying another rule's id. Nothing about the arithmetic moves, so no price is wrongly
+    certified and no refusal loses its support — but claim 1's evidence is *which* guardrail
+    fired, and the certificate's recorded checks are derived from those ids. `gate-proof`
+    plants it. It is also the only mutation that exercises the second direction below.
 
     Both directions are asserted. A bound the core placed on a rule this module does not
     model is a rule the second implementation has never checked at all; a rule this module
@@ -212,11 +219,18 @@ def check_bounds_land_where_the_independent_arithmetic_puts_them(outcomes: list[
             for c in outcome.constraints
             if c.rule_id is not None and c.rounded is not None
         }
-        placed = {
-            bound.rule_id: bound
-            for bound in (*outcome.result.bounds.lower, *outcome.result.bounds.upper)
-        }
         where = f"{outcome.case.origin} [{outcome.case.envelope_id}]"
+        placed: dict[str, Bound] = {}
+        for bound in (*outcome.result.bounds.lower, *outcome.result.bounds.upper):
+            # Two bounds under one rule id is not a comparison this check can make, and
+            # keeping the last silently drops the other and under-counts `compared`. It is a
+            # defect in its own right — claim 1's evidence is *which* guardrail fired, and a
+            # bound wearing another rule's id has already destroyed that — so it is reported
+            # rather than resolved. `gate-proof` plants exactly this.
+            if bound.rule_id in placed:
+                failures.append(f"{where} placed two bounds under the rule id {bound.rule_id}")
+                continue
+            placed[bound.rule_id] = bound
         for rule_id, bound in sorted(placed.items()):
             constraint = expected.get(rule_id)
             if constraint is None:
@@ -522,8 +536,15 @@ def _a_ceiling_refused_it(case: build.Case, refusal: Refusal) -> bool:
     ceilings, kept in a second place, and a rule added to the envelope would quietly join
     whichever bucket the list's author last thought about.
     """
-    sides = {c.code: c.side for c in reference.constraints(case)}
-    return any(sides.get(code) == "upper" for code in refusal.codes)
+    sides: dict[RefusalCode, set[str]] = {}
+    for constraint in reference.constraints(case):
+        # A *set* per code, not one side. `BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT` is one code
+        # over two rules — a ceiling on the week's rise and a floor on its fall — so a dict
+        # holding one side per code silently keeps whichever was appended last. The base-price
+        # path never reaches this function today, which is exactly why it would have gone
+        # unnoticed until the day it did.
+        sides.setdefault(constraint.code, set()).add(constraint.side)
+    return any("upper" in sides.get(code, set()) for code in refusal.codes)
 
 
 def check_closed_vocabulary_only(outcomes: list[Outcome]) -> Check:
@@ -777,12 +798,9 @@ def run() -> Report:
                 f"{ladder.refused_by_a_ceiling:,}/{ladder.quotes:,} — see README, 'A finding'",
             ),
             (
-                "  of which a ceiling would fix",
-                f"{ladder.refused_by_a_ceiling:,} — a rung above an upper edge",
-            ),
-            (
-                "  refused by a rule with no bound",
-                f"{ladder.refused_by_a_rule_with_no_bound:,} — no ceiling would move one",
+                "  and by a rule with no bound",
+                f"{ladder.refused_by_a_rule_with_no_bound:,}/{ladder.quotes:,} — "
+                "no ceiling would move one of these",
             ),
         )
     )

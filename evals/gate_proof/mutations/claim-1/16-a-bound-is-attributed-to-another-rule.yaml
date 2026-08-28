@@ -1,0 +1,40 @@
+# The mutation that makes G10 necessary rather than merely stronger.
+#
+# Oversight level 2 asked the right question of the two mutations planted beside this one:
+# both are caught by G2 as well, so neither shows that G10 catches anything nothing else
+# does. The measured answer was that G2 catches them by *luck* — a floor moved a cent loose
+# produces 3 violations in 28,485 certified prices, because only three real prices in the
+# corpus land in the one-cent gap it opens, while G10 reports 232,373 disagreements over the
+# same break. A gate that survives on three cases survives until the corpus is reshuffled.
+#
+# This one closes the argument properly: nothing else in the eval moves at all. No price is
+# certified that should not be, no refusal loses its support, no ladder quote changes rung.
+# The bound is in exactly the right place and carries the wrong rule's name — and claim 1's
+# evidence is *which guardrail fired*, which that has already destroyed. The certificate's
+# `checks` tuple is derived from these ids, so it now asserts a check that never ran.
+#
+# It is also the only mutation in the set that exercises G10's second direction: a rule the
+# eval bounds and the envelope did not.
+
+id:          a-bound-is-attributed-to-another-rule
+claim:       1
+eval_module: evals.guardrail
+targets:
+  - G10.bounds-land-where-the-independent-arithmetic-puts-them
+
+breaks: >-
+  the margin floor is attributed to the absolute floor's rule id. Every bound is at the right
+  amount, every refusal names the right code, and the assessment carries two lower bounds
+  wearing one name — so the certificate's record of which guardrail was checked is wrong
+  while every number in it is right.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+                  guardrail=GuardrailId.FLOOR,
+                  rule_id="minimum_gross_margin_pct",
+                  code=RefusalCode.BELOW_MARGIN_FLOOR,
+replacement: |
+                  guardrail=GuardrailId.FLOOR,
+                  rule_id="minimum_absolute_price_eur",
+                  code=RefusalCode.BELOW_MARGIN_FLOOR,

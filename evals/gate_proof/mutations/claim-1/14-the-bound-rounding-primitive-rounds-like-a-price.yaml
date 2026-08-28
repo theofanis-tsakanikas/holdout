@@ -1,14 +1,17 @@
-# The mutation that was invisible, and the reason this instrument was fixed.
+# `Money.as_lower_bound` is the single primitive every floor in the envelope is rounded by,
+# and a review found the eval's own `_exact_floor` calling it — so on that path the eval's
+# floor and the core's floor were the same number arrived at once.
 #
-# `Money.as_lower_bound` is the single primitive every floor in the envelope is rounded by.
-# A review found the eval's own `_exact_floor` calling it — so the eval's floor and the
-# core's floor were the same number arrived at once, and patching the primitive moved both.
-# G2, G3 and G6 all stayed green. The eval now rounds in `evals/guardrail/rounding.py`, by
-# integer division of a `Fraction`, sharing no arithmetic with `Money`.
+# What that actually cost, planted against `main` rather than reasoned about: G2 FAILS, with
+# 199 violations in 28,681 certified prices, because G2 compares against `reference`'s exact
+# `Decimal` bound and that never went through `Money`'s rounding. G3 and G4 stay green. The
+# check that shared the primitive was G6, and G6 stayed green while its published ceiling
+# count moved 7,366 -> 7,365 in silence. An earlier version of this header claimed all three
+# stayed green; it was wrong, and it had not been run.
 #
-# It is still not G6 that catches this: the ladder is handed the eval's floor, which is now
-# the *higher* of the two, so its quotes clear the core's loosened floor comfortably. The
-# check that catches it is the one that compares the two floors directly, on every case,
+# G6 does not catch this even now: the ladder is handed the eval's floor, which is the
+# *higher* of the two once the core's is loosened, so its quotes clear the core's floor
+# comfortably. G10 is named because it compares the two floors directly, on every case,
 # without waiting for a price to land in the one-cent gap.
 
 id:          the-bound-rounding-primitive-rounds-like-a-price
