@@ -140,19 +140,30 @@ per_world_min_correct_pct:
     verified_on: 2026-08-28
 
 mde_pct_of_pre_period_mean:
-  value: 2.5
+  value: 4.0
   source:
     kind: scenario_assumption
     note: >-
       The minimum detectable effect the harness's single design form declares, as a percentage
       of the pre-period mean per unit-week. Declared once for every world — a per-world MDE
-      would be a per-world degree of freedom — and derived from the PRE-PERIOD alone: at the
-      harness scale the within-unit week-to-week standard deviation is about 12% of the mean,
-      which sizes a design at five to six weeks against a max_duration of eight, so 2.5 leaves
-      margin on both sides without being chosen against any world's realised effect. No seal
-      was opened to arrive at it and none needs to be: everything in that sentence is
-      measurable before an experiment runs, which is the whole point of declaring an MDE in
-      advance.
+      would be a per-world degree of freedom.
+      Two constraints meet at this number and both are measured. The design's own sizing must
+      reach power inside max_duration, which it does with room. And the REALISED standard
+      error must be small enough for the readout's power check to admit it: measured at the
+      harness scale, the estimator delivers about 14.5 EUR against a pre-period mean of about
+      1,375, so the check needs an MDE above (z_alpha + z_beta) x 14.5 = 40.5 EUR, which 4% —
+      55 EUR — clears and 2.5% — 34 EUR — does not.
+      The gap between the two is itself a measurement and it is published rather than
+      corrected: the design's normal approximation predicts a standard error of 9.3 EUR from
+      the pre-period's week-to-week variance, and the estimator delivers 14.5, because weeks
+      inside a store are correlated and the covariate adjustment does not remove the whole
+      between-store level. That is a property of the model the design sizes with, and W5 is
+      the world built to make it fail outright rather than mildly.
+      **It cannot manufacture a result and that is why it may be set from a measurement at
+      all.** The p-value does not depend on the MDE, so the A/A false-positive rate is
+      untouched by it; and no seal has been opened, so nothing here is chosen against any
+      world's realised effect. What an MDE decides is whether an experiment is worth running,
+      which is exactly the question a power calculation exists to answer before it does.
     verified_on: 2026-08-28
 
 unit_exposed_min_ack_pct:

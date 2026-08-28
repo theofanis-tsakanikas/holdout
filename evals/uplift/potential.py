@@ -137,6 +137,32 @@ def build(world_id: str, *, world_seed: str, scale: Scale, rounding: Rounding) -
     )
 
 
+def compose_exposure(
+    potential: Potential, arms: Mapping[str, Arm]
+) -> tuple[dict[str, int], dict[str, int], dict[str, frozenset[str]]]:
+    """The acknowledgement counts and delivered policies a lottery would have produced.
+
+    They compose exactly as the outcomes do and for the same reason: a store's
+    acknowledgements are drawn on keys that carry the store, the SKU and the day and never
+    the arm, so a store's stream is a function of its own arm alone outside W2.
+
+    **Read from the corpus, never inferred from the assignment.** An acknowledgement is the
+    only evidence a price reached a shelf; a delivered-policy map derived from the arms would
+    make the contamination check a statement about itself.
+    """
+    dispatched: dict[str, int] = {}
+    acknowledged: dict[str, int] = {}
+    delivered: dict[str, frozenset[str]] = {}
+    for unit in potential.units:
+        ledger = (
+            potential.treatment_ledger if arms[unit] is Arm.TREATMENT else potential.control_ledger
+        )
+        dispatched[unit] = ledger.dispatched.get(unit, 0)
+        acknowledged[unit] = ledger.acknowledged.get(unit, 0)
+        delivered[unit] = ledger.delivered.get(unit, frozenset())
+    return dispatched, acknowledged, delivered
+
+
 def compose(potential: Potential, arms: Mapping[str, Arm]) -> dict[tuple[str, Week], int]:
     """The unit-weeks a lottery would have produced, without generating the world again.
 
