@@ -1,0 +1,22 @@
+# The interval is the set of shifts the same test does not reject at the declared level, so
+# zero lies outside it exactly when the test rejects zero — which is exactly when the readout
+# calls the result significant. Two readings of one test. Judging significance at some other
+# level breaks the relationship while leaving both numbers individually plausible: the p-value
+# is still the p-value and the interval is still an interval, and only their agreement is gone.
+
+id:          a-result-is-called-significant-at-the-wrong-level
+claim:       2
+eval_module: evals.uplift.machinery
+targets:     [U12.interval-inverts-the-test]
+
+breaks: >-
+  a readout calls its result significant at a fixed level of one in two rather than at the
+  alpha the contract declares and the interval was inverted at. Nothing else on the readout
+  moves, and no validity check has an opinion about it.
+
+file: src/holdout/core/experiment/readout.py
+
+anchor: |
+        return self.p_value <= Fraction(self.alpha)
+replacement: |
+        return self.p_value <= Fraction(1, 2)

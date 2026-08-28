@@ -75,11 +75,29 @@ REPO_ROOT = HERE.parents[1]
 #: `generated/` are there because `holdout.contracts.loader` resolves them relative to the
 #: package, so a copied `src/` needs a copied contract directory beside it or every envelope
 #: fails to build for the wrong reason.
-COPIED = ("src", "contracts", "generated", "evals", "corpus")
+#:
+#: `.worlds/` is claim 2's cache of generated worlds, and copying it turns the baseline run
+#: from eight minutes into seconds. It is **safe to copy and that is not a matter of care**:
+#: `evals/uplift/cache.py` keys every entry on a digest of the corpus and of the two modules
+#: that produced it, so a mutation to any of them regenerates and a mutation to anything else
+#: reads back. A cache carried past a mutation that invalidates it would be a gate reporting
+#: SURVIVED while the thing it broke never ran, which is why the key does the deciding rather
+#: than this tuple. Absent directories are skipped, so a first run with no cache simply builds
+#: one.
+COPIED = ("src", "contracts", "generated", "evals", "corpus", ".worlds")
 
 #: A run of the eval that takes longer than this has almost certainly been mutated into a
 #: loop rather than into a bug. Bounded so `make gate-proof` cannot hang CI.
-TIMEOUT_SECONDS = 300
+#:
+#: **900 since claim 2, and the reason is not that claim 2 is slow.** It is that a mutation to
+#: `corpus/` or to the module that groups it *legitimately* regenerates every world the run
+#: needs — `evals/uplift/cache.py` keys on a digest of exactly those files, so invalidating
+#: them is the cache working rather than failing. That is minutes by design and one mutation
+#: in eight pays it. 300 was sized when the only eval was claim 1's, which reads a committed
+#: corpus and generates nothing at all, and under it the rounding mutation reported CRASHED —
+#: a gate recorded as broken because the guard against hanging fired on work that was doing
+#: exactly what it was asked to.
+TIMEOUT_SECONDS = 900
 
 
 class Verdict(StrEnum):
@@ -147,8 +165,11 @@ def _workspace(into: Path) -> Path:
     workspace = into / "workspace"
     workspace.mkdir()
     for name in COPIED:
+        source = REPO_ROOT / name
+        if not source.is_dir():
+            continue
         shutil.copytree(
-            REPO_ROOT / name,
+            source,
             workspace / name,
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
         )

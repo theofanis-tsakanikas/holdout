@@ -4,15 +4,18 @@
 
 ==  ==========================================  ================================================
 W1  pure noise, true effect zero                no significant uplift, at a rate <= alpha
-W2  real effect + interference between          **refuse the interfering units at design**,
-    neighbouring stores                         then estimate on what is left
+W2  real effect + interference between          the system does not detect interference; at
+    neighbouring stores                         this spillover the variance it creates is
+                                                enough for the power check to refuse — a
+                                                refusal by luck, not by design
 W3  real effect + exposure fails on 30% of      report ITT with the realised rate printed, or
     treated units                               refuse below the declared threshold — never
                                                 silently dilute
 W4  an effect that decays (novelty)             no result before the declared end, then report
                                                 what the declared window aggregated
-W5  heavy-tailed baskets — variance far above   the power check fails, or the interval is
-    what the power calculation assumed          honestly wide
+W5  heavy-tailed store-day demand — variance   the power check fails, or the interval is
+    far above what the power calculation        honestly wide
+    assumed
 W6  everything works, a real effect is present  **produce the number.** No refusal
 ==  ==========================================  ================================================
 
@@ -113,9 +116,14 @@ class World:
     #: response. It decays to nothing; the underlying response does not.
     novelty_boost_pct: int = 0
 
-    #: W5. The Pareto index of the per-line quantity. Below 2 the variance is infinite, which
-    #: is what a power calculation assuming a well-behaved basket does not survive.
-    quantity_tail_alpha: float | None = None
+    #: W5. The Pareto index of the **store-day** demand shock, which begins half way through
+    #: the world's calendar. Below 2 the variance is infinite, which is what a power
+    #: calculation assuming a well-behaved world does not survive — and it arrives *after* the
+    #: history such a calculation is sized on, because a pathology present in that history is
+    #: not variance above what was assumed, it is variance that was assumed. Restated
+    #: 2026-08-28 from `quantity_tail_alpha`, a per-basket-line quantity — see the note below
+    #: `W5`.
+    demand_tail_alpha: float | None = None
 
     @property
     def is_aa(self) -> bool:
@@ -158,11 +166,39 @@ W1 = World(
 #
 # W1, W5 and W6 were read against `Readout.is_significant`, `Statistic.detects` and `close`
 # respectively, and stand unchanged.
+# ---------------------------------------------------------------- restated 2026-08-28, twice
+#
+# W2's row is the only one in this file to have been wrong twice, and the second time is what
+# added a limb to the rule in `CLAUDE.md` rather than a correction to this line.
+#
+# The first wording was *"detect the contamination and refuse; never estimate"*. There is no
+# interference detector, and the restatement was written against the code that would have had
+# to hold one — `contamination.check`, whose two questions cannot see a neighbour's trade
+# crossing the road — and against `feasibility.neighbour_exclusions`, which is where the
+# defence actually is. That correction was right about the code and it produced this line:
+# *"exclude the interfering units at design, then estimate on what is left"*.
+#
+# **It was still wrong, and only running it showed that.** Measured over sixteen draws at the
+# harness scale, W2 produced **no number at all**: every draw refused POWER_NOT_REACHED, with
+# the pairs declared and with them withheld alike. The 18% spillover inflates the residual
+# variance enough that the power check refuses before anything is estimated, so *"estimate on
+# what is left"* describes something that does not happen.
+#
+# And the honest reading of why is not that a guard caught the interference. The system does
+# not detect interference. At this level of spillover the variance it creates is enough for
+# the power check to refuse — **a refusal by luck, not by design**. At a lower spillover the
+# variance would not reach the threshold and the system would report a contaminated number in
+# silence, because there is nothing at readout that looks for one. `docs/DECISIONS.md` carries
+# that as a deferral with the world that would demonstrate it as the unlock, so the limit is
+# declared here rather than discovered by somebody else later.
 W2 = World(
     id="W2",
     title="Interference between neighbouring stores",
     violates="SUTVA — a control store's outcome depends on its neighbour's assignment",
-    correct_behaviour="exclude the interfering units at design, then estimate on what is left",
+    correct_behaviour=(
+        "the system does not detect interference. At this level of spillover the variance it "
+        "creates is enough for the power check to refuse — a refusal by luck, not by design"
+    ),
     clustered_pct=INTERFERING_CLUSTERED_PCT,
     spillover_pct=18,
 )
@@ -189,12 +225,33 @@ W4 = World(
     novelty_boost_pct=55,
 )
 
+# ---------------------------------------------------------------- restated 2026-08-28
+#
+# W5's mechanism moved and its title with it. The tail was on the **basket line** — a Pareto
+# index of 1.45 on how many units went into one line — and the intent was right while the
+# implementation missed: `category_margin_per_store_week` aggregates about sixteen thousand
+# lines, and a central limit theorem is not something a world opts out of by drawing each line
+# from a wild distribution. Measured over sixteen draws at the harness scale, W5's standard
+# error at the readout came out **below** W6's — 8.08 EUR against 11.51 — so the world whose
+# declared pathology is variance had less of it than the world with no pathology at all.
+#
+# The tail is now on the **store-day**, which is the level the metric does not average over
+# enough draws to tame: a store-week is seven of them, and seven draws from a distribution with
+# infinite variance are still a wild sum. It begins half way through the world's calendar, so
+# that the history a power calculation is sized on is the quiet half and the experiment runs in
+# the wild one — a pathology already present in the history is variance the calculation
+# *assumed*, and the design engine refuses it at moment 1 rather than letting the readout be
+# the thing that notices.
+#
+# `correct_behaviour` is unchanged, and that is the point of restating the mechanism line as
+# well: fixing the world and leaving the row saying "heavy-tailed baskets" would have left a
+# sentence describing something the world no longer does — the same defect one layer along.
 W5 = World(
     id="W5",
-    title="Heavy-tailed baskets",
+    title="Heavy-tailed store-day demand",
     violates="the variance the power calculation assumed",
     correct_behaviour="the power check fails, or the interval is honestly wide",
-    quantity_tail_alpha=1.45,
+    demand_tail_alpha=1.45,
 )
 
 W6 = World(

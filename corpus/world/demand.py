@@ -85,11 +85,18 @@ CROSS_PRICE_PULL = 0.45
 #: that only appears at some scales is a pathology no test can rely on.
 TWIN_BASKETS_PER_10K = 6
 
-#: Lines per basket, and units per line, in the ordinary worlds. W5 replaces the second with a
-#: Pareto draw and leaves the first alone.
+#: Lines per basket, and units per line. The same in every world since 2026-08-28: W5 used to
+#: replace the second with a Pareto draw, and the tail never reached the metric — see
+#: `units_on_line` and `store_day_shock`.
 BASKET_LINES: tuple[float, ...] = (0.46, 0.28, 0.14, 0.07, 0.03, 0.02)
 LINE_UNITS: tuple[float, ...] = (0.72, 0.19, 0.06, 0.02, 0.01)
 MAX_UNITS_PER_LINE = 40
+
+#: How large a single store-day's demand shock may get, as a multiple of an ordinary day.
+#: Generous on purpose: a real chain has a busiest day it has ever had, and an untruncated
+#: Pareto eventually produces one day outselling a year. Fifty is well past anything grocery
+#: retail does and well short of that.
+MAX_STORE_DAY_SHOCK = 50.0
 
 
 def season_factor(day_of_year: int) -> float:
@@ -144,17 +151,42 @@ def novelty_factor(day_index: int, boost_pct: int, half_life_days: int | None) -
     return 1.0 + (boost_pct / 100.0) * float(0.5 ** (day_index / half_life_days))
 
 
-def units_on_line(draw: Random, tail_alpha: float | None) -> int:
-    """How many of it went into the basket.
+def units_on_line(draw: Random) -> int:
+    """How many of it went into the basket. One, sometimes two.
 
-    The ordinary answer is one, sometimes two. W5's answer has infinite variance, which is
-    what a power calculation assuming a well-behaved basket does not survive — and the reason
-    that world's correct behaviour is *the power check fails, or the interval is honestly
-    wide*, rather than a number.
+    **It carried W5's heavy tail until 2026-08-28 and no longer does.** A tail on a basket
+    line is a tail on one of about sixteen thousand draws that make up a store-week, and the
+    metric aggregates all of them: the pathology was averaged away before it reached the grain
+    the readout reads, and W5's measured standard error came out *below* W6's. The tail now
+    sits on the store-day, which is a level the metric does not average over enough draws to
+    tame — see `store_day_shock` and the restatement in `worlds.py`.
     """
-    if tail_alpha is not None:
-        return rng.pareto_units(draw, tail_alpha, MAX_UNITS_PER_LINE)
     return rng.choice_index(draw, LINE_UNITS) + 1
+
+
+def store_day_shock(seed: str, store_id: str, business_date: str, alpha: float | None) -> float:
+    """W5's demand shock: one heavy-tailed multiplier for a whole store-day, mean one.
+
+    `None` everywhere but W5, so the ordinary worlds pay nothing for it and are not perturbed
+    by its existence — the draw is keyed on its own purpose, so adding it moved no other
+    number in any other world.
+
+    **Why the store-day and not the basket line.** The primary metric is a store-week, which
+    is seven of these and about sixteen thousand basket lines. A tail on a line is averaged
+    away long before the readout sees it; a tail on a day survives, because seven draws from a
+    distribution with infinite variance are still a wild sum. That is the level at which
+    *"variance far above what the power calculation assumed"* is a thing a readout can notice,
+    and noticing it is the whole of W5.
+
+    It is a shock to **demand**, not to price response or to the intervention. A world whose
+    treated arm reacted differently to the shock would be a world with two pathologies in it,
+    and only one of them would be the one being tested.
+    """
+    if alpha is None:
+        return 1.0
+    return rng.pareto_shock(
+        rng.stream(seed, "demand-shock", store_id, business_date), alpha, MAX_STORE_DAY_SHOCK
+    )
 
 
 def lines_in_basket(draw: Random) -> int:

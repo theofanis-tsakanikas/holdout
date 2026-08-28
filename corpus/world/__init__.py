@@ -229,7 +229,7 @@ def _truth(
             "ack_failure_pct_treated": world.ack_failure_pct_treated,
             "novelty_half_life_days": world.novelty_half_life_days,
             "novelty_boost_pct": world.novelty_boost_pct,
-            "quantity_tail_alpha": world.quantity_tail_alpha,
+            "demand_tail_alpha": world.demand_tail_alpha,
             "violates": world.violates,
             "correct_behaviour": world.correct_behaviour,
         },

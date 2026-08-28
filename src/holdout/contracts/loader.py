@@ -26,6 +26,7 @@ from holdout.contracts.errors import ContractError, Violation
 from holdout.contracts.expression import ExpressionError
 from holdout.contracts.expression import parse as parse_expression
 from holdout.contracts.model import (
+    AaHarness,
     BalanceCovariates,
     Carryover,
     ContractSet,
@@ -34,7 +35,9 @@ from holdout.contracts.model import (
     Guardrail,
     GuardrailRule,
     GuardrailWindow,
+    HarnessSeeds,
     InferenceSettings,
+    MachineryConfiguration,
     Metric,
     MetricSource,
     Policy,
@@ -89,7 +92,9 @@ CLAIMED_FILES = {
     "guardrails": None,  # every *.yaml
     "policies": None,  # every *.yaml
     "vocabularies": frozenset({REASON_CODES.name}),
-    "design": frozenset({"balance_covariates.yaml", "form.schema.yaml", "inference.yaml"}),
+    "design": frozenset(
+        {"aa_harness.yaml", "balance_covariates.yaml", "form.schema.yaml", "inference.yaml"}
+    ),
 }
 
 #: Families whose numbers the independent provenance walk descends. Originally "numbers
@@ -376,6 +381,40 @@ def _inference(raw: dict[str, Any]) -> InferenceSettings:
     )
 
 
+def _aa_harness(raw: dict[str, Any]) -> AaHarness:
+    seeds = raw["seeds"]
+    machinery = raw["machinery"]
+
+    def number(key: str) -> Decimal:
+        return _as_decimal(raw[key]["value"])
+
+    return AaHarness(
+        version=raw["version"],
+        effective_from=_as_date(raw["effective_from"]),
+        seeds=HarnessSeeds(
+            world=int(seeds["world"]["value"]),
+            lotteries_per_world_seed=int(seeds["lotteries_per_world_seed"]["value"]),
+            pathology_world_seeds=int(seeds["pathology_world_seeds"]["value"]),
+            pathology_lotteries_per_world_seed=int(
+                seeds["pathology_lotteries_per_world_seed"]["value"]
+            ),
+            interference_lotteries_per_world_seed=int(
+                seeds["interference_lotteries_per_world_seed"]["value"]
+            ),
+        ),
+        binomial_level=number("binomial_level"),
+        false_refusal_max_pct=number("false_refusal_max_pct"),
+        per_world_min_correct_pct=number("per_world_min_correct_pct"),
+        mde_pct_of_pre_period_mean=number("mde_pct_of_pre_period_mean"),
+        unit_exposed_min_ack_pct=number("unit_exposed_min_ack_pct"),
+        machinery=MachineryConfiguration(
+            world_seeds=int(machinery["world_seeds"]["value"]),
+            lotteries=int(machinery["lotteries"]["value"]),
+            scale=str(machinery["scale"]["value"]),
+        ),
+    )
+
+
 # --------------------------------------------------------------------------- the load
 
 
@@ -453,6 +492,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
         [design_dir / "balance_covariates.yaml"], "balance_covariates.schema.json", "design"
     )
     inference_pairs = validated([design_dir / "inference.yaml"], "inference.schema.json", "design")
+    harness_pairs = validated([design_dir / "aa_harness.yaml"], "aa_harness.schema.json", "design")
     form_path = design_dir / "form.schema.yaml"
     if form_path.is_file():
         form_raw = read(form_path)
@@ -476,6 +516,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
         reason_codes=_reason_codes(reason_codes_pairs[0][1]),
         balance_covariates=_balance_covariates(covariate_pairs[0][1]),
         inference=_inference(inference_pairs[0][1]),
+        aa_harness=_aa_harness(harness_pairs[0][1]),
         design_form=MappingProxyType(form_raw),
         census=counted,
     )

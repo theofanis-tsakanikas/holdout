@@ -1,0 +1,26 @@
+# CLAUDE.md: the ESL acknowledgement is the only evidence that a price reached a shelf, and
+# without it every experiment measures intentions instead of actions. This is that sentence
+# broken: exposure counts the units that were ASSIGNED to treatment rather than the ones whose
+# labels answered. W3 fails a third of its acknowledgements, so the two numbers are far apart
+# and the readout stops refusing a world it has no business reporting on.
+
+id:          exposure-counts-the-assigned-and-not-the-acknowledged
+claim:       2
+eval_module: evals.uplift.machinery
+targets:     [U7.w3-exposure-refuses]
+
+breaks: >-
+  exposure is measured over the assigned treated units rather than over the acknowledged ones,
+  so a world in which thirty per cent of price changes never reached a label reports full
+  exposure and states a number diluted by an amount nobody declared.
+
+file: src/holdout/core/experiment/exposure.py
+
+anchor: |
+    return Exposure(
+        assigned_treated=len(assigned), exposed_treated=len(frozenset(exposed) & assigned)
+    )
+replacement: |
+    return Exposure(
+        assigned_treated=len(assigned), exposed_treated=len(assigned)
+    )

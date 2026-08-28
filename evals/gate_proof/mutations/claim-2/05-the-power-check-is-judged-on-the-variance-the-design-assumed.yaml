@@ -1,0 +1,33 @@
+# The design sized itself on a variance somebody supplied from history. The readout asks
+# whether the standard error the world ACTUALLY delivered is small enough for the MDE that was
+# declared. Judging it on the assumed variance instead makes the check a restatement of the
+# design's own arithmetic, and it can then only ever pass.
+#
+# It is aimed at W2 rather than at W5, and that is a finding rather than a preference. The
+# power check is the only thing standing between the interference world and a stated number:
+# W2's spillover inflates the residual variance past what it will admit, which is why W2's row
+# says *a refusal by luck, not by design*. Break the check and the luck runs out — W2 reports
+# an uplift over arms that were measuring each other, and nothing else in the system objects.
+#
+# Aimed at W5 it SURVIVED, and that survival is published rather than tuned away: with the
+# power check broken, W5's draws all report, and their intervals still contain the truth,
+# because the interval is an inversion of the test rather than an asymptotic formula. The
+# power gate is a promise about whether an experiment is worth running; it is not what keeps
+# the number honest.
+
+id:          the-power-check-is-judged-on-the-variance-the-design-assumed
+claim:       2
+eval_module: evals.uplift.machinery
+targets:     [U6.w2-states-no-number]
+
+breaks: >-
+  the readout's power check is decided on the MDE alone rather than on the realised standard
+  error, so the interference world — whose spillover is the reason its variance is above what
+  the design assumed — states an uplift over arms that were measuring each other.
+
+file: src/holdout/core/experiment/estimator.py
+
+anchor: |
+        return mde_absolute * mde_absolute >= z_sum * z_sum * self.variance
+replacement: |
+        return mde_absolute > 0

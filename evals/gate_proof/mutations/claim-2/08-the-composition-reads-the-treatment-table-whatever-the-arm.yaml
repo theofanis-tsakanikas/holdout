@@ -1,0 +1,24 @@
+# Two counterfactual generations buy every lottery, and the whole property is that a unit's
+# outcome is looked up under the arm it was actually drawn into. Reading the treatment table
+# for every unit is the shape of an off-by-one in a lookup: it produces plausible numbers, it
+# never raises, and the composition stops being the thing that was checked.
+
+id:          the-composition-reads-the-treatment-table-whatever-the-arm
+claim:       2
+eval_module: evals.uplift.machinery
+targets:     [U11.composition-is-exact]
+
+breaks: >-
+  the composition ignores the arm and reads every unit's outcome from the all-treatment world,
+  so the composed value stops matching the world generated under the assignment — which is the
+  property two hundred draws for two generations rests on.
+
+file: evals/uplift/potential.py
+
+anchor: |
+    return {
+        key: (potential.treatment if arms[key[0]] is Arm.TREATMENT else potential.control)[key]
+        for key in potential.control
+    }
+replacement: |
+    return {key: potential.treatment[key] for key in potential.control}

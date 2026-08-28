@@ -330,6 +330,66 @@ class InferenceSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class HarnessSeeds:
+    """How many worlds the A/A harness generates and how many lotteries it draws against each.
+
+    `draws` is `world x lotteries_per_world_seed` — the K claim 2 is stated at. The split
+    exists because the two factors cost different things: a world seed costs a generation and
+    a lottery costs a readout, and outside W2 two counterfactual generations buy every lottery.
+    """
+
+    world: int
+    lotteries_per_world_seed: int
+    pathology_world_seeds: int
+    pathology_lotteries_per_world_seed: int
+    interference_lotteries_per_world_seed: int
+
+    @property
+    def draws(self) -> int:
+        """K, for the two worlds whose rates are the claim."""
+        return self.world * self.lotteries_per_world_seed
+
+    @property
+    def pathology_draws(self) -> int:
+        """Draws per world for W3, W4 and W5."""
+        return self.pathology_world_seeds * self.pathology_lotteries_per_world_seed
+
+    @property
+    def interference_draws(self) -> int:
+        """Draws for W2, on each arm of the pair it publishes."""
+        return self.pathology_world_seeds * self.interference_lotteries_per_world_seed
+
+
+@dataclass(frozen=True, slots=True)
+class MachineryConfiguration:
+    """What `python -m evals.uplift.machinery` runs at — the only entry point a mutation names."""
+
+    world_seeds: int
+    lotteries: int
+    scale: str
+
+
+@dataclass(frozen=True, slots=True)
+class AaHarness:
+    """`contracts/design/aa_harness.yaml`, resolved. What the **eval** consumes.
+
+    Kept apart from `InferenceSettings`, which is what the **core** consumes, so that a number
+    the estimator never reads cannot be mistaken for one it does. `Decimal` and `int` only,
+    never a float, for the reason `Money` gives one package along.
+    """
+
+    version: int
+    effective_from: date
+    seeds: HarnessSeeds
+    binomial_level: Decimal
+    false_refusal_max_pct: Decimal
+    per_world_min_correct_pct: Decimal
+    mde_pct_of_pre_period_mean: Decimal
+    unit_exposed_min_ack_pct: Decimal
+    machinery: MachineryConfiguration
+
+
+@dataclass(frozen=True, slots=True)
 class ContractSet:
     """Every contract in the repository, validated and resolved.
 
@@ -345,6 +405,7 @@ class ContractSet:
     reason_codes: ReasonCodes
     balance_covariates: BalanceCovariates
     inference: InferenceSettings
+    aa_harness: AaHarness
     design_form: MappingProxyType[str, Any]
     census: Any
     """The provenance walk's tally — see `holdout.contracts.provenance.Census`. Typed loosely

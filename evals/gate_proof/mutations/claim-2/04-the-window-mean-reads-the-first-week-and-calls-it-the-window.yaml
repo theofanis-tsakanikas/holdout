@@ -1,0 +1,31 @@
+# `close` takes `outcomes` as given and cannot verify that what it was handed spans the
+# declared period — that is a restatement this repository already made, and U8 exists because
+# of it. This is the failure it stands in for: the caller aggregates the first week and calls
+# it the window. On W4, whose effect decays, the first week says something else.
+
+id:          the-window-mean-reads-the-first-week-and-calls-it-the-window
+claim:       2
+eval_module: evals.uplift.machinery
+targets:     [U8.w4-window-average]
+
+breaks: >-
+  the unit outcome is the first week of the declared window rather than its average. Nothing
+  in the core could catch it: `may_read` stops a result being asked for early and says nothing
+  about what the outcomes handed to it actually cover.
+
+file: evals/uplift/harness.py
+
+anchor: |
+    unit_outcomes = outcomes.window_mean(
+        by_unit_week,
+        units=seal.roster,
+        weeks=period_weeks,
+        rounding=metric.rounding,
+    )
+replacement: |
+    unit_outcomes = outcomes.window_mean(
+        by_unit_week,
+        units=seal.roster,
+        weeks=period_weeks[:1],
+        rounding=metric.rounding,
+    )

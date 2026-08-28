@@ -1,0 +1,24 @@
+# The interval is found by doubling out to a bracket and bisecting back. An `_edge` that
+# returns its starting point collapses every interval to the point estimate — a real bug shape
+# (a search whose widening condition is wrong) and one that leaves every other number on the
+# readout intact. Coverage is the only thing that notices.
+
+id:          the-interval-never-leaves-its-own-centre
+claim:       2
+eval_module: evals.uplift.machinery
+targets:     [U4.w6-coverage]
+
+breaks: >-
+  the interval's edge search never widens, so both endpoints are the point estimate and every
+  interval has zero width. The uplift, the p-value and all four validity checks are unchanged;
+  only whether the interval contains the truth gives it away.
+
+file: src/holdout/core/experiment/estimator.py
+
+anchor: |
+    inside = centre
+    span = 1
+replacement: |
+    return centre
+    inside = centre
+    span = 1

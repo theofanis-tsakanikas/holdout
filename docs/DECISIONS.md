@@ -1161,6 +1161,74 @@ instruction inside T003's `stop_at`, where a session will actually read it.
 registry's own entry below says that is the half of `make expiry` nothing real was arming. This is
 the first entry that arms it.
 
+> **Closed 2026-08-28 by T003, and it did not happen by raising anything.** `ci.yml` now has four
+> jobs where it had two: `gate` runs `make check`, the contracts and the expiry check and nothing
+> else, `discover` reads the claim targets out of the Makefile and emits them as a matrix, and
+> `claims` runs one per runner with `fail-fast: false`. **`gate` is back to 15 minutes**, which is
+> what `TASKS.md`'s `stop_at` demanded, and the discovery property survives untouched: the targets
+> are still never listed in the workflow, so a claim target that exists but is never run is still
+> impossible by construction. The entry below carries the new job's own budget.
+
+**CI's `claims` job runs on a temporary 90-minute timeout** · deferred 2026-08-28
+`make claim-2` is the most expensive target in the repository and it is expensive for a reason
+rather than by accident: it runs the **whole system** — pre-period, design engine, committed
+lottery, exposure, four checks, readout — two hundred times on the A/A world and two hundred more
+on W6, plus the four other worlds, and then plants eight mutations against the same checks at a
+smaller configuration. Measured on the author's laptop: about eleven minutes for the published
+harness on four workers and about nine for one uncached baseline plus eight mutated runs.
+
+*It was 45 first, and the runner cancelled the harness before it finished.* That is what a
+projection is worth against four cores: the laptop figure was taken on fourteen, and the number was
+set from an estimate made before the cold run had been measured at all. It is recorded rather than
+quietly corrected, because the entry above exists to stop exactly this happening twice and it
+happened again inside the same change.
+
+*Why 90.* It is the cold measurement plus the headroom the ~40% spread between runners on identical
+work already demands in this repository. A budget only the fast runner fits is a gate that reports
+which machine it drew.
+
+*The steady state is much lower, and the first lever is already in.* `ci.yml` now carries `.worlds/`
+across runs with `actions/cache`, keyed on **the digest `evals/uplift/cache.py` computes** rather
+than on a hand-written file list — the same guarantee one layer out, so a changed corpus is a miss
+here for exactly the reason it is a miss inside a run. Every run whose corpus is unchanged skips
+generation entirely, which is about half the harness. What is left after that is the counts in
+`contracts/design/aa_harness.yaml`, which are budgets and say so — though K = 200 on W1 and W6 is
+the claim itself and is not among them.
+*Unlock condition:* the first CI run with a **warm** world cache, which is the steady state this
+number should be set from rather than the cold one it is set from now.
+*Expires:* 2026-11-30 — a temporary budget with no date is a permanent one, which is what the entry
+above was written to stop happening twice.
+
+**W2's refusal is luck, and at a lower spillover the system would report a contaminated number**
+· deferred 2026-08-28
+There is no interference detector anywhere in this system, and `contamination.check` is not one:
+its two questions are whether the recorded digest describes the arms it carries and whether each
+unit received its own arm's policy, and neither can see a neighbour's trade crossing the road. The
+defence is `feasibility.neighbour_exclusions` at moment 1, and the closed vocabulary's only
+interference code is filed under `at_design`.
+
+Measured over sixteen draws at the harness scale, W2 produced **no number at all** — every draw
+refused `POWER_NOT_REACHED`, with the neighbour pairs declared to the engine and with them withheld
+alike. That reads like a guard working and it is not one. The 18% spillover inflates the residual
+variance past what the power check will admit, so **an unrelated guard fired**: a refusal by luck,
+not by design.
+
+*Why that is a limit and not a result.* At a spillover low enough that the variance stays under the
+threshold, every check would pass and the system would state a contaminated number in silence.
+Nothing in the four validity checks looks for interference, and `U6` publishes the **pair of
+refusal rates** rather than a pair of biases precisely because there are no numbers to compare —
+which is a measurement of the gap and not a closing of it.
+
+*Why it is deferred rather than fixed.* Closing it means a fifth validity check and a new
+`at_readout` code, which is a closed-vocabulary change with a restatement chain behind it, and it
+needs a detector somebody can defend — an interference test at readout is a research question, not
+an afternoon.
+*Unlock condition:* a W2 variant at a spillover low enough to pass the power check, which would
+**demonstrate** the silent contaminated number rather than argue for it. That world is cheap to add
+and it is deliberately not added here, because the branch that finds a limit should not also be the
+branch that decides what to do about it. The phase-1 integration session (T008) is where the two
+are weighed against each other.
+
 **W6's `IMBALANCED_PRE_PERIOD` rate is published with no threshold on it** · deferred 2026-08-28
 `false_refusal_max_pct` — claim 2's statement that *a world where everything works produces the
 number* — stays at **10%** and is left exactly as it was written, before anything was measured. What
