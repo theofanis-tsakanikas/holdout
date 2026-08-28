@@ -20,7 +20,7 @@ from corpus.world import alternating, prepare
 from corpus.world.scale import Scale
 
 from evals.report import Check
-from evals.uplift import cache, outcomes, potential, reference
+from evals.uplift import cache, design, outcomes, potential, reference
 from evals.uplift.harness import DrawRecord
 from holdout.contracts.model import Metric
 
@@ -55,16 +55,39 @@ def implementations_agree(world_id: str, *, world_seed: str, scale: Scale, metri
     disagreeing = sorted(
         cell for cell in set(grouped) & set(walked) if grouped[cell] != walked[cell]
     )
-    passed = not missing and not disagreeing
+    # And the window mean, which is the **only** place either implementation divides and so the
+    # only place the contract's rounding can decide anything. Every term of the metric is an
+    # exact integer number of cents, so `half_even` and `half_up` are the same function on a
+    # grain cell: comparing cells alone was comparing the half of the arithmetic that cannot
+    # disagree, and the mutation planted to prove otherwise SURVIVED until this was added.
+    # The declared window where the world carries one, and everything it has where it does
+    # not — a world too short for a pre-period still has a mean, and this check is about two
+    # implementations agreeing rather than about a design being feasible.
+    weeks = ledger.weeks
+    period = weeks[-design.PERIOD_WEEKS :] if len(weeks) > design.PERIOD_WEEKS else weeks
+    units = ledger.units
+    grouped_mean = outcomes.window_mean(
+        outcomes.unit_weeks(ledger, metric.rounding),
+        units=units,
+        weeks=period,
+        rounding=metric.rounding,
+    )
+    walked_mean = reference.window_mean(
+        reference.by_unit_week(walked), units=units, weeks=period, metric=metric
+    )
+    drifting = sorted(unit for unit in units if grouped_mean[unit] != walked_mean[unit])
+    passed = not missing and not disagreeing and not drifting
     return Check(
         id="U10.truth-implementations-agree",
         question=(
             "Do two independently written implementations of the metric contract — one "
-            "grouped, one walking every event — produce the same integer for every cell?"
+            "grouped, one walking every event — produce the same integer for every cell of "
+            "the grain, and for every unit's mean over the declared window?"
         ),
         passed=passed,
         figure=(
-            f"{len(disagreeing)} disagreeing of {len(grouped)} cell(s) on {world_id}, no tolerance"
+            f"{len(disagreeing)} disagreeing of {len(grouped)} cell(s) and {len(drifting)} of "
+            f"{len(units)} window mean(s) on {world_id}, no tolerance"
         ),
         detail=""
         if passed
@@ -76,7 +99,11 @@ def implementations_agree(world_id: str, *, world_seed: str, scale: Scale, metri
             f"{cell}: grouped {grouped[cell]} against walked {walked[cell]}"
             for cell in disagreeing[:5]
         )
-        + tuple(f"{cell}: present in only one implementation" for cell in missing[:5]),
+        + tuple(f"{cell}: present in only one implementation" for cell in missing[:5])
+        + tuple(
+            f"{unit}: window mean {grouped_mean[unit]} against {walked_mean[unit]}"
+            for unit in drifting[:5]
+        ),
     )
 
 
