@@ -358,6 +358,63 @@ So it is proved by unit tests that break each of its checks on a deliberately br
 arrangement — `tests/evals/test_ledger.py`. A gate that has only ever been seen green has not
 been tested, and that applies to the accountant as much as to anything it counts.
 
+### The fourth finding — two files, each correct, never multiplied together · 2026-08-28
+
+The first three findings were each a defect inside one artefact, found by reading it. **This one
+is not in any file.** `corpus/world/chain.py` opened every second store within 990 m of one the
+chain already had, on purpose, so that W2 would always have interference to detect.
+`holdout.core.design.feasibility` excluded the later-sorted member of every pair inside the
+declared 1 km radius, on purpose, so that no store would measure its neighbour. Each is right,
+each is documented, each has tests. **Their product is that half the estate disappears**, and
+nobody had computed it — because computing it requires running the corpus through the engine,
+which is exactly what T003 was the first task to do.
+
+What it measured, at the scale claim 2 was to be proved at:
+
+```
+100 stores -> 109 neighbour pairs -> 55 exclusions -> roster 45 -> control arm 9
+0 of 200 lotteries pass the readout's balance check
+4 of 5 world seeds refused at moment 1 with UNDERPOWERED_FOR_DURATION
+```
+
+And it did not scale out: 400 stores left a roster of 130, 1,200 left **212**. The towns were a
+fixed size, so every store added made the estate denser rather than larger and the share the
+engine excludes rose without limit.
+
+*Caught by neither level 1 nor level 2.* CI was green — every test passed, because every test was
+about one of the two files. A fresh-context reviewer reading either diff would have found nothing
+either, for the same reason. It was caught by **running the two together for the first time**,
+which is what an eval is for and why claim 2's eval was worth building before its estimator.
+
+**The rule that follows, and it is the sibling of the two CLAUDE.md already carries.** A guard
+tested by its author fails in the shape its author imagined. A sentence written by its author has
+no gate behind it at all. And: **two components each correct on its own have no test between
+them, and the number that would have shown it is a product nobody was computing.** So — *where
+two deliberate decisions meet on a quantity, that quantity gets a name, a command and a figure.*
+Here it is the **surviving roster**, `make roster`, and a table in `corpus/world/README.md`.
+`CLAUDE.md`'s scale paragraph is restated to say that the surviving roster, not the store count,
+is the number a claim rests on.
+
+**A second, sharper thing fell out of the same measurement.** At 25 controls on that roster,
+`store_format=hypermarket` sat at a **constant 0.1734** across two hundred draws: a categorical
+covariate's balance is decided by how the strata are allocated to cells, not by the lottery. So
+there are rosters on which no admissible assignment can ever pass the readout's balance check —
+and `assess` returned `Feasible` for them without a word, to be refused identically at every
+readout forever. That is the same shape as the starved reference set T002B closed, one moment
+earlier, and it is T00D: `balance.attainable` computes what any draw could reach and
+`NO_ADMISSIBLE_ASSIGNMENT` is returned when the answer is already outside the tolerance.
+
+**What the two fixes bought, measured.** The balance pass rate on the corpus's own roster went
+from **0 of 200** to **145–192 of 200** over three world seeds in the five ordinary worlds, and
+**121–172 of 200** in W2, whose estate is deliberately the most clustered. The residue is
+sampling spread on the numeric covariates, which `strata.py` already owned as a limit — and it
+is a rate claim 2 publishes rather than a wall it stops at.
+
+**What was not done, and deliberately.** No threshold moved. `balance_tolerance_smd` stayed at
+0.10 and `holdout_share_pct` at 20%, which `inference.yaml` says move only by a versioned
+contract change with a restatement and never as an exception granted to one experiment. The
+refusal T00D added names the roster as the remedy and does not point at the dial.
+
 ### The AI layer — what earns a hook
 
 **A hook must not duplicate a check CI already makes green-or-red.** · 2026-08-27

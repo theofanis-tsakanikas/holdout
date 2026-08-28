@@ -152,7 +152,7 @@ def prepare(
     """
     the_world = world if isinstance(world, World) else world_by_id(world)
     the_scale = scale if isinstance(scale, Scale) else scale_by_name(scale)
-    built = chain_module.build(seed, the_scale)
+    built = chain_module.build(seed, the_scale, clustered_pct=the_world.clustered_pct)
     ladder = control if control is not None else policy_module.contract_ladder()
     if treatment is not None:
         candidate = treatment
@@ -223,6 +223,7 @@ def _truth(
             "steps": [asdict(s) for s in run.treatment.steps],
         },
         injection={
+            "clustered_pct": world.clustered_pct,
             "treats": world.treats,
             "spillover_pct": world.spillover_pct,
             "ack_failure_pct_treated": world.ack_failure_pct_treated,

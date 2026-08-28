@@ -25,7 +25,7 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        expiry claim-1 eval-guardrail gate-proof world corpus clean
+        expiry claim-1 eval-guardrail gate-proof world roster corpus clean
 
 help:  ## show this help
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -100,6 +100,15 @@ world:  ## generate all six adversarial worlds at smoke scale and count what cam
 	@for w in W1 W2 W3 W4 W5 W6; do \
 	  $(RUN) python -m corpus.world count --world $$w --scale smoke; \
 	done
+
+# The number CLAUDE.md now says decides whether anything is provable: not how many stores
+# the estate has, but how many an experiment may still draw a lottery over once the design
+# engine's automatic neighbour exclusions have run. It is a joint fact about the corpus's
+# geography and the engine's rule, so it lives in `ops/` — the corpus may not import the
+# system, and a second copy of the exclusion rule inside `corpus/` would be the one that
+# goes stale. A measurement, not a gate: it asserts nothing and always exits 0.
+roster:  ## how much of the estate survives the automatic exclusions, per world
+	$(RUN) python -m ops.roster --scale harness
 
 corpus:  ## rebuild corpus/real/data from the sources MANIFEST.yaml cites — NEEDS THE NETWORK
 	@echo "This downloads ~100 MB from the ONS. CI never runs it; the committed data is"

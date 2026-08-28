@@ -14,6 +14,33 @@ question the scenario ever asks of geography is `contracts/design/inference.yaml
 neighbour radius, and answering it exactly matters more than looking like a GIS extract.
 `docs/DECISIONS.md` records the trade.
 
+Two numbers decide how much of the estate an experiment can use — T00E
+----------------------------------------------------------------------
+**How close the shops are is not a detail of the simulation; it is the size of the roster.**
+The design engine excludes the later-sorted member of every pair inside the declared 1 km
+radius, so every neighbour pair this file creates is a store that no experiment may use. The
+first version of this module put *every second store* inside that radius, as a fixed rule,
+so that W2 would always have interference to detect — and nobody multiplied the two facts
+together. Measured on 2026-08-28: 100 stores gave 109 pairs, 55 exclusions and a **roster of
+45**, on which no lottery in two hundred passed the readout's balance check. Adding stores
+made it worse rather than better, because the towns were a fixed size and the estate got
+denser: 1,200 stores left a roster of 212.
+
+So both numbers are declared, and each is a fact about the estate rather than a constant
+somebody needed:
+
+- **`clustered_pct` is per world** (`worlds.py`), because only W2 needs interference to
+  exist. It is high there and realistic in the other five, and W2's surviving roster still
+  has to work — W2's correct behaviour is to *estimate on what is left*, which it cannot do
+  if nothing is left.
+- **`AREA_PER_STORE_M2` fixes the estate's density**, so the number of pairs that arise by
+  chance rather than by intent does not move with the scale. The town's placement square
+  grows with the stores it holds; before, it did not, and the ratio of pairs to stores rose
+  with every store added.
+
+Neither is measured from a real chain and neither is claimed to be — the same sentence
+`CATEGORY_SHAPE` and `demand.py` make about themselves.
+
 The cost ledger moves, and that is the point
 --------------------------------------------
 `CLAUDE.md`: *"A sale at 14:00 joins to the cost as it was known at 14:00. Joining to the
@@ -26,15 +53,16 @@ cost" to reach for by accident.
 from __future__ import annotations
 
 import bisect
+import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from corpus.world import rng
 from corpus.world.scale import CATEGORIES, Scale
 
-#: Town centres. Enough towns that the estate is spread, few enough that stores land inside
-#: the interference radius of one another — which W2 needs and which a uniformly scattered
-#: estate would never produce.
+#: Town centres. Enough towns that the estate is spread, and each one holds a placement square
+#: that grows with the stores in it, so the estate's density is a declared constant rather than
+#: a consequence of the scale — see the module docstring and `AREA_PER_STORE_M2`.
 #:
 #: Stores are handed out in **contiguous blocks**, so ST0001 and ST0002 are in the same town.
 #: The first version dealt them round-robin, and the effect was quietly fatal: the stores in a
@@ -76,20 +104,24 @@ CATEGORY_SHAPE: dict[str, tuple[int, int, int, int, float]] = {
     "poultry": (320, 1290, 2, 5, 1.9),
 }
 
-#: How far a store may sit from its town centre, in metres.
-_TOWN_RADIUS_M = 5_000
-
-#: Every second store a town gets is opened close to one the chain already has there. Real
-#: estates cluster — a chain covers a dense neighbourhood with two small shops rather than one
-#: large one — and it is stated as a rule rather than a probability for a reason that is about
-#: testing rather than about retail: **W2 exists to be detected, so every scale has to contain
-#: the thing it detects.** Scattering stores uniformly over eight towns gives zero neighbour
-#: pairs at 20 stores and a handful at 100, which was measured before this was written rather
-#: than assumed after; and a *probabilistic* cluster would make the smoke scale's pairs depend
-#: on the seed, so the interference test would pass or fail by luck.
+#: How much room the estate gives each store: an 8 km square, 64 km2. A store every 8 km is
+#: denser than a hundred shops spread over Greece (about 1,300 km2 each) and looser than a
+#: city centre, which is the shape of a chain that concentrates where the people are — an
+#: assumption about the trade, not a measurement of one, and no chain's real footprint was
+#: obtained.
 #:
-#: 700 m in each axis means at most 990 m apart, so a clustered store is inside the declared
-#: radius by construction and not by arithmetic that could drift.
+#: **It is here so that density does not move with the scale.** The town's placement square is
+#: `sqrt(stores_in_town x AREA_PER_STORE_M2)` on a side, so the expected number of neighbours a
+#: store acquires *by chance* is `pi x radius^2 / AREA_PER_STORE_M2` — about one store in
+#: twenty at the declared 1 km radius — whatever the scale. Before T00E the square was a fixed
+#: 10 km across, so every store added made the estate denser and the share of it the design
+#: engine excludes rose without limit. That is a pathology of the generator and not a fact
+#: about retail, and it is what capped the usable roster at 212 however many stores were added.
+AREA_PER_STORE_M2 = 64_000_000
+
+#: How far a clustered store is opened from the one it is clustered onto, in each axis. 700 m
+#: in each axis means at most 990 m apart, so a clustered store is inside the declared radius
+#: **by construction** and not by arithmetic that could drift.
 _CLUSTER_RADIUS_M = 700
 
 #: The radius `contracts/design/inference.yaml` declares for automatic neighbour exclusion.
@@ -220,24 +252,80 @@ def _neighbours(stores: tuple[Store, ...]) -> dict[str, tuple[str, ...]]:
     return {store: tuple(sorted(others)) for store, others in found.items()}
 
 
-def _build_stores(seed: str, scale: Scale) -> tuple[Store, ...]:
+def store_ids_by_town(scale: Scale) -> dict[str, tuple[str, ...]]:
+    """Which stores each town holds, in ordinal order. A pure function of the scale.
+
+    Public because both the placement square and the clustering quota are computed from it,
+    and because a caller measuring the estate — `ops.roster` — should not have to re-derive
+    the block assignment from the formula.
+    """
+    out: dict[str, list[str]] = {}
+    for ordinal in range(scale.stores):
+        town = TOWNS[min(ordinal * len(TOWNS) // scale.stores, len(TOWNS) - 1)]
+        out.setdefault(town, []).append(f"ST{ordinal + 1:04d}")
+    return {town: tuple(ids) for town, ids in out.items()}
+
+
+def _half_width_m(stores_in_town: int) -> int:
+    """Half the side of the town's placement square, so density is constant across scales.
+
+    `isqrt` rather than a square root, so the answer is an integer decided by arithmetic that
+    is identical on every machine — the same property every other number in this package has.
+    """
+    return math.isqrt(stores_in_town * AREA_PER_STORE_M2) // 2
+
+
+def _clustered(seed: str, scale: Scale, clustered_pct: int) -> frozenset[str]:
+    """Which stores are opened next to one the chain already has in the same town.
+
+    A **quota per town, not a coin per store**, and the reason is about testing rather than
+    about retail: a probabilistic cluster would make the smoke scale's pairs depend on the
+    seed, so the interference test would pass or fail by luck. The quota rounds half up in
+    integer arithmetic, is capped at one short of the town — a town's first store has nothing
+    to be opened next to — and picks the stores with the lowest keyed hash.
+
+    Two properties follow, and both are used. The choice is **order-independent**, because
+    each store's key is a function of its own id. And it is **nested**: the stores clustered
+    at 15% are a subset of those clustered at 40%, so W2's estate is the realistic estate
+    with more of the same rather than a different one.
+    """
+    chosen: set[str] = set()
+    for ids in store_ids_by_town(scale).values():
+        quota = min((len(ids) * clustered_pct + 50) // 100, len(ids) - 1)
+        if quota <= 0:
+            continue
+        eligible = sorted(ids[1:], key=lambda s: (rng.unit_interval(seed, "cluster", s), s))
+        chosen.update(eligible[:quota])
+    return frozenset(chosen)
+
+
+def _build_stores(seed: str, scale: Scale, clustered_pct: int) -> tuple[Store, ...]:
     weights = tuple(share for _, share, _ in FORMATS)
+    by_town = store_ids_by_town(scale)
+    half = {town: _half_width_m(len(ids)) for town, ids in by_town.items()}
+    town_of = {store_id: town for town, ids in by_town.items() for store_id in ids}
+    clustered = _clustered(seed, scale, clustered_pct)
     stores: list[Store] = []
     placed: dict[str, list[tuple[int, int]]] = {}
     for ordinal in range(scale.stores):
         store_id = f"ST{ordinal + 1:04d}"
         draw = rng.stream(seed, "store", store_id)
-        town = TOWNS[min(ordinal * len(TOWNS) // scale.stores, len(TOWNS) - 1)]
+        town = town_of[store_id]
         chosen = rng.choice_index(draw, weights)
         name, _, size = FORMATS[chosen]
         here = placed.setdefault(town, [])
-        if here and len(here) % 2 == 1:
-            anchor = here[draw.randrange(len(here))]
-            x = anchor[0] + draw.randint(-_CLUSTER_RADIUS_M, _CLUSTER_RADIUS_M)
-            y = anchor[1] + draw.randint(-_CLUSTER_RADIUS_M, _CLUSTER_RADIUS_M)
-        else:
-            x = draw.randint(-_TOWN_RADIUS_M, _TOWN_RADIUS_M)
-            y = draw.randint(-_TOWN_RADIUS_M, _TOWN_RADIUS_M)
+        # Drawn from the store's own stream either way, and overridden — never skipped — when
+        # the store is clustered. So the stream is consumed identically whatever
+        # `clustered_pct` is, and a store's format, size and zone are the same in all six
+        # worlds. Only where the shop stands moves, which is the only thing the parameter is
+        # about.
+        x = draw.randint(-half[town], half[town])
+        y = draw.randint(-half[town], half[town])
+        if here and store_id in clustered:
+            pick = rng.stream(seed, "anchor", store_id)
+            anchor = here[pick.randrange(len(here))]
+            x = anchor[0] + pick.randint(-_CLUSTER_RADIUS_M, _CLUSTER_RADIUS_M)
+            y = anchor[1] + pick.randint(-_CLUSTER_RADIUS_M, _CLUSTER_RADIUS_M)
         here.append((x, y))
         stores.append(
             Store(
@@ -311,8 +399,23 @@ def _build_costs(
     return ledger
 
 
-def build(seed: str, scale: Scale) -> Chain:
-    """The chain for a seed and a scale. Identical for every world built on them."""
-    stores = _build_stores(seed, scale)
+def build(seed: str, scale: Scale, *, clustered_pct: int) -> Chain:
+    """The chain for a seed, a scale and a declared clustering.
+
+    `clustered_pct` is required and has no default. It is the one thing about the estate that
+    differs between worlds — see `worlds.World.clustered_pct` — and it decides how much of the
+    estate the design engine will exclude, which is the size of the roster and therefore
+    whether an experiment can exist at all. A default here would be a fourth place that number
+    is decided, and the quiet one.
+
+    Everything else is identical for every world built on the same seed and scale: the same
+    products at the same prices in shops of the same format, size and zone. Only where the
+    shops stand moves.
+    """
+    if not 0 <= clustered_pct <= 100:
+        raise ValueError(
+            f"clustered_pct is a percentage of the stores in a town, got {clustered_pct}"
+        )
+    stores = _build_stores(seed, scale, clustered_pct)
     products = _build_products(seed, scale)
     return Chain(stores, products, _build_costs(seed, scale, products))

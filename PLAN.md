@@ -23,7 +23,10 @@ The phase that decides whether the project is worth building.
   fresh categories over eight months** (~36M POS lines), with **no import path** to `core/` and a
   test that enforces it. The truth lives in a sealed file the grader opens only
   after the estimate is produced. *Landed 2026-08-27: 36.7M POS lines at the declared scale, six
-  worlds, and the barrier holding over sixteen modules — see the progress note below.*
+  worlds, and the barrier holding over sixteen modules — see the progress note below. Restated
+  2026-08-28 by T00E: 39.2M, because the chain's placement rule moved, and the scale claim 2 is
+  proved at is `harness` — 320 stores — because the number that decides whether anything is
+  provable is the roster that survives the design engine's exclusions.*
 - `evals/uplift/` — the A/A harness at K = 200 seeds with a one-sided binomial check against the
   declared α, and the six worlds including W6, the world where the correct answer is "yes, there
   was an effect". Every draw runs the whole system, not just the estimator.
@@ -487,6 +490,42 @@ number at runtime and not only where mypy runs. The half of the ambiguity that l
 `regulated_basket.yaml` stays deferred: it is a contract change with a restatement chain.
 
 The suite is **768** and `make claim-1` is **10/10 with 16/16 mutations biting**.
+
+**What T003 found before it built anything, and what it cost — 2026-08-28.** The A/A harness was
+built as far as running the whole system once against the corpus, and stopped on the first
+measurement: **end to end, the system produced no number.** `corpus/world/chain.py` opened every
+second store inside the 1 km exclusion radius so W2 would always have interference to detect;
+`feasibility` removed one member of every such pair so no store would measure its neighbour. Both
+deliberate, both documented, both tested — and never multiplied together. 100 stores gave 109
+pairs, 55 exclusions, a **roster of 45** and a control arm of nine, on which no lottery in two
+hundred passed the readout's balance check and four of five world seeds were refused at moment 1.
+Adding stores made it worse: 1,200 left a roster of 212, because the towns were a fixed size and
+the estate got denser rather than larger.
+
+*This is the first finding in the project that was in no file.* CI was green and every test passed,
+because every test was about one of the two halves; a fresh-context reviewer reading either diff
+would have found nothing either. It was caught by running them together, which is what an eval is
+for — and it is the argument for having built claim 2's harness before its estimator.
+
+Two tasks were inserted ahead of T003 and both have landed. **T00D** — a design that no lottery
+could have saved is refused at moment 1 rather than accepted in silence and refused identically at
+every readout forever; the case it is tested on is drawn by the corpus's own hashing and the
+breaking control count is found by search. **T00E** — the corpus's clustering became a declared
+per-world parameter (15%, and 30% in W2, the only world that needs interference to exist) and the
+estate's density stopped moving with the scale. `HARNESS` is chosen on the **surviving roster**,
+not the store count, and has more stores than `scenario` rather than fewer.
+
+What the two bought, measured: the balance pass rate on the corpus's own roster went from **0 of
+200** to **145–192 of 200** in the five ordinary worlds and **121–172 of 200** in W2. No threshold
+moved — `balance_tolerance_smd` is still 0.10 and `holdout_share_pct` still 20% — and the new
+refusal names the roster as its remedy rather than pointing at the dial. `CLAUDE.md`'s scale
+paragraph is restated: **the size a claim rests on is the surviving roster, not the store count**,
+and `make roster` is the command that prints it. The suite is **780**.
+
+The rule that follows sits beside the two `CLAUDE.md` already carries — a guard tested by its
+author, and a sentence written by its author. **Two components each correct on its own have no test
+between them, and the number that would have shown it is a product nobody was computing.** Where
+two deliberate decisions meet on a quantity, that quantity gets a name, a command and a figure.
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 

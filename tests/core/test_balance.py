@@ -25,6 +25,7 @@ from hashlib import blake2b
 import pytest
 from corpus.world.chain import build as build_chain
 from corpus.world.scale import Scale
+from corpus.world.worlds import REALISTIC_CLUSTERED_PCT
 
 from holdout.core.experiment import (
     Arm,
@@ -350,7 +351,11 @@ CORPUS_KINDS = (
 #: One SKU over one week: `chain.build` never emits an event, so this costs milliseconds and
 #: the stores it lays out are exactly the ones the scenario scale would.
 def corpus_roster(stores: int) -> CovariateMatrix:
-    chain = build_chain("holdout-w-0001", Scale("t00d", stores, 1, 7, date(2025, 9, 1)))
+    chain = build_chain(
+        "holdout-w-0001",
+        Scale("t00d", stores, 1, 7, date(2025, 9, 1)),
+        clustered_pct=REALISTIC_CLUSTERED_PCT,
+    )
 
     def vary(tag: str, store_id: str, span: int) -> int:
         return (

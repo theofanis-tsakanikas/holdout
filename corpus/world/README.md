@@ -43,8 +43,10 @@ Empty is empty, so nobody has to take the simulator's word for anything.
 
 ## The chain
 
-100 stores, three fresh categories, 40 SKUs each, 244 days — 2025-09-01 to 2026-05-02, eight
-months to the day. The three categories are `dairy`, `bakery` and `poultry`, which are the
+At the declared `scenario` scale: 100 stores, three fresh categories, 40 SKUs each, 244 days —
+2025-09-01 to 2026-05-02, eight months to the day. Every scale is the same chain at a different
+size; the four are in **Four scales** below, and the one the A/A harness runs on is `harness`,
+which has *more* stores and fewer SKUs for the reason that section gives. The three categories are `dairy`, `bakery` and `poultry`, which are the
 three `contracts/guardrails/regulated_basket.yaml` calls "the synthetic scenario's own fresh
 categories". The world does **not** read that contract for them — it would be reading a
 guardrail to decide what a shop sells — so they are two lists, and
@@ -79,10 +81,71 @@ would carry latitude and longitude; this one does not, because the only question
 ever asks of geography is the neighbour radius, and answering it exactly matters more than
 looking like a GIS extract.
 
-Every second store a town gets is opened within 700 m of one the chain already has there —
-stated as a rule rather than a probability, because **W2 exists to be detected and every scale
-has to contain the thing it detects**. Scattering stores uniformly gave zero neighbour pairs
-at 20 stores and a handful at 100.
+A share of each town's stores is opened within 700 m of one the chain already has there — a
+**quota per town rather than a coin per store**, because W2 exists to be detected and every
+scale has to contain the thing it detects, and a probabilistic cluster would have made the
+smoke scale's pairs depend on the seed.
+
+### How close the shops are is the size of the roster — restated 2026-08-28 (T00E)
+
+This section read *"every second store a town gets is opened within 700 m of one the chain
+already has there"*, as a fixed rule, and the town was a fixed 10 km across at every scale.
+Both were deliberate and both were wrong in the same way: **nobody multiplied them by the
+design engine's exclusion rule.** The engine drops the later-sorted member of every pair
+inside the declared 1 km radius, so every clustered store is a store no experiment may use.
+
+Measured before the change: 100 stores gave 109 neighbour pairs, 55 exclusions and a
+**surviving roster of 45** — a control arm of nine, on which no lottery in two hundred passed
+the readout's balance check. And it got worse rather than better with scale, because the towns
+did not grow: **1,200 stores left a roster of 212**. The usable estate saturated.
+
+Two numbers are declared now, and neither is a constant somebody needed:
+
+| | what it fixes | value |
+|---|---|---|
+| `worlds.World.clustered_pct` | the share of a town's stores opened inside the exclusion radius, **per world** | 15% in W1, W3, W4, W5, W6 · **30% in W2** |
+| `chain.AREA_PER_STORE_M2` | the estate's density, so the town's placement square grows with the stores it holds | 64 km² per store — an 8 km square each |
+
+**Per world, because only W2 needs interference to exist.** It is high there and realistic in
+the other five — and it is 30% rather than higher because W2's declared correct behaviour is to
+*estimate on what is left*, and an estate that excluded so much that nothing was left would
+pass the interference half while making the estimate impossible. The choice is **nested**: the
+stores clustered at 15% are a subset of those clustered at 30%, so W2's estate is the realistic
+estate with more of the same rather than a different one, and everything else about a store —
+its format, its size, its zone, its opening date — is identical in all six worlds.
+
+Neither number is measured from a real chain and neither is claimed to be, which is the same
+sentence this README's *Declared assumptions* section makes about the demand shapes.
+
+### What survives, per world
+
+`make roster` — or `python -m ops.roster --scale harness`. It lives in `ops/` because the
+answer is a joint fact about this package's geography and
+`holdout.core.design.feasibility.neighbour_exclusions`, and the corpus may not import the
+system: a second copy of the exclusion rule in here would be the one that goes stale.
+
+At the `harness` scale, seed `holdout-w-0001`, at the contract's 20% holdout share:
+
+| world | clustering | stores | pairs | excluded | **surviving roster** | control arm |
+|---|---:|---:|---:|---:|---:|---:|
+| W1 · W3 · W4 · W5 · W6 | 15% | 320 | 59 | 51 | **269** | 53 |
+| W2 | 30% | 320 | 148 | 98 | **222** | 44 |
+
+Across eight world seeds the worst world never drops below 218 at this scale. And the number
+that actually decides whether an experiment can report anything — how often a stratified draw
+lands inside the 0.10 balance tolerance — moves with it:
+
+| roster | control arm | draws inside the tolerance |
+|---|---:|---|
+| 45 (100 stores, before T00E) | 9 | **0 of 200** |
+| 100 (no exclusions at all, for reference) | 20 | 30 of 100 |
+| 265–269 (W1, W3–W6) | 53 | **145–192 of 200**, over three world seeds |
+| 218–222 (W2) | 43–44 | **121–172 of 200**, over three world seeds |
+
+The remaining refusals are sampling spread on the numeric covariates, not structure: with a
+finite control arm a covariate the others carry no information about keeps a spread near the
+tolerance, and `strata.py` owns that limit. **The rate is a number claim 2 publishes, not one
+this package asserts away.**
 
 ---
 
@@ -120,33 +183,66 @@ would eventually disagree.
 
 ---
 
-## Three scales
+## Four scales
 
-| | stores | SKUs | days | what it is for |
-|---|---|---|---|---|
-| `smoke` | 12 | 9 | 21 | the suite — every mechanism fires at least once, in well under a second |
-| `rehearsal` | 20 | 24 | 56 | a laptop — enough to estimate something |
-| `scenario` | 100 | 120 | 244 | the declared corpus |
+| | stores | SKUs | days | surviving roster | what it is for |
+|---|---|---|---|---|---|
+| `smoke` | 12 | 9 | 21 | — | the suite — every mechanism fires at least once, in well under a second |
+| `rehearsal` | 20 | 24 | 56 | — | a laptop — enough to estimate something |
+| `harness` | 320 | 12 | 112 | **269 · 222 (W2)** | `evals/uplift/` — the A/A harness, K = 200 |
+| `scenario` | 100 | 120 | 244 | 83 · 66 (W2) | the declared corpus |
+
+**The fourth column is the one that decides whether anything is provable**, and it is why
+`harness` has more stores than `scenario` rather than fewer. `CLAUDE.md` says it in a line: the
+size a claim rests on is the roster that survives the design engine's automatic exclusions, not
+the store count. `harness` trades SKUs and days — what the clock sees — for stores, which is
+what the statistics see, and lands at about 21 s per world either way. Measured, per world,
+with `python -m corpus.world count --scale harness`:
+
+| | POS lines | ESL acks | shelf days | price decisions | seconds |
+|---|---:|---:|---:|---:|---:|
+| **W1** | 5,263,284 | 358,040 | 430,080 | 358,040 | 21.2 |
+| **W2** | 5,282,580 | 370,036 | 430,080 | 370,036 | 21.2 |
+| **W3** | 5,400,461 | 352,332 | 430,080 | 352,332 | 21.6 |
+| **W4** | 5,388,111 | 349,616 | 430,080 | 349,616 | 21.7 |
+| **W5** | 4,588,490 | 202,080 | 430,080 | 202,080 | 18.6 |
+| **W6** | 5,364,336 | 354,096 | 430,080 | 354,096 | 21.9 |
 
 At the scenario scale, with the default seed `holdout-w-0001`, from
 `python -m corpus.world count --world Wn --scale scenario` — about 150 seconds per world:
 
 | | POS lines | ESL acks | shelf days | price decisions |
 |---|---:|---:|---:|---:|
-| **W1** | 36,676,068 | 1,876,392 | 2,928,000 | 1,876,392 |
-| **W2** | 36,266,964 | 1,997,911 | 2,928,000 | 1,997,911 |
-| **W3** | 37,510,813 | 1,825,055 | 2,928,000 | 1,825,055 |
-| **W4** | 37,349,168 | 1,827,013 | 2,928,000 | 1,827,013 |
-| **W5** | 31,465,861 | 1,132,484 | 2,928,000 | 1,132,484 |
-| **W6** | 37,292,793 | 1,837,333 | 2,928,000 | 1,837,333 |
+| **W1** | 39,248,500 | 1,869,441 | 2,928,000 | 1,869,441 |
+| **W2** | 39,264,442 | 1,922,012 | 2,928,000 | 1,922,012 |
+| **W3** | 40,228,156 | 1,818,638 | 2,928,000 | 1,818,638 |
+| **W4** | 40,041,576 | 1,820,154 | 2,928,000 | 1,820,154 |
+| **W5** | 33,582,648 | 1,119,581 | 2,928,000 | 1,119,581 |
+| **W6** | 39,976,813 | 1,830,229 | 2,928,000 | 1,830,229 |
 
-**36.7M POS lines** on the null world, against the *"about 36M"* `CLAUDE.md` declares. The shelf
+> **Restated 2026-08-28 (T00E), because the chain moved.** The table read 36.7M POS lines on
+> W1 and 36.3M on W2, taken before the placement rule changed. It is restated rather than
+> overwritten, per doctrine rule 4, and the delta is worth reading: **the counts rose by about
+> 7% and W2's fell relative to W1's rather than rising.** Both follow from the same edit. A
+> store's coordinates are now drawn from its own stream in *both* branches and overridden when
+> it is clustered, where before the clustered branch consumed a different number of draws — so
+> every previously-clustered store's size, zone and opening date shifted, and a chain with a
+> different mix of store sizes sells a different number of lines. And W2 now has fewer stores
+> pulling trade from a neighbour, because 30% of a town is clustered where every second store
+> used to be.
+>
+> `demand.BASE_LINES_PER_SKU_DAY` is **left where it was.** It was calibrated once so the
+> scenario lands near the corpus `CLAUDE.md` declares, and 39.2M against *"about 36M"* still
+> does. Re-tuning it to land back on the old figure would be fitting the corpus to a sentence,
+> which is the opposite of what a measured constant is for.
+
+**39.2M POS lines** on the null world, against the *"about 36M"* `CLAUDE.md` declares. The shelf
 day count is identical everywhere and is the only figure in the table that is arithmetic rather
 than a measurement: 100 stores × 120 SKUs × 244 days, one row each, whatever happened on them.
 
-Two of the rows say something. **W5 is nearly 6M lines short of the others**, because a
+Two of the rows say something. **W5 is over 6M lines short of the others**, because a
 heavy-tailed basket empties a shelf in fewer transactions and a shelf that is empty sells
-nothing else that day — and its price decisions are down by 38% for the same reason: stock that
+nothing else that day — and its price decisions are down by 40% for the same reason: stock that
 has already gone never reaches a markdown rung. **W3's acknowledgements match its decisions** exactly, as
 they do in every world: a label that refuses the new price still answers, and `accepted` is a
 column rather than a missing row. A world where a failed acknowledgement simply did not arrive
@@ -207,10 +303,16 @@ forgery visible.**
 
 ```
 make world                                    all six, at smoke scale, counted
+make roster                                   how much of the estate survives the exclusions
 python -m corpus.world count --world W6 --scale scenario
 python -m corpus.world write --world W2 --scale rehearsal --out .worlds/W2
 python -m corpus.world seal .worlds/W2        the header and the ledger — never the payload
 ```
+
+`make roster` is the odd one out and deliberately so: it is the only command here that is not
+in this package, because the answer is a joint fact about this geography and the design
+engine's exclusion rule, and this package may not import that engine. `ops/roster.py` says why
+at more length.
 
 **Nothing here is committed.** A world is a pure function of `(world, seed, scale)`, so the
 corpus is regenerated rather than stored — which is the exact opposite of `corpus/real/`,

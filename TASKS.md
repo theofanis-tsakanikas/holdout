@@ -311,8 +311,46 @@ stop_at       When every world's surviving roster is measured and >= 200, and wh
               balance pass rate at that roster is measured and recorded — so T003 starts from
               a number rather than from a hope.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed, and the numbers it closes on.** `clustered_pct` is a field on `World` — 15% in
+the five that need no interference, **30% in W2** — and `chain.AREA_PER_STORE_M2` fixes the estate's
+density so the town's placement square grows with the stores it holds. `HARNESS` is
+**320 x 12 SKUs x 112 days**, and it has *more* stores than `scenario` rather than fewer, which is
+the whole restatement in one line: the roster is what the lottery draws over.
+
+```
+make roster --scale harness            seed holdout-w-0001, 20% holdout share
+ world   cluster   stores    pairs   excluded   roster   controls
+    W2       30%      320      148         98      222         44      <- the binding world
+ others      15%      320       59         51      269         53
+```
+
+Across eight world seeds the worst world never falls below 218. The figure that decides whether an
+experiment can report anything moved with it:
+
+| roster | control arm | draws inside the 0.10 tolerance |
+|---|---:|---|
+| 45 — 100 stores, before T00E | 9 | **0 of 200** |
+| 265–269 — W1, W3–W6 | 53 | **145–192 of 200**, three world seeds |
+| 218–222 — W2 | 43–44 | **121–172 of 200**, three world seeds |
+
+Three properties are held by tests rather than by the docstring that claims them: the clustering is
+**nested**, so W2's estate is the realistic estate with more of the same; **only the geography moves
+between worlds** — same shops, same formats, same sizes, same zones, same products — which the
+generator gets only because the coordinates are drawn in both branches and overridden rather than
+skipped; and the estate's **density does not move with the scale**, which is the half that had no
+test at all before and is what capped the usable roster at 212 however many stores were added.
+
+`corpus/world/README.md`'s scenario figures are **restated, not overwritten**: 36.7M POS lines
+became 39.2M, because the chain moved. `demand.BASE_LINES_PER_SKU_DAY` was left where it was —
+re-tuning a measured constant to land back on a prose figure is fitting the corpus to a sentence.
+
+**What T003 inherits.** A false-refusal rate on balance alone of roughly 4% to 40% depending on the
+world seed. That is a number to publish and reckon with, and it is above the 10% the SPEC's §4
+proposed for `false_refusal_max_pct` — which is now a threshold to argue from measurement rather
+than a wall to walk into.
 
 ---
 

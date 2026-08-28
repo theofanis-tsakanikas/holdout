@@ -52,6 +52,27 @@ from dataclasses import dataclass
 #: reached every shelf would make exposure a column nobody ever had to look at.
 BASELINE_ACK_FAILURE_PCT = 2
 
+#: What share of a town's stores are opened inside the declared 1 km neighbour radius of one
+#: the chain already has there. Declared per world since T00E, because **it is the size of the
+#: roster**: the design engine excludes the later-sorted member of every such pair, so every
+#: clustered store is one no experiment may use.
+#:
+#: 15% in the five worlds that need no interference — a chain covering a dense neighbourhood
+#: with two small shops rather than one large one is real, and roughly one store in seven being
+#: that second shop is the assumption. It is an assumption about the trade; no chain's real
+#: footprint was obtained and none is claimed, which is the same sentence `CATEGORY_SHAPE` and
+#: `demand.py` make about themselves.
+REALISTIC_CLUSTERED_PCT = 15
+
+#: **W2 alone.** Interference has to exist for W2 to be a world at all, so its estate is
+#: deliberately more clustered — and it is 30% rather than higher because W2's declared correct
+#: behaviour is to *estimate on what is left*, and a world that excluded so much that nothing
+#: was left would pass the interference half while making the estimate impossible. The two
+#: halves of that sentence pull in opposite directions and this number is where they meet;
+#: `ops.roster` measures the surviving roster, so the meeting point is a figure rather than a
+#: hope.
+INTERFERING_CLUSTERED_PCT = 30
+
 
 @dataclass(frozen=True, slots=True)
 class World:
@@ -61,6 +82,12 @@ class World:
     title: str
     violates: str
     correct_behaviour: str
+
+    #: What share of a town's stores sit inside the declared neighbour radius of another —
+    #: see `REALISTIC_CLUSTERED_PCT`. It is not a pathology like the fields below it: every
+    #: world declares one, and it is on `World` rather than in `chain.py` because it is the
+    #: number that decides how much estate an experiment has left to run on.
+    clustered_pct: int = REALISTIC_CLUSTERED_PCT
 
     #: Does the treatment arm get a different markdown schedule at all? False in W1 alone:
     #: *"Both arms get the same policy — nothing is applied."* An A/A world needs no ground
@@ -136,6 +163,7 @@ W2 = World(
     title="Interference between neighbouring stores",
     violates="SUTVA — a control store's outcome depends on its neighbour's assignment",
     correct_behaviour="exclude the interfering units at design, then estimate on what is left",
+    clustered_pct=INTERFERING_CLUSTERED_PCT,
     spillover_pct=18,
 )
 

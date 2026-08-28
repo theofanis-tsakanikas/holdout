@@ -354,7 +354,7 @@ def assess(
 
     # --- who is left ---------------------------------------------------------------
     declared = tuple(sorted(form.exclusions, key=lambda e: e.store_id))
-    automatic = _neighbour_exclusions(roster, neighbour_pairs, form.excluded_store_ids)
+    automatic = neighbour_exclusions(roster, neighbour_pairs, form.excluded_store_ids)
     removed = form.excluded_store_ids | {e.store_id for e in automatic}
     available = tuple(u for u in roster if u not in removed)
 
@@ -607,7 +607,7 @@ def _check_roster(roster: tuple[str, ...], matrix: CovariateMatrix) -> None:
         )
 
 
-def _neighbour_exclusions(
+def neighbour_exclusions(
     roster: tuple[str, ...],
     neighbour_pairs: tuple[tuple[str, str], ...],
     already: frozenset[str],
