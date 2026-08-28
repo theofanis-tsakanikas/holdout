@@ -52,6 +52,29 @@ the expensive half of each draw — the arm split and the factorisation of its n
 — depends on the covariates and not on the outcomes, so it is computed once and reused at
 every shift. That is the same reuse the SPEC asks for, made structural instead of hoped for.
 
+Two identities make it affordable, and both are exact
+-----------------------------------------------------
+Inverting the test at K = 200 seeds on a roster of two hundred and sixty-nine was 32 seconds
+a readout, of which the interval was 80%. It is now under 6, and **no answer moved**: both
+changes are algebra over `Fraction`, so the result is the same rational rather than a close
+one, and `tests/core/test_estimator_interval.py` keeps the implementation they replaced as an
+oracle and asserts the bounds are bit-identical on cases the corpus drew.
+
+**The statistic is a polynomial in the shift.** For a candidate `τ` the outcomes become
+``y - tau*T``, where `T` marks the units treated under the *observed* arms and does not change
+between draws. The adjusted difference is a linear functional of the outcome vector, so it is
+**affine** in τ; each residual is affine, so the pooled variance is a **quadratic**. Five
+coefficients per draw, computed once, and a candidate shift is then arithmetic over `B`
+triples rather than `B` refits of two normal systems.
+
+**An arm's accumulation is the whole minus the other arm's.** `XᵀX`, the right-hand sides and
+the sums of squares are all sums over rows, so where the two arms partition the design the
+larger one is the complement of the smaller. At the declared 20% holdout that is a pass over
+a fifth of the units instead of all of them, a thousand times per readout. The partition is
+the condition and it is **checked, never assumed**: a design row belonging to neither arm
+would otherwise be attributed to the larger one in silence, and the fallback that accumulates
+each arm directly is what a caller handing in draws over a subset gets.
+
 **The interval is two-sided even where the MDE declared a direction.** A one-sided test
 paired with a two-sided interval is not an inconsistency to apologise for: the test answers
 the question the design asked, and the interval answers *what values of the effect are
@@ -282,7 +305,8 @@ def _solve_matrix(a: list[list[Fraction]]) -> tuple[tuple[tuple[Fraction, ...], 
     return tuple(tuple(line) for line in solve), len(retained)
 
 
-def _arm_plan(design: Design, rows: tuple[int, ...]) -> _ArmPlan:
+def _normal(design: Design, rows: tuple[int, ...]) -> list[list[Fraction]]:
+    """`Xᵀ X` over one set of rows. Symmetric, so only the upper triangle is accumulated."""
     size = design.width
     normal = [[Fraction(0)] * size for _ in range(size)]
     for index in rows:
@@ -295,8 +319,63 @@ def _arm_plan(design: Design, rows: tuple[int, ...]) -> _ArmPlan:
     for i in range(size):
         for j in range(i):
             normal[i][j] = normal[j][i]
+    return normal
+
+
+def _complement(whole: list[list[Fraction]], part: list[list[Fraction]]) -> list[list[Fraction]]:
+    """The other arm's normal equations, by subtraction rather than by a second pass.
+
+    `Xᵀ X` is a sum over rows, so where the two arms **partition** the design the larger one
+    is the whole minus the smaller. At the declared 20% holdout that turns a pass over every
+    unit into a pass over a fifth of them, a thousand times per readout, and it is an identity
+    over exact rationals: the result is the same `Fraction`, not a close one.
+
+    The partition is the load-bearing condition and the caller checks it rather than assuming
+    it — a design row belonging to neither arm would make this silently attribute that row to
+    the larger one.
+    """
+    return [
+        [a - b for a, b in zip(row, other, strict=True)]
+        for row, other in zip(whole, part, strict=True)
+    ]
+
+
+def _plan_from_normal(rows: tuple[int, ...], normal: list[list[Fraction]]) -> _ArmPlan:
     solve, rank = _solve_matrix(normal)
     return _ArmPlan(rows=rows, solve=solve, rank=rank)
+
+
+def _arm_plan(design: Design, rows: tuple[int, ...]) -> _ArmPlan:
+    return _plan_from_normal(rows, _normal(design, rows))
+
+
+def _arm_plans(
+    design: Design,
+    whole: list[list[Fraction]],
+    treatment: tuple[int, ...],
+    control: tuple[int, ...],
+) -> tuple[_ArmPlan, _ArmPlan]:
+    """Both arms' plans, taking the complement where the two arms partition the design.
+
+    Falls back to accumulating each arm when they do not — which is a design carrying a row
+    no arm claims. Nothing in this package produces that today: `close` builds the design over
+    the units that reported and the draws over the same set. It is handled rather than
+    refused because `plan_for` is public and a caller may hand in draws over a subset, and
+    because a silent misattribution is the worse of the two outcomes.
+    """
+    if len(treatment) + len(control) != len(design.units):
+        return _arm_plan(design, treatment), _arm_plan(design, control)
+    if len(control) <= len(treatment):
+        smaller = _normal(design, control)
+        return (
+            _plan_from_normal(treatment, _complement(whole, smaller)),
+            _plan_from_normal(control, smaller),
+        )
+    smaller = _normal(design, treatment)
+    return (
+        _plan_from_normal(treatment, smaller),
+        _plan_from_normal(control, _complement(whole, smaller)),
+    )
 
 
 def _fit(
@@ -417,10 +496,11 @@ def plan_for(design: Design, draws: Sequence[Mapping[str, Arm]]) -> ReferencePla
             "and (1 + hits) / (1 + 0) is not a p-value, it is the number 1."
         )
     grand_mean = _grand_mean(design)
+    whole = _normal(design, tuple(range(len(design.units))))
     plans: list[tuple[_ArmPlan, _ArmPlan]] = []
     for arms in draws:
         treatment, control = _split(design, arms)
-        plans.append((_arm_plan(design, treatment), _arm_plan(design, control)))
+        plans.append(_arm_plans(design, whole, treatment, control))
     return ReferencePlan(design=design, grand_mean=grand_mean, plans=tuple(plans))
 
 
@@ -477,6 +557,182 @@ def permutation_p(
     return Fraction(1 + hits, 1 + plan.size)
 
 
+@dataclass(frozen=True, slots=True)
+class _Shifted:
+    """One arm split's statistic as a polynomial in the shift, and nothing else.
+
+    Everything `interval` needs from an arm split at *every* candidate shift, computed once.
+    See the module docstring's section on inverting the test cheaply for the derivation; the
+    shape is that the adjusted difference is affine in τ and the pooled variance is a
+    quadratic, so a candidate shift costs six multiplications instead of four refits.
+    """
+
+    difference_at_zero: Fraction
+    difference_slope: Fraction
+    variance_at_zero: Fraction
+    variance_slope: Fraction
+    variance_curve: Fraction
+
+    def at(self, tau: Fraction) -> Statistic:
+        """The same `Statistic` `_statistic` would have built, from the same rationals.
+
+        Not "the same to within" anything: `Fraction` is exact, so the difference and the
+        variance are the identical rational numbers and everything derived from them —
+        the sign, the studentized square, the comparison — follows.
+        """
+        difference = self.difference_at_zero - self.difference_slope * tau
+        variance = (
+            self.variance_at_zero - 2 * self.variance_slope * tau + self.variance_curve * tau * tau
+        )
+        sign = (difference > 0) - (difference < 0)
+        if variance == 0:
+            squared = Fraction(0) if difference == 0 else None
+        else:
+            squared = (difference * difference) / variance
+        return Statistic(difference=difference, variance=variance, squared=squared, sign=sign)
+
+
+@dataclass(frozen=True, slots=True)
+class _Sums:
+    """Every accumulation over one arm's rows that the shift polynomial needs.
+
+    All five are sums over rows, so the same complement identity `_arm_plans` uses applies
+    here: where the arms partition the design, the larger one is the whole minus the smaller.
+    """
+
+    right: tuple[Fraction, ...]
+    shift_right: tuple[Fraction, ...]
+    total_square: Fraction
+    cross: Fraction
+    treated_count: Fraction
+
+
+def _sums(
+    design: Design,
+    rows: tuple[int, ...],
+    outcomes: Sequence[Fraction],
+    treated: Sequence[Fraction],
+) -> _Sums:
+    size = design.width
+    right = [Fraction(0)] * size
+    shift_right = [Fraction(0)] * size
+    total_square = Fraction(0)
+    cross = Fraction(0)
+    treated_count = Fraction(0)
+    for index in rows:
+        y = outcomes[index]
+        t = treated[index]
+        total_square += y * y
+        cross += y * t
+        treated_count += t  # an indicator, so t squared is t and the quadratic term is a count
+        right[0] += y
+        shift_right[0] += t
+        for j, value in enumerate(design.rows[index], start=1):
+            if value != 0:
+                right[j] += value * y
+                shift_right[j] += value * t
+    return _Sums(
+        right=tuple(right),
+        shift_right=tuple(shift_right),
+        total_square=total_square,
+        cross=cross,
+        treated_count=treated_count,
+    )
+
+
+def _sums_complement(whole: _Sums, part: _Sums) -> _Sums:
+    return _Sums(
+        right=tuple(a - b for a, b in zip(whole.right, part.right, strict=True)),
+        shift_right=tuple(a - b for a, b in zip(whole.shift_right, part.shift_right, strict=True)),
+        total_square=whole.total_square - part.total_square,
+        cross=whole.cross - part.cross,
+        treated_count=whole.treated_count - part.treated_count,
+    )
+
+
+def _arm_polynomial(
+    plan: _ArmPlan,
+    design: Design,
+    grand_mean: tuple[Fraction, ...],
+    sums: _Sums,
+) -> tuple[Fraction, Fraction, Fraction, Fraction, Fraction, int, int]:
+    """`(fitted at 0, fitted slope, residual A, B, C, n, rank)` for one arm.
+
+    The outcomes shift as `y(t) = y - tau*t`, so the arm's right-hand side is `b - tau*c`
+    and its coefficients are `beta0 - tau*beta1`. Both fitted value and residual sum of
+    squares follow by substitution, and neither needs the design refactorised: `plan.solve`
+    is the same matrix at every shift because it depends on the covariates and the arm split,
+    never on `y`.
+    """
+    size = design.width
+    right = sums.right
+    shift_right = sums.shift_right
+    beta = [sum((row[j] * right[j] for j in range(size)), Fraction(0)) for row in plan.solve]
+    beta_shift = [
+        sum((row[j] * shift_right[j] for j in range(size)), Fraction(0)) for row in plan.solve
+    ]
+
+    def fitted(coefficients: list[Fraction]) -> Fraction:
+        return coefficients[0] + sum(
+            (coefficients[j + 1] * grand_mean[j] for j in range(len(grand_mean))), Fraction(0)
+        )
+
+    residual_a = sums.total_square - sum((beta[j] * right[j] for j in range(size)), Fraction(0))
+    residual_b = (
+        sums.cross
+        - (
+            sum((beta[j] * shift_right[j] for j in range(size)), Fraction(0))
+            + sum((beta_shift[j] * right[j] for j in range(size)), Fraction(0))
+        )
+        / 2
+    )
+    residual_c = sums.treated_count - sum(
+        (beta_shift[j] * shift_right[j] for j in range(size)), Fraction(0)
+    )
+    return (
+        fitted(beta),
+        fitted(beta_shift),
+        residual_a,
+        residual_b,
+        residual_c,
+        len(plan.rows),
+        plan.rank,
+    )
+
+
+def _shifted(
+    treatment: _ArmPlan,
+    control: _ArmPlan,
+    design: Design,
+    grand_mean: tuple[Fraction, ...],
+    sums_treatment: _Sums,
+    sums_control: _Sums,
+) -> _Shifted:
+    """The two arms combined into one polynomial pair — `_statistic`, held open in the shift."""
+    f0_t, f1_t, a_t, b_t, c_t, n_t, rank_t = _arm_polynomial(
+        treatment, design, grand_mean, sums_treatment
+    )
+    f0_c, f1_c, a_c, b_c, c_c, n_c, rank_c = _arm_polynomial(
+        control, design, grand_mean, sums_control
+    )
+    if n_t <= rank_t or n_c <= rank_c:
+        raise EstimatorError(
+            f"an arm has {min(n_t, n_c)} unit(s) and its adjusted model uses "
+            f"{max(rank_t, rank_c)} degree(s) of freedom, so there is nothing left to "
+            "estimate a variance from. Adjusting on more covariates than an arm has units "
+            "does not produce a wide interval; it produces no interval at all."
+        )
+    weight_t = Fraction(n_t * (n_t - rank_t))
+    weight_c = Fraction(n_c * (n_c - rank_c))
+    return _Shifted(
+        difference_at_zero=f0_t - f0_c,
+        difference_slope=f1_t - f1_c,
+        variance_at_zero=a_t / weight_t + a_c / weight_c,
+        variance_slope=b_t / weight_t + b_c / weight_c,
+        variance_curve=c_t / weight_t + c_c / weight_c,
+    )
+
+
 def interval(
     outcomes: Mapping[str, int],
     arms: Mapping[str, Arm],
@@ -490,40 +746,59 @@ def interval(
     the units that were actually treated and the permutation test is re-run. The endpoints
     are the outermost integers that survive, found by doubling out to a bracket and then
     bisecting, terminating at one canonical unit — so there is nothing to round.
+
+    **The search is unchanged and the answers are the same rationals.** What changed is the
+    cost of asking: every draw's statistic is precomputed as a polynomial in τ, so a candidate
+    shift is arithmetic over `B` triples instead of `B` refits of two normal systems. The
+    module docstring derives it; `tests/core/test_estimator_interval.py` keeps the refitting
+    implementation as an oracle and asserts the bounds are **bit-identical** over cases this
+    repository did not choose. If they ever stop being, the algebra is abandoned rather than
+    argued with.
     """
     level = Fraction(alpha)
     treatment, control = _split(plan.design, arms)
-    treated = frozenset(plan.design.units[i] for i in treatment)
+    treated_rows = frozenset(treatment)
+    treated = [
+        Fraction(1) if index in treated_rows else Fraction(0)
+        for index in range(len(plan.design.units))
+    ]
     values = [Fraction(outcomes[u]) for u in plan.design.units]
-    point = _statistic(
-        _arm_plan(plan.design, treatment),
-        _arm_plan(plan.design, control),
+    whole = _sums(plan.design, tuple(range(len(plan.design.units))), values, treated)
+
+    def arm_sums(rows_t: tuple[int, ...], rows_c: tuple[int, ...]) -> tuple[_Sums, _Sums]:
+        """Both arms' accumulations, by complement where the two partition the design."""
+        if len(rows_t) + len(rows_c) != len(plan.design.units):
+            return (
+                _sums(plan.design, rows_t, values, treated),
+                _sums(plan.design, rows_c, values, treated),
+            )
+        if len(rows_c) <= len(rows_t):
+            smaller = _sums(plan.design, rows_c, values, treated)
+            return _sums_complement(whole, smaller), smaller
+        smaller = _sums(plan.design, rows_t, values, treated)
+        return smaller, _sums_complement(whole, smaller)
+
+    observed_plan = (_arm_plan(plan.design, treatment), _arm_plan(plan.design, control))
+    observed_shifted = _shifted(
+        observed_plan[0],
+        observed_plan[1],
         plan.design,
         plan.grand_mean,
-        values,
-    ).difference
+        *arm_sums(treatment, control),
+    )
+    drawn_shifted = tuple(
+        _shifted(t, c, plan.design, plan.grand_mean, *arm_sums(t.rows, c.rows))
+        for t, c in plan.plans
+    )
+    point = observed_shifted.at(Fraction(0)).difference
 
     def accepts(tau: int) -> bool:
         shift = Fraction(tau)
-        shifted = [
-            value - (shift if unit in treated else Fraction(0))
-            for unit, value in zip(plan.design.units, values, strict=True)
-        ]
-        observed = _statistic(
-            _arm_plan(plan.design, treatment),
-            _arm_plan(plan.design, control),
-            plan.design,
-            plan.grand_mean,
-            shifted,
-        )
+        observed = observed_shifted.at(shift)
         hits = sum(
             1
-            for t, c in plan.plans
-            if _as_extreme(
-                _statistic(t, c, plan.design, plan.grand_mean, shifted),
-                observed,
-                MdeDirection.EITHER,
-            )
+            for draw in drawn_shifted
+            if _as_extreme(draw.at(shift), observed, MdeDirection.EITHER)
         )
         return Fraction(1 + hits, 1 + plan.size) > level
 
