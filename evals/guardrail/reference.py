@@ -13,10 +13,11 @@ built to a different shape from the first:
 ============================  ==============================  =============================
                               `holdout.core.guardrails`        here
 ============================  ==============================  =============================
-unit                          integer euro cents               exact `Decimal` euros
-bounds                        rounded — floors up, ceilings     not rounded at all
-                              down, so a bound never rounds
-                              toward what it forbids
+unit                          integer euro cents               exact `Decimal` euros, and
+                                                                the cent reached from them
+                                                                through `Fraction`
+rounding                      `Money`, quantised at a           `rounding.py`, integer
+                              declared precision                division of a rational
 structure                     one pass appending `Bound`        one predicate per rule,
                               objects, with tie-breaks and      evaluated independently,
                               precedence                        with no notion of which
@@ -28,18 +29,28 @@ worth naming: this cannot show that the numbers in `contracts/guardrails/` are t
 numbers. Nothing can. It shows that the machinery honours whatever envelope it is handed,
 on real prices, at the cent.
 
-The rounding contract, and why it makes the comparison one-sided
-----------------------------------------------------------------
-`Money.as_lower_bound` rounds **up** and `Money.as_upper_bound` rounds **down**, so every
-bound the core computes is **at least as strict** as the exact one here. Two consequences,
-and both are asserted rather than assumed:
+Two bounds per rule, and the tolerance that used to stand in for the second
+---------------------------------------------------------------------------
+Every bounded rule here carries **two** numbers: the exact edge in euros, and that edge
+rounded to the cent the conservative way — floors up, ceilings down — by `rounding.py`,
+which shares no arithmetic with `Money`. The second is where the core's bound must land,
+to the cent, and having it is what lets every comparison below be exact:
 
-* if the core **certified** a price, every exact constraint here must hold — with no
-  tolerance whatsoever. A certified price outside an exact bound is a hole in the envelope;
-* if the core **refused**, the exact constraint must be violated **or** the price must lie
-  within one cent of the exact boundary. A refusal further away than that is a bound in the
-  wrong place, which is the shape of the bug that once put the ladder's deepest rung below
-  the guardrail that was supposed to admit it.
+* a **certified** price must satisfy every *exact* constraint, with no tolerance at all. A
+  certified price outside an exact bound is a hole in the envelope;
+* a **refused** price must fall outside the *rounded* bound this module computed. No
+  tolerance either — and this is the half that was wrong before.
+
+What was there instead was a one-cent tolerance: a refusal was supported if the exact
+constraint was violated *or* the price sat inside the exact bound by less than a cent. Every
+price in this eval is a whole number of cents, so under a correctly rounded core that second
+branch is unreachable — the only way to enter it is for the core's bound to sit a cent
+**above** where it belongs. The tolerance was therefore not slack for conservative rounding.
+It was an exemption for exactly one bug, the too-strict bound, which is the shape this
+project's own history says its bugs appear in: the ladder's deepest rung once fell below the
+guardrail that was supposed to admit it. `docs/DECISIONS.md` still records the declared cost
+of conservative rounding — a price legal by half a cent can be refused — and that cost is
+paid at the *rounded* bound, which is now computed rather than tolerated.
 """
 
 from __future__ import annotations
@@ -48,14 +59,11 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
 
+from evals.guardrail import rounding
 from evals.guardrail.build import Case
 from holdout.core.decision import DecisionPath, PriceSource
-from holdout.core.guardrails import RefusalCode
-
-#: The width of the rounding contract above. One cent, because that is the scale `Money`
-#: rounds at; anything wider would be a tolerance, and claim 5's whole argument is that
-#: this repository does not need tolerances.
-ONE_CENT = Decimal("0.01")
+from holdout.core.guardrails import Envelope, RefusalCode
+from holdout.core.money import Money
 
 HUNDRED = Decimal(100)
 
@@ -82,29 +90,54 @@ class Constraint:
 
     detail: str
 
-    @property
-    def slack(self) -> Decimal | None:
-        """How far inside the bound the price sits. Negative when outside it."""
-        if self.bound is None or self._price is None:
-            return None
-        return (self._price - self.bound) if self.side == "lower" else (self.bound - self._price)
+    rule_id: str | None = None
+    """The `Bound.rule_id` the core attributes this edge to, so the two can be lined up and
+    compared as integers. `None` for a predicate, which produces no bound to compare."""
+
+    rounded: Money | None = None
+    """The same edge at the cent, rounded the conservative way by `rounding.py`. This is
+    where the core's bound must land — exactly, with nothing tolerated."""
 
     _price: Decimal | None = None
+
+    @property
+    def satisfied_at_the_rounded_bound(self) -> bool:
+        """Whether the price is inside the bound *as a whole number of cents*.
+
+        The core cannot place a bound anywhere but on a cent, so this — not the exact edge —
+        is the question a refusal has to answer. A predicate has no edge and answers with
+        itself.
+        """
+        if self.rounded is None or self._price is None:
+            return self.satisfied
+        edge = self.rounded.euros
+        return self._price >= edge if self.side == "lower" else self._price <= edge
 
 
 def _price(case: Case) -> Decimal:
     return case.proposal.price.euros
 
 
-def lower_bounds(case: Case) -> tuple[Decimal, ...]:
-    return tuple(c.bound for c in constraints(case) if c.side == "lower" and c.bound is not None)
+#: What `constraints` returns, passed around rather than recomputed. Every function below
+#: takes this instead of a `Case`, because five checks ask five questions of the same answer
+#: and computing it five times made the eval — and therefore `gate-proof`, which runs it once
+#: per mutation — five times slower for nothing.
+Constraints = tuple[Constraint, ...]
 
 
-def upper_bounds(case: Case) -> tuple[Decimal, ...]:
-    return tuple(c.bound for c in constraints(case) if c.side == "upper" and c.bound is not None)
+def rounded_lower_bounds(found: Constraints) -> tuple[Money, ...]:
+    """Every floor at the cent — what the core's own lower bounds must equal."""
+    return tuple(c.rounded for c in found if c.side == "lower" and c.rounded is not None)
 
 
-def _lower(code: RefusalCode, name: str, price: Decimal, bound: Decimal, why: str) -> Constraint:
+def rounded_upper_bounds(found: Constraints) -> tuple[Money, ...]:
+    """Every ceiling at the cent — what the core's own upper bounds must equal."""
+    return tuple(c.rounded for c in found if c.side == "upper" and c.rounded is not None)
+
+
+def _lower(
+    code: RefusalCode, name: str, rule_id: str, price: Decimal, bound: Decimal, why: str
+) -> Constraint:
     return Constraint(
         code=code,
         name=name,
@@ -112,11 +145,15 @@ def _lower(code: RefusalCode, name: str, price: Decimal, bound: Decimal, why: st
         satisfied=price >= bound,
         bound=bound,
         detail=f"{why}: price {price} against a floor of {bound}",
+        rule_id=rule_id,
+        rounded=rounding.as_floor(bound),
         _price=price,
     )
 
 
-def _upper(code: RefusalCode, name: str, price: Decimal, bound: Decimal, why: str) -> Constraint:
+def _upper(
+    code: RefusalCode, name: str, rule_id: str, price: Decimal, bound: Decimal, why: str
+) -> Constraint:
     return Constraint(
         code=code,
         name=name,
@@ -124,6 +161,8 @@ def _upper(code: RefusalCode, name: str, price: Decimal, bound: Decimal, why: st
         satisfied=price <= bound,
         bound=bound,
         detail=f"{why}: price {price} against a ceiling of {bound}",
+        rule_id=rule_id,
+        rounded=rounding.as_ceiling(bound),
         _price=price,
     )
 
@@ -144,7 +183,11 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
     envelope = case.envelope
     proposal = case.proposal
     price = _price(case)
-    cost = case.unit_cost.euros if proposal.unit_cost is not None else None
+    # Read off the *proposal*, which is what `evaluate` sees. `Case` carries the same amount
+    # in `unit_cost`, and gating on one field while taking the value from the other means a
+    # family that ever set them apart would have this module bounding on an input the core
+    # was never handed — a second implementation checking a different question.
+    cost = proposal.unit_cost.euros if proposal.unit_cost is not None else None
     found: list[Constraint] = []
 
     found.append(
@@ -188,6 +231,7 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
         _lower(
             RefusalCode.BELOW_ABSOLUTE_FLOOR,
             "absolute_floor",
+            "minimum_absolute_price_eur",
             price,
             envelope.floor.minimum_absolute_price.euros,
             "the absolute floor",
@@ -198,6 +242,7 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
             _lower(
                 RefusalCode.BELOW_MARGIN_FLOOR,
                 "margin_floor",
+                "minimum_gross_margin_pct",
                 price,
                 cost * (Decimal(1) + envelope.floor.minimum_gross_margin_pct / HUNDRED),
                 f"cost plus {envelope.floor.minimum_gross_margin_pct}% of cost",
@@ -210,6 +255,7 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
             _lower(
                 RefusalCode.MARKDOWN_EXCEEDS_MAX_DEPTH,
                 "markdown_depth",
+                "markdown_max_depth_pct",
                 price,
                 proposal.base_price.euros * (Decimal(1) - depth / HUNDRED),
                 f"at most {depth}% below the base price",
@@ -245,6 +291,7 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
                 _upper(
                     RefusalCode.BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT,
                     "weekly_rise",
+                    "base_price_max_weekly_increase_pct",
                     price,
                     opening.euros * (Decimal(1) + rise / HUNDRED),
                     f"at most {rise}% above the week's opening price",
@@ -254,6 +301,7 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
                 _lower(
                     RefusalCode.BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT,
                     "weekly_fall",
+                    "base_price_max_weekly_decrease_pct",
                     price,
                     opening.euros * (Decimal(1) - fall / HUNDRED),
                     f"at most {fall}% below the week's opening price",
@@ -262,7 +310,7 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
 
     cap = envelope.margin_cap
     if cap.in_force and proposal.category_id in cap.regulated_category_ids:
-        benchmark = proposal.benchmark_margin_pct
+        markup = proposal.benchmark_markup_on_cost
         if cap.basis not in {"per_unit", "per_product_code"}:
             found.append(
                 _predicate(
@@ -272,7 +320,7 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
                     f"the cap's basis is {cap.basis!r}, which states nothing computable",
                 )
             )
-        elif benchmark is None or cost is None:
+        elif markup is None or cost is None:
             found.append(
                 _predicate(
                     RefusalCode.INPUT_NOT_AVAILABLE,
@@ -286,9 +334,10 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
                 _upper(
                     RefusalCode.MARGIN_CAP_EXCEEDED,
                     "margin_cap",
+                    "cap_benchmark",
                     price,
-                    cost * (Decimal(1) + benchmark / HUNDRED),
-                    f"cost plus the benchmark margin of {benchmark}% of cost",
+                    cost * (Decimal(1) + markup.pct / HUNDRED),
+                    f"cost plus a benchmark mark-up of {markup}",
                 )
             )
 
@@ -312,24 +361,48 @@ def constraints(case: Case) -> tuple[Constraint, ...]:
     return tuple(found)
 
 
-def violated(case: Case) -> tuple[Constraint, ...]:
+def violated(found: Constraints) -> Constraints:
     """The constraints this module says the case breaks. Exact — no tolerance."""
-    return tuple(c for c in constraints(case) if not c.satisfied)
+    return tuple(c for c in found if not c.satisfied)
 
 
-def refusal_is_supported(case: Case, code: RefusalCode) -> tuple[bool, str]:
-    """Whether the exact arithmetic agrees that `code` had something to refuse.
+def refusal_is_supported(found: Constraints, code: RefusalCode) -> tuple[bool, str]:
+    """Whether this module's own arithmetic agrees that `code` had something to refuse.
 
-    Agreement is either an outright violation, or a price inside the exact bound by less
-    than a cent — the width of the core's declared conservative rounding. A refusal further
-    inside than that is a bound in the wrong place, and this function is what says so.
+    Agreement is the price falling outside the bound **this module rounded**, or a predicate
+    this module says is unsatisfied. There is no tolerance: the bound is computed to the
+    cent here, by arithmetic the core does not share, so "close enough" has nothing left to
+    mean. A refusal at a bound a cent stricter than this one is a bound in the wrong place,
+    and this function is what says so — which the one-cent tolerance it replaced could not,
+    because that was the only case the tolerance ever admitted.
     """
-    matching = [c for c in constraints(case) if c.code is code]
+    matching = [c for c in found if c.code is code]
     if not matching:
         return False, f"nothing in this eval's own arithmetic corresponds to {code.value}"
     for constraint in matching:
-        if not constraint.satisfied:
+        if not constraint.satisfied_at_the_rounded_bound:
             return True, constraint.detail
-        if constraint.slack is not None and constraint.slack < ONE_CENT:
-            return True, f"{constraint.detail} — inside by {constraint.slack}, under one cent"
-    return False, "; ".join(c.detail for c in matching)
+    return False, "; ".join(
+        f"{c.detail}"
+        + (f" — at the cent the bound is {c.rounded}" if c.rounded is not None else "")
+        for c in matching
+    )
+
+
+def ladder_floor(envelope: Envelope, cost: Money) -> Money:
+    """The envelope's lower bound for a markdown, computed here, at the cent.
+
+    The declared safe state is fed this rather than a floor read off the envelope, so `G6`
+    asks two questions at once: does the ladder's answer survive the envelope, and do the
+    eval's floor and the core's floor agree to the cent?
+
+    It used to end in `Money.as_lower_bound` — the core's own rounding — under a docstring
+    claiming the direction had been arrived at independently. It had not: patch that
+    primitive and this moved with it, so the agreement `G6` was checking was an agreement
+    with itself. The direction is re-decided in `rounding.py` and the arithmetic that
+    carries it out shares nothing with `Money`.
+    """
+    exact_margin_floor = cost.euros * (
+        Decimal(1) + envelope.floor.minimum_gross_margin_pct / HUNDRED
+    )
+    return rounding.as_floor(max(envelope.floor.minimum_absolute_price.euros, exact_margin_floor))

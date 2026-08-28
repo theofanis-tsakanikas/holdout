@@ -27,10 +27,13 @@ from holdout.core.decision import DecisionKey, DecisionPath, PriceSource, SafeSt
 from holdout.core.guardrails import (
     AnnouncementBasis,
     Assessment,
+    BenchmarkError,
     Envelope,
     EnvelopeError,
     Freshness,
     GuardrailId,
+    MarginOnPrice,
+    MarkupOnCost,
     ProposalError,
     ProposedPrice,
     RefusalCode,
@@ -139,7 +142,7 @@ def test_the_margin_cap_binds_only_inside_the_regulated_basket(
             price=Money.of("1.26"),
             base_price=Money.of("1.40"),
             category_id="dairy",
-            benchmark_margin_pct=Decimal("25.5"),
+            benchmark_markup_on_cost=MarkupOnCost(Decimal("25.5")),
         ),
         independent_envelope,
     )
@@ -149,7 +152,7 @@ def test_the_margin_cap_binds_only_inside_the_regulated_basket(
             price=Money.of("1.25"),
             base_price=Money.of("1.40"),
             category_id="dairy",
-            benchmark_margin_pct=Decimal("25.5"),
+            benchmark_markup_on_cost=MarkupOnCost(Decimal("25.5")),
         ),
         independent_envelope,
     ).passed
@@ -157,7 +160,7 @@ def test_the_margin_cap_binds_only_inside_the_regulated_basket(
         propose(
             price=Money.of("1.26"),
             base_price=Money.of("1.40"),
-            benchmark_margin_pct=Decimal("25.5"),
+            benchmark_markup_on_cost=MarkupOnCost(Decimal("25.5")),
         ),
         independent_envelope,
     ).passed
@@ -173,8 +176,77 @@ def test_a_cap_whose_basis_the_instrument_never_stated_is_refused_not_guessed(
         independent_envelope.margin_cap, basis="unspecified_in_the_instrument"
     )
     envelope = dataclasses.replace(independent_envelope, margin_cap=unstated)
-    assessment = evaluate(propose(category_id="dairy", benchmark_margin_pct=Decimal(20)), envelope)
+    assessment = evaluate(
+        propose(category_id="dairy", benchmark_markup_on_cost=MarkupOnCost(Decimal(20))), envelope
+    )
     assert RefusalCode.MARGIN_CAP_BASIS_UNEVALUABLE in codes(assessment)
+
+
+def test_the_benchmark_will_not_take_a_number_that_names_no_denominator(
+    independent_envelope: Envelope, propose: ProposalFactory
+) -> None:
+    """The mistake, in the shape it actually arrives in.
+
+    16.81% is the figure Eurostat publishes for Greek supermarkets and it is a margin over
+    **turnover** — a fraction of the selling price. `ΥΑ 21330/2026 άρθρο 4 παρ. 4` defines
+    the capped margin in the same denominator. The envelope's arithmetic is in the other
+    one, and neither of those two numbers was written by whoever wrote this guard: the
+    ambiguity was found by reading the instrument the corpus cites, and this is the
+    percentage that instrument's own denominator produces.
+
+    Handing it straight in used to be a silently stricter cap. Now it is a refusal, at
+    runtime and not only where mypy runs, and the only route through says which way it
+    went.
+    """
+    published_over_the_selling_price = Decimal("16.81")
+    with pytest.raises(ProposalError, match="MarginOnPrice"):
+        propose(
+            category_id="dairy",
+            benchmark_markup_on_cost=published_over_the_selling_price,
+        )
+
+    converted = MarginOnPrice(published_over_the_selling_price).as_markup_on_cost()
+    assert converted.pct.quantize(Decimal("0.01")) == Decimal("20.21")
+    assert (
+        evaluate(
+            propose(category_id="dairy", benchmark_markup_on_cost=converted), independent_envelope
+        ).bounds.maximum
+        is not None
+    )
+
+
+def test_the_two_denominators_bound_the_price_at_different_places(
+    independent_envelope: Envelope, propose: ProposalFactory
+) -> None:
+    """Why the type is worth its weight: the two readings differ by a fifth.
+
+    Against a cost of 1.00 the published margin read as a mark-up caps the price at 1.16;
+    read in the denominator its source states, at 1.20. A price of 1.19 is lawful under the
+    instrument and refused under the mistake — which fails safe, and is still wrong.
+    """
+    published = Decimal("16.81")
+    at_1_19 = {
+        "price": Money.of("1.19"),
+        "base_price": Money.of("1.40"),
+        "category_id": "dairy",
+    }
+    misread = evaluate(
+        propose(**at_1_19, benchmark_markup_on_cost=MarkupOnCost(published)), independent_envelope
+    )
+    correct = evaluate(
+        propose(**at_1_19, benchmark_markup_on_cost=MarginOnPrice(published).as_markup_on_cost()),
+        independent_envelope,
+    )
+    assert RefusalCode.MARGIN_CAP_EXCEEDED in codes(misread)
+    assert RefusalCode.MARGIN_CAP_EXCEEDED not in codes(correct)
+
+
+def test_a_margin_that_leaves_no_cost_to_mark_up_is_refused_not_computed() -> None:
+    """`m / (1 - m)` is undefined at 100% and negative above it. Nothing is invented."""
+    with pytest.raises(BenchmarkError, match="leaves no cost"):
+        MarginOnPrice(Decimal(100))
+    with pytest.raises(BenchmarkError, match="not negative"):
+        MarkupOnCost(Decimal(-1))
 
 
 def test_a_cap_with_no_benchmark_supplied_refuses_rather_than_defaults(
@@ -196,7 +268,7 @@ def test_an_empty_admissible_range_is_donation_or_disposal(
             price=Money.of("1.10"),
             base_price=Money.of("1.20"),
             category_id="dairy",
-            benchmark_margin_pct=Decimal(5),
+            benchmark_markup_on_cost=MarkupOnCost(Decimal(5)),
         ),
         independent_envelope,
     )
@@ -610,7 +682,7 @@ def test_a_per_product_code_cap_is_evaluated_per_decision_and_that_is_stricter(
                 price=Money.of("1.21"),
                 base_price=Money.of("1.40"),
                 category_id="dairy",
-                benchmark_margin_pct=Decimal(20),
+                benchmark_markup_on_cost=MarkupOnCost(Decimal(20)),
             ),
             envelope,
         )

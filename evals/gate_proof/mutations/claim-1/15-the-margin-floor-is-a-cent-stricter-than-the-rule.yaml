@@ -1,0 +1,38 @@
+# The direction this project's own history says its bugs appear in.
+#
+# `CLAUDE.md` records four instances of "a guard tested by its author is tested in the shape
+# the guard already handles", and one of them is G3's tolerance: a refusal was supported if
+# the price sat inside the exact bound by less than a cent. Every price here is a whole
+# number of cents, so under a correctly rounded core that branch is unreachable — the only
+# way into it was a bound sitting a cent **above** where the rule puts it. The tolerance was
+# an exemption for exactly this mutation. Both checks are named: G3 because it is the one
+# the tolerance disarmed, and G10 because G3 only sees this where a corpus price happens to
+# land in the one-cent gap, while G10 sees it on every case that carries the bound.
+#
+# Nothing is admitted that should not be: the envelope is stricter, not looser, and a system
+# that only ever errs toward refusal is the direction this one is built to err in. That is
+# what makes it the hard one to see. It refuses lawful prices, silently, for ever.
+
+id:          the-margin-floor-is-a-cent-stricter-than-the-rule
+claim:       1
+eval_module: evals.guardrail
+targets:
+  - G3.refusal-supported-by-exact-arithmetic
+  - G10.bounds-land-where-the-independent-arithmetic-puts-them
+
+breaks: >-
+  the margin floor is built one cent above the floor the rule states. No price the envelope
+  admits is unlawful — the mistake costs margin rather than breaking a guardrail — so every
+  check that asks "was this certified price legal" is satisfied, and the safe state's own
+  rungs are pushed up with it.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+                  amount=Money.as_lower_bound(
+                      Decimal(cost.cents) + cost.pct(envelope.floor.minimum_gross_margin_pct)
+                  ),
+replacement: |
+                  amount=Money.as_lower_bound(
+                      Decimal(cost.cents) + cost.pct(envelope.floor.minimum_gross_margin_pct) + 1
+                  ),

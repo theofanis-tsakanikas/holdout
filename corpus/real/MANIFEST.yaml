@@ -266,18 +266,24 @@ derived:
     formula: markup = m ÷ (1 − m) = 0.1681 ÷ 0.8319 = 20.21%
     why_a_conversion_is_needed: >-
       άρθρο 4 παρ. 4 defines the capped margin as a fraction of the **selling price**.
-      `holdout.core.guardrails.envelope` bounds the price at `cost + cost × benchmark_margin_pct`,
-      which is a mark-up on **cost**. The two are the same constraint expressed in different
-      denominators, and the conversion above is exact.
+      `holdout.core.guardrails.envelope` bounds the price at `cost + cost × markup`, which is
+      a mark-up on **cost**. The two are the same constraint expressed in different
+      denominators, and the conversion above is exact. `build.py` holds the published figure
+      as a `MarginOnPrice` — the denominator its source publishes it in — and converts once,
+      through the core's `MarginOnPrice.as_markup_on_cost()`.
     a_finding_for_the_author: >-
-      `ProposedPrice.benchmark_margin_pct` does not say which denominator it is in, and
-      `contracts/guardrails/regulated_basket.yaml` names its benchmark `average_gross_margin_2025`
-      — a name whose instrument defines it over the selling price. Feeding that number
-      straight into the core's arithmetic would apply 16.81% where 20.21% was meant, which is
-      a **stricter** cap and therefore fails safe; but it is an ambiguity in a load-bearing
-      field and it was found by reading the instrument this corpus cites, not by reading the
-      contract. It is reported rather than fixed here: the denominator is a contract question
-      with a restatement attached, and this branch is an eval.
+      This finding was raised here on 2026-08-27 and half of it was acted on in T000 on
+      2026-08-28. What it said: `ProposedPrice.benchmark_margin_pct` did not say which
+      denominator it was in, and feeding the published figure straight into the core's
+      arithmetic would apply 16.81% where 20.21% was meant — a **stricter** cap, so it fails
+      safe, and still an ambiguity in a load-bearing field, found by reading the instrument
+      this corpus cites rather than the contract.
+      The field is now `benchmark_markup_on_cost` and takes a `MarkupOnCost`, refusing a bare
+      number at runtime; the mistake can no longer be made by accident.
+      What is still open is the contract: `contracts/guardrails/regulated_basket.yaml` names
+      its benchmark `average_gross_margin_2025`, a name whose instrument defines it over the
+      selling price, and the contract says nothing about the denominator. That is a contract
+      question with a restatement attached and it is deferred in `docs/DECISIONS.md`.
 
   ladder_base_price:
     from: [ons_price_quotes]

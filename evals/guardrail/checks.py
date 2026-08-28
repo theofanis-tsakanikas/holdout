@@ -24,9 +24,9 @@ from holdout.contracts.loader import load
 from holdout.contracts.model import Policy
 from holdout.core.decision import DecisionKey, DecisionPath, PriceSource
 from holdout.core.guardrails import (
+    Bound,
     CertificateForgeryError,
     CertifiedPrice,
-    Envelope,
     PriceBounds,
     ProposedPrice,
     Refusal,
@@ -55,9 +55,27 @@ class Outcome:
     case: build.Case
     result: CertifiedPrice | Refusal
 
+    constraints: reference.Constraints
+    """This eval's own opinion about every rule, computed **once** per decision.
+
+    Five checks ask five different questions of the same answer, and an earlier version let
+    each of them recompute it — `G3` did so once per *reason*, which over 321,261 reasons is
+    a quarter of a million second implementations of the same envelope. `gate-proof` then
+    runs the whole eval once per mutation, so the waste multiplied by sixteen and the CI job
+    reached its timeout. It is computed here, at the one place a decision is taken, and
+    passed down.
+    """
+
 
 def _run(cases: Iterator[build.Case]) -> list[Outcome]:
-    return [Outcome(case=case, result=certify(case.proposal, case.envelope)) for case in cases]
+    return [
+        Outcome(
+            case=case,
+            result=certify(case.proposal, case.envelope),
+            constraints=reference.constraints(case),
+        )
+        for case in cases
+    ]
 
 
 def _fraction(numerator: int, denominator: int) -> str:
@@ -115,7 +133,7 @@ def check_certified_price_inside_exact_bounds(outcomes: list[Outcome]) -> Check:
         if isinstance(outcome.result, Refusal):
             continue
         checked += 1
-        for constraint in reference.violated(outcome.case):
+        for constraint in reference.violated(outcome.constraints):
             failures.append(
                 f"{outcome.case.origin} [{outcome.case.envelope_id}] "
                 f"certified but {constraint.name} says no — {constraint.detail}"
@@ -144,7 +162,7 @@ def check_refusal_supported_by_exact_arithmetic(outcomes: list[Outcome]) -> Chec
             if reason.code in _NOT_MODELLED_HERE:
                 continue
             checked += 1
-            supported, detail = reference.refusal_is_supported(outcome.case, reason.code)
+            supported, detail = reference.refusal_is_supported(outcome.constraints, reason.code)
             if not supported:
                 failures.append(
                     f"{outcome.case.origin} [{outcome.case.envelope_id}] refused "
@@ -153,14 +171,90 @@ def check_refusal_supported_by_exact_arithmetic(outcomes: list[Outcome]) -> Chec
     return Check(
         id="G3.refusal-supported-by-exact-arithmetic",
         question=(
-            "For every guardrail that refused, does this eval's own exact arithmetic agree "
-            "the rule was broken — or place the price within the one cent the core's "
-            "conservative rounding is allowed to claim?"
+            "For every guardrail that refused, does this eval's own arithmetic agree the "
+            "rule was broken — the price outside the bound this eval rounded itself, with "
+            "no tolerance anywhere?"
         ),
         passed=not failures,
         figure=f"{len(failures)} unsupported in {checked:,} refusal reasons",
-        detail="a refusal further inside the exact bound than a cent is a bound in the wrong place",
+        detail="a refusal at a price this eval's own rounded bound admits is a bound in the wrong place",
         counterexamples=tuple(failures),
+    )
+
+
+def check_bounds_land_where_the_independent_arithmetic_puts_them(outcomes: list[Outcome]) -> Check:
+    """G10 — every bound the core placed, against the same bound computed here. As integers.
+
+    `G2` and `G3` ask about *prices*: was this price wrongly certified, was that refusal
+    supported. Both therefore see a misplaced bound only where a corpus price happens to sit
+    in the gap it opens, and a bound one cent out opens a gap exactly one cent wide.
+
+    That is not a hypothetical weakness, and the numbers are the argument. Planted against
+    this eval, an absolute floor a cent loose gives:
+
+        G2   FAIL ·      3 violations in    28,485 certified prices
+        G10  FAIL · 232,373 disagreements in 824,790 bounds compared
+
+    Three real prices out of twenty-eight thousand is a gate that holds until the corpus is
+    reshuffled. So this check does not go through a price at all: for every decision, every
+    `Bound` the envelope attributed to a rule is compared with the edge `reference` computed
+    for the same rule and `rounding` put on a cent — **as integer cents, with no tolerance**,
+    the comparison claim 5 makes about the metric, for the same reason.
+
+    And one break is caught **here and nowhere else**: a bound at exactly the right amount
+    carrying another rule's id. Nothing about the arithmetic moves, so no price is wrongly
+    certified and no refusal loses its support — but claim 1's evidence is *which* guardrail
+    fired, and the certificate's recorded checks are derived from those ids. `gate-proof`
+    plants it. It is also the only mutation that exercises the second direction below.
+
+    Both directions are asserted. A bound the core placed on a rule this module does not
+    model is a rule the second implementation has never checked at all; a rule this module
+    bounds and the core did not is a guardrail that quietly stopped being applied.
+    """
+    compared = 0
+    failures: list[str] = []
+    for outcome in outcomes:
+        expected = {
+            c.rule_id: c
+            for c in outcome.constraints
+            if c.rule_id is not None and c.rounded is not None
+        }
+        where = f"{outcome.case.origin} [{outcome.case.envelope_id}]"
+        placed: dict[str, Bound] = {}
+        for bound in (*outcome.result.bounds.lower, *outcome.result.bounds.upper):
+            # Two bounds under one rule id is not a comparison this check can make, and
+            # keeping the last silently drops the other and under-counts `compared`. It is a
+            # defect in its own right — claim 1's evidence is *which* guardrail fired, and a
+            # bound wearing another rule's id has already destroyed that — so it is reported
+            # rather than resolved. `gate-proof` plants exactly this.
+            if bound.rule_id in placed:
+                failures.append(f"{where} placed two bounds under the rule id {bound.rule_id}")
+                continue
+            placed[bound.rule_id] = bound
+        for rule_id, bound in sorted(placed.items()):
+            constraint = expected.get(rule_id)
+            if constraint is None:
+                failures.append(f"{where} bounds on {rule_id}, which this eval does not model")
+                continue
+            compared += 1
+            if bound.amount != constraint.rounded:
+                failures.append(
+                    f"{where} puts {rule_id} at {bound.amount} and this eval puts it at "
+                    f"{constraint.rounded} (exactly {constraint.bound})"
+                )
+        for rule_id in sorted(set(expected) - set(placed)):
+            failures.append(f"{where} placed no bound for {rule_id}, which this eval bounds")
+    return Check(
+        id="G10.bounds-land-where-the-independent-arithmetic-puts-them",
+        question=(
+            "Is every bound the envelope placed at exactly the cent this eval's own "
+            "arithmetic puts it on — floors up, ceilings down, compared as integers with no "
+            "tolerance — and is every rule this eval bounds a rule the envelope bounded?"
+        ),
+        passed=not failures,
+        figure=f"{len(failures)} disagreements in {compared:,} bounds compared",
+        detail="a bound a cent out of place is invisible until a price lands in the gap",
+        counterexamples=tuple(failures[:20]),
     )
 
 
@@ -182,8 +276,8 @@ def check_empty_range_is_really_empty(outcomes: list[Outcome]) -> Check:
         if not outcome.result.is_disposal:
             continue
         claimed += 1
-        floors = reference.lower_bounds(outcome.case)
-        ceilings = reference.upper_bounds(outcome.case)
+        floors = reference.rounded_lower_bounds(outcome.constraints)
+        ceilings = reference.rounded_upper_bounds(outcome.constraints)
         if not ceilings:
             failures.append(
                 f"{outcome.case.origin} [{outcome.case.envelope_id}] claims an empty range "
@@ -191,26 +285,28 @@ def check_empty_range_is_really_empty(outcomes: list[Outcome]) -> Check:
             )
             continue
         # The range is empty exactly when the highest floor is above the lowest ceiling.
-        # Both are recomputed here from this eval's exact bounds — nothing is read off the
+        # Both are recomputed here from this eval's own bounds — nothing is read off the
         # `PriceBounds` the refusal carries, which is the object under test.
+        #
+        # At the **cent**, and with no tolerance. A price is a whole number of cents, so
+        # that is the only scale on which "no price satisfies every guardrail" means
+        # anything, and `rounding.py` puts each edge there by arithmetic the core does not
+        # share. This used to allow a cent of slack, on the grounds that an exact range
+        # narrower than a cent holds no whole cent — true, and now computed instead of
+        # allowed for. The declared cost of conservative rounding, that a price legal by
+        # half a cent can be refused, is paid inside `rounded_*_bounds` where it belongs.
         highest_floor, lowest_ceiling = max(floors), min(ceilings)
-        # The same one-cent rounding contract `G3` uses, and for the same reason. The core
-        # rounds a floor up and a ceiling down, so an exact range narrower than a cent can
-        # contain no whole cent at all and is genuinely empty in integer arithmetic — that
-        # is the declared cost of conservative rounding, written down in `docs/DECISIONS.md`
-        # as "a price legal by half a cent can be refused". A disposal claimed on a range
-        # **wider** than a cent is a different thing entirely, and that is what fails here.
-        if highest_floor + reference.ONE_CENT <= lowest_ceiling:
+        if highest_floor <= lowest_ceiling:
             failures.append(
                 f"{outcome.case.origin} [{outcome.case.envelope_id}] claims an empty range, "
-                f"but exactly the floor is {highest_floor} and the ceiling {lowest_ceiling}"
+                f"but at the cent the floor is {highest_floor} and the ceiling {lowest_ceiling}"
             )
     return Check(
         id="G4.empty-range-is-really-empty",
         question=(
             "When the envelope answers 'no legal price sells this item' — donation or "
-            "disposal — is the admissible range, recomputed exactly here, either empty or "
-            "too narrow to hold a single whole cent?"
+            "disposal — is the admissible range, recomputed at the cent here by arithmetic "
+            "the core does not share, really empty?"
         ),
         passed=not failures,
         figure=f"{claimed:,} disposals claimed \u00b7 {len(failures)} unsupported",
@@ -265,7 +361,22 @@ _LADDER_MUST_SATISFY = frozenset(
 class LadderRun:
     check: Check
     refused_by_a_ceiling: int
+    """Refused by a rule that *has* an upper edge — a ceiling the ladder could in principle
+    have clamped to, had it known about ceilings. This is the finding."""
+
+    refused_by_a_rule_with_no_bound: int
+    """Refused by a rule with no edge at all — a cap whose basis states nothing computable,
+    a stale cost, a prior price that was never established. A ceiling on the ladder would
+    not move one of these by a single quote, so counting them as ceilings overstated the
+    finding by an order of magnitude, and did so in `README.md`, in `docs/DECISIONS.md` and
+    in this eval's own published numbers."""
+
     quotes: int
+
+    @property
+    def refused_beyond_the_three_bounds(self) -> int:
+        """Every ladder quote the envelope refused for a reason the ladder does not model."""
+        return self.refused_by_a_ceiling + self.refused_by_a_rule_with_no_bound
 
 
 def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
@@ -277,15 +388,25 @@ def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
 
     Here the composition is driven by the corpus rather than by a hand-written list of cent
     endings — every distinct price a person wrote down in a shop — and the floor handed to
-    the ladder is computed by **this eval's own exact arithmetic**, not read off the
-    envelope. So the check does two jobs: the safe state must survive the envelope, and the
-    eval's floor and the core's floor must agree to the cent.
+    the ladder is computed by **this eval's own arithmetic**, in `reference.ladder_floor`,
+    not read off the envelope and no longer rounded by the core's own primitive. So the
+    check does two jobs: the safe state must survive the envelope, and the eval's floor and
+    the core's floor must agree to the cent.
 
     What it asserts is deliberately narrower than "the ladder is never refused". The ladder
     takes a floor and clamps to it; it takes no ceiling and knows of none. A ladder price
     refused by a *ceiling* is therefore not a disagreement between these two modules — it is
     a gap between them, it is counted separately, and `README.md` records it as a finding
     rather than letting a widened assertion swallow it.
+
+    **Counted separately from *that*** is the quote refused by a rule with no edge at all.
+    A cap whose basis states nothing computable refuses every price, at every rung, in
+    either direction; it is not a ceiling and a ladder that took ceilings would not avoid
+    one of them. Both counts were reported as ceilings until a review took the number apart,
+    and the finding was ten times smaller than the figure that had been published. Which
+    bucket a refusal falls in is decided by `reference`, from the `side` it already computes
+    per rule — not by a list of codes written out here, which would have to be remembered
+    every time a rule is added.
     """
     catalogue = build.corpus_items()
     costs = build.unit_costs()
@@ -298,6 +419,7 @@ def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
     quoted_total = 0
     disposal = 0
     by_ceiling = 0
+    by_a_rule_with_no_bound = 0
     failures: list[str] = []
 
     # An envelope whose maximum markdown depth is shallower than the ladder's deepest rung
@@ -320,7 +442,7 @@ def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
             if item.scenario_category in envelope.frozen_categories.category_ids:
                 continue
             cost = costs[item_id]
-            floor = _exact_floor(envelope, cost)
+            floor = reference.ladder_floor(envelope, cost)
             for minutes in rungs:
                 quote_ = ladder_quote(minutes, base_price=base, policy=policy, floor=floor)
                 if quote_ is None:
@@ -344,7 +466,7 @@ def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
                     changes_dispatched_today=0,
                     unit_cost=cost,
                     cost_known_at=decided_at,
-                    benchmark_margin_pct=build.benchmark_markup_pct(),
+                    benchmark_markup_on_cost=build.benchmark_markup_on_cost(),
                 )
                 result = certify(proposal, envelope)
                 if not isinstance(result, Refusal):
@@ -359,8 +481,21 @@ def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
                     # No legal price exists at all, so the answer is donation or disposal.
                     # A correct output, and the one refusal a safe state may produce.
                     disposal += 1
-                else:
+                elif _a_ceiling_refused_it(
+                    build.Case(
+                        family="G6",
+                        envelope_id=envelope_id,
+                        envelope=envelope,
+                        proposal=proposal,
+                        unit_cost=cost,
+                        origin=f"{item_id} base {base} rung {quote_.step}",
+                        item=item,
+                    ),
+                    result,
+                ):
                     by_ceiling += 1
+                else:
+                    by_a_rule_with_no_bound += 1
     check = Check(
         id="G6.ladder-certifies-on-real-base-prices",
         question=(
@@ -373,7 +508,8 @@ def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
         figure=(
             f"{quoted_total:,} ladder quotes over {len(usable)} envelopes \u00b7 "
             f"{len(failures)} refused by a bound the ladder respects \u00b7 "
-            f"{disposal:,} disposal \u00b7 {by_ceiling:,} refused by a ceiling"
+            f"{disposal:,} disposal \u00b7 {by_ceiling:,} refused by a ceiling \u00b7 "
+            f"{by_a_rule_with_no_bound:,} refused by a rule with no bound"
             + (
                 f" \u00b7 skipped {', '.join(skipped)} (max depth below the deepest rung)"
                 if skipped
@@ -383,21 +519,32 @@ def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
         detail="a safe state the envelope refuses is not a safe state — there is nowhere left to fall",
         counterexamples=tuple(failures),
     )
-    return LadderRun(check=check, refused_by_a_ceiling=by_ceiling, quotes=quoted_total)
-
-
-def _exact_floor(envelope: Envelope, cost: Money) -> Money:
-    """The envelope's lower bound, computed here and rounded up to the cent.
-
-    Rounded **up**, because this is a floor and a floor that rounds down rounds into what it
-    forbids. The same direction `Money.as_lower_bound` takes — arrived at independently,
-    which is what makes the agreement between them worth checking.
-    """
-    exact_margin_floor = cost.euros * (
-        Decimal(1) + envelope.floor.minimum_gross_margin_pct / Decimal(100)
+    return LadderRun(
+        check=check,
+        refused_by_a_ceiling=by_ceiling,
+        refused_by_a_rule_with_no_bound=by_a_rule_with_no_bound,
+        quotes=quoted_total,
     )
-    highest = max(envelope.floor.minimum_absolute_price.euros, exact_margin_floor)
-    return Money.as_lower_bound(highest.scaleb(2))
+
+
+def _a_ceiling_refused_it(case: build.Case, refusal: Refusal) -> bool:
+    """Did a rule with an upper *edge* refuse this quote, or a rule with no edge at all?
+
+    The distinction is the whole of the finding `README.md` publishes, and it is decided by
+    `reference`, which computes a `side` per rule from the envelope's own values. Reading it
+    off a list of codes written out here would be a second opinion about which rules are
+    ceilings, kept in a second place, and a rule added to the envelope would quietly join
+    whichever bucket the list's author last thought about.
+    """
+    sides: dict[RefusalCode, set[str]] = {}
+    for constraint in reference.constraints(case):
+        # A *set* per code, not one side. `BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT` is one code
+        # over two rules — a ceiling on the week's rise and a floor on its fall — so a dict
+        # holding one side per code silently keeps whichever was appended last. The base-price
+        # path never reaches this function today, which is exactly why it would have gone
+        # unnoticed until the day it did.
+        sides.setdefault(constraint.code, set()).add(constraint.side)
+    return any("upper" in sides.get(code, set()) for code in refusal.codes)
 
 
 def check_closed_vocabulary_only(outcomes: list[Outcome]) -> Check:
@@ -623,6 +770,7 @@ def run() -> Report:
         check_closed_vocabulary_only(outcomes),
         check_every_code_is_reachable(every),
         check_no_tampered_certificate_reaches_a_shelf(outcomes),
+        check_bounds_land_where_the_independent_arithmetic_puts_them(outcomes),
     )
 
     rows = list(quotes())
@@ -643,10 +791,17 @@ def run() -> Report:
         (f"  guardrail fired \u00b7 {name}", f"{count:,}")
         for name, count in by_guardrail.most_common()
     )
-    numbers.append(
+    numbers.extend(
         (
-            "ladder quotes refused by a ceiling",
-            f"{ladder.refused_by_a_ceiling:,}/{ladder.quotes:,} — see README, 'A finding'",
+            (
+                "ladder quotes refused by a ceiling",
+                f"{ladder.refused_by_a_ceiling:,}/{ladder.quotes:,} — see README, 'A finding'",
+            ),
+            (
+                "  and by a rule with no bound",
+                f"{ladder.refused_by_a_rule_with_no_bound:,}/{ladder.quotes:,} — "
+                "no ceiling would move one of these",
+            ),
         )
     )
 
@@ -666,6 +821,10 @@ def run() -> Report:
             "that the ladder is a complete safe state where a ceiling binds — "
             f"{ladder.refused_by_a_ceiling:,} of its quotes were refused by one, and that is a "
             "finding recorded in this eval's README rather than something it asserts away",
+            f"anything about the {ladder.refused_by_a_rule_with_no_bound:,} ladder quotes refused "
+            "by a rule with no bound at all — a cap whose basis states nothing computable "
+            "refuses every price at every rung, and a ladder that took ceilings would not move "
+            "one of them. They were counted as ceilings until a review took the figure apart",
         )
         + ((f"codes no input in this eval reaches: {', '.join(unreached)}",) if unreached else ()),
     )

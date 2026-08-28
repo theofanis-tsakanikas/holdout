@@ -429,6 +429,65 @@ stratum. Code that serves no claim is the fourth question on `CLAUDE.md`'s check
 with its test rather than staying as a public function nobody calls. The suite is 756 and
 `make claim-1` is still 9/9 with 13/13 mutations biting.
 
+**What the instrument fix settled (T000), and why it came before the next four evals.** Claim 1's
+eval is the shape every later eval is built on, and oversight level 2 found three defects in it.
+All three are now closed, each with a test that fails on the un-fixed instrument.
+
+**The misattributed figure.** "7,366 ladder quotes refused by a ceiling" was every quote refused
+for any reason outside the three bounds the ladder models, counted as though all of them were
+ceilings. **6,650 are `MARGIN_CAP_BASIS_UNEVALUABLE`** — a rule with no edge in either direction,
+which a ceiling on the ladder would not move by one quote. The supportable figure is **716 of
+26,600**, from one envelope. `G6` separates the two, publishes both, and the numbers are pinned in
+the suite; `README.md`, `docs/DECISIONS.md` and `corpus/real/MANIFEST.yaml` all restate rather than
+overwrite, so the delta is recoverable.
+
+**The eval was rounding with the core's own primitive.** `_exact_floor` ended in
+`Money.as_lower_bound` under a docstring claiming independence — the fourth instance of *a guard
+tested by its author*, and like the first three it was declared impossible by prose beside the
+code. The direction is now re-decided in `evals/guardrail/rounding.py` and carried out on the
+value's exact integer ratio: no precision, no context and no quantisation shared with `Decimal`,
+so a defect in any of those cannot cancel out between the two.
+
+**And the size of that defect was itself overstated, which oversight level 2 caught by running
+it.** This branch first said patching the primitive left `G2`, `G3` and `G6` all green. Planted
+against `main`: `G2` **fails**, 199 violations in 28,681 certified prices, because `G2` compares
+against the eval's *exact* `Decimal` bound and that never went through `Money`'s rounding. What
+stayed green was `G6` — the one check that shared the primitive — while its published ceiling
+count moved 7,366 → 7,365 in silence. A real finding, an order of magnitude smaller, and the same
+defect one level up: prose in the evidence layer asserting more than the code supports. It is
+restated in all six places that carried it rather than deleted.
+
+**And `G3`'s one-cent tolerance was an exemption for one bug rather than slack for rounding.**
+Every price in the eval is a whole number of cents, so under a correctly rounded core the
+tolerance branch is unreachable; the only way into it is a bound sitting a cent *above* where the
+rule puts it — the shape this repository's own history says its bugs appear in. `G3` and `G4` now
+compare against a bound the eval rounded itself, with nothing tolerated anywhere.
+
+**A new check, because `G2` and `G3` both go through a price.** A bound one cent out of place
+opens a gap exactly one cent wide, and both checks see it only where a corpus price sits in that
+gap. Measured, on an absolute floor moved a cent loose: `G2` reports **3** violations in 28,485
+certified prices, `G10` reports **232,373** disagreements in 824,790 bounds. Three cases out of
+twenty-eight thousand is a gate that holds until the corpus is reshuffled. `G10` compares every
+`Bound` the envelope placed against the edge the eval computed for the same rule, **as integer
+cents with no tolerance** — 0 disagreements over all 824,790.
+
+**Three mutations, and the third is what earns it.** The first two are caught elsewhere as well,
+which oversight level 2 correctly said proves nothing about `G10`'s necessity — so a third was
+planted: **a bound at exactly the right amount carrying another rule's id.** No arithmetic moves,
+no price is wrongly certified, no refusal loses its support, and `G10` is the only check in the
+eval that goes red. Claim 1's evidence is *which* guardrail fired, and a certificate's recorded
+checks are derived from those ids. The margin floor built a cent too strict trips `G3` as well,
+which is the empirical evidence that the tolerance is gone.
+
+**The denominator is in the type.** `ProposedPrice.benchmark_margin_pct` named neither of the two
+denominators a gross margin can be in, so 16.81% of the selling price could be applied where
+20.21% of the cost was meant — safe, and silently wrong. `MarginOnPrice` and `MarkupOnCost` now
+carry it, `as_markup_on_cost()` is the only route between them, and the field refuses a bare
+number at runtime and not only where mypy runs. The half of the ambiguity that lives in
+`regulated_basket.yaml` stays deferred: it is a contract change with a restatement chain.
+
+The suite is **768** and `make claim-1` is **10/10 with 16/16 mutations biting**.
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase

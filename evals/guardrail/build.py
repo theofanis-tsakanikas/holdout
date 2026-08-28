@@ -65,6 +65,8 @@ from holdout.core.guardrails import (
     FloorRule,
     FrozenCategoriesRule,
     MarginCapRule,
+    MarginOnPrice,
+    MarkupOnCost,
     MaxDeltaRule,
     PriorPriceRule,
     ProposedPrice,
@@ -394,24 +396,35 @@ def _markdown_proposal(
         cost_known_at=decided_at.replace(hour=14) - timedelta(hours=age),
         changes_dispatched_today=dispatched,
         prior_price=prior_price,
-        benchmark_margin_pct=benchmark_markup_pct(),
+        benchmark_markup_on_cost=benchmark_markup_on_cost(),
     )
     return proposal, cost
 
 
 @lru_cache(maxsize=1)
-def benchmark_markup_pct() -> Decimal:
-    """The 2025 benchmark margin, expressed the way `ProposedPrice` needs it.
+def benchmark_margin_on_price() -> MarginOnPrice:
+    """The published 2025 gross margin, in the denominator its source publishes it in.
 
-    ΥΑ 21330/2026 άρθρο 4 παρ. 4 defines the capped margin over the **selling price**;
-    `evaluate` bounds the price at `cost + cost × benchmark_margin_pct`, a mark-up on
-    **cost**. `m / (1 - m)` is the exact conversion between them. `MANIFEST.yaml` records
-    that the contract's field does not say which denominator it is in — a finding, reported
-    rather than fixed on this branch, because a denominator is a contract question with a
-    restatement attached.
+    Eurostat's figure is a margin **over turnover**, and ΥΑ 21330/2026 άρθρο 4 παρ. 4
+    defines the capped margin over the **selling price** too. This is the number as it
+    arrives: nothing here converts it, so nothing here can convert it wrongly.
     """
-    margin = median_gross_margin_fraction()
-    return (margin / (Decimal(1) - margin)) * 100
+    return MarginOnPrice(median_gross_margin_fraction() * 100)
+
+
+@lru_cache(maxsize=1)
+def benchmark_markup_on_cost() -> MarkupOnCost:
+    """The same benchmark in the denominator the envelope's arithmetic is in.
+
+    The conversion is `m / (1 - m)` and it happens in exactly one place, in the core's own
+    `MarginOnPrice.as_markup_on_cost`. That the eval calls the core's converter rather than
+    writing a second one is deliberate and is *not* a second implementation: the quantity
+    being checked here is the envelope's bound, and the converter is an input to it, on the
+    same footing as the rule values the eval reads out of the contract. What the type buys
+    is that the number cannot arrive in the wrong denominator by accident — 16.81% of the
+    price is 20.21% of the cost, and the field will not take the first.
+    """
+    return benchmark_margin_on_price().as_markup_on_cost()
 
 
 def observed_price_moves() -> Iterator[Case]:
@@ -473,7 +486,7 @@ def observed_price_moves() -> Iterator[Case]:
                     unit_cost=cost,
                     cost_known_at=decided_at
                     - timedelta(hours=COST_AGE_HOURS_GRID[index % len(COST_AGE_HOURS_GRID)]),
-                    benchmark_margin_pct=benchmark_markup_pct(),
+                    benchmark_markup_on_cost=benchmark_markup_on_cost(),
                 )
                 yield Case(
                     family="B1",
@@ -638,7 +651,7 @@ def missing_inputs() -> Iterator[Case]:
                         unit_cost=cost,
                         cost_known_at=decided_at if cost is not None else None,
                         changes_dispatched_today=dispatched,
-                        benchmark_margin_pct=benchmark_markup_pct(),
+                        benchmark_markup_on_cost=benchmark_markup_on_cost(),
                     ),
                     unit_cost=unit_costs()[row.item_id],
                     origin=f"{row.item_id}@{row.outlet} {month} with {missing}",
@@ -666,7 +679,7 @@ def missing_inputs() -> Iterator[Case]:
                     announced_as_reduction=False,
                     unit_cost=unit_costs()[row.item_id],
                     cost_known_at=decided_at,
-                    benchmark_margin_pct=benchmark_markup_pct(),
+                    benchmark_markup_on_cost=benchmark_markup_on_cost(),
                 ),
                 unit_cost=unit_costs()[row.item_id],
                 origin=f"{row.item_id}@{row.outlet} {month} with no week-opening price",

@@ -57,13 +57,73 @@ out_of_scope  The floor.yaml rule-id rename and the ladder-ceiling restatement �
 stop_at       When the three fixes land with tests that fail on the un-fixed instrument, and
               before any new eval (T003–T006) is written on the corrected shape.
 review        yes
-status        open
+status        closed
 ```
 
 Finding 2 is a defect in the measuring instrument itself: every eval built on the `evals/` shared
 shape inherits the blind spot. It is fixed **before** it is copied four times (into the claim-2, -3,
 -4 and -7 evals), not after — which is why it precedes T003–T006 instead of sitting inside the
 integration session that depends on them.
+
+**What it landed.** All three, each with a test that fails on the un-fixed instrument, and one thing
+the `closes` line did not ask for.
+
+*(1) The misattribution.* `G6` no longer counts every refusal outside the ladder's three bounds as a
+ceiling. Which bucket a refusal falls in is decided by `reference`, from the `side` it already
+computes per rule — not from a list of codes, which would have to be remembered every time a rule is
+added. **716 refused by a ceiling · 6,650 refused by a rule with no bound**, both published, both
+pinned in `tests/evals/test_guardrail_instrument.py`. `evals/guardrail/README.md`,
+`docs/DECISIONS.md` and `corpus/real/MANIFEST.yaml` restate rather than overwrite.
+
+*(2) The rounding, and the tolerance behind it.* `_exact_floor` is gone; `evals/guardrail/rounding.py`
+re-decides the direction and carries it out on the value's exact integer ratio — no precision, no
+context, no quantisation shared with `Decimal`, so a defect in any of those cannot cancel out. A
+test scans **every** module under `evals/guardrail/` bar a declared exclusion list, refusing any
+reach for `Money`'s three rounding constructors or any import of a rounding name out of
+`holdout.core.money`. Verified against `main`, where it reports `checks.py:400`; a rule scoped to
+the file the fix landed in would have passed on the tree that had the bug. It states the three
+routes it does **not** cover, which `CLAUDE.md` requires and the first version of it omitted. `G3`'s one-cent tolerance is gone with it — under
+a correctly rounded core it was unreachable, so it was an exemption for exactly one bug, the bound a
+cent too strict. `G4` lost the same tolerance for the same reason.
+
+*(3) The denominator.* `ProposedPrice.benchmark_markup_on_cost` takes a `MarkupOnCost` and refuses a
+bare number at runtime, not only where mypy runs; `MarginOnPrice.as_markup_on_cost()` is the only
+route between the two. The case the guard is tested on is the figure the instrument publishes —
+16.81% — not one this session invented. The contract half stays deferred.
+
+**Beyond the line above: `G10`.** `G2` and `G3` both reach a bound *through a price*, so both see a
+misplaced bound only where a corpus price lands in the one-cent gap it opens — measured, an absolute
+floor a cent loose gives `G2` **3** violations in 28,485 certified prices against `G10`'s **232,373**
+disagreements in 824,790 bounds. `G10` compares the bounds themselves, as integer cents with no
+tolerance: **0 disagreements**. Three mutations are planted against it, and the third is the one
+that earns it — **a bound at the right amount wearing another rule's id**, which moves no arithmetic
+at all and is refused by `G10` and by nothing else in the eval.
+
+**What oversight level 2 sent back, and what it cost.** Two blocking findings, both in the prose
+rather than the code, and both the project's own most frequent defect. The claim that patching
+`Money.as_lower_bound` left every check green was **false and had not been run**: `G2` fails on it
+with 199 violations, and what actually stayed green was `G6` — the one check that shared the
+primitive — while its published figure moved 7,366 → 7,365 in silence. Corrected in all six places
+that carried it, with the mutation output quoted. And `G3` was still *publishing* the one-cent
+tolerance this task removed, so the eval's own terminal output contradicted its README. Four latent
+findings were fixed with it: the AST rule was a hard-coded tuple that could not see the module this
+branch itself added; `BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT` bounds on **both** sides and collapsed
+to one in a dict keyed by code; `reference` gated on `proposal.unit_cost` while reading
+`case.unit_cost`; and `MarkupOnCost(Decimal("Infinity"))` was accepted, becoming an
+`InvalidOperation` crash three modules later where the contract is a refusal.
+
+**And CI's timeout was wrong rather than the run.** The first PR run was cancelled at 15m16s
+while an identical run on the same commit passed at 11m00s, four minutes apart, on a different
+runner. Two things moved: 13 mutations became 15, and the eval got ~15% slower because `G10`
+makes a full independent pass over every bound — about 30% more work against a budget the *fast*
+runner was already using two thirds of. `reference.constraints` is now computed once per decision
+instead of once per check (`G3` was recomputing it per *reason*, a quarter of a million times),
+and `rounding` works on the value's exact integer ratio rather than building a `Fraction` per
+bound: **16.5s → 12.1s**, against 10.5s on `main`. The job's `timeout-minutes` went 15 → 25,
+with the arithmetic in the workflow: a timeout is a guard against a hang, not a performance
+budget.
+
+`make check` green at 768 tests · `make claim-1` **10/10 with 16/16 mutations biting**.
 
 ```
 id            T00A
@@ -293,12 +353,24 @@ closes        make claim-2 green. Four numbers published, not a tick: the false-
               Every draw runs the WHOLE system, not just the estimator. A deliberately slow Python
               reference implementation of truth-on-the-metric agrees with the dbt/SQL path with no
               tolerance, and doubles as a fourth independent check of claim 5.
+              Also: CI's gate job carries a temporary timeout of 25 minutes, raised from 15 by
+              T000 on measured runner variance. Claim 2 adds K=200 seeds and six worlds to the
+              same job, so the answer is parallelising the mutations or splitting the claim
+              targets into their own jobs — NOT a third increase — and the limit comes back
+              down in the same change. See the deferral in docs/DECISIONS.md, which expires
+              2026-09-30.
 out_of_scope  Claims 3/4/7 (their own tasks); preview-audit.
 stop_at       If the A/A test does not stand against alpha — STOP and notify the author. Nothing
               is built on top of it. That is the whole point of putting it first.
+              Do not raise timeout-minutes again. If the job does not fit, the job is wrong.
 review        yes
 status        open
 ```
+
+**And the rule-id map.** `evals/guardrail/reference.py` now writes the core's six `Bound.rule_id`
+strings down a second time, which is what makes `G10` able to disagree. T008's `floor.yaml` rule-id
+rename will therefore turn `G10` red on **both** directions at once until `reference.py` follows;
+that is the gate working, and T008 must move the two together in one change.
 
 ```
 id            T004
@@ -374,7 +446,11 @@ depends_on    T000, T003, T004, T005, T006
 closes        Reads the whole repository against CLAUDE.md and reports conceptual drift — it builds
               no product code. Two deferred items it is expressly empowered to act on:
               (1) floor.yaml's rule id refuse_when_no_legal_price_sells still carries the overreach
-                  the refusal code shed; the session may propose the restatement.
+                  the refusal code shed; the session may propose the restatement. NOTE: the core's
+                  Bound.rule_id strings are written down a second time in
+                  evals/guardrail/reference.py, which is what lets G10 disagree rather than agree
+                  with itself. A rename turns G10 red on both directions at once; move the two in
+                  one change.
               (2) the ladder-ceiling gap (doctrine rule 1 is incomplete — the declared safe state
                   produces prices the envelope refuses); the session may propose a restatement.
               The method is written as the .claude/skills/integration-review skill, not as ad hoc
