@@ -11,7 +11,7 @@ because two answers to "what is still open" is exactly the thing this file exist
 
 | field | means |
 |---|---|
-| `id` | `T001`, `T002`, … · ops/method tasks that gate the phases are `T000`, `T00A`, `T00C` |
+| `id` | `T001`, `T002`, … · ops/method tasks that gate the phases are `T000`, `T00A`, `T00B`, `T00C` |
 | `title` | what it is |
 | `branch` | the exact branch name (one branch per closed piece — one per session, not per commit) |
 | `depends_on` | ids that must have closed first |
@@ -170,6 +170,77 @@ guard allowed the ordinary two-line `git commit` on `main`, and the barrier miss
 which is the spelling this task description itself used and which imports and runs. Both were
 fixed by correcting the code, each with a test that fails on the un-fixed version; the record is
 in `PLAN.md` and `docs/DECISIONS.md`.
+
+```
+id            T00B
+title         Skill — claim, extracted from the two claims that have closed
+branch        ops/claim-skill
+depends_on    T000, T003
+blocks        T004, T005, T006
+closes        .claude/skills/claim/ — the procedure for building one of the seven claims end to
+              end: the eval that attacks it from a source its author did not choose, the
+              gate-proof mutations with the three rules, the make claim-N target and mutation
+              ownership, and the statement of where the independence is and what is not proved.
+              It lives in this repository because it shapes the code here (CLAUDE.md's
+              criterion), and it is extracted from TWO closed claims rather than one.
+              Also: CLAUDE.md's rule about a sentence is generalised to an ASSERTION — a number
+              in configuration is one too. `ci.yml`'s claims job was set to 45 minutes from a
+              projection onto fourteen cores while a measurement of the four-core run was
+              available, inside the same change whose deferral existed to prevent exactly that.
+out_of_scope  Writing any claim's eval. The defect-to-rule skill (T00C) and integration-review
+              (T008). Product code of any kind.
+stop_at       When the skill exists, CLAUDE.md's rule covers numbers as well as sentences, and
+              the divergence the extraction found between the two samples is recorded rather
+              than papered over.
+review        yes
+status        closed
+```
+
+**Why it blocks T004, T005 and T006 rather than running beside them.** Those three are mutually
+independent and are meant to run in parallel; they are also the first three evals that will be
+written by copying the shape of an existing one. A method extracted **after** they land is a
+method extracted from five samples of a habit rather than two samples of a rule, and three of
+those five would have inherited whatever the copying got wrong. T000 makes the same argument one
+layer down and is the reason it precedes the evals rather than sitting inside T008: *a defect in
+the measuring instrument is fixed before it is copied four times, not after.*
+
+**What it landed.** The skill is a **procedure and not a second copy of the shape**: it points at
+`evals/README.md`, `evals/report.py` and `evals/gate_proof/README.md` rather than restating them,
+because a procedure that carries its own copy of the rules is the copy that goes stale. What it
+adds is what only two samples can give — a table of every place claims 1 and 2 diverge, with the
+column that says what actually governs the choice: an outside-the-repository corpus against a
+generator behind an enforced barrier; a single question against a rate tested as a binomial; ten
+seconds a mutation against a small configuration declared in a contract; nothing cached against a
+world cache keyed on a digest of every file it was produced by.
+
+**And the extraction produced a finding, which is the argument for extracting from two.**
+`evals/README.md` declares `<claim>/README.md` as part of the shape. Claim 1 has one; **claim 2
+does not** — its three answers are real but spread across module docstrings, with only the third
+enforceable half printed on every run through `Report.notes`. It was invisible while there was one
+claim, because with one sample the shape *is* whatever that sample does. `docs/DECISIONS.md`
+carries it as a deferral with T012 as its unlock and a date behind that, rather than the skill
+declaring a shape half its own sample violates — and rather than this branch writing claim 2's
+evidence, which is how a document comes to assert more than the code supports.
+
+**The rule about sentences was short a limb, for the fourth time.** `ci.yml`'s `claims` job was
+given `timeout-minutes: 45`, projected from the author's fourteen-core laptop onto a four-core
+runner, which cancelled the harness before it finished. It happened **inside the same change that
+closed the deferral written to prevent it** — the 25-minute gate entry, whose whole argument is
+that a budget set from a projection is a gate reporting which machine it drew. Nothing was
+careless; the rule said *"a sentence"* and this was a YAML key. It now reads **an assertion — a
+sentence, or a number in configuration** — with the measurement taken on the hardware that will
+meet it. `CLAUDE.md`'s checklist carries the same widening, and the skill has a section on it:
+a timeout, a K, a tolerance, a threshold and a budget are each an assertion wearing a number
+instead of a verb.
+
+**One test, and it is armed by a planted fixture.** `tests/skills/test_skills.py` checks the
+wiring only — frontmatter parses, `name` is the directory, the description says *when*, no bundled
+file is unreferenced, every relative link resolves — and states in its docstring that it cannot
+check whether the skill is right or whether it is followed. The last two checks would be vacuously
+green on the real tree, since no skill here bundles a second file yet, so they are driven by a
+skill directory built inside the test that is wrong in each direction. That is the shape
+`tests/ops/test_expiry.py` already uses, and it is the answer to the text fallback whose twelve
+parametrised sources all took the other branch. The suite is **828**.
 
 ```
 id            T00C
@@ -1024,6 +1095,10 @@ L7  Stratified randomisation — strata matched on a composite distance, the lot
     The reference set fills at the scenario's shape.
                                           branch experiment/stratified-randomisation
                                                                                 status closed
+L8  .claude/skills/claim/ — the method for building a claim end to end, extracted from the two
+    that have closed rather than from one. CLAUDE.md's rule about a sentence widened to any
+    assertion, a number in configuration included.
+                                          branch ops/claim-skill                 status closed
 ```
 
 ---
@@ -1033,11 +1108,20 @@ L7  Stratified randomisation — strata matched on a composite distance, the lot
 ```
 T00A ─▶ T002 ─────┐    (both closed)
                   ├─▶ T00D ─▶ T00E ─▶ T003  ✅ (claim-2 green — phase 1's hardest claim)
-T001 ─▶ T002B ────┤    (both closed)
-T000 ─────────────┘    (also blocks T004, T005, T006)
+T001 ─▶ T002B ────┤    (both closed)                    │
+T000 ─────────────┘    (also blocks T004, T005, T006)   └─▶ T00B ✅ ─┬─▶ T004 (claim 3)
+                                                                    ├─▶ T005 (claim 4)
+                                                                    └─▶ T006 (claim 7)
 
-remaining before T008 and phase 2:  T004 (claim 3) · T005 (claim 4) · T006 (claim 7) · T007
+remaining before T008 and phase 2:  T004 · T005 · T006, mutually independent and parallel · T007
 ```
+
+**T00B sits on that edge deliberately.** It needs T003 because a method extracted from one closed
+claim is a copy of that claim, and it precedes T004–T006 because those three are the first evals
+that will be written by following an existing shape — extract the method after them and it is a
+method extracted from five samples of a habit rather than two samples of a rule, with three of the
+five having inherited whatever the copying got wrong. It is T000's argument one layer up: fix the
+instrument before it is copied four times, not after.
 
 **T003 has closed.** Claim 2 is green at K = 200 and the four numbers are published rather than
 ticked. What still stands between here and the phase-1 integration session is claims 3, 4 and 7 —
