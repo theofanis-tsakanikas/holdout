@@ -29,6 +29,7 @@ from holdout.core.guardrails import (
     Envelope,
     Freshness,
     GuardrailId,
+    MarkupOnCost,
     PriceBounds,
     ProposedPrice,
     Refusal,
@@ -353,7 +354,7 @@ def test_a_refusal_with_no_legal_price_is_disposal_rather_than_a_wrong_price(
             price=Money.of("1.10"),
             base_price=Money.of("1.20"),
             category_id="dairy",
-            benchmark_margin_pct=Decimal(5),
+            benchmark_markup_on_cost=MarkupOnCost(Decimal(5)),
         ),
         independent_envelope,
     )

@@ -66,6 +66,7 @@ from holdout.core.experiment import (
     Statistic,
 )
 from holdout.core.guardrails import Announcement, Assessment, CertifiedPrice, ProposedPrice, Refusal
+from holdout.core.guardrails.benchmark import MarginOnPrice, MarkupOnCost
 from holdout.core.guardrails.envelope import (
     Bound,
     Envelope,
@@ -103,10 +104,12 @@ EXACT_FIELDS: dict[type[Any], frozenset[str]] = {
             "marker",
             "changes_dispatched_today",
             "prior_price",
-            "benchmark_margin_pct",
+            "benchmark_markup_on_cost",
             "week_opening_price",
         }
     ),
+    MarkupOnCost: frozenset({"pct"}),
+    MarginOnPrice: frozenset({"pct"}),
     CertifiedPrice: frozenset(
         {
             "_witness",

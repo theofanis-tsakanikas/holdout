@@ -9,6 +9,11 @@ importing anything private, which is what keeps claim 1 from becoming one functi
 with itself.
 """
 
+from holdout.core.guardrails.benchmark import (
+    BenchmarkError,
+    MarginOnPrice,
+    MarkupOnCost,
+)
 from holdout.core.guardrails.certificate import (
     CertificateForgeryError,
     CertifiedPrice,
@@ -44,6 +49,7 @@ __all__ = [
     "Announcement",
     "AnnouncementBasis",
     "Assessment",
+    "BenchmarkError",
     "Bound",
     "CertificateForgeryError",
     "CertifiedPrice",
@@ -55,6 +61,8 @@ __all__ = [
     "GuardrailId",
     "GuardrailRefusal",
     "MarginCapRule",
+    "MarginOnPrice",
+    "MarkupOnCost",
     "MaxDeltaRule",
     "PriceBounds",
     "PriorPriceRule",

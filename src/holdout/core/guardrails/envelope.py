@@ -46,6 +46,7 @@ from typing import Protocol
 from holdout.contracts.model import Guardrail, GuardrailRule, GuardrailWindow
 from holdout.contracts.windows import resolve_as_of
 from holdout.core.decision import DecisionKey, DecisionPath, PriceSource, SafeState, safe_state_for
+from holdout.core.guardrails.benchmark import MarkupOnCost
 from holdout.core.guardrails.codes import (
     GUARDRAIL_ORDER,
     PRECEDENCE,
@@ -170,6 +171,15 @@ class MarginCapRule:
     an argument to a pure function. When that arrives, this becomes a different bound, and
     the `basis` field is where the branch will go.
 
+    Which denominator the benchmark is in
+    -------------------------------------
+    `benchmark` names the quantity; it does not say what that quantity is a fraction of, and
+    the two candidates differ by a fifth. The bound below is computed from
+    `ProposedPrice.benchmark_markup_on_cost`, a `MarkupOnCost` — see
+    `holdout.core.guardrails.benchmark` for why that is a type and not a comment, and
+    `docs/DECISIONS.md` for the half of the ambiguity that lives in the contract and is
+    deferred to the next window it opens.
+
     What is reachable today
     -----------------------
     `floor`, `max_delta` and `frozen_categories` all open on 2025-01-01, so `envelope_as_of`
@@ -272,7 +282,7 @@ class ProposedPrice:
     marker: str | None = None
     changes_dispatched_today: int | None = None
     prior_price: Money | None = None
-    benchmark_margin_pct: Decimal | None = None
+    benchmark_markup_on_cost: MarkupOnCost | None = None
     week_opening_price: Money | None = None
 
     def __post_init__(self) -> None:
@@ -287,6 +297,23 @@ class ProposedPrice:
             raise ProposalError("changes_dispatched_today counts dispatches; it is never negative")
         if not self.category_id:
             raise ProposalError("a proposal names the category it is in; nothing is inferred")
+        # The denominator, refused at runtime and not only by the annotation. A gross margin
+        # published over the *selling price* and a mark-up over the *cost* are the same
+        # constraint and different numbers, and the mistake this refuses is the shape the
+        # ambiguity actually arrives in: a bare percentage, taken off an instrument that
+        # defines it over the price, handed to a field that will multiply the cost by it.
+        # mypy sees it where mypy runs; this sees it everywhere else.
+        if self.benchmark_markup_on_cost is not None and not isinstance(
+            self.benchmark_markup_on_cost, MarkupOnCost
+        ):
+            raise ProposalError(
+                "benchmark_markup_on_cost is a MarkupOnCost — a percentage of the cost, "
+                f"not {type(self.benchmark_markup_on_cost).__name__}. A figure published "
+                "as a margin over the selling price is a MarginOnPrice, and "
+                "MarginOnPrice.as_markup_on_cost() is the only route between them: "
+                "16.81% of the price is 20.21% of the cost, and applying the first where "
+                "the second was meant is a silently stricter cap."
+            )
         # Doctrine rule 2, made structural at the point the marker enters the system. A
         # ladder price without its marker would be indistinguishable from a model decision
         # downstream, and a model decision wearing a fallback marker would make the
@@ -596,7 +623,7 @@ def evaluate(proposal: ProposedPrice, envelope: Envelope) -> Assessment:
                 "number that looks right and answers a different question.",
                 cap.safe_state,
             )
-        elif cost is None or proposal.benchmark_margin_pct is None:
+        elif cost is None or proposal.benchmark_markup_on_cost is None:
             refuse(
                 RefusalCode.INPUT_NOT_AVAILABLE,
                 GuardrailId.REGULATED_BASKET,
@@ -610,14 +637,15 @@ def evaluate(proposal: ProposedPrice, envelope: Envelope) -> Assessment:
             upper.append(
                 Bound(
                     amount=Money.as_upper_bound(
-                        Decimal(cost.cents) + cost.pct(proposal.benchmark_margin_pct)
+                        Decimal(cost.cents) + cost.pct(proposal.benchmark_markup_on_cost.pct)
                     ),
                     guardrail=GuardrailId.REGULATED_BASKET,
                     rule_id="cap_benchmark",
                     code=RefusalCode.MARGIN_CAP_EXCEEDED,
                     why=(
-                        f"cost {cost} plus the benchmark margin of "
-                        f"{proposal.benchmark_margin_pct}% ({cap.benchmark}, basis {cap.basis})"
+                        f"cost {cost} plus a benchmark mark-up of "
+                        f"{proposal.benchmark_markup_on_cost} ({cap.benchmark}, "
+                        f"basis {cap.basis})"
                     ),
                 )
             )

@@ -595,6 +595,61 @@ in `tests/core/test_balance.py`, and each of the three is a thing that happens.
 > decides something, so `IMBALANCED_PRE_PERIOD` is now a refusal a healthy experiment can genuinely
 > receive rather than an outcome the design screen had already made unlikely.
 
+**The eval's rounding is re-decided, not borrowed — and a tolerance was an exemption for one bug.**
+· 2026-08-28
+`evals/guardrail/reference.py` calls itself a second implementation of the envelope's arithmetic. It
+was one for the arithmetic and not for the **rounding**: the eval's own floor ended in
+`Money.as_lower_bound`, the core's primitive, under a docstring saying the direction had been
+"arrived at independently". Patch the primitive and both floors move together, so `G2`, `G3` and
+`G6` all stay green while every lower bound in the system sits in the wrong place. That is the
+fourth instance of `CLAUDE.md`'s *a guard tested by its author is tested in the shape the guard
+already handles*, and the first three were each declared impossible by prose sitting beside the
+code — as this one was.
+
+`evals/guardrail/rounding.py` re-decides the direction from the contract's own statement of it and
+carries it out by **integer division of a `Fraction`**. `Fraction` was not chosen because it is
+nicer: it is the one representation in the standard library that cannot share a bug with `Decimal`,
+because it has no precision, no context and no quantisation step to get wrong. Agreement between the
+two is then worth something, and `make gate-proof` plants `Money.as_lower_bound` rounding half-to-
+even to show a named check refuses it.
+
+The same reading killed `G3`'s one-cent tolerance. A refusal was "supported" if the price sat inside
+the exact bound by less than a cent — slack for the core's conservative rounding, the docstring said.
+But every price in this eval is a whole number of cents, so under a correctly rounded core that
+branch is **unreachable**: the only way into it is a bound sitting a cent *above* where the rule
+puts it. The tolerance was an exemption for exactly one bug, and that bug is the shape this
+repository's own history says its bugs appear in. Both `G3` and `G4` now compare against a bound
+this eval rounded itself, with nothing tolerated anywhere.
+
+**A check that goes through a price is blind where no price lands in the gap.** · 2026-08-28
+`G2` asks whether a certified price escaped a bound and `G3` whether a refused one had something to
+refuse. A bound a single cent out of place opens a gap exactly one cent wide, and twenty-eight
+thousand certified prices can miss it — which is why a mutation that moves a bound can survive both.
+`G10` therefore does not go through a price at all: every `Bound` the envelope attributed to a rule
+is compared with the edge this eval computed for the same rule, **as integer cents with no
+tolerance**, on all 824,790 of them. The two mutations planted against it are the rounding primitive
+changing direction and the margin floor built a cent too strict; the second also trips `G3`, and it
+is named on both for that reason.
+
+The cost is honest and small: `G10` is one more pass over the same outcomes, and it is the only
+check here that can catch a misplaced bound on a case where nothing was ever certified or refused
+because of it.
+
+**The denominator of a percentage is carried in the type.** · 2026-08-28
+A gross margin over the **selling price** and a mark-up over the **cost** are the same constraint and
+different numbers: 16.81% of the first is 20.21% of the second. `ProposedPrice.benchmark_margin_pct`
+named neither, so the shape of the mistake was a caller taking the figure an instrument publishes —
+in the instrument's denominator — and handing it to a field that multiplies the cost by it. It fails
+safe, and it is still a wrong number arrived at silently.
+
+A comment naming the denominator would have been read by whoever already knew. So
+`holdout.core.guardrails.benchmark` carries it in the type: `MarginOnPrice` is what a statistic or an
+instrument publishes, `MarkupOnCost` is what the envelope needs, and `as_markup_on_cost()` is the
+only route between them — a named call in a diff somebody reads. The field is
+`benchmark_markup_on_cost` and it refuses a bare `Decimal` **at runtime**, not only where mypy runs,
+because a bare number is exactly the shape the mistake arrives in. The half of the ambiguity that
+lives in `regulated_basket.yaml` is a contract change with a restatement chain and stays deferred.
+
 ---
 
 ## Deliberately deferred
@@ -852,17 +907,26 @@ implemented compliance.
 `ladder.quote()` takes a `floor` and clamps to it, per `floor_behaviour: clamp_to_floor` in
 `ladder_policy@v1`. It takes no ceiling and the policy declares none. So wherever the margin cap
 binds below the base price, the shallow rungs of the declared safe state produce prices the
-envelope refuses — **7,366 of 26,600 ladder quotes** in claim 1's eval, on this repository's own
-contract envelope among others.
+envelope refuses — **716 of 26,600 ladder quotes** in claim 1's eval, on one envelope.
 
-The guardrail set behaved correctly: it refused, by name, for a true reason. What is incomplete is
-**doctrine rule 1**. For an expiring product the safe state is the ladder, and here the ladder's own
-answer is refused, so there is nowhere left to fall. It is the same class as the finding a review
-made by composing two modules that had only ever been tested alone — and it was found the same way,
-by composing them over inputs nobody chose.
+Restated on 2026-08-28 by T000, **because the figure this entry first carried was wrong.** It said
+7,366, and 7,366 was every ladder quote the envelope refused for any reason outside the three
+bounds the ladder models — counted as though all of them were ceilings. **6,650 of them are
+`MARGIN_CAP_BASIS_UNEVALUABLE`**, a rule with no edge in either direction: it refuses every price at
+every rung, and a ladder that took ceilings would not move one of those quotes. Doctrine rule 4 —
+the prior value, the reason and the delta are all recoverable from this paragraph, and the finding
+survives at a tenth of the size. `G6` now separates the two counts and publishes both, and
+`tests/evals/test_guardrail_instrument.py` pins 716 and 6,650 so a change that merges them again is
+red in the suite.
 
-`G6` therefore asserts only the three bounds the ladder is built to satisfy and publishes the
-ceiling count beside it as a number, rather than widening an assertion until the finding fits.
+The guardrail set behaved correctly in both cases: it refused, by name, for a true reason. What is
+incomplete is **doctrine rule 1**, and only for the 716. For an expiring product the safe state is
+the ladder, and there the ladder's own answer is refused, so there is nowhere left to fall. It is
+the same class as the finding a review made by composing two modules that had only ever been tested
+alone — and it was found the same way, by composing them over inputs nobody chose.
+
+`G6` therefore asserts only the three bounds the ladder is built to satisfy and publishes the two
+counts beside it as numbers, rather than widening an assertion until the finding fits.
 
 *Why it is not fixed here:* the frequency depends on the corpus's derived cost, so the first
 question is how often it would happen against real costs, not how to make the number smaller. And a
@@ -872,20 +936,27 @@ is a contract change with a restatement.
 `CLAUDE.md` and is allowed to propose a restatement — or phase 2's gold layer, which supplies a
 realised per-code margin and would replace the derived cost with a measured one.
 
-**`benchmark_margin_pct` does not say which denominator it is in** · deferred 2026-08-27
+**The regulated basket's benchmark does not say which denominator it is in** · deferred 2026-08-27
 ΥΑ 21330/2026 άρθρο 4 παρ. 4 defines the capped margin as
 `(Τιμή Πώλησης − Μέσο Κόστος Πωληθέντων) / Τιμή Πώλησης` — a fraction of the **selling price**.
-`evaluate` bounds the price at `cost + cost × benchmark_margin_pct`, a mark-up on **cost**. The two
-express the same constraint and `m / (1 − m)` converts exactly, which is what claim 1's eval does.
+`evaluate` bounds the price at `cost + cost × markup`, a mark-up on **cost**. The two express the
+same constraint and `m / (1 − m)` converts exactly, which is what claim 1's eval does.
 
-But `contracts/guardrails/regulated_basket.yaml` names its benchmark `average_gross_margin_2025`,
-and the instrument that defines that quantity defines it over the price. A caller feeding it
-straight in would apply 16.81% where 20.21% was meant. That **fails safe** — a stricter cap — but it
-is an ambiguity in a load-bearing field, and it was found by reading the instrument the corpus cites
-rather than by reading the contract, which is exactly what an independent corpus is for.
+Half of this **closed on 2026-08-28 by T000, and the title changed with it.** It was
+"`benchmark_margin_pct` does not say which denominator it is in", and the field no longer exists:
+`ProposedPrice.benchmark_markup_on_cost` takes a `MarkupOnCost` and refuses a bare number at runtime
+as well as in the annotation, with `MarginOnPrice.as_markup_on_cost()` the only route between the
+two. A caller who has the instrument's figure now cannot hand it over by accident.
+
+What is still deferred is the **contract**. `contracts/guardrails/regulated_basket.yaml` names its
+benchmark `average_gross_margin_2025`, and the instrument that defines that quantity defines it over
+the price; the contract itself says nothing about the denominator. Applying 16.81% where 20.21% was
+meant **fails safe** — a stricter cap — but it is an ambiguity in a load-bearing contract value, and
+it was found by reading the instrument the corpus cites rather than by reading the contract, which
+is exactly what an independent corpus is for.
 *Unlock condition:* the next change to `regulated_basket.yaml`, which opens a window and carries a
-restatement anyway. The field's name or its documentation gains the denominator then. Until it does,
-`corpus/real/MANIFEST.yaml` and `evals/guardrail/README.md` both state it.
+restatement anyway. The benchmark's name or its documentation gains the denominator then. Until it
+does, `corpus/real/MANIFEST.yaml` and `evals/guardrail/README.md` both state it.
 
 **The contract's regulated basket still names three categories, not the decision's sixty-three** ·
 deferred 2026-08-27

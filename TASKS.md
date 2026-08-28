@@ -57,13 +57,48 @@ out_of_scope  The floor.yaml rule-id rename and the ladder-ceiling restatement �
 stop_at       When the three fixes land with tests that fail on the un-fixed instrument, and
               before any new eval (T003–T006) is written on the corrected shape.
 review        yes
-status        open
+status        closed
 ```
 
 Finding 2 is a defect in the measuring instrument itself: every eval built on the `evals/` shared
 shape inherits the blind spot. It is fixed **before** it is copied four times (into the claim-2, -3,
 -4 and -7 evals), not after — which is why it precedes T003–T006 instead of sitting inside the
 integration session that depends on them.
+
+**What it landed.** All three, each with a test that fails on the un-fixed instrument, and one thing
+the `closes` line did not ask for.
+
+*(1) The misattribution.* `G6` no longer counts every refusal outside the ladder's three bounds as a
+ceiling. Which bucket a refusal falls in is decided by `reference`, from the `side` it already
+computes per rule — not from a list of codes, which would have to be remembered every time a rule is
+added. **716 refused by a ceiling · 6,650 refused by a rule with no bound**, both published, both
+pinned in `tests/evals/test_guardrail_instrument.py`. `evals/guardrail/README.md`,
+`docs/DECISIONS.md` and `corpus/real/MANIFEST.yaml` restate rather than overwrite.
+
+*(2) The rounding, and the tolerance behind it.* `_exact_floor` is gone; `evals/guardrail/rounding.py`
+re-decides the direction and carries it out by integer division of a `Fraction` — the one
+representation in the standard library that cannot share a bug with `Decimal`, because it has no
+precision, no context and no quantisation. A test refuses any call to `Money.as_lower_bound`,
+`as_upper_bound` or `as_price` from the three eval modules that compute a bound, and it is scoped to
+include `checks.py` because that is where the offending line was: a rule scoped to the file the fix
+landed in would pass on the tree that had the bug. `G3`'s one-cent tolerance is gone with it — under
+a correctly rounded core it was unreachable, so it was an exemption for exactly one bug, the bound a
+cent too strict. `G4` lost the same tolerance for the same reason.
+
+*(3) The denominator.* `ProposedPrice.benchmark_markup_on_cost` takes a `MarkupOnCost` and refuses a
+bare number at runtime, not only where mypy runs; `MarginOnPrice.as_markup_on_cost()` is the only
+route between the two. The case the guard is tested on is the figure the instrument publishes —
+16.81% — not one this session invented. The contract half stays deferred.
+
+**Beyond the line above: `G10`.** `G2` and `G3` both reach a bound *through a price*, so both are
+blind wherever no corpus price lands in the one-cent gap a misplaced bound opens. `G10` compares
+every `Bound` the envelope placed against the edge the eval computed for the same rule, as integer
+cents with no tolerance — **824,790 compared, 0 disagreements**. It is what makes fix (2) provable
+rather than asserted: `make claim-1` now plants `Money.as_lower_bound` rounding half-to-even and a
+margin floor built a cent too strict, and both are refused by a check named in advance. The second
+also trips `G3`, which is the evidence that the tolerance is really gone.
+
+`make check` green at 767 tests · `make claim-1` **10/10 with 15/15 mutations biting**.
 
 ```
 id            T00A

@@ -20,11 +20,11 @@ anchor: |
             upper.append(
                 Bound(
                     amount=Money.as_upper_bound(
-                        Decimal(cost.cents) + cost.pct(proposal.benchmark_margin_pct)
+                        Decimal(cost.cents) + cost.pct(proposal.benchmark_markup_on_cost.pct)
                     ),
 replacement: |
             lower.append(
                 Bound(
                     amount=Money.as_upper_bound(
-                        Decimal(cost.cents) + cost.pct(proposal.benchmark_margin_pct)
+                        Decimal(cost.cents) + cost.pct(proposal.benchmark_markup_on_cost.pct)
                     ),

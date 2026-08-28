@@ -165,8 +165,8 @@ def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str]
     checked and named a function that has never existed in this repository, which is a worse
     error than the gap it was covering. What makes the gap survivable is its failure mode: if
     the workspace were not what ran, every mutation would report `SURVIVED` at once, because
-    every one of them would have been planted in a copy nothing imported. Thirteen
-    simultaneous survivals is not a failure anybody misses.
+    every one of them would have been planted in a copy nothing imported. Every mutation in
+    a claim surviving at the same moment is not a failure anybody misses.
     """
     environment = {
         "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",

@@ -1,0 +1,36 @@
+# The mutation that was invisible, and the reason this instrument was fixed.
+#
+# `Money.as_lower_bound` is the single primitive every floor in the envelope is rounded by.
+# A review found the eval's own `_exact_floor` calling it — so the eval's floor and the
+# core's floor were the same number arrived at once, and patching the primitive moved both.
+# G2, G3 and G6 all stayed green. The eval now rounds in `evals/guardrail/rounding.py`, by
+# integer division of a `Fraction`, sharing no arithmetic with `Money`.
+#
+# It is still not G6 that catches this: the ladder is handed the eval's floor, which is now
+# the *higher* of the two, so its quotes clear the core's loosened floor comfortably. The
+# check that catches it is the one that compares the two floors directly, on every case,
+# without waiting for a price to land in the one-cent gap.
+
+id:          the-bound-rounding-primitive-rounds-like-a-price
+claim:       1
+eval_module: evals.guardrail
+targets:
+  - G10.bounds-land-where-the-independent-arithmetic-puts-them
+
+breaks: >-
+  the primitive every floor in the envelope is rounded by rounds half-to-even, like a price,
+  instead of up, like a bound. Every lower bound in the system moves down by up to half a
+  cent at once, and a bound that rounds toward what it forbids admits prices below itself.
+
+file: src/holdout/core/money.py
+
+anchor: |
+      @classmethod
+      def as_lower_bound(cls, cents: Decimal | int | str) -> Money:
+          """Round a number of cents up. A floor never rounds down into what it forbids."""
+          return cls(_quantise(cents, ROUND_CEILING))
+replacement: |
+      @classmethod
+      def as_lower_bound(cls, cents: Decimal | int | str) -> Money:
+          """Round a number of cents up. A floor never rounds down into what it forbids."""
+          return cls(_quantise(cents, ROUND_HALF_EVEN))
