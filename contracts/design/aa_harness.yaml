@@ -1,0 +1,211 @@
+# What the A/A harness is configured with. `inference.yaml` is what the CORE consumes; this is
+# what the EVAL consumes, and they are kept apart so that a number the estimator never reads
+# cannot be mistaken for one it does.
+#
+# It lives in design/ rather than in a fifth contract family because CLAUDE.md declares four,
+# and a fifth bought for one file is a structural change made for a filing convenience.
+#
+# Every entry is a {value, source} pair for the reason inference.yaml gives about itself: the
+# alternative is a constant in a .py file, which is precisely the "value without a source" this
+# layer exists to refuse — doctrine rule 3 does not care what extension the file has. Nothing
+# here is law and every source says so.
+#
+# Several of the counts below are budgets rather than judgments, and they say which. What they
+# are budgets against is measured, on 2026-08-28, on the author's laptop at the `harness` scale:
+# a world takes about 21 seconds to generate and a readout that produces a number takes 5.3
+# seconds on a roster of 269 with the contract's B = 1000. A readout that refuses costs about
+# 0.3, because `close` never computes an estimate it is not going to state.
+
+version:        1
+effective_from: 2026-08-28
+
+# ------------------------------------------------------------------ how many worlds, how many draws
+
+seeds:
+
+  world:
+    value: 4
+    source:
+      kind: scenario_assumption
+      note: >-
+        How many world seeds the headline rates are measured across. More than one, because a
+        rate measured on a single world is a rate about that world and the seed stops being a
+        choice somebody made only when there is more than one of it; four rather than forty,
+        because a world seed costs a generation and the rate itself is what the lotteries buy.
+        It is a budget, and the budget is stated at the top of this file.
+      verified_on: 2026-08-28
+
+  lotteries_per_world_seed:
+    value: 50
+    source:
+      kind: scenario_assumption
+      note: >-
+        Lotteries drawn against each world seed. 4 x 50 = K = 200, which is the K CLAUDE.md
+        and TASKS.md both name. It is affordable at all because outside W2 a store's events are
+        a function of its own arm alone, so two counterfactual generations buy every lottery —
+        evals/uplift/potential.py derives that and a test asserts it against the generator
+        rather than against its docstring.
+      verified_on: 2026-08-28
+
+  pathology_world_seeds:
+    value: 2
+    source:
+      kind: scenario_assumption
+      note: >-
+        World seeds for W3, W4 and W5. Fewer than the headline worlds get, and the reason is
+        that what those three publish is whether the system does the declared thing at all —
+        refuse below the exposure floor, report the window rather than the first week, fail the
+        power check or widen the interval — which is a question a smaller sample answers.
+        Two rather than one, because one would be a world seed nobody chose twice.
+      verified_on: 2026-08-28
+
+  pathology_lotteries_per_world_seed:
+    value: 8
+    source:
+      kind: scenario_assumption
+      note: >-
+        Lotteries per world seed for W3, W4 and W5, so 16 draws each. A budget: at 5.3 seconds
+        a readout these three would otherwise cost more minutes than the two worlds whose rates
+        are the claim. If the published per-world rate turns out too coarse at 16 draws to
+        separate a system that works from one that does not, this number is what moves — and it
+        moves with a measurement beside it, not because a result was unflattering.
+      verified_on: 2026-08-28
+
+  interference_lotteries_per_world_seed:
+    value: 2
+    source:
+      kind: scenario_assumption
+      note: >-
+        W2 alone, and the smallest count in this file because it is the most expensive draw in
+        the harness. Interference makes a store's outcome depend on its neighbour's arm, so W2
+        cannot compose its potential outcomes and must generate a world PER LOTTERY — twice
+        over, since what it publishes is a pair: the estimate with the neighbour pairs declared
+        and the bias that arrives when they are withheld. Two lotteries against each of two
+        world seeds is eight generations for eight readouts, where every other world gets forty
+        readouts for two generations.
+      verified_on: 2026-08-28
+
+# ------------------------------------------------------------------ what is being tested
+
+binomial_level:
+  value: 0.01
+  source:
+    kind: scenario_assumption
+    note: >-
+      The level of the one-sided binomial test on the A/A false-positive rate. It is
+      deliberately NOT alpha. Alpha is what the system declares about itself; this is the level
+      at which we test whether it kept that declaration, and collapsing the two would be the
+      estimator grading its own homework. 0.01 is adopted as a convention for a test we would
+      rather not fail by accident on a rate that is genuinely at alpha.
+    verified_on: 2026-08-28
+
+false_refusal_max_pct:
+  value: 10
+  source:
+    kind: scenario_assumption
+    note: >-
+      How often W6 — the world where everything works and a real effect is present — may fail
+      to produce a number. CLAUDE.md is explicit about why it exists: a system that refuses
+      everything passes every other world and is worthless, so this is published beside the
+      false-positive rate rather than under it. It binds the refusals the MACHINERY produces:
+      every at_readout code except IMBALANCED_PRE_PERIOD, whose share is published beside it
+      with no threshold in this phase. The split, and what would give grounds to put a
+      threshold on the other half, are in docs/DECISIONS.md. The value was written before
+      anything was measured and has not been touched since.
+    verified_on: 2026-08-28
+
+coverage_tolerance_pct:
+  value: 5
+  source:
+    kind: scenario_assumption
+    note: >-
+      How far the realised coverage of a 95% interval may sit from 95, in percentage points,
+      over K runs of W6. At K = 200 the binomial standard error of a 95% coverage rate is about
+      1.5 points, so 5 is a little over three of them: wide enough not to fire on sampling
+      noise, narrow enough that a systematically wrong interval — the symptom of inference that
+      ignores the restriction the strata impose — does not hide inside it.
+    verified_on: 2026-08-28
+
+per_world_min_correct_pct:
+  value: 90
+  source:
+    kind: scenario_assumption
+    note: >-
+      The share of draws in which W2 to W5 must do the thing their declared correct behaviour
+      says. A rate with a threshold for every world, because W6's false-refusal rate is already
+      a rate and measuring the others differently would be two instruments reporting on one
+      claim. 90 rather than 100 because a world's pathology is injected into behaviour and
+      lands on the metric through a chain of draws: a rule that admits no exception at all
+      would be a rule that reports the seed it drew.
+    verified_on: 2026-08-28
+
+mde_pct_of_pre_period_mean:
+  value: 2.5
+  source:
+    kind: scenario_assumption
+    note: >-
+      The minimum detectable effect the harness's single design form declares, as a percentage
+      of the pre-period mean per unit-week. Declared once for every world — a per-world MDE
+      would be a per-world degree of freedom — and derived from the PRE-PERIOD alone: at the
+      harness scale the within-unit week-to-week standard deviation is about 12% of the mean,
+      which sizes a design at five to six weeks against a max_duration of eight, so 2.5 leaves
+      margin on both sides without being chosen against any world's realised effect. No seal
+      was opened to arrive at it and none needs to be: everything in that sentence is
+      measurable before an experiment runs, which is the whole point of declaring an MDE in
+      advance.
+    verified_on: 2026-08-28
+
+unit_exposed_min_ack_pct:
+  value: 90
+  source:
+    kind: scenario_assumption
+    note: >-
+      When a treated unit counts as exposed. holdout.core measures exposure per UNIT — the
+      share of assigned treated units whose price reached a shelf — and a world fails
+      acknowledgements per price change, so something has to say where the line between the two
+      grains is and it is not the core's to say. A store whose labels took nine changes in ten
+      received the treatment; one that took seven did not. It is deliberately NOT
+      inference.exposure_min_pct: that number is the floor on the share of exposed units, this
+      one is the definition of an exposed unit, and one number doing both jobs is a number that
+      cannot be moved for either.
+    verified_on: 2026-08-28
+
+# ------------------------------------------------------------------ what a mutation runs
+
+machinery:
+
+  world_seeds:
+    value: 1
+    source:
+      kind: scenario_assumption
+      note: >-
+        `python -m evals.uplift.machinery` runs the same named checks as the published harness
+        at a configuration small enough to finish inside evals/gate_proof's 300-second cap,
+        which the published harness cannot meet and should not try to. One world seed, because
+        the rate-shaped checks are absent from this entry point rather than computed on three
+        draws and called a rate.
+      verified_on: 2026-08-28
+
+  lotteries:
+    value: 3
+    source:
+      kind: scenario_assumption
+      note: >-
+        Lotteries per world at the machinery configuration. Three rather than one, so a check
+        that reads a share across draws has something to take a share of, and so a mutation
+        that breaks one draw in a way that depends on the seed still trips it.
+      verified_on: 2026-08-28
+
+  scale:
+    value: rehearsal
+    source:
+      kind: scenario_assumption
+      note: >-
+        The corpus scale a mutation's run generates at. Not `harness`: one harness-scale world
+        is about twenty-one seconds and a machinery run needs a dozen of them, which is a
+        gate-proof cap spent nine times over. `rehearsal` generates in about one second and is
+        a genuine world with every mechanism in it. What it is NOT is a roster on which a
+        readout passes the balance check — twenty stores give a control arm of four — so the
+        checks the machinery entry point runs are the ones that survive a refusal, and the
+        rest are the published harness's alone. evals/uplift/machinery.py names which and why.
+      verified_on: 2026-08-28

@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/aa_harness.schema.json",
+  "title": "The A/A harness's declared configuration",
+  "description": "What the EVAL consumes, kept apart from inference.yaml, which is what the CORE consumes. A number the estimator never reads must not be mistakeable for one it does, and the split is what makes that structural rather than remembered. Every entry is a {value, source} pair for the reason inference.yaml gives about itself: a threshold nobody justified is a dial that will eventually be turned, and doctrine rule 3 does not care what extension the file has. Nothing here is law and every source says so.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "effective_from",
+    "seeds",
+    "binomial_level",
+    "false_refusal_max_pct",
+    "coverage_tolerance_pct",
+    "per_world_min_correct_pct",
+    "mde_pct_of_pre_period_mean",
+    "unit_exposed_min_ack_pct",
+    "machinery"
+  ],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "effective_from": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date" },
+    "note": { "type": "string" },
+
+    "seeds": {
+      "description": "How many worlds are generated and how many lotteries are drawn against each. K is world x lotteries_per_world_seed, and the split is the whole reason K = 200 costs five generations rather than two hundred: outside W2 a store's events are a function of its own arm, so two counterfactual generations buy every lottery.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "world",
+        "lotteries_per_world_seed",
+        "pathology_world_seeds",
+        "pathology_lotteries_per_world_seed",
+        "interference_lotteries_per_world_seed"
+      ],
+      "properties": {
+        "world": { "$ref": "#/$defs/sourced_positive_integer" },
+        "lotteries_per_world_seed": { "$ref": "#/$defs/sourced_positive_integer" },
+        "pathology_world_seeds": { "$ref": "#/$defs/sourced_positive_integer" },
+        "pathology_lotteries_per_world_seed": { "$ref": "#/$defs/sourced_positive_integer" },
+        "interference_lotteries_per_world_seed": { "$ref": "#/$defs/sourced_positive_integer" }
+      }
+    },
+
+    "binomial_level": {
+      "description": "The level of the one-sided binomial test on the A/A false-positive rate. Deliberately NOT alpha: alpha is what the system declares about itself, and this is the level at which we test whether it kept that declaration. Collapsing the two would be the estimator grading its own homework.",
+      "$ref": "#/$defs/sourced_probability"
+    },
+    "false_refusal_max_pct": {
+      "description": "How often W6 -- the world where everything works -- may fail to produce a number. It binds the refusals the MACHINERY produces: every at_readout code except IMBALANCED_PRE_PERIOD, whose rate is published beside it with no threshold in this phase. See docs/DECISIONS.md for why, and what would give grounds to put one on it.",
+      "$ref": "#/$defs/sourced_percent"
+    },
+    "coverage_tolerance_pct": {
+      "description": "How far the realised coverage of a 95% interval may sit from 95 over K runs of W6, in percentage points.",
+      "$ref": "#/$defs/sourced_percent"
+    },
+    "per_world_min_correct_pct": {
+      "description": "The share of draws in which W2 to W5 must do the thing their declared correct behaviour says. A rate over seeds with a declared threshold, for every world, because W6's false-refusal rate is already a rate and measuring the others differently would be two instruments.",
+      "$ref": "#/$defs/sourced_percent"
+    },
+    "mde_pct_of_pre_period_mean": {
+      "description": "The minimum detectable effect the harness's one design form declares, as a percentage of the pre-period mean per unit-week. Declared once for every world and written before any seal is opened. If a world refuses under it, that IS the published refusal rate and the number is not touched afterwards.",
+      "$ref": "#/$defs/sourced_positive_number"
+    },
+    "unit_exposed_min_ack_pct": {
+      "description": "When a treated unit counts as exposed. Exposure is measured per unit by holdout.core, and a world fails acknowledgements per price change, so the eval has to say where the line is. It is here rather than reusing inference.exposure_min_pct because the two answer different questions at different grains, and one number doing both jobs is one that cannot be moved for either.",
+      "$ref": "#/$defs/sourced_percent"
+    },
+
+    "machinery": {
+      "description": "What a gate-proof mutation runs: the same named checks at a configuration small enough to finish inside the executor's cap. The rate-shaped checks are absent from it rather than computed on three draws and called a rate.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["world_seeds", "lotteries", "scale"],
+      "properties": {
+        "world_seeds": { "$ref": "#/$defs/sourced_positive_integer" },
+        "lotteries": { "$ref": "#/$defs/sourced_positive_integer" },
+        "scale": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": "string", "minLength": 1 },
+            "source": { "$ref": "#/$defs/source" }
+          }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "source": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/provenance" },
+    "sourced_probability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_positive_number": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_percent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0, "maximum": 100 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_positive_integer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "integer", "minimum": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    }
+  }
+}

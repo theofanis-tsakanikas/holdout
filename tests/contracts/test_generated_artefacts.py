@@ -11,6 +11,7 @@ hand-edited consumer cannot quietly become a second definition.
 
 from __future__ import annotations
 
+import re
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -194,8 +195,8 @@ def test_the_provenance_ratio_is_reported_on_a_red_build_too(
     """
     before = run(sandbox)
     assert before == 0
-    green = capsys.readouterr().out
-    assert "59/59 values carry a source" in green
+    sourced, total = _ratio(capsys.readouterr().out)
+    assert sourced == total and sourced > 0
 
     def unsource(document: Any) -> Any:
         document["windows"][0]["rules"][0]["thresholds"] = {"value": 3}
@@ -204,7 +205,21 @@ def test_the_provenance_ratio_is_reported_on_a_red_build_too(
     edit_contract(sandbox / "contracts" / "guardrails" / "floor.yaml", unsource)
     assert run(sandbox) == 1
     red = capsys.readouterr().err
-    assert "59/60 values carry a source" in red, red.splitlines()[:2]
+    assert _ratio(red) == (sourced, total + 1), red.splitlines()[:2]
+
+
+def _ratio(output: str) -> tuple[int, int]:
+    """The provenance line's two numbers, read out of the build's own output.
+
+    Read rather than written down. The figures were literals here — `59/59` and `59/60` — and
+    a literal in a test about a *ratio* has to be edited every time a contract grows a number,
+    which is a test that goes red for the one reason it is not about. What the line has to do
+    is fall short of its denominator when a value loses its source, and that is a relation
+    between the two numbers rather than either of them.
+    """
+    found = re.search(r"(\d+)/(\d+) values carry a source", output)
+    assert found is not None, f"no provenance line in:\n{output}"
+    return int(found.group(1)), int(found.group(2))
 
 
 def test_the_ratio_counts_values_and_not_sources() -> None:

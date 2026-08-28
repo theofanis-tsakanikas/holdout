@@ -136,6 +136,16 @@ def _summary(contracts: ContractSet, expected: dict[str, str]) -> list[str]:
         f" · exposure floor {contracts.inference.exposure_min_pct}%"
         f" · SMD tolerance {contracts.inference.balance_tolerance_smd}"
         f" · B {contracts.inference.permutation_draws}",
+        # And the same argument for the harness's own contract, which compiles to nothing
+        # either. It is printed on its own line rather than folded into the one above,
+        # because the whole reason the two files are separate is that one is what the core
+        # reads and the other is what the eval reads.
+        f"aa harness   K {contracts.aa_harness.seeds.draws}"
+        f" ({contracts.aa_harness.seeds.world} world seed(s)"
+        f" x {contracts.aa_harness.seeds.lotteries_per_world_seed} lotteries)"
+        f" · binomial at {contracts.aa_harness.binomial_level}"
+        f" · MDE {contracts.aa_harness.mde_pct_of_pre_period_mean}% of the pre-period mean"
+        f" · machinery at {contracts.aa_harness.machinery.scale}",
         _provenance_line(contracts.census),
         f"generated    {len(expected)} artefact(s) from {len(in_force)} metric(s)"
         f" and the design form",

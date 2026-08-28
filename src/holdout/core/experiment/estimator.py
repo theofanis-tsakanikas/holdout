@@ -549,9 +549,20 @@ def permutation_p(
     leaves out of the draws for exactly this reason.
     """
     values = _ordered(plan.design, outcomes)
+    # No shift, so the polynomial is evaluated at zero and is exactly what `_statistic`
+    # computes — the same rationals by the same route. It is written this way rather than
+    # through `_statistic` so the complement identity applies here too: at the declared
+    # holdout share each draw then accumulates a fifth of the units instead of all of them.
+    unshifted = [Fraction(0)] * len(values)
+    whole = _sums(plan.design, tuple(range(len(plan.design.units))), values, unshifted)
     hits = 0
     for treatment, control in plan.plans:
-        drawn = _statistic(treatment, control, plan.design, plan.grand_mean, values)
+        sums_t, sums_c = _paired_sums(
+            plan.design, whole, values, unshifted, treatment.rows, control.rows
+        )
+        drawn = _shifted(treatment, control, plan.design, plan.grand_mean, sums_t, sums_c).at(
+            Fraction(0)
+        )
         if _as_extreme(drawn, observed, direction):
             hits += 1
     return Fraction(1 + hits, 1 + plan.size)
@@ -648,6 +659,33 @@ def _sums_complement(whole: _Sums, part: _Sums) -> _Sums:
         cross=whole.cross - part.cross,
         treated_count=whole.treated_count - part.treated_count,
     )
+
+
+def _paired_sums(
+    design: Design,
+    whole: _Sums,
+    outcomes: Sequence[Fraction],
+    treated: Sequence[Fraction],
+    rows_treatment: tuple[int, ...],
+    rows_control: tuple[int, ...],
+) -> tuple[_Sums, _Sums]:
+    """Both arms' accumulations, by complement where the two partition the design.
+
+    The condition is checked and not assumed — see `_arm_plans`, which makes the same check
+    about the same partition for the same reason. Where it does not hold, each arm is
+    accumulated directly, which is what a caller handing in draws over a subset of the design
+    gets and what `tests/core/test_estimator_interval.py` drives deliberately.
+    """
+    if len(rows_treatment) + len(rows_control) != len(design.units):
+        return (
+            _sums(design, rows_treatment, outcomes, treated),
+            _sums(design, rows_control, outcomes, treated),
+        )
+    if len(rows_control) <= len(rows_treatment):
+        smaller = _sums(design, rows_control, outcomes, treated)
+        return _sums_complement(whole, smaller), smaller
+    smaller = _sums(design, rows_treatment, outcomes, treated)
+    return smaller, _sums_complement(whole, smaller)
 
 
 def _arm_polynomial(
@@ -766,17 +804,7 @@ def interval(
     whole = _sums(plan.design, tuple(range(len(plan.design.units))), values, treated)
 
     def arm_sums(rows_t: tuple[int, ...], rows_c: tuple[int, ...]) -> tuple[_Sums, _Sums]:
-        """Both arms' accumulations, by complement where the two partition the design."""
-        if len(rows_t) + len(rows_c) != len(plan.design.units):
-            return (
-                _sums(plan.design, rows_t, values, treated),
-                _sums(plan.design, rows_c, values, treated),
-            )
-        if len(rows_c) <= len(rows_t):
-            smaller = _sums(plan.design, rows_c, values, treated)
-            return _sums_complement(whole, smaller), smaller
-        smaller = _sums(plan.design, rows_t, values, treated)
-        return smaller, _sums_complement(whole, smaller)
+        return _paired_sums(plan.design, whole, values, treated, rows_t, rows_c)
 
     observed_plan = (_arm_plan(plan.design, treatment), _arm_plan(plan.design, control))
     observed_shifted = _shifted(
