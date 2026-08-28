@@ -618,7 +618,8 @@ evals/                 one directory per claim · report.py is the shared shape
   gate_proof/          the planted mutations: green first, named target, STALE on a moved one
 ops/                   the rules the product code is measured by — the corpus barrier
                        (one implementation, two callers) and the deferral registry
-.claude/               the AI layer that ships with the repository: the hooks, and settings.json
+.claude/               the AI layer that ships with the repository: the skills, the hooks,
+                       and settings.json
 pipelines/ingest/      Zerobus driver · Lakeflow Connect · the S3 bulk load
 pipelines/silver/      Spark Declarative Pipelines
 pipelines/gold/        dbt
@@ -1000,6 +1001,43 @@ really does drop the later-sorted member of every neighbouring pair; what no rea
 have said is that the units it leaves behind carry a variance the readout will refuse. That is not
 in any function. It is in a number, and the only way to have it is to run the thing.
 
+### And a fourth time, in no sentence at all — the rule was scoped to the form, not the defect
+
+The three above are prose. **The fourth was a number in a workflow file**, with no sentence
+anywhere near it. `ci.yml`'s `claims` job was given `timeout-minutes: 45`, projected from a
+measurement taken on the author's **fourteen-core** laptop onto a runner with **four**. The runner
+cancelled the harness before it finished. No cold measurement of the thing that would actually run
+had been taken, and one run would have produced it.
+
+What makes it this defect rather than an estimate that came out wrong: it happened **inside the
+same change whose deferral existed to prevent it**. `docs/DECISIONS.md` carried *"CI's gate job runs
+on a temporary 25-minute timeout"*, whose entire argument is that a budget set from a projection
+rather than from the spread between runners is a gate that reports which machine it drew, and whose
+*what must not happen* names the next session's mistake in advance. That entry was **closed by this
+change** — correctly, by splitting the jobs rather than raising anything — and in the same diff the
+new job's budget was set the way the closed entry says not to. Nothing was careless. The rule simply
+did not appear to apply, because it said *"a sentence"* and this was a YAML key.
+
+**A timeout, a K, a tolerance, a threshold, a budget — each is an assertion about what the system
+does, wearing a number instead of a verb.** `timeout-minutes: 45` says *this job finishes in
+forty-five minutes*, which is as falsifiable as any row of the six-worlds table and was false in
+exactly the same way: written against a projection instead of against the measurement of what comes
+out when it runs. What a number lacks is the paragraph that would have made somebody ask which
+function makes it true — so it is the form of the claim that hides it, which is precisely why the
+rule may not be scoped to a form.
+
+> **An assertion about what the system does — a sentence, or a number in configuration — is written
+> against the function that would make it true, named, *and against the measurement of what comes
+> out when it runs*. Where the number will be met on hardware that is not the author's, the
+> measurement is taken there.**
+
+This restates the boxed rule above, which said *a sentence*; the prior wording stays per doctrine
+rule 4, and the delta is the finding. It was never only about sentences — the three instances that
+produced it happened to be prose, and a rule generalised from the form the known defects wore is a
+rule that cannot see the next one. **Three of these were found by reading code; the fourth was
+found by a job being cancelled**, which is the same lesson the third one carried: only the
+measurement runs.
+
 ---
 
 ## Oversight — four levels
@@ -1043,7 +1081,7 @@ It is scheduled, not remembered: at the end of every phase, without exception.
 - Does it put a claim on a non-GA surface?
 - If it is a gate: is there a `gate-proof` mutation that proves it bites?
 - **If it is a guard, a barrier, a check or a hook: who wrote the case it is tested on?** See below.
-- **If it is a sentence about what the system does when something goes wrong: which function does it, named — and what came out when it ran?** A sentence written against the table it came from rather than against the code is the same defect one layer up; a sentence true of the code and false of the system on the corpus is the same defect one layer up again. See below.
+- **If it is an assertion about what the system does — a sentence, *or a number in configuration*: which function makes it true, named, and what came out when it ran?** A sentence written against the table it came from rather than against the code is the same defect one layer up; one true of the code and false of the system on the corpus is that defect again. **A timeout, a K, a tolerance, a threshold or a budget is the same assertion wearing a number instead of a verb** — set it from a measurement of the thing that will run, on the hardware that will run it, never from a projection. See below.
 - If it touches a contract: does the change imply a restatement?
 - If it states a legal fact: which article, which instrument, verified when?
 - If the pattern comes from another project in this portfolio: **what problem did it solve there,

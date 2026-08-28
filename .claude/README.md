@@ -1,20 +1,40 @@
 # The AI layer, in this repository
 
-CLAUDE.md names three mechanisms and one job each. This directory holds the third.
+CLAUDE.md names three mechanisms and one job each. This directory holds the second and the third.
 
-| | is | acts |
-|---|---|---|
-| `CLAUDE.md`, layered | a **rule** | passively, wherever you are working |
-| Skill | a **procedure** | when you invoke it by name |
-| Hook | a **guarantee** | the harness enforces it, wanted or not |
+| | is | acts | here |
+|---|---|---|---|
+| `CLAUDE.md`, layered | a **rule** | passively, wherever you are working | the repository root |
+| Skill | a **procedure** | when you invoke it by name | `skills/` |
+| Hook | a **guarantee** | the harness enforces it, wanted or not | `hooks/`, wired by `settings.json` |
 
 A rule that holds wherever you are → `CLAUDE.md`. A procedure that recurs and carries
 judgment → a skill. **Something that must never happen → a hook.**
 
-`settings.json` is committed, so the hooks travel with the repository and go through a pull
-request and CI like everything else. A guarantee that lives only on one laptop is not one.
+Everything here is committed, so the skills and the hooks travel with the repository and go
+through a pull request and CI like everything else. A guarantee that lives only on one laptop is
+not one, and a method that lives only in a conversation is not reviewable.
 
-## What is here, and what earns its place
+## The skills
+
+A skill lives **here** rather than at user level when it shapes the code in this repository, and
+at `~/.claude/skills/` when it produces something outside it — CLAUDE.md's criterion, and the
+reason `banner` and `readme-standard` are not here while these are.
+
+| | is invoked for |
+|---|---|
+| `skills/claim/` | building one of the seven claims end to end: the eval, its `gate-proof` mutations, its `make claim-N`, and the statement of where the independence is and what is not proved |
+
+Three more are declared in `CLAUDE.md` and not yet written: `defect-to-rule` (T00C),
+`contract-change`, and `integration-review` (T008).
+
+**A skill committed here is not a copy of a shared one. It is the record of the method that built
+*this* project**, and it is not supposed to match the next repository — it is supposed to be
+accurate about what happened here. `skills/claim/` is extracted from **two** closed claims rather
+than one, because with one sample the shape is whatever that sample does; the second one is what
+turns a template into a rule with a named variation, and it produced a finding while being written.
+
+## The hooks — what is here, and what earns its place
 
 | | fires on | refuses |
 |---|---|---|
@@ -96,3 +116,10 @@ silently dead, which is worse than never claiming them. `tests/hooks/test_settin
 this file, resolves each command, and runs each hook **through its shebang** rather than by
 handing it to an interpreter. It also asserts that every hook on disk is wired and every wired
 hook is on disk.
+
+`tests/skills/test_skills.py` is the same argument one directory along, and a much weaker one
+because the failure is smaller: a skill whose frontmatter does not parse, or whose `name` does not
+match its directory, does not load — it is a procedure nobody can invoke rather than a guarantee
+silently not running. What that test does **not** check is whether the skill is *right*; nothing
+can, and the claim targets, `make gate-proof` and oversight level 2 are what stand behind the
+method it describes. Its own limits are stated in its docstring.

@@ -559,6 +559,46 @@ would make it true, and against the measurement of what comes out when it runs. 
 of the code and false of the system on the corpus.* Three wrong sentences about one table is a
 signal that the rule was short a limb, not that somebody was careless.
 
+**What the `claim` skill settled, and the finding it produced by existing (T00B).** The method for
+building a claim end to end now ships with the repository, in `.claude/skills/claim/`, and it is
+**extracted from the two claims that have closed rather than from one** — with one sample the shape
+*is* whatever that sample does, and the extraction is a copy. It is deliberately a *procedure and
+not a second copy of the shape*: `evals/README.md`, `evals/report.py` and
+`evals/gate_proof/README.md` already carry the rules, and a procedure that restates them is the copy
+that goes stale. What only two samples can give is the divergence table — an outside-the-repository
+corpus against a generator behind an enforced barrier, one question against a rate tested as a
+binomial, ten seconds a mutation against a small configuration declared in a contract, nothing
+cached against a world cache keyed on a digest — each with the column saying what governs the
+choice.
+
+**Laying the two side by side found something no reading of either could.** `evals/README.md`
+declares `<claim>/README.md` as part of the shape; claim 1 has one and **claim 2 does not**. Its
+three answers are real — the attack in `__init__.py` and `checks.py`, the independence spread across
+`potential.py`, `reference.py` and `cache.py`, and the third printed on every run through
+`Report.notes`, which is the enforceable half — but there is no single place a reader finds the
+independence argument. It is a deferral with T012 as its unlock and a date behind that, not a fix in
+an ops branch: writing claim 2's evidence in a branch that is not reading the estimator line by line
+is how a document comes to assert more than the code supports.
+
+**And the rule about sentences was short a limb for the fourth time — this one was not a sentence.**
+`ci.yml`'s `claims` job was given `timeout-minutes: 45`, projected from the author's fourteen-core
+laptop onto a four-core runner, which cancelled the harness before it finished. It happened inside
+the same change that **closed the deferral written to prevent it** — the 25-minute gate entry, whose
+argument is that a budget set from a projection is a gate reporting which machine it drew. Nothing
+was careless; the rule said *"a sentence"* and this was a YAML key, so it did not appear to apply.
+`CLAUDE.md` now reads **an assertion — a sentence, or a number in configuration** — written against
+the function that would make it true and against the measurement of what comes out when it runs,
+taken on the hardware that will meet it. A timeout, a K, a tolerance, a threshold and a budget are
+each that assertion wearing a number instead of a verb. The prior wording stays, per doctrine rule
+4: a rule generalised from the form the known defects wore is a rule that cannot see the next one.
+
+`tests/skills/test_skills.py` checks the wiring only — frontmatter, the name against the directory,
+the description saying *when*, no unreferenced bundled file, every relative link resolving — and
+says in its docstring that it cannot check whether the skill is right or whether it is followed. The
+last two checks would have been vacuously green on the real tree, so they are armed by a planted
+skill directory built inside the test, which is what `tests/ops/test_expiry.py` already does for
+`make expiry`. The suite is **828**.
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase

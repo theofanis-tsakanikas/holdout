@@ -1273,3 +1273,31 @@ No other branch is protected and none needs to be. `deploy`, `backfill`, `run` a
 specified to dispatch from `main` only; that constraint is currently a sentence in CLAUDE.md rather
 than a workflow condition, because those workflows do not exist.
 *Unlock condition:* phase 3, when they are written. Each gets an explicit `main`-only guard.
+
+**Claim 2's eval has no three-question README** · deferred 2026-08-29
+`evals/README.md`'s shape block declares `<claim>/README.md` — *what is attacked, where the
+independence is, what it does not prove* — and `evals/guardrail/` has one. `evals/uplift/` does
+not. The three answers exist and are good ones: the attack is in `evals/uplift/__init__.py` and in
+`checks.py`, the independence argument is spread across `potential.py`, `reference.py` and
+`cache.py`, and the third answer is **printed on every run** through `Report.notes`, which is the
+half rule 6 makes enforceable and the half that cannot quietly stop being true. What is missing is
+the one place a reader who has not opened the package can find the independence argument as a
+single thing.
+
+*How it was found, which is the interesting half.* It was invisible while there was one claim,
+because with one sample the shape **is** whatever that sample does. It surfaced while T00B
+extracted the `claim` skill from **two** closed claims rather than one — the second sample is what
+turns a template into a rule, and the first thing a rule does is name what disagrees with it. It is
+the same shape as the finding T003 stopped on: two artefacts each correct on their own, with
+nothing computing the product.
+
+*Why it is not fixed here.* T00B is an ops task that writes a method; writing claim 2's README is
+writing claim 2's evidence, and a README synthesised in a branch that is not reading the estimator
+line by line is exactly how a document comes to assert more than the code supports. This repository
+has paid for that four times, twice inside the evidence layer itself. The skill records the
+standard and names the divergence rather than declaring a shape half its own sample violates.
+*Unlock condition:* the next task that opens `evals/uplift/` for a reason of its own — T012, whose
+claim-5 work makes the two Python implementations three and therefore rewrites what that eval does
+and does not prove, or T008 if it gets there first.
+*Expires:* 2026-12-31 — a missing README has no natural deadline, so it gets a calendar one rather
+than an unlock condition alone, which `make expiry` can never evaluate.
