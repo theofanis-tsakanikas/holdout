@@ -347,10 +347,14 @@ test at all before and is what capped the usable roster at 212 however many stor
 became 39.2M, because the chain moved. `demand.BASE_LINES_PER_SKU_DAY` was left where it was —
 re-tuning a measured constant to land back on a prose figure is fitting the corpus to a sentence.
 
-**What T003 inherits.** A false-refusal rate on balance alone of roughly 4% to 40% depending on the
-world seed. That is a number to publish and reckon with, and it is above the 10% the SPEC's §4
-proposed for `false_refusal_max_pct` — which is now a threshold to argue from measurement rather
-than a wall to walk into.
+**What T003 inherits, and the one decision it does not have to take.** A refusal rate on balance
+alone of roughly 4% to 40% depending on the world seed and the roster. `false_refusal_max_pct`
+**stays at 10 and is not touched** — it was written before anything was measured — and what it binds
+is settled instead: the refusals the machinery produces, every `at_readout` code but
+`IMBALANCED_PRE_PERIOD`. The imbalance rate is published beside it as a number with **no threshold**
+in this phase, because the only evidence for a bigger threshold would be the measurement that raised
+the question. `docs/DECISIONS.md` carries the deferral with what the rate is a function of and what
+would give grounds to set one; its unlock is T008.
 
 ---
 

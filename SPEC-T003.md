@@ -162,7 +162,7 @@ seeds:
 
 binomial_level:     { value: 0.01,  source: {…} }  # the one-sided test on the FP rate
 false_refusal_max_pct:
-                    { value: 10,    source: {…} }  # W6
+                    { value: 10,    source: {…} }  # W6 — machine refusals only, see below
 coverage_tolerance_pct:
                     { value: 5,     source: {…} }  # |realised - 95| on W6
 per_world_min_correct_pct:
@@ -181,6 +181,30 @@ Every entry is `kind: scenario_assumption` with a note and a `verified_on`, exac
 as constants in `evals/uplift/` for `inference.yaml`'s own stated reason: doctrine rule 3 does not
 care what extension the file has, and a threshold nobody justified is a dial that will eventually be
 turned.
+
+### What `false_refusal_max_pct` binds — settled 2026-08-28, after T00E measured it
+
+**The value stays at 10 and is not touched.** It was written before anything was measured and it
+stays where it was written; the SPEC's own §15 says no threshold is loosened, and a threshold
+loosened by the measurement that raised the question is a gate fitted to its own result.
+
+What is settled is **what it binds: the refusals the machinery produces** — every `at_readout` code
+except `IMBALANCED_PRE_PERIOD`. The share of W6 draws refused for pre-period imbalance is published
+**beside it, as a number with no threshold**, in `Report.numbers` rather than as a `Check`.
+
+The reason is that the two are different quantities wearing one name. A refusal for exposure,
+contamination or power is the machinery reporting on the experiment. A refusal for imbalance is
+**arithmetic about the roster**: with a finite control arm a covariate the others carry no
+information about keeps a sampling spread near the tolerance, which `strata.py` declares as its own
+limit and which T00E measured at 4–27% on the ordinary worlds and up to 40% on W2's smaller roster.
+Its categorical half is pinned by the strata and is refused at design since T00D, so what is left is
+exactly that residue. A single threshold over both would have had to move to admit it, on no
+evidence but the number that raised the question.
+
+`docs/DECISIONS.md` carries the deferral, with what the rate is a function of and what would give
+grounds to put a threshold on it — a measured curve over more than one roster size, and a sourced
+statement of how often a healthy world may be refused before the system stops being worth running.
+Its unlock is T008.
 
 **What lands with it:** `contracts/schemas/aa_harness.schema.json`; the entry in
 `loader.CLAIMED_FILES["design"]`; a model in `contracts/model.py`; and the file inside the
@@ -428,7 +452,7 @@ Numbers, in a monospace font, whether or not anything failed.
 |---|---|---|
 | `U1.aa-false-positive-rate` | on an A/A split the system reports a significant effect no more often than α | `9/200 = 4.5%`, and the one-sided binomial p at `binomial_level` |
 | `U2.aa-p-values-are-uniform` | the null p-values are not piled at one end | KS-style spread, published as a figure |
-| `U3.w6-false-refusal-rate` | a world where everything works produces the number | `4/200 = 2.0%` against `false_refusal_max_pct` |
+| `U3.w6-false-refusal-rate` | a world where everything works produces the number, unless the roster's own arithmetic stops it | `4/200 = 2.0%` of **machine** refusals — every `at_readout` code but `IMBALANCED_PRE_PERIOD` — against `false_refusal_max_pct` |
 | `U4.w6-coverage` | a 95% interval contains the truth about 95% of the time | `191/200 = 95.5%` against `coverage_tolerance_pct` |
 | `U5.w6-estimator-bias` | the estimate is unbiased for the truth | mean of `uplift − truth`, in cents, with its own spread |
 | `U6.w2-exclusion-is-load-bearing` | declaring the neighbour pairs removes the interference the design engine exists to remove | the **pair**: bias with pairs declared, bias with pairs withheld |
@@ -440,6 +464,11 @@ Numbers, in a monospace font, whether or not anything failed.
 
 `U1` is claim 2's sentence. `U3` is published **beside** it, in the same block, because a system that
 refuses everything passes `U1` and is worthless.
+
+**And a twelfth figure, which is a number rather than a check**: W6's `IMBALANCED_PRE_PERIOD` rate,
+printed in the same block with no threshold on it. See §4 for why it is not folded into `U3` and
+`docs/DECISIONS.md` for what would give grounds to put a threshold on it. A figure published without
+a gate is still published — what it is not is a gate whose bar was chosen after the measurement.
 
 ---
 

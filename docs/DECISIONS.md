@@ -1161,6 +1161,39 @@ instruction inside T003's `stop_at`, where a session will actually read it.
 registry's own entry below says that is the half of `make expiry` nothing real was arming. This is
 the first entry that arms it.
 
+**W6's `IMBALANCED_PRE_PERIOD` rate is published with no threshold on it** · deferred 2026-08-28
+`false_refusal_max_pct` — claim 2's statement that *a world where everything works produces the
+number* — stays at **10%** and is left exactly as it was written, before anything was measured. What
+changed is what it binds: **only the refusals the machinery produces**, which is every readout
+refusal that is not `IMBALANCED_PRE_PERIOD`. The share of W6 draws refused for pre-period imbalance
+is published beside it as a **number with no threshold** in this phase.
+
+*Why the split rather than a bigger number.* T00E measured the balance pass rate on the corpus's own
+roster at 145–192 of 200 over three world seeds — so the imbalance rate is roughly 4% to 27%, and on
+W2's smaller roster up to 40%. A single threshold covering both would have had to move from 10 to
+something that admits it, and **the only evidence for the new number would be the measurement that
+raised the question**. That is a gate fitted to its own result, which is the shape oversight level 3
+exists to catch and which `inference.yaml` refuses in as many words for the two thresholds it owns.
+Publishing the figure unthresholded hides nothing, adjusts nothing, and leaves the question where it
+belongs.
+
+*What the rate is a function of, so that whoever sets a threshold knows what they are setting it
+against:* the size of the control arm (53 at the harness scale, 43–44 in W2), the five covariates
+`balance_covariates.yaml` fixes, and the 0.10 `balance_tolerance_smd`. It is sampling spread on the
+**numeric** covariates and nothing else — the categorical half is pinned by the strata and is
+refused at design since T00D, so what is left is the residue `strata.py` already declares as its own
+limit: with a finite control arm, a covariate the others carry no information about keeps a spread
+near the tolerance.
+
+*What would give grounds to set one.* Two things this phase does not have. The rate measured across
+more than one roster size, so its dependence on the control arm is a **measured curve** rather than
+one point with an argument attached; and a declared statement, with a source, of how often a healthy
+world may be refused before the system stops being worth running — which is a judgment about the
+product and not an output of the harness.
+*Unlock condition:* the phase-1 integration session (T008), which is the level empowered to ask
+whether a gate has stopped biting and to propose a restatement, with T003's published rate over all
+five world seeds and both rosters in front of it.
+
 **Branch protection covers `main` only** · deferred 2026-08-27
 `main` is protected by a repository ruleset with **no bypass actors**, so the rule binds the owner
 too: changes only through a pull request, `gate` and `secrets` both required and both green,
