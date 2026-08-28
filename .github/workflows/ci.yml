@@ -133,18 +133,22 @@ jobs:
     needs: [discover]
     if: needs.discover.outputs.any == 'true'
     runs-on: ubuntu-latest
-    # TEMPORARY, and set from measurement rather than from hope. On the author's laptop
-    # `make claim-2` is about twenty minutes: eleven for the published harness at K = 200 and
-    # nine for one uncached baseline plus eight mutated runs. A GitHub runner has four cores
-    # against fourteen and is slower per core, and the spread between runners on identical
-    # work has already been measured at ~40% once — so this carries the headroom that spread
-    # demands and no more.
+    # TEMPORARY, and set from measurement — including one measurement of this number being
+    # wrong. `make claim-2` is 1h11m cold on a fourteen-core laptop: 32 minutes for the
+    # published harness at K = 200 and the rest for one baseline plus eight mutated runs. It
+    # was first set at 45 on a projection, and the runner cancelled the harness before it
+    # finished, which is what a projection is worth against four cores.
     #
-    # It is a job timeout and not the `gate` one: `TASKS.md`'s instruction was that the gate
-    # does not go up a third time, and it has come back down to 15 in this same change. The
-    # deferral in `docs/DECISIONS.md` carries this number with a review date, exactly as the
-    # last one did, so it expires by the calendar rather than by somebody remembering.
-    timeout-minutes: 45
+    # 90 is the cold number with the headroom the ~40% spread between runners already measured
+    # in this repository demands. **The steady state is much lower**: the step below carries
+    # `.worlds/` across runs on the digest the cache already computes, so every run whose
+    # corpus is unchanged skips generation entirely. That is what the next measurement should
+    # bring this down to, and the deferral in `docs/DECISIONS.md` says so with a date on it.
+    #
+    # It is this job's timeout and not the `gate` one: `TASKS.md`'s instruction was that the
+    # gate does not go up a third time, and it came back down to 15 in the same change that
+    # created this job — measured at 2m33s on the first run under the new topology.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -159,6 +163,22 @@ jobs:
 
       - name: install exactly what uv.lock pins
         run: make setup-locked
+
+      # Claim 2 generates its worlds once per command and reads them back — `.worlds/`, keyed
+      # on a digest of the corpus and of the two modules that group it. This carries that one
+      # layer further out, across runs, and it is the same guarantee rather than a weaker one:
+      # **the cache key is the digest itself**, computed by the code that decides what a stale
+      # entry is, so a changed corpus is a cache miss here for exactly the reason it is a miss
+      # inside a run. Nothing else may reuse it, and a claim target that generates nothing
+      # simply never writes one.
+      - name: the digest claim 2's world cache is keyed on
+        id: worlds
+        run: echo "digest=$(uv run python -c 'from evals.uplift import cache; print(cache.source_digest())')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .worlds
+          key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}
 
       - name: make ${{ matrix.target }}
         run: make ${{ matrix.target }}

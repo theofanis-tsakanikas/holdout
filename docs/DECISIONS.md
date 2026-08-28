@@ -1169,7 +1169,7 @@ the first entry that arms it.
 > are still never listed in the workflow, so a claim target that exists but is never run is still
 > impossible by construction. The entry below carries the new job's own budget.
 
-**CI's `claims` job runs on a temporary 45-minute timeout** · deferred 2026-08-28
+**CI's `claims` job runs on a temporary 90-minute timeout** · deferred 2026-08-28
 `make claim-2` is the most expensive target in the repository and it is expensive for a reason
 rather than by accident: it runs the **whole system** — pre-period, design engine, committed
 lottery, exposure, four checks, readout — two hundred times on the A/A world and two hundred more
@@ -1177,19 +1177,25 @@ on W6, plus the four other worlds, and then plants eight mutations against the s
 smaller configuration. Measured on the author's laptop: about eleven minutes for the published
 harness on four workers and about nine for one uncached baseline plus eight mutated runs.
 
-*Why 45 and not the measured twenty.* A GitHub runner has four cores against fourteen and is slower
-per core, and the spread between two runners on identical work has already been measured in this
-repository at ~40%. A budget that only the fast runner fits is a gate that reports which machine it
-drew. What must not happen is the same conversation a third time, so the number is set once, from a
-measurement, with the argument beside it.
+*It was 45 first, and the runner cancelled the harness before it finished.* That is what a
+projection is worth against four cores: the laptop figure was taken on fourteen, and the number was
+set from an estimate made before the cold run had been measured at all. It is recorded rather than
+quietly corrected, because the entry above exists to stop exactly this happening twice and it
+happened again inside the same change.
 
-*What would bring it down, in order of how much it costs to try:* the world cache surviving between
-CI runs, which needs `actions/cache` keyed on the same digest `evals/uplift/cache.py` already
-computes and would remove the uncached baseline entirely; and the counts in
+*Why 90.* It is the cold measurement plus the headroom the ~40% spread between runners on identical
+work already demands in this repository. A budget only the fast runner fits is a gate that reports
+which machine it drew.
+
+*The steady state is much lower, and the first lever is already in.* `ci.yml` now carries `.worlds/`
+across runs with `actions/cache`, keyed on **the digest `evals/uplift/cache.py` computes** rather
+than on a hand-written file list — the same guarantee one layer out, so a changed corpus is a miss
+here for exactly the reason it is a miss inside a run. Every run whose corpus is unchanged skips
+generation entirely, which is about half the harness. What is left after that is the counts in
 `contracts/design/aa_harness.yaml`, which are budgets and say so — though K = 200 on W1 and W6 is
 the claim itself and is not among them.
-*Unlock condition:* the first CI run of `make claim-2` on a runner, which replaces every projection
-here with a measurement. Whoever reads it sets this number from that, or opens the cache question.
+*Unlock condition:* the first CI run with a **warm** world cache, which is the steady state this
+number should be set from rather than the cold one it is set from now.
 *Expires:* 2026-11-30 — a temporary budget with no date is a permanent one, which is what the entry
 above was written to stop happening twice.
 
