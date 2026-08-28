@@ -149,6 +149,35 @@ def build(world_id: str, *, world_seed: str, scale: Scale, rounding: Rounding) -
     )
 
 
+def counterfactual_unit_weeks(
+    world_id: str, *, world_seed: str, scale: Scale, rounding: Rounding
+) -> tuple[dict[tuple[str, Week], int], dict[tuple[str, Week], int]]:
+    """`Y(0)` and `Y(1)` for every unit-week, for **any** world including W2.
+
+    `build` refuses a world that declares spillover, because there is no such thing as a
+    unit's potential outcome under a lottery it has not seen when a neighbour's arm is in the
+    answer. That guard stays exactly where it is: nothing here composes a draw.
+
+    What this is for is the **estimand**. Under all-control no store has a treated neighbour
+    and under all-treatment none has a control one, so `_spillover` returns 1.0 in both — the
+    two counterfactual worlds carry no interference at all, and their difference is the
+    average effect a difference of means would target if the stable unit treatment value
+    assumption held. That is precisely the number W2's bias is a deviation from, so it is the
+    number `U6` compares against.
+    """
+    world = world_by_id(world_id)
+    base = prepare(world, seed=world_seed, scale=scale)
+    pair: list[dict[tuple[str, Week], int]] = []
+    for arm in (Arm.CONTROL, Arm.TREATMENT):
+        run = prepare(world, seed=world_seed, scale=scale, assignment=_arms(base, arm))
+        (ledger,) = cache.ledgers(
+            cache.key(f"counterfactual/{arm.value}", world.id, world_seed, scale.name),
+            lambda run=run: (outcomes.collect(run),),  # type: ignore[misc]
+        )
+        pair.append(outcomes.unit_weeks(ledger, rounding))
+    return pair[0], pair[1]
+
+
 def compose_exposure(
     potential: Potential, arms: Mapping[str, Arm]
 ) -> tuple[dict[str, int], dict[str, int], dict[str, frozenset[str]]]:
