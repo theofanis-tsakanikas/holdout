@@ -45,8 +45,8 @@ from corpus.world import Run, prepare
 from corpus.world.scale import CATEGORIES, Scale
 from corpus.world.worlds import World, world_by_id
 
+from evals.uplift import cache, outcomes, potential
 from evals.uplift import design as design_module
-from evals.uplift import outcomes, potential
 from holdout.contracts.model import AaHarness, ContractSet
 from holdout.core.design import DesignRefusal, Feasible, assess
 from holdout.core.experiment import (
@@ -209,7 +209,14 @@ def build_fixture(
         if world.spillover_pct
         else potential.build(world_id, world_seed=world_seed, scale=scale, rounding=metric.rounding)
     )
-    control_ledger = built.control_ledger if built is not None else outcomes.collect(control_run)
+    control_ledger = (
+        built.control_ledger
+        if built is not None
+        else cache.ledgers(
+            cache.key("potential/control", world.id, world_seed, scale.name),
+            lambda: (outcomes.collect(control_run),),
+        )[0]
+    )
     weeks = control_ledger.weeks
     pre_weeks, _period_weeks = design_module.split_weeks(weeks)
     pre = design_module.pre_period(
@@ -330,7 +337,19 @@ def _close_one(
         drawn_run = prepare(
             fixture.world, seed=fixture.world_seed, scale=fixture.scale, assignment=world_arms
         )
-        ledger = outcomes.collect(drawn_run)
+        # W2 alone: a store's outcome depends on its neighbour's arm, so there are no potential
+        # outcomes to compose and the world is generated for this lottery. Cached on the arms
+        # as well as on the world, because here the arms are part of what was generated.
+        (ledger,) = cache.ledgers(
+            cache.key(
+                "drawn",
+                fixture.world.id,
+                fixture.world_seed,
+                fixture.scale.name,
+                "".join(world_arms[store].value[0] for store in sorted(world_arms)),
+            ),
+            lambda: (outcomes.collect(drawn_run),),
+        )
         by_unit_week = outcomes.unit_weeks(ledger, metric.rounding)
         dispatched, acknowledged, delivered_refs = (
             dict(ledger.dispatched),

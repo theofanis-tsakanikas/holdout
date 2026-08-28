@@ -112,7 +112,6 @@ def test_every_value_is_an_exact_decimal_and_never_a_float(contracts: ContractSe
     harness = contracts.aa_harness
     assert harness.binomial_level == Decimal("0.01")
     assert harness.false_refusal_max_pct == Decimal("10")
-    assert harness.coverage_tolerance_pct == Decimal("5")
     assert harness.per_world_min_correct_pct == Decimal("90")
     assert harness.mde_pct_of_pre_period_mean == Decimal("4.0")
     assert harness.unit_exposed_min_ack_pct == Decimal("90")

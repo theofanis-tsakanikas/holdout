@@ -25,6 +25,12 @@ Two generations buy forty lotteries. That is the whole reason K = 200 is afforda
 byte-identical except for the arm label on the decision record, and the metric does not read
 that label. Empty is empty.
 
+**The two generations are cached**, keyed on the world, the seed, the scale and a digest of
+every source file they were produced by — see `cache.py`. A world is a pure function of those
+three things, so generating it again inside the same command would be waste rather than
+evidence; and a mutation that changes the corpus or the code that groups it moves the digest
+and regenerates, which is checked rather than remembered.
+
 **W2 generates per assignment**, and the eval says so rather than hiding it. A world built to
 break the stable unit treatment value assumption, whose outcomes could nonetheless be composed
 unit by unit, would not be breaking it — so `tests/evals/test_uplift_composition.py` asserts
@@ -42,7 +48,7 @@ from corpus.world import Arm, Run, prepare
 from corpus.world.scale import Scale
 from corpus.world.worlds import World, world_by_id
 
-from evals.uplift import outcomes
+from evals.uplift import cache, outcomes
 from evals.uplift.outcomes import Week
 
 if TYPE_CHECKING:
@@ -108,7 +114,10 @@ def build(world_id: str, *, world_seed: str, scale: Scale, rounding: Rounding) -
     control_run = prepare(
         world, seed=world_seed, scale=scale, assignment=_arms(control_run, Arm.CONTROL)
     )
-    control_ledger = outcomes.collect(control_run)
+    (control_ledger,) = cache.ledgers(
+        cache.key("potential/control", world.id, world_seed, scale.name),
+        lambda: (outcomes.collect(control_run),),
+    )
     control = outcomes.unit_weeks(control_ledger, rounding)
     if world.is_aa:
         return Potential(
@@ -124,7 +133,10 @@ def build(world_id: str, *, world_seed: str, scale: Scale, rounding: Rounding) -
     treated_run = prepare(
         world, seed=world_seed, scale=scale, assignment=_arms(control_run, Arm.TREATMENT)
     )
-    treatment_ledger = outcomes.collect(treated_run)
+    (treatment_ledger,) = cache.ledgers(
+        cache.key("potential/treatment", world.id, world_seed, scale.name),
+        lambda: (outcomes.collect(treated_run),),
+    )
     return Potential(
         world=world,
         world_seed=world_seed,

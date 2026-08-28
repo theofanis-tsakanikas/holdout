@@ -383,7 +383,6 @@ class AaHarness:
     seeds: HarnessSeeds
     binomial_level: Decimal
     false_refusal_max_pct: Decimal
-    coverage_tolerance_pct: Decimal
     per_world_min_correct_pct: Decimal
     mde_pct_of_pre_period_mean: Decimal
     unit_exposed_min_ack_pct: Decimal

@@ -404,7 +404,6 @@ def _aa_harness(raw: dict[str, Any]) -> AaHarness:
         ),
         binomial_level=number("binomial_level"),
         false_refusal_max_pct=number("false_refusal_max_pct"),
-        coverage_tolerance_pct=number("coverage_tolerance_pct"),
         per_world_min_correct_pct=number("per_world_min_correct_pct"),
         mde_pct_of_pre_period_mean=number("mde_pct_of_pre_period_mean"),
         unit_exposed_min_ack_pct=number("unit_exposed_min_ack_pct"),

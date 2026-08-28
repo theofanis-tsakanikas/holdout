@@ -92,11 +92,18 @@ binomial_level:
   source:
     kind: scenario_assumption
     note: >-
-      The level of the one-sided binomial test on the A/A false-positive rate. It is
-      deliberately NOT alpha. Alpha is what the system declares about itself; this is the level
-      at which we test whether it kept that declaration, and collapsing the two would be the
-      estimator grading its own homework. 0.01 is adopted as a convention for a test we would
-      rather not fail by accident on a rate that is genuinely at alpha.
+      The level of the one-sided binomial test on the A/A false-positive rate, and of the
+      two-sided binomial test on W6's interval coverage. It is deliberately NOT alpha. Alpha is
+      what the system declares about itself; this is the level at which we test whether it kept
+      that declaration, and collapsing the two would be the estimator grading its own homework.
+      0.01 is adopted as a convention for a test we would rather not fail by accident on a rate
+      that is genuinely at the declared level.
+      **Coverage was a fixed tolerance of five percentage points and is a binomial test
+      instead.** A fixed band means different things at different draw counts: five points is
+      more than three standard errors at K = 200 and less than one at a dozen, so the same
+      "check" would have been two checks at the two configurations the harness runs in. A
+      binomial at a declared level is one instrument that means the same thing at any K, and
+      this file already declares one for exactly that reason.
     verified_on: 2026-08-28
 
 false_refusal_max_pct:
@@ -112,18 +119,6 @@ false_refusal_max_pct:
       with no threshold in this phase. The split, and what would give grounds to put a
       threshold on the other half, are in docs/DECISIONS.md. The value was written before
       anything was measured and has not been touched since.
-    verified_on: 2026-08-28
-
-coverage_tolerance_pct:
-  value: 5
-  source:
-    kind: scenario_assumption
-    note: >-
-      How far the realised coverage of a 95% interval may sit from 95, in percentage points,
-      over K runs of W6. At K = 200 the binomial standard error of a 95% coverage rate is about
-      1.5 points, so 5 is a little over three of them: wide enough not to fire on sampling
-      noise, narrow enough that a systematically wrong interval — the symptom of inference that
-      ignores the restriction the strata impose — does not hide inside it.
     verified_on: 2026-08-28
 
 per_world_min_correct_pct:
@@ -208,15 +203,19 @@ machinery:
       verified_on: 2026-08-28
 
   scale:
-    value: rehearsal
+    value: harness
     source:
       kind: scenario_assumption
       note: >-
-        The corpus scale a mutation's run generates at. Not `harness`: one harness-scale world
-        is about twenty-one seconds and a machinery run needs a dozen of them, which is a
-        gate-proof cap spent nine times over. `rehearsal` generates in about one second and is
-        a genuine world with every mechanism in it. What it is NOT is a roster on which a
-        readout passes the balance check — twenty stores give a control arm of four — so the
-        checks the machinery entry point runs are the ones that survive a refusal, and the
-        rest are the published harness's alone. evals/uplift/machinery.py names which and why.
+        The corpus scale a mutation's run generates at. **The published scale**, and the
+        reason it can be is that world generation is outside the mutation loop: a world is a
+        pure function of (world, seed, scale), a mutation changes eval code, so the worlds are
+        generated once and every mutated run reads them back. The exception is a mutation that
+        changes the corpus itself or the code that groups it, and which mutations those are is
+        **checked rather than assumed** — evals/uplift/cache.py keys its entries on a digest of
+        every file they depend on.
+        A smaller scale was tried and refused: several checks need a readout that PRODUCES a
+        number, which needs the roster and the signal the published scale exists to supply, and
+        at any scale cheap enough to skip the cache the balance check refuses every draw. That
+        would have left U4, U6 and U8 with no mutation at all — three gates never shown to bite.
       verified_on: 2026-08-28
