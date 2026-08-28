@@ -35,6 +35,32 @@ this project has now found four times. Restated pre-period revenue, an attrited 
 roster that moved: those are what `IMBALANCED_PRE_PERIOD` is for, and
 `tests/core/test_balance.py` plants each of the three.
 
+What a lottery could and could not have achieved
+------------------------------------------------
+`attainable` answers a different question from `standardised`, at a different moment. Given
+the strata a lottery will draw within, **how good can a categorical covariate's balance
+possibly get?** One control comes out of each stratum, so a stratum that is pure in a level
+contributes a control to that level with certainty and one that contains no unit of the
+level cannot contribute at all. The control count for a level is therefore pinned between
+those two numbers whatever the seed is, and the best standardised difference over that
+range is a fact about the *restriction* rather than about any draw.
+
+It exists because a design that lands outside that range was, until T00D, accepted at
+moment 1 and refused identically at every readout. On this repository's own corpus at 25
+controls, `store_format=hypermarket` sat at a constant 0.1734 across two hundred draws:
+an experiment that could never have reported anything, for a reason with nothing to do with
+the lottery. `feasibility` turns it into `NO_ADMISSIBLE_ASSIGNMENT`.
+
+**It is sound and it is incomplete, and both halves are deliberate.** Sound: the bound is
+computed with `_standardised` itself — the same function the readout will run, not a second
+implementation of it — so a design it refuses genuinely has no draw that passes. That is not
+a guard agreeing with itself: the question here is *predictive*, and a prediction that used
+different arithmetic from the thing it predicts would be worth nothing. Incomplete in two
+named ways: the per-level optima need not be simultaneously attainable, so some accepted
+designs still cannot pass; and **numeric covariates are not bounded here at all**, because
+almost any numeric imbalance is attainable by some draw and the question about them is a
+*rate* rather than a possibility. That rate is claim 2's to publish.
+
 Zero spread is not a free pass
 ------------------------------
 If a covariate has no within-arm spread at all and the two arms nonetheless sit at different
@@ -47,7 +73,7 @@ case where 0/0 has an obvious answer.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -305,6 +331,101 @@ def _numeric(matrix: CovariateMatrix, unit: str, index: int) -> Fraction:
 
 def _indicator(matrix: CovariateMatrix, unit: str, index: int, level: str) -> Fraction:
     return Fraction(1) if matrix.rows[unit][index] == level else Fraction(0)
+
+
+def attainable(
+    matrix: CovariateMatrix, strata: Sequence[Sequence[str]]
+) -> tuple[Standardised, ...]:
+    """The best standardised difference any draw within `strata` could reach, per
+    categorical covariate — a fact about the restriction, not about a seed.
+
+    One control per stratum, so for a level the control count is pinned between the number
+    of strata that are **pure** in it and the number that **contain** it at all. Every
+    integer in that range is the count some draw produces, so the minimum standardised
+    difference over the range is attainable and nothing below it is. Per covariate the
+    **maximum** over its levels is returned, exactly as `standardised` does, because a draw
+    passes only when every level does.
+
+    Numeric covariates are absent from the answer by design — see the module docstring.
+    An empty tuple means the matrix declares no categorical covariate, which is a matrix a
+    lottery cannot be constrained by in this way rather than one that is perfectly balanced.
+    """
+    units = [unit for stratum in strata for unit in stratum]
+    if not units:
+        raise BalanceError("a stratification with no units has no attainable balance")
+    if len(set(units)) != len(units):
+        raise BalanceError("a unit appears in two strata; each is assigned once")
+    missing = sorted(set(units) - set(matrix.rows))
+    if missing:
+        raise BalanceError(f"no covariates for {missing[:5]}")
+    control_size = len(strata)
+    treatment_size = len(units) - control_size
+    if treatment_size < 1:
+        raise BalanceError(
+            f"{control_size} strata over {len(units)} unit(s) leave no treatment arm, so "
+            "there is no difference for any draw to make"
+        )
+    out: list[Standardised] = []
+    for index, covariate_id in enumerate(matrix.ids):
+        if matrix.kinds[index] is not CovariateKind.CATEGORICAL:
+            continue
+        worst: Standardised | None = None
+        for level in matrix.levels(covariate_id):
+            here = _best_for_level(
+                matrix,
+                strata,
+                index=index,
+                covariate_id=covariate_id,
+                level=level,
+                control_size=control_size,
+                treatment_size=treatment_size,
+            )
+            worst = here if worst is None or _worse(here, worst) else worst
+        if worst is not None:
+            out.append(worst)
+    return tuple(out)
+
+
+def _best_for_level(
+    matrix: CovariateMatrix,
+    strata: Sequence[Sequence[str]],
+    *,
+    index: int,
+    covariate_id: str,
+    level: str,
+    control_size: int,
+    treatment_size: int,
+) -> Standardised:
+    """The least imbalance any draw can reach on one level, over the counts it can produce."""
+    holding = [
+        sum(1 for unit in stratum if matrix.rows[unit][index] == level) for stratum in strata
+    ]
+    lowest = sum(1 for stratum, count in zip(strata, holding, strict=True) if count == len(stratum))
+    highest = sum(1 for count in holding if count)
+    total = sum(holding)
+    best: Standardised | None = None
+    for controls in range(lowest, highest + 1):
+        treated = total - controls
+        if not 0 <= treated <= treatment_size:
+            continue  # a count the arms cannot hold; no draw produces it
+        here = _standardised(
+            _indicators(treated, treatment_size),
+            _indicators(controls, control_size),
+            covariate_id=covariate_id,
+            level=level,
+        )
+        best = here if best is None or _worse(best, here) else best
+    if best is None:  # pragma: no cover - lowest <= highest always yields one admissible count
+        raise BalanceError(
+            f"no control count between {lowest} and {highest} fits the arms for "
+            f"{covariate_id}={level}"
+        )
+    return best
+
+
+def _indicators(ones: int, size: int) -> list[Fraction]:
+    """One arm's indicator column for a level, as the readout would see it."""
+    return [Fraction(1)] * ones + [Fraction(0)] * (size - ones)
 
 
 def worst_of(differences: tuple[Standardised, ...]) -> Standardised:

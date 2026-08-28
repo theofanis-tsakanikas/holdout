@@ -247,8 +247,41 @@ stop_at       When the refusal fires on a control count found by SEARCH rather t
               brute-force draw over every control count it accepts confirms it refused
               nothing that could have passed.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed.** `balance.attainable` — the best standardised difference any lottery within a
+given stratification could reach, per categorical covariate — and a `NO_ADMISSIBLE_ASSIGNMENT`
+refusal in `assess` when it already exceeds `balance_tolerance_smd`. The vocabulary entry was
+restated rather than replaced, and it now carries both readings with the date.
+
+The bound is computed with `_standardised` itself — the readout's own function, not a second
+implementation of it — because the question is *predictive*: a prediction that used different
+arithmetic from the thing it predicts would be worth nothing. It is sound and incomplete, and both
+files say which: the per-level optima need not be simultaneously attainable, and numeric covariates
+are not bounded at all, because almost any numeric imbalance is attainable by *some* draw and the
+question about them is a rate rather than a possibility. That rate is claim 2's to publish.
+
+**The case came from the corpus and the breaking size from a loop.** The test roster's composition is
+laid out by `corpus.world.chain`'s own keyed hashing, and the control counts are scanned rather than
+named. On a 100-store roster the scan reproduces the defect exactly as it was found in the field:
+
+```
+ 20 controls  reachable      best attainable store_format=hypermarket 0.0792
+ 21 controls  OUT OF REACH   best attainable pricing_zone=zone_b      0.1356
+ 25 controls  OUT OF REACH   best attainable store_format=hypermarket 0.1734   <- the finding
+ 26 controls  reachable      best attainable pricing_zone=zone_b      0.0463
+```
+
+Three tests hold it, and none of them takes the arithmetic's word for anything: every control count
+the bound refuses is checked against 200 real draws and none may pass; every count it accepts is
+checked so that no draw comes in *under* the floor; and the scan must come back mixed, because a
+guard that refused everything would pass the first test and destroy the engine.
+
+`CLAUDE.md`'s checklist asks whether a `gate-proof` mutation proves the gate bites. **There is none
+and there cannot be yet** — design-engine mutations belong to claim 6, which has no Makefile target,
+and the ledger refuses a mutation no claim target would run. The gap is written into
+`feasibility.py`'s own docstring rather than left for someone to notice.
 
 ```
 id            T00E

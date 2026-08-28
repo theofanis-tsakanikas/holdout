@@ -198,17 +198,29 @@ at_design:
 
   - code: NO_ADMISSIBLE_ASSIGNMENT
     meaning: >-
-      No stratification of the roster gives every stratum both arms: the declared holdout
-      share asks for more control units than the roster can stratify at two or more units
-      each, so some stratum would hold a single unit — a unit whose arm nobody drew. The
-      design is feasible on paper — the sample is there and the duration fits — and there
-      is still no lottery to run. (Restated with inference.yaml v2: under v1 this code
-      meant the re-randomisation screen rejected every candidate within its budget; the
-      stratified draw screens nothing, so that reading can no longer occur.)
+      There is no lottery to run. Two ways that happens, and the code covers both because
+      it is the same sentence about the same moment.
+      (a) No stratification of the roster gives every stratum both arms: the declared
+      holdout share asks for more control units than the roster can stratify at two or more
+      units each, so some stratum would hold a single unit — a unit whose arm nobody drew.
+      (b) A stratification exists and no draw within it could pass the readout's balance
+      check: a categorical covariate's balance is decided by how many strata sit inside
+      each of its levels, not by the lottery, so where that allocation already puts a level
+      further than balance_tolerance_smd from its population share, EVERY draw is refused
+      at readout with IMBALANCED_PRE_PERIOD and the experiment could never have reported
+      anything. The design is feasible on paper in both — the sample is there and the
+      duration fits.
+      (Restated with inference.yaml v2: under v1 this code meant the re-randomisation
+      screen rejected every candidate within its budget; the stratified draw screens
+      nothing, so that reading can no longer occur. Restated again 2026-08-28 by T00D,
+      which added (b): reading (a) alone was the whole meaning, and a roster that hits (b)
+      was accepted in silence and refused identically at every readout.)
     what_would_fix_it: >-
-      A larger roster, so every stratum holds at least two units at the declared share.
-      Lowering the holdout share is a versioned contract change with a restatement, not an
-      exception granted to this experiment.
+      For (a), a larger roster, so every stratum holds at least two units at the declared
+      share. For (b), a roster whose categorical composition can be split at the declared
+      share — units added to the level the allocation cannot reach, or a coarser level set.
+      Lowering the holdout share or widening the balance tolerance is a versioned contract
+      change with a restatement, not an exception granted to this experiment.
 
 at_readout:
 

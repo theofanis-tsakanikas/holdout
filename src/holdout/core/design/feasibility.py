@@ -26,7 +26,9 @@ The eight refusals
 `UNDERPOWERED_FOR_DURATION`             the smallest window that reaches power is longer
                                         than `max_duration`
 `NO_ADMISSIBLE_ASSIGNMENT`              no stratification of the roster gives every
-                                        stratum both arms at the declared holdout share
+                                        stratum both arms at the declared holdout share —
+                                        **or** one exists and no draw within it could pass
+                                        the readout's balance check
 ======================================  =====================================================
 
 Every one that fired is carried; `codes.DESIGN_PRECEDENCE` decides only which one leads.
@@ -66,6 +68,35 @@ What is code and what is not: *which* unit to randomise on has no single correct
 a model may propose it. Whether a declared carryover fact crosses the dimension a given unit
 splits has exactly one, so code decides it. **The assumption is the load-bearing part and it
 is in the contract; the code is only the derivation.**
+
+A design no lottery could have saved is refused here, not at every readout forever
+----------------------------------------------------------------------------------
+The balance tolerance is judged at exactly one moment — the readout, over what actually
+arrived — and that has not changed. What is decided here is a different question: whether
+**any** draw within the strata could have satisfied it. One control comes out of each
+stratum, so a categorical covariate's control count is pinned by how the strata fall across
+its levels and not by the seed; where that pinning already puts a level outside the
+tolerance, every readout refuses `IMBALANCED_PRE_PERIOD`, identically, forever.
+
+Until T00D such a design was accepted in silence. Measured on this repository's own corpus
+at 25 controls: `store_format=hypermarket` at a **constant 0.1734** across two hundred
+draws. That is an experiment that could never have reported anything, for a reason with
+nothing to do with the lottery — the same shape as the starved reference set the
+re-randomisation screen produced, one moment earlier.
+
+`balance.attainable` computes the bound with the readout's own arithmetic, so a refusal
+here is sound: nothing is refused that some draw could have carried. It is incomplete in two
+named ways, and the module that owns the statistic states both. **This is the only place in
+the engine where a readout-time threshold is consulted at design**, and it is consulted as a
+*possibility*, never as a screen: no candidate is drawn, judged and replaced, which is the
+door the stratified lottery closed and this does not reopen.
+
+`CLAUDE.md`'s checklist asks, of any gate, whether a `gate-proof` mutation proves it bites.
+**There is none yet and there cannot be**: the design engine's mutations belong to claim 6,
+which has no Makefile target, and `evals/gate_proof/ledger.py` refuses a mutation no claim
+target would run. What stands in for it until then is `tests/core/test_balance.py`, whose
+case is drawn by the corpus's own hashing and whose breaking control count is found by
+search — and which checks the refusal against two hundred real draws in both directions.
 
 The one limit, declared rather than papered over
 ------------------------------------------------
@@ -115,7 +146,12 @@ from holdout.core.experiment.assignment import (
     control_size_for,
     draw,
 )
-from holdout.core.experiment.balance import CovariateMatrix, Standardised
+from holdout.core.experiment.balance import (
+    CovariateMatrix,
+    Standardised,
+    attainable,
+    worst_of,
+)
 from holdout.core.hashing import digest
 
 #: Two arms, so the variance of the difference is twice the variance of one arm's mean.
@@ -424,6 +460,10 @@ def assess(
         )
 
     seal, balance = drawn
+    unreachable = _unreachable_balance(matrix, seal, inference)
+    if unreachable is not None:
+        return DesignRefusal(experiment_id=experiment_id, reasons=(unreachable,))
+
     return Feasible(
         experiment_id=experiment_id,
         form_digest=fingerprint,
@@ -441,6 +481,44 @@ def assess(
 
 
 # ------------------------------------------------------------------ the arithmetic
+
+
+def _unreachable_balance(
+    matrix: CovariateMatrix, seal: SealedAssignment, inference: InferenceSettings
+) -> DesignRefusalReason | None:
+    """`NO_ADMISSIBLE_ASSIGNMENT` where no draw within the strata could pass the balance check.
+
+    Asked **after** the lottery rather than before it, and that is a cost decision with no
+    consequence: building the strata is the expensive half and the draw inside them is
+    arithmetic over a hash, so the seal is cheap to produce and discard. Nothing about
+    *when* the design is decided follows from it — the strata this reads are the strata that
+    were drawn within, and they are a pure function of the covariates.
+    """
+    reachable = attainable(matrix.restricted_to(frozenset(seal.roster)), seal.strata)
+    if not reachable:
+        return None
+    worst = worst_of(reachable)
+    if not worst.exceeds(inference.balance_tolerance_smd):
+        return None
+    return DesignRefusalReason(
+        code=DesignRefusalCode.NO_ADMISSIBLE_ASSIGNMENT,
+        detail=(
+            f"the strata pin {worst} against a tolerance of "
+            f"{inference.balance_tolerance_smd}, and that is the *best* any draw could "
+            "reach: one control comes out of each stratum, so this covariate's control "
+            "count is decided by how the strata fall across its levels and not by the "
+            "seed. Every readout would refuse IMBALANCED_PRE_PERIOD, identically, whatever "
+            "seed was committed. The design is feasible on paper — the sample is there and "
+            "the duration fits — and there is still no lottery worth running."
+        ),
+        what_would_fix_it=(
+            "A roster whose categorical composition can be split at the declared "
+            f"{inference.holdout_share_pct}% holdout share — units added to the level the "
+            "allocation cannot reach, or a coarser level set. Widening the balance "
+            "tolerance or lowering the holdout share is a versioned contract change with a "
+            "restatement, not an exception granted to this experiment."
+        ),
+    )
 
 
 def _required_per_arm(
