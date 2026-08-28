@@ -1,0 +1,24 @@
+# Two stores inside the declared radius share shoppers, so a treated one and a control one
+# would be measuring each other. The engine drops one of every pair. Keeping both leaves the
+# interference in the experiment — and leaves it in the arm that was supposed to be clean, so
+# the pair W2 publishes stops being a pair.
+
+id:          the-neighbour-exclusion-keeps-both-members-of-a-pair
+claim:       2
+eval_module: evals.uplift.machinery
+targets:     [U13.neighbour-pairs-are-excluded]
+
+breaks: >-
+  the automatic neighbour exclusion returns nothing, so both members of every pair inside the
+  declared radius stay in the experiment and one store measures the other. Nothing at readout
+  would notice — there is no interference detector anywhere in this system — so the only thing
+  that can is a check on the roster the lottery was drawn over.
+
+file: src/holdout/core/design/feasibility.py
+
+anchor: |
+    return tuple(
+        Exclusion(store_id=store, reason=reason) for store, reason in sorted(excluded.items())
+    )
+replacement: |
+    return ()

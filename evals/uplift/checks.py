@@ -221,8 +221,8 @@ def run(configuration: Configuration, *, contracts: ContractSet | None = None) -
         w4_window, w4_first = _truths(
             by_world["W4"], world="W4", configuration=configuration, contracts=resolved
         )
-        w2_window, _ = _truths(
-            by_world["W2"] + withheld, world="W2", configuration=configuration, contracts=resolved
+        w5_window, _ = _truths(
+            by_world["W5"], world="W5", configuration=configuration, contracts=resolved
         )
         del readout
 
@@ -251,18 +251,24 @@ def run(configuration: Configuration, *, contracts: ContractSet | None = None) -
         checks.append(bias_check)
         numbers.extend(bias_numbers)
 
-    pair_check, pair_numbers = worlds.interference_pair(by_world["W2"], withheld, truth=w2_window)
+    minimum = Fraction(harness.per_world_min_correct_pct)
+    pair_check, pair_numbers = worlds.interference_pair(
+        by_world["W2"], withheld, minimum_pct=minimum
+    )
     checks.append(pair_check)
     numbers.extend(pair_numbers)
-
-    minimum = Fraction(harness.per_world_min_correct_pct)
+    checks.append(
+        worlds.neighbour_pairs_are_excluded(
+            [r for world, rs in by_world.items() if world != "W2" for r in rs] + by_world["W2"]
+        )
+    )
     checks.append(worlds.exposure_refuses(by_world["W3"], minimum_pct=minimum))
     window_check, window_numbers = worlds.window_not_first_week(
         by_world["W4"], window_truth=w4_window, first_week_truth=w4_first
     )
     checks.append(window_check)
     numbers.extend(window_numbers)
-    checks.append(worlds.power_or_width(by_world["W5"], minimum_pct=minimum))
+    checks.append(worlds.power_or_width(by_world["W5"], truth=w5_window, alpha=alpha, level=level))
 
     first_seed = parallel.world_seeds(1)[0]
     checks.append(

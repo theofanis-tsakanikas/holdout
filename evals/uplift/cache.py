@@ -35,7 +35,6 @@ import os
 import pickle
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import TypeVar
 
 from evals.uplift import outcomes
 
@@ -46,14 +45,20 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: caches beside itself rather than reaching back into the repository it was copied from.
 CACHE_DIR = Path(os.environ.get("HOLDOUT_WORLD_CACHE", REPO_ROOT / ".worlds"))
 
-#: What a cached ledger is produced by. Everything under `corpus/` because that is the world,
-#: and `outcomes.py` because that is what turned the world into the thing being stored.
-#: `reference.py` is deliberately absent: nothing cached here passes through it, and adding a
-#: file the artefact does not depend on would invalidate the cache for edits that cannot
-#: change it — which is the other way to make a cache useless.
-DEPENDS_ON: tuple[str, ...] = ("corpus", "evals/uplift/outcomes.py")
-
-T = TypeVar("T")
+#: What a cached artefact is produced by. Everything under `corpus/` because that is the
+#: world, and the two modules that turn a world into something worth storing: `outcomes.py`
+#: for the grouped ledgers and `reference.py` for the slow path's cells, which `U10` compares
+#: and which cost a second pass over five million events.
+#:
+#: Nothing else is in the list, and that is as deliberate as what is. A digest over the whole
+#: repository would move on every mutation, every world would be regenerated for every one of
+#: them, and the claim target would not finish — which is the other way to make a cache
+#: useless.
+DEPENDS_ON: tuple[str, ...] = (
+    "corpus",
+    "evals/uplift/outcomes.py",
+    "evals/uplift/reference.py",
+)
 
 
 def _source_files() -> list[Path]:
@@ -89,10 +94,8 @@ def key(*parts: object) -> str:
     )
 
 
-def ledgers(
-    name: str, build: Callable[[], Sequence[outcomes.Ledger]]
-) -> tuple[outcomes.Ledger, ...]:
-    """Read the ledgers cached under `name`, or build them and write them there.
+def cached[T](name: str, build: Callable[[], T]) -> T:
+    """Read the value cached under `name`, or build it and write it there.
 
     A read that fails for any reason at all — a truncated file, a pickle from another version,
     a directory that is not writable — falls through to building. A cache is an optimisation
@@ -101,12 +104,10 @@ def ledgers(
     path = CACHE_DIR / f"{name}.pickle"
     if path.is_file():
         try:
-            loaded = pickle.loads(path.read_bytes())
+            return pickle.loads(path.read_bytes())  # type: ignore[no-any-return]
         except Exception:
-            loaded = None
-        if isinstance(loaded, tuple) and all(isinstance(item, outcomes.Ledger) for item in loaded):
-            return loaded
-    built = tuple(build())
+            pass
+    built = build()
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         # Written beside and moved into place, so a run interrupted half way through leaves no
@@ -117,6 +118,16 @@ def ledgers(
     except OSError:
         pass
     return built
+
+
+def ledgers(
+    name: str, build: Callable[[], Sequence[outcomes.Ledger]]
+) -> tuple[outcomes.Ledger, ...]:
+    """`cached`, for the grouped ledgers — the shape almost every caller wants."""
+    loaded = cached(name, lambda: tuple(build()))
+    if isinstance(loaded, tuple) and all(isinstance(item, outcomes.Ledger) for item in loaded):
+        return loaded
+    return tuple(build())  # pragma: no cover - a cache holding the wrong shape is a miss
 
 
 def clear() -> None:

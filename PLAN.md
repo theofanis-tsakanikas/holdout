@@ -527,11 +527,44 @@ author, and a sentence written by its author. **Two components each correct on i
 between them, and the number that would have shown it is a product nobody was computing.** Where
 two deliberate decisions meet on a quantity, that quantity gets a name, a command and a figure.
 
+**What claim 2 came out at — 2026-08-28.** `make claim-2` is green: **13 checks, 456 draws across
+six worlds, 8/8 mutations biting.**
+
+```
+U1  aa-false-positive-rate     8/200 = 4.0% significant against alpha=5%
+                               one-sided binomial p=0.7867 at level 0.01
+U3  w6-false-refusal-rate      0/200 refused by the machinery, ceiling 10%
+U4  w6-coverage                163/170 = 95.9% against a nominal 95%
+U5  w6-estimator-bias          +0.59 EUR against a standard error of 1.02, over 170 draws
+```
+
+Beside them, with no threshold on it in this phase: W6 refused `IMBALANCED_PRE_PERIOD` on 15% of
+draws, which is arithmetic about the roster rather than the machinery reporting on the experiment.
+
+Every draw runs the whole system. The estimator was made five times cheaper by two exact
+identities and the bounds are held bit-identical against the implementation they replaced.
+
+**Three of the six worlds' declared behaviour changed, and every change was a measurement.** W5's
+heavy tail was on a basket line, where sixteen thousand of them average it away — measured, its
+standard error came out *below* the world with no pathology at all; it moved to the store-day and to
+the half of the calendar a power calculation is not sized on. W2 states no number at all, and the
+refusal is the power check firing on variance the spillover created — a refusal by luck, since
+nothing in this system detects interference, which is now a deferral with the world that would
+demonstrate it as the unlock.
+
+**And the rule about sentences gained a third limb.** W2's line had already been restated once, on
+2026-08-28, against the code — and the restatement was still wrong, because it was never run. *A
+sentence naming what the system does when something goes wrong is written against the function that
+would make it true, and against the measurement of what comes out when it runs. A line can be true
+of the code and false of the system on the corpus.* Three wrong sentences about one table is a
+signal that the rule was short a limb, not that somebody was careless.
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase
 
-Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claim 1 has closed.**
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1 and 2 have closed**, and
+claim 2 is the one CLAUDE.md calls the one that separates this from a demo.
 
 **Then an integration session**, before the next phase opens: read the whole repository against
 `CLAUDE.md` and report conceptual drift. It builds nothing.

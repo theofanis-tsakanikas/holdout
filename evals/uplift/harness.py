@@ -85,6 +85,10 @@ class DrawRecord:
     excluded: int
     control_size: int
     weeks: int
+    #: How many pairs inside the declared neighbour radius still have **both** members on the
+    #: roster the lottery drew over. The design engine's central promise about interference is
+    #: that this is zero, and it is recorded per draw so a check can ask rather than assume.
+    surviving_neighbour_pairs: int = 0
 
     design_refusals: tuple[str, ...] = ()
     readout_refusals: tuple[str, ...] = ()
@@ -293,6 +297,7 @@ def run_one(
             roster=roster_size,
             excluded=0,
             control_size=0,
+            surviving_neighbour_pairs=0,
             weeks=design_module.PERIOD_WEEKS,
             design_refusals=tuple(code.value for code in assessed.codes),
         )
@@ -398,8 +403,14 @@ def _close_one(
         asked_on=period.ends_on,
     )
     figures = tuple((c.check.value, c.passed, c.figure) for c in result.checks)
+    on_roster = frozenset(seal.roster)
     common = {
         "world": fixture.world.id,
+        "surviving_neighbour_pairs": sum(
+            1
+            for left, right in fixture.run.chain.neighbour_pairs
+            if left in on_roster and right in on_roster
+        ),
         "world_seed": fixture.world_seed,
         "lottery_seed": lottery_seed,
         "scale": fixture.scale.name,

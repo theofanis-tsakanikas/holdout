@@ -12,7 +12,7 @@ a gate that proved something different in the two places it runs.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from fractions import Fraction
 
 from corpus.world import Arm as WorldArm
@@ -20,7 +20,7 @@ from corpus.world import alternating, prepare
 from corpus.world.scale import Scale
 
 from evals.report import Check
-from evals.uplift import outcomes, potential, reference
+from evals.uplift import cache, outcomes, potential, reference
 from evals.uplift.harness import DrawRecord
 from holdout.contracts.model import Metric
 
@@ -39,8 +39,18 @@ def implementations_agree(world_id: str, *, world_seed: str, scale: Scale, metri
     consumers as integers. This is the first thing that would notice if it came back.
     """
     run = prepare(world_id, seed=world_seed, scale=scale)
-    grouped = outcomes.cell_margins(outcomes.collect(run), metric.rounding)
-    walked = reference.compute(run, metric=metric)
+    # Both sides are cached, on a key that carries a digest of the corpus **and** of both
+    # implementations — so a mutation to either regenerates and a mutation to neither reads
+    # back. Without it this one check is two passes over five million events per mutated run.
+    (ledger,) = cache.ledgers(
+        cache.key("agreement/grouped", world_id, world_seed, scale.name),
+        lambda: (outcomes.collect(run),),
+    )
+    grouped = outcomes.cell_margins(ledger, metric.rounding)
+    walked = cache.cached(
+        cache.key("agreement/walked", world_id, world_seed, scale.name),
+        lambda: reference.compute(run, metric=metric),
+    )
     missing = sorted(set(grouped) ^ set(walked))
     disagreeing = sorted(
         cell for cell in set(grouped) & set(walked) if grouped[cell] != walked[cell]
@@ -70,6 +80,19 @@ def implementations_agree(world_id: str, *, world_seed: str, scale: Scale, metri
     )
 
 
+def _mixed_ledger(
+    world_id: str, world_seed: str, scale: Scale, mixed: Mapping[str, WorldArm]
+) -> Callable[[], tuple[outcomes.Ledger]]:
+    """A builder bound to this world, so a loop variable cannot follow it into the closure."""
+
+    def build() -> tuple[outcomes.Ledger]:
+        return (
+            outcomes.collect(prepare(world_id, seed=world_seed, scale=scale, assignment=mixed)),
+        )
+
+    return build
+
+
 def composition_is_exact(
     world_ids: Sequence[str], *, world_seed: str, scale: Scale, metric: Metric
 ) -> Check:
@@ -91,19 +114,33 @@ def composition_is_exact(
     for world_id in world_ids:
         run = prepare(world_id, seed=world_seed, scale=scale)
         mixed = alternating(run.chain)
-        generated = outcomes.unit_weeks(
-            outcomes.collect(prepare(world_id, seed=world_seed, scale=scale, assignment=mixed)),
-            metric.rounding,
+        (drawn,) = cache.ledgers(
+            cache.key("composition/mixed", world_id, world_seed, scale.name),
+            _mixed_ledger(world_id, world_seed, scale, mixed),
         )
-        control, treatment = potential.counterfactual_unit_weeks(
-            world_id, world_seed=world_seed, scale=scale, rounding=metric.rounding
-        )
-        composed = {
-            key: (treatment if mixed[key[0]] is WorldArm.TREATMENT else control)[key]
-            for key in control
-        }
-        differing = [key for key, value in composed.items() if generated.get(key) != value]
+        generated = outcomes.unit_weeks(drawn, metric.rounding)
         interferes = bool(run.world.spillover_pct)
+        if interferes:
+            # `potential.build` refuses a world that declares spillover, which is the guard
+            # this check exists to confirm is worth having — so W2's counterfactuals are
+            # assembled here and composed by hand, to show what the composition *would* have
+            # claimed. Everywhere else the eval's own `compose` is called, because a check
+            # that reimplemented it would leave the real one untested.
+            control, treatment = potential.counterfactual_unit_weeks(
+                world_id, world_seed=world_seed, scale=scale, rounding=metric.rounding
+            )
+            composed = {
+                key: (treatment if mixed[key[0]] is WorldArm.TREATMENT else control)[key]
+                for key in control
+            }
+        else:
+            composed = potential.compose(
+                potential.build(
+                    world_id, world_seed=world_seed, scale=scale, rounding=metric.rounding
+                ),
+                mixed,
+            )
+        differing = [key for key, value in composed.items() if generated.get(key) != value]
         if interferes and not differing:
             failures.append(
                 f"{world_id} declares spillover_pct={run.world.spillover_pct} and composed "

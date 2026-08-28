@@ -305,24 +305,50 @@ def test_w4_the_effect_decays_and_w6_does_not(seed: str) -> None:
     )
 
 
-def test_w5_baskets_are_heavy_tailed() -> None:
-    """Variance far above what a power calculation would have assumed — and a fatter maximum.
+def test_w5_store_day_demand_is_heavy_tailed_and_only_in_the_second_half() -> None:
+    """Variance far above what a power calculation would have assumed — at the right level,
+    and arriving after the history such a calculation is sized on.
 
-    Both halves matter. A distribution with the same mean and a longer tail is what defeats a
-    power calculation; a distribution that merely shifted up would be a different world.
+    **Both halves of that sentence were wrong once and each is asserted here.** The tail was on
+    the basket line, and `category_margin_per_store_week` aggregates about sixteen thousand of
+    them: measured at the harness scale, W5's standard error at the readout came out *below*
+    W6's, so the world whose declared pathology is variance had less of it. And when the tail
+    moved to the store-day it was present from day one, which is variance a power calculation
+    **assumed** rather than variance above it — the design engine refused at moment 1 and the
+    readout never got to be the thing that noticed.
+
+    So: the store-day totals are wilder than the ordinary world's, and the *first* half of the
+    calendar is not, because that is the half a design is sized on.
     """
-    assert W5.quantity_tail_alpha is not None and W5.quantity_tail_alpha < 2.0
+    assert W5.demand_tail_alpha is not None and W5.demand_tail_alpha < 2.0
 
-    def quantities(world_id: str) -> list[int]:
-        return [
-            e.qty
-            for e in events(prepare(world_id, seed=SEED, scale="smoke"))
-            if isinstance(e, PosLine)
-        ]
+    def store_day_units(world_id: str) -> tuple[list[int], list[int]]:
+        run = prepare(world_id, seed=SEED, scale="rehearsal")
+        days = sorted({e.business_date for e in events(run) if isinstance(e, ShelfDay)})
+        half = days[len(days) // 2]
+        early: Counter[tuple[str, str]] = Counter()
+        late: Counter[tuple[str, str]] = Counter()
+        for event in events(run):
+            if isinstance(event, ShelfDay):
+                (late if event.business_date >= half else early)[
+                    (event.store_id, event.business_date)
+                ] += event.sold_qty
+        return list(early.values()), list(late.values())
 
-    heavy, ordinary = quantities("W5"), quantities("W6")
-    assert statistics.variance(heavy) > 8 * statistics.variance(ordinary)
-    assert max(heavy) > 4 * max(ordinary)
+    heavy_early, heavy_late = store_day_units("W5")
+    plain_early, plain_late = store_day_units("W6")
+
+    assert statistics.variance(heavy_late) > 4 * statistics.variance(plain_late), (
+        "W5's store-days are not materially wilder than W6's in the half the experiment runs "
+        "in, so the pathology is not reaching the grain the readout reads — which is exactly "
+        "how the basket-line version of this failed"
+    )
+    assert statistics.variance(heavy_early) < 2 * statistics.variance(plain_early), (
+        "W5's first half is already wild, so a power calculation sized on it would have "
+        "assumed the variance rather than been surprised by it, and the design engine would "
+        "refuse before the readout could notice"
+    )
+    assert max(heavy_late) > 2 * max(plain_late)
 
 
 def test_w6_produces_a_real_difference_between_the_arms() -> None:

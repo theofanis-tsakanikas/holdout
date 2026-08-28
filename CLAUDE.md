@@ -142,10 +142,10 @@ acknowledgements that sometimes fail. It **injects a known effect on behaviour**
 | | the world | the correct behaviour |
 |---|---|---|
 | W1 | pure noise, true effect zero | no significant uplift, at a rate ≤ α |
-| W2 | real effect + interference between neighbouring stores | **refuse the interfering units at design**, then estimate on what is left — and, run blind, publish the bias |
+| W2 | real effect + interference between neighbouring stores | **the system does not detect interference.** At this spillover the variance it creates is enough for the power check to refuse — a refusal by luck, not by design |
 | W3 | real effect + exposure fails on 30% of treated units | report ITT with the realised exposure rate printed, or refuse below the declared threshold — never silently dilute |
 | W4 | an effect that decays (novelty) | no result before the declared end, then report what the declared window aggregated — the first week is never available to extrapolate from |
-| W5 | heavy-tailed baskets — variance far above what the power calculation assumed | the power check fails, or the interval is honestly wide |
+| W5 | **heavy-tailed store-day demand**, arriving after the history a power calculation is sized on — variance far above what it assumed | the power check fails, or the interval is honestly wide |
 | W6 | **everything works, a real effect is present** | **produce the number.** No refusal |
 
 **W6 matters as much as W1.** A system that refuses everything passes every other world and is
@@ -970,6 +970,36 @@ exists, that is the finding, and the sentence says so instead. It applies hardes
 *ships*: `corpus/world/worlds.py`'s `correct_behaviour` is sealed into every `truth.sealed.json`, so
 it is a promise the package makes about the system rather than a comment about it.
 
+### And a third time on the same line — the limb the first two were missing
+
+**W2's row was restated on 2026-08-28 and the restatement was wrong too.** The first wording said
+*"detect and refuse, never estimate"*, which named a detector nobody wrote. It was corrected against
+the code — `contamination.check` cannot see a neighbour's trade crossing the road, and the defence
+is `feasibility.neighbour_exclusions` at moment 1 — and became *"exclude the interfering units at
+design, then estimate on what is left"*. That sentence is **true about the code and false about the
+system**: run on the corpus, W2 produces no number at all. Every draw in sixteen refused
+`POWER_NOT_REACHED`, with the neighbour pairs declared and with them withheld alike, because the
+spillover inflates the residual variance past what the power check will admit. There is nothing
+left to estimate on.
+
+The same measurement corrected W5 in the other direction. Its row said *"heavy-tailed baskets"* and
+the tail was real — on the basket line, where `category_margin_per_store_week` aggregates sixteen
+thousand of them and averages it away. Measured, W5's standard error at the readout came out
+**below** W6's: the world whose declared pathology is variance had less of it than the world with
+none.
+
+**Three wrong sentences about one table, and the third is a signal that the rule was short a
+limb rather than that somebody was careless.**
+
+> **A sentence naming what the system does when something goes wrong is written against the
+> function that would make it true — named — *and against the measurement of what comes out when
+> it runs*. A line can be true of the code and false of the system on the corpus.**
+
+The two are different questions and only the second one runs. `feasibility.neighbour_exclusions`
+really does drop the later-sorted member of every neighbouring pair; what no reading of it could
+have said is that the units it leaves behind carry a variance the readout will refuse. That is not
+in any function. It is in a number, and the only way to have it is to run the thing.
+
 ---
 
 ## Oversight — four levels
@@ -1013,7 +1043,7 @@ It is scheduled, not remembered: at the end of every phase, without exception.
 - Does it put a claim on a non-GA surface?
 - If it is a gate: is there a `gate-proof` mutation that proves it bites?
 - **If it is a guard, a barrier, a check or a hook: who wrote the case it is tested on?** See below.
-- **If it is a sentence about what the system does when something goes wrong: which function does it, named?** A sentence written against the table it came from rather than against the code is the same defect one layer up. See below.
+- **If it is a sentence about what the system does when something goes wrong: which function does it, named — and what came out when it ran?** A sentence written against the table it came from rather than against the code is the same defect one layer up; a sentence true of the code and false of the system on the corpus is the same defect one layer up again. See below.
 - If it touches a contract: does the change imply a restatement?
 - If it states a legal fact: which article, which instrument, verified when?
 - If the pattern comes from another project in this portfolio: **what problem did it solve there,

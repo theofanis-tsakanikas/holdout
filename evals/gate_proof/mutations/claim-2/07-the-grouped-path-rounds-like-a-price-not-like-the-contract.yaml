@@ -1,0 +1,40 @@
+# v2 of the metric contract rounded half_up, a SQL round() and a Python Decimal disagreed by a
+# cent, and claim 5 compares consumers as integers with no tolerance — so v3 exists to make
+# that impossible. This puts it back, in one of the two implementations.
+#
+# **It is planted on the window mean and not on the grain cell, and that took one wrong
+# version to learn.** Every term of the metric is an exact integer number of cents, so on a
+# cell `half_even` and `half_up` are the same function: the mutation changed the mode and could
+# not change a number, and it SURVIVED. The only division either implementation performs is the
+# mean over the declared window, and over an even number of weeks that is where a half lands.
+# U10 now compares both, because comparing cells alone was comparing the half of the arithmetic
+# that cannot disagree.
+
+id:          the-grouped-path-rounds-like-a-price-not-like-the-contract
+claim:       2
+eval_module: evals.uplift.machinery
+targets:     [U10.truth-implementations-agree]
+
+breaks: >-
+  the grouped path rounds half_up where the contract declares half_even, so it disagrees with
+  the reference implementation by a cent on the units whose window mean lands on a half.
+
+file: evals/uplift/outcomes.py
+
+anchor: |
+      return {
+          unit: rounding.canonical_integer(
+              Decimal(sum(by_unit_week.get((unit, week), 0) for week in weeks)) / (100 * span)
+          )
+          for unit in units
+      }
+replacement: |
+      from holdout.contracts.model import Rounding
+
+      half_up = Rounding(mode="half_up", decimals=rounding.decimals)
+      return {
+          unit: half_up.canonical_integer(
+              Decimal(sum(by_unit_week.get((unit, week), 0) for week in weeks)) / (100 * span)
+          )
+          for unit in units
+      }

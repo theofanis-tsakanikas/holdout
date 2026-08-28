@@ -41,28 +41,18 @@ jobs:
   gate:
     name: gate
     runs-on: ubuntu-latest
-    # `make check` is seconds; `make claim-1` is minutes, because a claim's whole eval runs
-    # once per planted mutation and that is the cost of the thing being proved rather than
-    # asserted. The history: 30 while `claim-1` and `gate-proof` both ran claim 1's
-    # mutations and the job took 13m06s, then 15 once each mutation ran once.
+    # `make check` is seconds. It was minutes while this job also ran every claim target,
+    # and that is what the matrix below took away: `gate` is now the suite, the contracts and
+    # the expiry check, and nothing that generates a world or plants a mutation.
     #
-    # 25 since T000, and TEMPORARY — reviewed when T003 lands, and no later than 2026-09-30.
-    # `docs/DECISIONS.md` carries it as a dated deferral so it expires on the calendar rather
-    # than on somebody remembering.
-    #
-    # The evidence is not the run that was cancelled. It is the **spread between runners on
-    # the same commit**: 11m00s passing and 15m16s cancelled, four minutes apart, which is
-    # ~40% variance on identical work. A budget that only the fast runner fits is a gate that
-    # reports the runner it drew rather than the state of the code. Claim 1 did grow — 13
-    # mutations to 16, and ~15% slower per eval because `G10` makes a full independent pass —
-    # but that is the smaller half.
-    #
-    # What must NOT happen is a third increase. Claim 2 puts K=200 seeds and six worlds into
-    # this same job; the answer there is parallelising the mutations or splitting the claim
-    # targets into their own jobs, and the limit comes back down in that change. T003 says so
-    # in `TASKS.md`. A timeout is a guard against a hang, not a performance budget — and one
-    # that is raised whenever it binds has stopped being either.
-    timeout-minutes: 25
+    # **Back to 15, which is what T003 owed.** The history: 30 while `claim-1` and
+    # `gate-proof` both ran claim 1's mutations and the job took 13m06s; 15 once each mutation
+    # ran once; 25 from T000, on measured runner variance — 11m00s passing and 15m16s cancelled
+    # on the same commit, which is ~40% spread on identical work and a budget only the fast
+    # runner fits. T003's `stop_at` said the answer was to split the claim targets into their
+    # own jobs rather than to raise it a third time, and that is what happened. The deferral
+    # in `docs/DECISIONS.md` that carried the 25 is closed in this change.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -93,22 +83,28 @@ jobs:
       - name: make expiry
         run: make expiry
 
-      # This step discovers the claim targets instead of listing them, so the day one lands
-      # it is gated by CI without anyone remembering to edit this file - and a claim target
-      # that exists but is never run is impossible by construction. `claim-1` and
-      # `gate-proof` arrived that way and this file did not change to admit them.
-      #
-      # Each mutation runs exactly once, under the claim target that owns it. `gate-proof`
-      # runs nothing: it audits the ownership, and it is what catches an orphaned mutation
-      # that no claim target would ever plant. No special case is needed here for that -
-      # the loop still just runs every target it finds.
-      - name: every claim target that exists
+  # Reads the claim targets out of the **Makefile** and emits them as a matrix. The
+  # discovery property is the whole point and it survives the restructure unchanged: the
+  # targets are never listed in this file, so a claim target that exists but is never run
+  # stays impossible by construction. `claim-1` and `gate-proof` both arrived that way
+  # without this file changing to admit them, and `claim-2` arrives the same way.
+  discover:
+    name: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      targets: ${{ steps.read.outputs.targets }}
+      any: ${{ steps.read.outputs.any }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: read
         run: |
           set -euo pipefail
           targets="$(grep -oE '^(claim-[1-7]|gate-proof|preview-audit):' Makefile \
                      | tr -d ':' | sort -u || true)"
           if [ -z "$targets" ]; then
-            echo "No claim target exists yet. Nothing in this repository proves a claim."
+            echo "any=false" >> "$GITHUB_OUTPUT"
+            echo "targets=[]" >> "$GITHUB_OUTPUT"
             {
               echo "### Claim targets"
               echo ""
@@ -117,15 +113,55 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+          echo "any=true" >> "$GITHUB_OUTPUT"
+          echo "targets=$(printf '%s\n' $targets | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
           {
             echo "### Claim targets"
             echo ""
+            for t in $targets; do echo "- \`make $t\`"; done
           } >> "$GITHUB_STEP_SUMMARY"
-          for t in $targets; do
-            echo "==> make $t"
-            make "$t"
-            echo "- \`make $t\` green" >> "$GITHUB_STEP_SUMMARY"
-          done
+
+  # One runner per claim, which is what makes claim 2 possible at all: it runs the whole
+  # system per draw at K = 200 across six adversarial worlds and then plants eight mutations
+  # against the same checks at a smaller configuration.
+  #
+  # `fail-fast: false` because a red claim 2 must not hide the state of claim 1. They are
+  # separate assertions about separate machinery and one failing tells you nothing about
+  # the other.
+  claims:
+    name: ${{ matrix.target }}
+    needs: [discover]
+    if: needs.discover.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    # TEMPORARY, and set from measurement rather than from hope. On the author's laptop
+    # `make claim-2` is about twenty minutes: eleven for the published harness at K = 200 and
+    # nine for one uncached baseline plus eight mutated runs. A GitHub runner has four cores
+    # against fourteen and is slower per core, and the spread between runners on identical
+    # work has already been measured at ~40% once — so this carries the headroom that spread
+    # demands and no more.
+    #
+    # It is a job timeout and not the `gate` one: `TASKS.md`'s instruction was that the gate
+    # does not go up a third time, and it has come back down to 15 in this same change. The
+    # deferral in `docs/DECISIONS.md` carries this number with a review date, exactly as the
+    # last one did, so it expires by the calendar rather than by somebody remembering.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+
+      - name: install exactly what uv.lock pins
+        run: make setup-locked
+
+      - name: make ${{ matrix.target }}
+        run: make ${{ matrix.target }}
 
   secrets:
     name: secrets

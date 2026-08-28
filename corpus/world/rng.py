@@ -103,16 +103,33 @@ def poisson(rng: random.Random, lam: float) -> int:
     return max(0, int(normal(rng, lam, math.sqrt(lam)) + 0.5))
 
 
-def pareto_units(rng: random.Random, alpha: float, cap: int) -> int:
-    """A basket line quantity with a heavy right tail, truncated at `cap`.
+def pareto_shock(rng: random.Random, alpha: float, cap: float) -> float:
+    """A multiplier with a heavy right tail and a mean of one, truncated at `cap`.
 
-    W5's whole content. A Pareto tail index near 1.5 has finite mean and **infinite
+    W5's whole content. A Pareto tail index below 2 has finite mean and **infinite
     variance**, which is precisely the assumption a power calculation makes and does not
-    check. The truncation is honest about itself: a real basket has a largest possible line,
-    and an untruncated draw would eventually produce a single basket outselling a store.
+    check.
+
+    **It is divided by its own mean**, so a world that carries it has the same average demand
+    as one that does not and differs only in how that demand is spread. Without the division
+    W5 would be a world with more trade in it as well as a wilder one, and every number it
+    produced would be answering two questions at once.
+
+    The truncation is honest about itself and it is generous — a real chain has a busiest day
+    it has ever had, and an untruncated Pareto eventually produces a single day outselling a
+    year. `cap` is stated by the caller rather than assumed here.
+
+    **Restated 2026-08-28: this was `pareto_units`, a basket-line quantity.** The tail was
+    real and it never reached the metric: `category_margin_per_store_week` aggregates about
+    sixteen thousand lines, and the central limit theorem is not something a world can opt out
+    of by drawing each line from a wild distribution. Measured, W5's standard error at the
+    readout came out *below* W6's — 8.08 EUR against 11.51 — so the world whose declared
+    pathology is variance had less of it than the world with none. The tail moved to the level
+    the metric is aggregated over: a store-day.
     """
-    draw: int = math.floor(float(rng.random() ** (-1.0 / alpha)))
-    return max(1, min(draw, cap))
+    draw = float(rng.random() ** (-1.0 / alpha))
+    mean = alpha / (alpha - 1.0) if alpha > 1.0 else 1.0
+    return min(draw, cap) / mean
 
 
 def choice_index(rng: random.Random, weights: tuple[float, ...]) -> int:

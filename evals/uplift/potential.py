@@ -170,8 +170,12 @@ def counterfactual_unit_weeks(
     pair: list[dict[tuple[str, Week], int]] = []
     for arm in (Arm.CONTROL, Arm.TREATMENT):
         run = prepare(world, seed=world_seed, scale=scale, assignment=_arms(base, arm))
+        # The **same key** `build` writes under. The two counterfactual worlds are the same
+        # two worlds whether they are being composed into draws or subtracted into a truth,
+        # and keying them apart cost sixteen regenerations in the parent process after every
+        # worker had already produced them.
         (ledger,) = cache.ledgers(
-            cache.key(f"counterfactual/{arm.value}", world.id, world_seed, scale.name),
+            cache.key(f"potential/{arm.value}", world.id, world_seed, scale.name),
             lambda run=run: (outcomes.collect(run),),  # type: ignore[misc]
         )
         pair.append(outcomes.unit_weeks(ledger, rounding))

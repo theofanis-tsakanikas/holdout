@@ -530,8 +530,72 @@ stop_at       If the A/A test does not stand against alpha — STOP and notify t
               is built on top of it. That is the whole point of putting it first.
               Do not raise timeout-minutes again. If the job does not fit, the job is wrong.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed, and the numbers it closes on.** `make claim-2` is green: **13 checks, 456 draws
+across six worlds, eight planted mutations and eight that bit.**
+
+```
+U1  aa-false-positive-rate     8/200 = 4.0% significant against alpha=5%
+                               one-sided binomial p=0.7867 at level 0.01
+U3  w6-false-refusal-rate      0/200 refused by the machinery, ceiling 10%
+U4  w6-coverage                163/170 = 95.9% against a nominal 95%
+U5  w6-estimator-bias          +0.59 EUR against a standard error of 1.02, over 170 draws
+```
+
+Published beside them, with no threshold on it in this phase: **W6 refused
+`IMBALANCED_PRE_PERIOD` on 30/200 = 15%** of draws. `docs/DECISIONS.md` says what that rate is a
+function of and what would give grounds to gate on it.
+
+**Every draw runs the whole system** — the pre-period, the nine-field form, the eight design
+refusals, the automatic exclusions, the committed seed, the stratified draw, exposure read from the
+corpus's acknowledgements, the four validity checks and the readout. Two hundred draws are
+affordable because a store's events are a function of its own arm outside W2, so two counterfactual
+generations buy every lottery; `U11` checks that against the generator both ways and W2 must
+disagree.
+
+**Three worlds' declared behaviour changed, and each was a measurement rather than an argument.**
+
+- **W5's tail was on the wrong thing.** `quantity_tail_alpha` was a Pareto index on a basket line,
+  and the metric aggregates about sixteen thousand of them: W5's standard error at the readout came
+  out *below* W6's — 8.08 EUR against 11.51 — so the world whose declared pathology is variance had
+  less of it than the world with none. The tail moved to the **store-day** and to the **second half
+  of the calendar**, because a pathology present in the history a design is sized on is variance the
+  calculation *assumed*. Pre-period sd is now identical to W6's and the period's is 4.4x it.
+- **W2 states no number, and it is luck.** Every draw refuses `POWER_NOT_REACHED` with the neighbour
+  pairs declared and withheld alike: the spillover inflates the residual variance past what the
+  power check will admit. There is no interference detector anywhere in the system, so at a lower
+  spillover it would report a contaminated number in silence. `U6` publishes the pair of refusal
+  rates and `docs/DECISIONS.md` carries the limit with the world that would demonstrate it.
+- **`CLAUDE.md`'s rule about sentences gained a third limb**, because W2's line was wrong twice: once
+  against the code and once against what the world produces when it runs. *A sentence is written
+  against the function that would make it true — and against the measurement of what comes out.*
+
+**One core optimisation, guarded by equality.** A readout on a roster of 269 at B = 1000 went from
+32 s to 5.3 s: the permutation statistic is a polynomial in the shift, and an arm's `XtX` is the
+whole minus the other arm's where the two partition the design. Both are algebra over `Fraction`, so
+`tests/core/test_estimator_interval.py` keeps the refitting implementation verbatim as an oracle and
+asserts **bit-identical** bounds on cases the corpus drew.
+
+**The CI restructure, and the gate is back to 15.** Four jobs where there were two: `gate` runs
+`make check`, the contracts and the expiry check; `discover` reads the claim targets out of the
+Makefile; `claims` runs one per runner with `fail-fast: false`. The discovery property is untouched
+— the targets are still never listed in the workflow. The 25-minute deferral is closed and the new
+job's budget is a dated one.
+
+**And world generation left the mutation loop.** A world is a pure function of `(world, seed, scale)`
+and a mutation changes eval code, so the ten runs of `make claim-2` generate the worlds once. What
+invalidates that is a digest of every file the artefact was produced by, not a list somebody
+maintains — `tests/evals/test_uplift_cache.py` drives both directions by editing real files.
+
+**Two mutations were re-aimed on measurement and one gate-proof constant moved.** The half_up
+mutation on a grain cell could not bite — every term of the metric is an exact integer number of
+cents, so the two rounding modes are the same function there; it moved to the window mean, which is
+the only division either implementation performs, and `U10` now compares both. And
+`gate_proof.engine.TIMEOUT_SECONDS` went from 300 to 900: a mutation that changes the corpus
+*legitimately* regenerates every world, which is the cache working rather than failing, and under
+300 that was recorded as `CRASHED`.
 
 **And the rule-id map.** `evals/guardrail/reference.py` now writes the core's six `Bound.rule_id`
 strings down a second time, which is what makes `G10` able to disagree. T008's `floor.yaml` rule-id
@@ -968,10 +1032,16 @@ L7  Stratified randomisation — strata matched on a composite distance, the lot
 
 ```
 T00A ─▶ T002 ─────┐    (both closed)
-                  ├─▶ T00D ─▶ T00E ─▶ T003 (claim-2, closes Phase 1) ─▶ T008 ─▶ Phase 2 ─▶ …
+                  ├─▶ T00D ─▶ T00E ─▶ T003  ✅ (claim-2 green — phase 1's hardest claim)
 T001 ─▶ T002B ────┤    (both closed)
 T000 ─────────────┘    (also blocks T004, T005, T006)
+
+remaining before T008 and phase 2:  T004 (claim 3) · T005 (claim 4) · T006 (claim 7) · T007
 ```
+
+**T003 has closed.** Claim 2 is green at K = 200 and the four numbers are published rather than
+ticked. What still stands between here and the phase-1 integration session is claims 3, 4 and 7 —
+each of which needs nothing that T003 did not already build — and `docs/SCENARIO.md`.
 
 **T00D and T00E were inserted on 2026-08-28, by T003 stopping on its first measurement.** They are
 above, with the numbers. The short version: the corpus's geography and the design engine's

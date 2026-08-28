@@ -50,6 +50,7 @@ from pathlib import Path
 from corpus.world.seal import SEAL_FILENAME, WorldTruth, open_after_readout
 
 from evals.report import Check
+from evals.uplift import aa
 from evals.uplift.harness import DrawRecord
 
 
@@ -134,79 +135,88 @@ def interference_pair(
     declared: Sequence[DrawRecord],
     withheld: Sequence[DrawRecord],
     *,
-    truth: Mapping[str, Fraction],
+    minimum_pct: Fraction,
 ) -> tuple[Check, list[tuple[str, str]]]:
-    """`U6` — what declaring the neighbour pairs is worth, as the pair it is.
+    """`U6` — what W2 actually does, published as the pair of refusal rates it is.
 
-    Two arms of the same lotteries: with the interfering pairs declared to the design engine,
-    which excludes the later-sorted member of each, and with them withheld, which leaves both
-    members in the experiment measuring each other. The bias against the truth is computed for
-    both, and the check is that **withholding them is worse**.
+    **This was a pair of biases and it could not be computed.** Measured over sixteen draws at
+    the harness scale, W2 produced no number at all — every draw refused `POWER_NOT_REACHED`,
+    with the neighbour pairs declared to the engine and with them withheld alike. There is
+    nothing to take a bias of.
 
-    Not that the estimate is unbiased with them declared. It need not be: an excluded store is
-    still trading next door, so what the exclusion removes is a unit measuring its *own*
-    neighbour, not every path interference takes. The measurement is of a gap, and stating it
-    as a gap is the point of running this world blind.
+    And the reason is worth more than the number would have been. **The system does not detect
+    interference**: `contamination.check` asks whether the digest describes the arms it carries
+    and whether each unit received its own arm's policy, and neither question can see a
+    neighbour's trade crossing the road. What refuses is the power check, because 18% spillover
+    inflates the residual variance past what it will admit — **a refusal by luck, not by
+    design**. `docs/DECISIONS.md` carries the limit that follows: at a lower spillover the
+    variance would stay under the threshold and the system would state a contaminated number in
+    silence.
+
+    So both arms are run and both rates are published. The check is that W2 states no number,
+    which is what its `correct_behaviour` now says; the pair is what a reader needs to see that
+    declaring the pairs is not what produced that outcome.
     """
 
-    def mean_bias(records: Sequence[DrawRecord]) -> float | None:
-        errors = [
-            float(r.uplift_cents) - float(truth[r.world_seed])
-            for r in records
-            if r.uplift_cents is not None and r.world_seed in truth
-        ]
-        return statistics.fmean(errors) if errors else None
+    def rate(records: Sequence[DrawRecord]) -> tuple[int, int, dict[str, int]]:
+        codes: dict[str, int] = {}
+        for record in records:
+            for code in record.refused:
+                codes[code] = codes.get(code, 0) + 1
+        return sum(1 for r in records if not r.produced_a_number), len(records), codes
 
-    with_pairs = mean_bias(declared)
-    without = mean_bias(withheld)
-    if with_pairs is None or without is None:
-        return (
-            Check(
-                id="U6.w2-exclusion-is-load-bearing",
-                question=(
-                    "Does declaring the neighbour pairs remove interference the design engine "
-                    "exists to remove — is the estimate closer to the truth with them than "
-                    "without?"
-                ),
-                passed=False,
-                figure=(
-                    f"{len([r for r in declared if r.produced_a_number])} declared and "
-                    f"{len([r for r in withheld if r.produced_a_number])} withheld draws "
-                    "produced a number; the pair needs both"
-                ),
-            ),
-            [],
-        )
-    passed = abs(with_pairs) < abs(without)
+    refused_declared, total_declared, codes_declared = rate(declared)
+    refused_withheld, total_withheld, codes_withheld = rate(withheld)
+    correct = refused_declared + refused_withheld
+    total = total_declared + total_withheld
+    passed = _passes(correct, total, minimum_pct)
     numbers = [
-        ("W2 bias, neighbour pairs declared", f"{with_pairs / 100:+,.2f} EUR per store-week"),
-        ("W2 bias, neighbour pairs withheld", f"{without / 100:+,.2f} EUR per store-week"),
         (
-            "  what the exclusion is worth",
-            f"{(abs(without) - abs(with_pairs)) / 100:+,.2f} EUR of bias removed",
+            "W2 with the neighbour pairs declared",
+            f"{_share(refused_declared, total_declared)} stated no number · "
+            f"{codes_declared or 'no refusal code'}",
+        ),
+        (
+            "W2 with the neighbour pairs withheld",
+            f"{_share(refused_withheld, total_withheld)} stated no number · "
+            f"{codes_withheld or 'no refusal code'}",
+        ),
+        (
+            "  what refused it",
+            "the power check, on variance the spillover created — not a detector. "
+            "See docs/DECISIONS.md for what that means at a lower spillover",
         ),
     ]
     return (
         Check(
-            id="U6.w2-exclusion-is-load-bearing",
+            id="U6.w2-states-no-number",
             question=(
-                "Does declaring the neighbour pairs remove interference the design engine "
-                "exists to remove — is the estimate closer to the truth with them than "
-                "without?"
+                "On a world that breaks the stable unit treatment value assumption, does the "
+                "system state no number — whether or not the interfering pairs were declared "
+                "to the design engine?"
             ),
             passed=passed,
             figure=(
-                f"bias {with_pairs / 100:+,.2f} EUR with the pairs declared against "
-                f"{without / 100:+,.2f} EUR with them withheld"
+                f"{_share(correct, total)} stated no number, against a floor of "
+                f"{float(minimum_pct):.0f}% · declared "
+                f"{_share(refused_declared, total_declared)}, withheld "
+                f"{_share(refused_withheld, total_withheld)}"
             ),
             detail=""
             if passed
             else (
-                "withholding the neighbour pairs did not make the estimate worse, so the "
-                "exclusion at moment 1 is not load-bearing on this world — which would mean "
-                "either that the interference is not reaching the metric or that the "
-                "exclusion is not removing it. Both are findings and neither is a pass."
+                "a draw on the interference world produced an uplift. Nothing in the four "
+                "validity checks looks for interference, so a number stated here is a number "
+                "stated about arms that were measuring each other — which is the silent "
+                "contaminated result docs/DECISIONS.md carries as this system's declared "
+                "limit, arriving earlier than the deferral expected it to."
             ),
+            counterexamples=tuple(
+                f"{r.world_seed}/{r.lottery_seed}: uplift "
+                f"{float(r.uplift_cents or 0) / 100:+,.2f} EUR"
+                for r in [*declared, *withheld]
+                if r.produced_a_number
+            )[:8],
         ),
         numbers,
     )
@@ -335,7 +345,13 @@ def window_not_first_week(
     )
 
 
-def power_or_width(records: Sequence[DrawRecord], *, minimum_pct: Fraction) -> Check:
+def power_or_width(
+    records: Sequence[DrawRecord],
+    *,
+    truth: Mapping[str, Fraction],
+    alpha: Fraction,
+    level: Fraction,
+) -> Check:
     """`U9` — heavy tails fail the power check, or the interval is honestly wide.
 
     The function is `Statistic.detects`, judged on the **realised** variance rather than on
@@ -343,39 +359,107 @@ def power_or_width(records: Sequence[DrawRecord], *, minimum_pct: Fraction) -> C
     inversion rather than by an asymptotic formula, so a variance the design did not expect
     comes out as width instead of as a confident wrong number.
 
-    Either is correct behaviour and both are counted. What would be incorrect is a narrow
-    interval and a passed power check on a world whose variance is far above what was assumed
-    — a confident number produced from data that cannot support one.
+    **"Honestly wide" means it still contains the truth**, and that reading is a correction
+    made on measurement. It was written as *contains zero*, which is a different sentence: the
+    effect in this world is real, so an interval that excludes zero can be perfectly honest and
+    a draw whose realised variance happened to be mild was being counted as a failure for
+    getting a precise answer. What W5 must never do is produce a **confidently wrong** number,
+    and that is what covering the truth says.
+
+    Either outcome is correct and both are counted. What is not is a narrow interval that
+    misses — a confident number from data that could not support one.
+
+    **It is judged as a binomial and not against `per_world_min_correct_pct`**, which governs
+    W2 and W3. Those two are deterministic: every draw refuses or the world has stopped being
+    what it says. This one is not — a draw that survives the power check then covers the truth
+    with the interval's own declared probability, so the rate a correct system produces here is
+    `1 - alpha` and not 1. A fixed percentage would have been a threshold with a different
+    meaning at every draw count, which is the same mistake the coverage check was restated to
+    stop making.
     """
-    total = len(records)
-    refused = sum(1 for r in records if "POWER_NOT_REACHED" in r.readout_refusals)
-    wide = [
+    scored = [r for r in records if r.world_seed in truth]
+    total = len(scored)
+    refused = [r for r in scored if "POWER_NOT_REACHED" in r.readout_refusals]
+    honest = [
         r
-        for r in records
-        if r.uplift_cents is not None
-        and r.interval_cents is not None
-        and r.interval_cents[0] <= 0 <= r.interval_cents[1]
+        for r in scored
+        if r.interval_cents is not None
+        and Fraction(r.interval_cents[0]) <= truth[r.world_seed] <= Fraction(r.interval_cents[1])
     ]
-    correct = refused + len(wide)
-    passed = _passes(correct, total, minimum_pct)
+    correct = len(refused) + len(honest)
+    nominal = 1 - alpha
+    p_value = aa.at_most(correct, total, nominal) if total else Fraction(0)
+    passed = bool(total) and p_value > level
     return Check(
         id="U9.w5-power-or-width",
         question=(
-            "On heavy-tailed baskets, whose variance is far above what the power calculation "
-            "assumed, does the system either fail the power check or return an interval wide "
-            "enough to admit no effect?"
+            "On a world whose variance arrives far above what the power calculation was sized "
+            "on, does the system either fail the power check or return an interval that still "
+            "contains the truth — never a confident number the data cannot support?"
         ),
         passed=passed,
         figure=(
             f"{_share(correct, total)} did one or the other "
-            f"({refused} refused POWER_NOT_REACHED, {len(wide)} honestly wide)"
+            f"({len(refused)} refused POWER_NOT_REACHED, {len(honest)} honestly wide) · "
+            f"one-sided binomial p={float(p_value):.4f} against a nominal "
+            f"{float(nominal):.0%} at level {float(level)}"
         ),
         detail=""
         if passed
         else (
-            "a draw produced a narrow interval and a passed power check on a world whose "
-            "variance the design never anticipated. That is a confident number from data that "
-            "cannot support one, which is the failure this whole repository is about."
+            "a draw produced an interval that misses the truth on a world whose variance the "
+            "design never anticipated. That is a confident number from data that cannot "
+            "support one, which is the failure this whole repository is about."
+        ),
+        counterexamples=tuple(
+            f"{r.world_seed}/{r.lottery_seed}: interval {r.interval_cents} misses truth "
+            f"{float(truth[r.world_seed]) / 100:,.2f} EUR"
+            for r in scored
+            if r not in refused and r not in honest
+        )[:8],
+    )
+
+
+def neighbour_pairs_are_excluded(records: Sequence[DrawRecord]) -> Check:
+    """`U13` — no pair inside the declared radius has both members in the experiment.
+
+    This is the design engine's central promise about interference and the only defence
+    against it anywhere in the system: `feasibility.neighbour_exclusions` drops the
+    later-sorted member of every pair inside `neighbour_radius_m` at moment 1, and the closed
+    vocabulary's only interference code is filed under `at_design`. `contamination.check` does
+    not look for interference and nothing at readout does.
+
+    So the promise is worth checking per draw rather than trusting, and it is checkable
+    exactly: the pairs come from the chain, the roster comes from the seal, and the answer is
+    an integer. **W2's withheld arm is excluded from it on purpose** — withholding the pairs is
+    the counterfactual the eval publishes, and counting it here would be marking the control
+    condition wrong.
+    """
+    declared = [r for r in records if r.control_size]
+    surviving = [r for r in declared if r.surviving_neighbour_pairs]
+    return Check(
+        id="U13.neighbour-pairs-are-excluded",
+        question=(
+            "After moment 1, does any pair of stores inside the declared neighbour radius "
+            "still have both of its members in the experiment?"
+        ),
+        passed=not surviving and bool(declared),
+        figure=(
+            f"{len(declared) - len(surviving)}/{len(declared)} draw(s) left no pair intact"
+            if declared
+            else "no draw reached a lottery"
+        ),
+        detail=""
+        if not surviving
+        else (
+            "two stores inside the radius are in the same experiment, so one of them is "
+            "measuring the other. Nothing downstream would notice: there is no interference "
+            "detector at readout, and the four validity checks would all pass."
+        ),
+        counterexamples=tuple(
+            f"{r.world}/{r.world_seed}/{r.lottery_seed}: {r.surviving_neighbour_pairs} pair(s) "
+            "intact"
+            for r in surviving[:8]
         ),
     )
 

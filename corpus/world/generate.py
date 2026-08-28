@@ -263,6 +263,32 @@ def _emit_store(
             if arm is Arm.TREATMENT
             else 1.0
         )
+        # W5, and 1.0 everywhere else. One heavy-tailed multiplier for the whole store-day.
+        # It does not know which arm the store is in, so it makes the world wilder without
+        # making the intervention look different.
+        #
+        # **The replenishment planner sees it and the analyst does not**, which is the whole
+        # point and was worth one wrong version to learn. Applied to demand alone it produced
+        # a world that loses money: a mean-one multiplicative shock against a fixed order is
+        # censored on every big day and wasted on every small one, and W5's mean margin came
+        # out at minus nine euros a store-week. That is not a world with more variance in it,
+        # it is a different and broken world. A shop that knows a bank holiday is coming
+        # orders for it; what nobody knows in advance is how a *store-week* built out of seven
+        # such days will land, and that is the variance a power calculation assumes away.
+        #
+        # **And it begins half way through the world**, which is the second thing one wrong
+        # version taught. A pathology present in the history a design is sized on is not
+        # "variance far above what the power calculation assumed" — it is variance the
+        # calculation assumed, and the engine refuses the design at moment 1 rather than
+        # letting the readout notice. W5's row says the power check fails or the interval is
+        # honestly wide, and a design refusal is neither. So the quiet half is what a
+        # calculation is sized on and the wild half is what the experiment runs in, which is
+        # the sentence the row was always making.
+        shock = (
+            demand.store_day_shock(seed, store.store_id, iso_date, world.demand_tail_alpha)
+            if day_index >= scale.days // 2
+            else 1.0
+        )
 
         schedules: dict[str, list[_Segment]] = {}
         discounts: dict[str, float] = {}
@@ -283,7 +309,7 @@ def _emit_store(
             )
             order = max(
                 0,
-                math.ceil(_forecast_units(product, store, business_date) * SERVICE_FACTOR)
+                math.ceil(_forecast_units(product, store, business_date) * shock * SERVICE_FACTOR)
                 - int(counted),
             )
             if order:
@@ -380,6 +406,7 @@ def _emit_store(
                 * demand.weather_factor(product.category, weather)
                 * cross
                 * spillover
+                * shock
             )
             draw = rng.stream(seed, "sales", store.store_id, sku, iso_date)
             for segment in segments:
@@ -407,7 +434,7 @@ def _emit_store(
                     for _ in range(rng.poisson(draw, rate))
                 )
                 for hour in arrivals:
-                    wanted = demand.units_on_line(draw, world.quantity_tail_alpha)
+                    wanted = demand.units_on_line(draw)
                     if st.on_hand <= 0:
                         if stocked_out[sku] is None:
                             stocked_out[sku] = hour
