@@ -671,7 +671,9 @@ mutations edit `evals/uplift/`; it now names what it forbids, behind
 argument, which until this branch had no function behind it at all.
 
 `make check` green at **919 tests** · `make claim-7` **12/12 with 7/7 mutations biting**, 37s on the
-laptop and **1m32s–1m41s on the four-core runners**, measured on the run that carries all seven.
+laptop and **under two minutes on the four-core runner** — five CI measurements between 1m32s and
+1m45s, stated as a range because the two point estimates this line carried before it were both
+overtaken, once by a mutation landing and once by the registry growing.
 *Figures restated after merging `main`: claims 3 and 4 added seven types and twenty fields to the
 registry, so the products moved — 15,533 → 17,752 attacks over 49 → 56 types. The 35 of 317 and the
 11.0% did not move, because they are properties of the two vocabularies and not of this estate.*
