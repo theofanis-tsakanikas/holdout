@@ -848,9 +848,16 @@ T010's silver layer compose it.
 90-minute timeout `docs/DECISIONS.md` already carries with a date. Measured at **58 s, serial, at
 99% CPU** — so core count is not the variable and the local figure is close to what a runner will
 see; it is two orders of magnitude under the budget either way, and nothing is changed here. The
-cold figure from CI is still what that deferral's next measurement should record beside claim 2's,
+cold figure from CI is what that deferral's next measurement should record beside claim 2's,
 because a measurement taken on the hardware that will meet the number is the only kind this
 repository accepts.
+
+*Read off the runner, 2026-08-29:* `claim-4` is **1m51s and 2m31s** cold on `ubuntu-latest`, over
+two runs of the same commit — a 36% spread between runners, which is the same order as the ~40%
+this repository has already measured and is why a budget is never set from a single run. Against
+the matrix's 90-minute timeout that is a factor of 36, so `claim-4` puts no pressure on it. The
+deferral itself stays claim 2's to close: `claim-2` is what the 90 was sized on, at 50m26s and
+51m24s on the same two runs.
 
 ```
 id            T006
