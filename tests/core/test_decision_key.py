@@ -16,379 +16,77 @@ exact-field-set assertion, not by the scan.
 A blacklist only ever catches an honest mistake. Claim 7 is a structural claim, so the
 structure is what is asserted:
 
-* **the exact field set of every type on the decision path**, written out here, so that
-  adding *any* field — however innocent, however unrelated to a person — turns this red and
+* **the exact field set of every type on the decision path**, written out, so that adding
+  *any* field — however innocent, however unrelated to a person — turns this red and
   somebody has to say what it is for;
 * the blacklist as well, over dataclass fields **and** `__slots__`, because it is what
   catches a person-shaped field arriving on a type nobody thought to list.
 
 The first is the claim. The second is a net under it.
+
+Where the rule moved, and why — 2026-08-29, T006
+------------------------------------------------
+The registry and the word list used to live in this file. They now live in
+`ops/personhood.py`, with this file and `evals/oversight/` as the two callers — the same
+arrangement `ops/isolation.py` has for the corpus barrier, for the same reason: two
+hand-written copies of one rule drift, and the copy that drifts is the one nobody reads.
+
+Nothing about the assertions changed in the move. What changed is that a second caller now
+exists that asks a question this file cannot: **against 317 names two published vocabularies
+use for a person, does the guard still refuse when each of them is planted?** Measured, the
+`PERSON_SHAPED` tuple below catches 35 of those 317. That is the answer to *who wrote the
+case this guard is tested on* — and it is why the sentence above says the word list is a net
+and not the claim. `make claim-7`.
 """
 
 from __future__ import annotations
 
-import dataclasses
-import importlib
-import pkgutil
 from typing import Any
 
 import pytest
+from ops.personhood import (
+    FIELDS_ON_THE_DECISION_PATH,
+    core_types,
+    field_names,
+    misdeclared,
+    person_shaped,
+    unlisted,
+)
 
-import holdout.core
 from holdout.contracts.model import ContractSet
 from holdout.core.decision import DecisionKey, DecisionPath
-from holdout.core.design import (
-    DecisionRule,
-    DesignForm,
-    DesignRefusal,
-    DesignRefusalReason,
-    Exclusion,
-    Feasible,
-    FilledBy,
-    Intervention,
-    MaxDuration,
-    Mde,
-    Scope,
-    StoppingRule,
-)
-from holdout.core.experiment import (
-    CheckResult,
-    Contamination,
-    CovariateMatrix,
-    Design,
-    Exposure,
-    Period,
-    Readout,
-    ReadoutRefusal,
-    ReferencePlan,
-    SealedAssignment,
-    Standardised,
-    Statistic,
-)
-from holdout.core.guardrails import Announcement, Assessment, CertifiedPrice, ProposedPrice, Refusal
-from holdout.core.guardrails.benchmark import MarginOnPrice, MarkupOnCost
-from holdout.core.guardrails.envelope import (
-    Bound,
-    Envelope,
-    FloorRule,
-    FrozenCategoriesRule,
-    GuardrailRefusal,
-    MarginCapRule,
-    MaxDeltaRule,
-    PriceBounds,
-    PriorPriceRule,
-)
-from holdout.core.ladder import LadderQuote
-from holdout.core.money import Money
-from holdout.core.pricing import Outcome, Scenario, Selection
-
-#: Every type a decision passes through, with its fields written out. This is claim 7.
-#:
-#: Deliberately not derived from the classes: a test that read the field set off the class
-#: could never disagree with the class. These are the names a human wrote down and a
-#: reviewer can read against the claim.
-EXACT_FIELDS: dict[type[Any], frozenset[str]] = {
-    DecisionKey: frozenset({"path", "sku_id", "store_id", "occasion"}),
-    ProposedPrice: frozenset(
-        {
-            "key",
-            "decided_at",
-            "price",
-            "base_price",
-            "category_id",
-            "source",
-            "is_perishable",
-            "announced_as_reduction",
-            "unit_cost",
-            "cost_known_at",
-            "marker",
-            "changes_dispatched_today",
-            "prior_price",
-            "benchmark_markup_on_cost",
-            "week_opening_price",
-        }
-    ),
-    MarkupOnCost: frozenset({"pct"}),
-    MarginOnPrice: frozenset({"pct"}),
-    CertifiedPrice: frozenset(
-        {
-            "_witness",
-            "_key",
-            "_price",
-            "_decided_at",
-            "_decided_on",
-            "_source",
-            "_marker",
-            "_cost_freshness",
-            "_announcement",
-            "_bounds",
-            "_checks",
-        }
-    ),
-    Refusal: frozenset({"key", "decided_at", "reasons", "bounds"}),
-    GuardrailRefusal: frozenset({"code", "guardrail", "rule_id", "detail", "safe_state"}),
-    Assessment: frozenset({"key", "bounds", "cost_freshness", "announcement", "refusals"}),
-    Bound: frozenset({"amount", "guardrail", "rule_id", "code", "why"}),
-    PriceBounds: frozenset({"lower", "upper"}),
-    Announcement: frozenset({"basis", "prior_price", "lookback_days"}),
-    LadderQuote: frozenset({"step", "depth_pct", "price", "marker", "clamped_to_floor"}),
-    Scenario: frozenset({"price", "expected_units"}),
-    Outcome: frozenset(
-        {
-            "scenario",
-            "units_sold",
-            "units_wasted",
-            "revenue",
-            "cost_of_sales",
-            "cost_of_waste",
-            "contribution",
-        }
-    ),
-    Selection: frozenset({"chosen", "ranked"}),
-    # The envelope itself. Not on the decision path in the sense that a person could ride
-    # in on it, but listed for the reason the test above gives: an unlisted type is a place
-    # to put a field nobody asserted, and "it is only configuration" is how that starts.
-    Envelope: frozenset(
-        {
-            "decided_on",
-            "path",
-            "floor",
-            "max_delta",
-            "frozen_categories",
-            "margin_cap",
-            "prior_price",
-        }
-    ),
-    FloorRule: frozenset(
-        {
-            "minimum_gross_margin_pct",
-            "minimum_absolute_price",
-            "cost_staleness_hours",
-            "refuse_when_no_legal_price_sells",
-            "safe_state",
-        }
-    ),
-    MaxDeltaRule: frozenset(
-        {
-            "markdown_max_depth_pct",
-            "markdown_max_changes_per_sku_per_day",
-            "base_price_max_weekly_increase_pct",
-            "base_price_max_weekly_decrease_pct",
-            "safe_state",
-        }
-    ),
-    FrozenCategoriesRule: frozenset({"category_ids", "safe_state"}),
-    MarginCapRule: frozenset(
-        {"in_force", "basis", "benchmark", "regulated_category_ids", "safe_state"}
-    ),
-    PriorPriceRule: frozenset(
-        {"perishable_exemption", "lookback_days", "progressive_reduction_window_days", "safe_state"}
-    ),
-    Money: frozenset({"cents"}),
-    # ------------------------------------------------------- the design engine
-    #
-    # Not on the decision path: an experiment design is about *which* units get *which
-    # policy*, never about who buys anything. Listed anyway, for the reason this file's
-    # docstring gives — an unlisted type is a place to put a field nobody asserted, and
-    # "it is only the experiment layer" is exactly how that would start. The vocabulary
-    # here is arm, unit, stratum and roster. Never cohort, never segment.
-    DesignForm: frozenset(
-        {
-            "hypothesis",
-            "intervention",
-            "scope",
-            "primary_metric",
-            "unit",
-            "mde",
-            "max_duration",
-            "exclusions",
-            "decision_rule",
-            "filled_by",
-        }
-    ),
-    Intervention: frozenset({"treatment", "control"}),
-    Scope: frozenset({"categories", "products", "stores"}),
-    Mde: frozenset({"kind", "value", "direction"}),
-    MaxDuration: frozenset({"weeks"}),
-    Exclusion: frozenset({"store_id", "reason"}),
-    DecisionRule: frozenset({"if_significant", "if_not_significant", "if_refused"}),
-    StoppingRule: frozenset({"kind", "spending_function", "looks"}),
-    FilledBy: frozenset({"kind", "name"}),
-    DesignRefusal: frozenset({"experiment_id", "reasons"}),
-    DesignRefusalReason: frozenset({"code", "detail", "what_would_fix_it"}),
-    Feasible: frozenset(
-        {
-            "experiment_id",
-            "form_digest",
-            "metric_ref",
-            "roster",
-            "declared_exclusions",
-            "automatic_exclusions",
-            "required_per_arm",
-            "weeks",
-            "mde_absolute",
-            "two_sided",
-            "assignment",
-            "balance",
-        }
-    ),
-    # ------------------------------------------------------- the experiment core
-    #
-    # `SealedAssignment` is the second type in this repository that is deliberately not a
-    # dataclass — its constructor raises, which is most of doctrine rule 7 — so it is
-    # `__slots__` that has to be read here. That is the hole a review found in an earlier
-    # version of this file for `CertifiedPrice`, and it stays closed by listing both.
-    SealedAssignment: frozenset(
-        {
-            "_witness",
-            "_experiment_id",
-            "_seed",
-            "_draw_index",
-            "_strata",
-            "_arms",
-            "_form_digest",
-            "_covariate_digest",
-            "_digest",
-        }
-    ),
-    CovariateMatrix: frozenset({"ids", "kinds", "rows"}),
-    Standardised: frozenset({"covariate_id", "level", "squared"}),
-    Contamination: frozenset(
-        {
-            "digest_matches",
-            "redraw_matches",
-            "reassigned",
-            "misdelivered",
-            "undelivered",
-            "comparison_is_vacuous",
-        }
-    ),
-    Exposure: frozenset({"assigned_treated", "exposed_treated"}),
-    Design: frozenset({"units", "columns", "rows"}),
-    Statistic: frozenset({"difference", "variance", "squared", "sign"}),
-    ReferencePlan: frozenset({"design", "grand_mean", "plans"}),
-    Period: frozenset({"opens_on", "ends_on"}),
-    CheckResult: frozenset({"check", "passed", "figure"}),
-    Readout: frozenset(
-        {
-            "experiment_id",
-            "metric_ref",
-            "data_version",
-            "period",
-            "seed",
-            "draw_index",
-            "digest",
-            "uplift",
-            "confidence_interval",
-            "p_value",
-            "draws",
-            "alpha",
-            "statistic",
-            "checks",
-            "balance",
-        }
-    ),
-    ReadoutRefusal: frozenset(
-        {
-            "experiment_id",
-            "metric_ref",
-            "data_version",
-            "period",
-            "seed",
-            "draw_index",
-            "digest",
-            "checks",
-            "balance",
-        }
-    ),
-}
-
-#: Substrings that name a person or a way of reaching one. Broad on purpose — a false
-#: positive costs a conversation and a false negative costs the claim.
-PERSON_SHAPED = (
-    "customer",
-    "consumer",
-    "shopper",
-    "member",
-    "loyalty",
-    "household",
-    "person",
-    "individual",
-    "subject",
-    "basket",
-    "pseudonym",
-    "user_",
-    "email",
-    "phone",
-    "msisdn",
-    "card_",
-    "cardholder",
-    "segment",
-    "cohort",
-    "profile",
-    "identity",
-    "citizen",
-    "vat_number",
-    "tax_id",
-    "birth",
-    "gender",
-    "postcode",
-    "address",
-)
-
-
-def field_names(cls: type[Any]) -> frozenset[str]:
-    """What a type carries, whether or not it is a dataclass.
-
-    `CertifiedPrice` is not one — its constructor refuses, which is most of claim 1 — so a
-    scan built on `dataclasses.fields` could not see the actuation type at all. Reading
-    `__slots__` as well is what closes that.
-    """
-    if dataclasses.is_dataclass(cls):
-        return frozenset(f.name for f in dataclasses.fields(cls))
-    slots = getattr(cls, "__slots__", ())
-    if isinstance(slots, str):
-        slots = (slots,)
-    return frozenset(slots) - {"__weakref__", "__dict__"}
-
-
-def _core_types() -> list[type[Any]]:
-    """Every dataclass and every slotted class defined under `holdout.core`."""
-    found: list[type[Any]] = []
-    for module_info in pkgutil.walk_packages(holdout.core.__path__, "holdout.core."):
-        module = importlib.import_module(module_info.name)
-        for value in vars(module).values():
-            if not isinstance(value, type) or value.__module__ != module_info.name:
-                continue
-            if dataclasses.is_dataclass(value) or hasattr(value, "__slots__"):
-                found.append(value)
-    return found
-
+from holdout.core.guardrails import CertifiedPrice
 
 # ------------------------------------------------------------------ the structural claim
 
 
-@pytest.mark.parametrize("cls", list(EXACT_FIELDS), ids=lambda c: c.__name__)
+@pytest.mark.parametrize("cls", list(FIELDS_ON_THE_DECISION_PATH), ids=lambda c: c.__name__)
 def test_the_type_carries_exactly_the_fields_written_down_here(cls: type[Any]) -> None:
     """Adding any field to a decision-path type is a red test and a conversation."""
-    assert field_names(cls) == EXACT_FIELDS[cls]
+    assert field_names(cls) == FIELDS_ON_THE_DECISION_PATH[cls]
+
+
+def test_the_registry_reports_the_same_offences_as_the_parametrised_assertion() -> None:
+    """`misdeclared()` is what `evals/oversight/` calls; this file asserts type by type.
+
+    Two readings of one rule, and they must agree. The parametrised assertion above names
+    the offending type in the test id, which is what a session wants; `misdeclared()` returns
+    the whole list at once, which is what a report wants. If they could disagree, the eval
+    and the suite would be two guards rather than two callers.
+    """
+    assert misdeclared() == []
 
 
 def test_every_decision_path_type_is_listed() -> None:
-    """The list above is the claim, so a new type on the path must join it.
+    """The registry is the claim, so a new type on the path must join it.
 
     Without this, claim 7 could be defeated by adding a *type* rather than a field — a
     `CustomerContext` nobody listed, carried on a proposal, asserted nowhere.
     """
-    unlisted = [
-        f"{cls.__module__}.{cls.__name__}"
-        for cls in _core_types()
-        if cls not in EXACT_FIELDS and not cls.__name__.startswith("_") and field_names(cls)
-    ]
-    assert not unlisted, (
-        "a type in holdout.core carries fields and is not in EXACT_FIELDS. Either it is on "
-        "the decision path — in which case write its fields down — or it is not, in which "
-        "case say so by listing it anyway:\n  " + "\n  ".join(unlisted)
+    assert not unlisted(), (
+        "a type in holdout.core carries fields and is not in FIELDS_ON_THE_DECISION_PATH. "
+        "Either it is on the decision path — in which case write its fields down — or it is "
+        "not, in which case say so by listing it anyway:\n  " + "\n  ".join(unlisted())
     )
 
 
@@ -396,18 +94,17 @@ def test_every_decision_path_type_is_listed() -> None:
 
 
 def test_no_type_in_the_core_carries_a_customer_dimension() -> None:
-    classes = _core_types()
+    classes = core_types()
     assert len(classes) >= 10, "the scan found almost nothing and would pass vacuously"
     assert CertifiedPrice in classes, (
         "the actuation type is not a dataclass, and a scan that cannot see it is a scan "
         "with a hole exactly where claim 7 matters most"
     )
     offences = [
-        f"{cls.__module__}.{cls.__name__}.{name}"
+        f"{cls.__module__}.{cls.__name__}.{name} ({', '.join(person_shaped(name))})"
         for cls in classes
         for name in sorted(field_names(cls))
-        for needle in PERSON_SHAPED
-        if needle in name.lower()
+        if person_shaped(name)
     ]
     assert not offences, (
         "a decision in this system is addressed by what is being priced and where. These "

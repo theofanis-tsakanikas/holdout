@@ -1,11 +1,21 @@
 """Rebuild `corpus/real/data/` from the sources `MANIFEST.yaml` cites.
 
-This script needs the network and is **never run by CI or by `make claim-1`**. The data it
-produces is committed, and `evals/guardrail/` reads the committed copy. What CI checks
-instead is that every committed file still hashes to the digest `MANIFEST.yaml` records —
-see `tests/corpus/test_manifest.py`. The distinction matters: an eval that downloaded its
-own corpus would stop being reproducible the day a source moved, and it would stop running
-on a laptop with no network, which is the one property every claim here depends on.
+This script needs the network and is **never run by CI, by `make claim-1` or by
+`make claim-7`**. The data it produces is committed, and `evals/guardrail/` and
+`evals/oversight/` read the committed copy. What CI checks instead is that every committed
+file still hashes to the digest `MANIFEST.yaml` records — see `tests/corpus/test_manifest.py`.
+The distinction matters: an eval that downloaded its own corpus would stop being reproducible
+the day a source moved, and it would stop running on a laptop with no network, which is the
+one property every claim here depends on.
+
+Two corpora, two claims
+-----------------------
+`corpus/real/` began as claim 1's independent corpus — prices nobody here chose. It now holds
+a second one for claim 7: **the names other people's published vocabularies use for a person**.
+The rule is the same in both cases and it is the only rule that matters here — *somebody who
+has never read this repository chose the inputs*. A list of person-shaped words written by
+whoever also wrote the field names is one function agreeing with itself, which is claim 7's
+trap exactly.
 
 Run it as `python corpus/real/fetch.py` from the repository root. It prints what it kept
 and what it dropped, so a rebuild that quietly loses half the corpus is visible.
@@ -21,9 +31,11 @@ import csv
 import gzip
 import hashlib
 import io
+import re
 import sys
 import urllib.request
 from collections import Counter
+from collections.abc import Sequence
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -164,6 +176,117 @@ def _rows(month: str, payload: bytes) -> tuple[list[dict[str, str]], Counter[str
     return kept, dropped
 
 
+# ------------------------------------------------------- claim 7's independent vocabularies
+#
+# Two published lists of the names a person is known by, from two publishers with nothing to
+# do with each other and nothing to do with this repository. Both are pinned to an exact
+# version rather than to a moving branch, because "latest" is not a provenance.
+
+#: schema.org, pinned at release 30.0. The extraction rule is mechanical and is the whole of
+#: the derivation: a property is kept when `Person` appears in its `domainIncludes` (an
+#: attribute a person has) or in its `rangeIncludes` (a field that *holds* a person). The
+#: second half is the one that matters — it is where `customer`, `member`, `buyer`, `owner`
+#: and `recipient` come from, and none of them describes a person's body or birthday.
+SCHEMA_ORG_VERSION = "30.0"
+SCHEMA_ORG_PROPERTIES = (
+    f"https://schema.org/version/{SCHEMA_ORG_VERSION}/schemaorg-current-https-properties.csv"
+)
+SCHEMA_ORG_PERSON = "https://schema.org/Person"
+
+#: Microsoft Presidio's published list of the PII entity types it ships recognizers for,
+#: pinned at the commit that produced the committed file. A different flavour of the same
+#: question: not "what does a person have" but "what would a detector go looking for".
+PRESIDIO_COMMIT = "eb93051b60b7daa44b4b8b1acdcce60522bacc8a"
+PRESIDIO_ENTITIES = (
+    f"https://raw.githubusercontent.com/microsoft/presidio/{PRESIDIO_COMMIT}"
+    "/docs/supported_entities.md"
+)
+
+PERSON_PROPERTY_FIELDS = ("property", "describes_a_person", "names_a_person")
+PII_ENTITY_FIELDS = ("entity", "region")
+
+_ENTITY = re.compile(r"^[A-Z][A-Z0-9_]*$")
+_SECTION = re.compile(r"^###\s+(.+?)\s*$")
+
+
+def _person_properties(payload: bytes) -> list[dict[str, str]]:
+    """schema.org properties that touch `Person`, in the publisher's own spelling.
+
+    Nothing is renamed here. `familyName` is written down as `familyName`; turning it into
+    `family_name` is a *derivation* and it belongs to whoever consumes the corpus, stated as
+    such, not to the file that records what was published.
+    """
+    kept: list[dict[str, str]] = []
+    reader = csv.DictReader(io.StringIO(payload.decode("utf-8-sig")))
+    for row in reader:
+        domain = {value.strip() for value in row["domainIncludes"].split(",")}
+        range_ = {value.strip() for value in row["rangeIncludes"].split(",")}
+        describes = SCHEMA_ORG_PERSON in domain
+        names = SCHEMA_ORG_PERSON in range_
+        if not (describes or names):
+            continue
+        kept.append(
+            {
+                "property": row["label"],
+                "describes_a_person": "true" if describes else "false",
+                "names_a_person": "true" if names else "false",
+            }
+        )
+    kept.sort(key=lambda r: r["property"])
+    return kept
+
+
+def _pii_entities(payload: bytes) -> list[dict[str, str]]:
+    """Presidio's entity types, with the region heading each one was published under.
+
+    The document is a set of Markdown tables under `###` headings — Global, USA, UK, Spain,
+    and so on. The heading is carried because it is published, not because anything here
+    uses it: a corpus that dropped it would be answering a question nobody asked it.
+    """
+    kept: list[dict[str, str]] = []
+    section = ""
+    for line in payload.decode("utf-8").splitlines():
+        stripped = line.strip()
+        heading = _SECTION.match(stripped)
+        if heading:
+            section = heading.group(1)
+            continue
+        if not stripped.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if len(cells) < 2 or not _ENTITY.match(cells[0]):
+            continue
+        kept.append({"entity": cells[0], "region": section})
+    kept.sort(key=lambda r: (r["region"], r["entity"]))
+    return kept
+
+
+def _write_csv(target: Path, fields: Sequence[str], rows: Sequence[dict[str, str]]) -> None:
+    with target.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(fields), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+    print(f"wrote {target.relative_to(HERE.parent.parent)}  {len(rows):,} rows")
+    print(f"sha256 {digest}")
+
+
+def fetch_person_vocabularies() -> None:
+    print("\nfetching schema.org properties … ", end="", flush=True)
+    payload = _download(SCHEMA_ORG_PROPERTIES)
+    print(f"{len(payload):,} bytes  sha256 {hashlib.sha256(payload).hexdigest()[:16]}…")
+    _write_csv(
+        DATA / "schemaorg-person-properties.csv",
+        PERSON_PROPERTY_FIELDS,
+        _person_properties(payload),
+    )
+
+    print("\nfetching presidio supported entities … ", end="", flush=True)
+    payload = _download(PRESIDIO_ENTITIES)
+    print(f"{len(payload):,} bytes  sha256 {hashlib.sha256(payload).hexdigest()[:16]}…")
+    _write_csv(DATA / "presidio-pii-entities.csv", PII_ENTITY_FIELDS, _pii_entities(payload))
+
+
 def main() -> int:
     DATA.mkdir(parents=True, exist_ok=True)
     everything: list[dict[str, str]] = []
@@ -196,6 +319,8 @@ def main() -> int:
     print("\ndropped:")
     for reason, count in census.most_common():
         print(f"  {count:>9,}  {reason}")
+
+    fetch_person_vocabularies()
     return 0
 
 

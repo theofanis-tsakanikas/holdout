@@ -1,0 +1,25 @@
+id:          a-second-key-rides-alongside-the-first
+claim:       7
+eval_module: evals.oversight
+targets:     [O3.every-type-in-the-core-is-written-down]
+
+breaks: >-
+  a new type appears in the core naming which visit to the till a decision belongs to. No
+  existing type changes and no existing field moves, so every field-set comparison in the
+  eval stays green — which is precisely the shape a personalisation feature would arrive in.
+  It is added as a *type* rather than a field because that is the one route around a registry
+  of field sets, and the registry is only a claim while every type is in it.
+
+file:   src/holdout/core/decision.py
+anchor: |
+  class PriceSource(StrEnum):
+replacement: |
+  @dataclass(frozen=True, slots=True)
+  class VisitContext:
+      """Which trip to the till this decision belongs to."""
+
+      till_id: str
+      visit_ordinal: int
+
+
+  class PriceSource(StrEnum):

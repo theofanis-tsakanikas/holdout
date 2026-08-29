@@ -1301,3 +1301,49 @@ claim-5 work makes the two Python implementations three and therefore rewrites w
 and does not prove, or T008 if it gets there first.
 *Expires:* 2026-12-31 — a missing README has no natural deadline, so it gets a calendar one rather
 than an unlock condition alone, which `make expiry` can never evaluate.
+
+**Claim 7 is proved over `holdout.core` and the contracts, and nothing else exists yet** · deferred
+2026-08-29
+`evals/oversight/` scans every type in `holdout.core`, every identifier the core's source text
+defines, every metric grain, every idempotency key, every balance covariate and every compiled
+consumer under `generated/`. That is the whole of the system today, which is why the eval can say
+*structurally impossible* rather than *not currently present*. It will stop being the whole of the
+system at T009.
+
+The routes it does **not** cover, named rather than left to be discovered: `src/holdout/adapters/`
+is empty; `pipelines/silver/` and `pipelines/gold/` do not exist; and a bronze table is *the
+source's shape* by design — CLAUDE.md is explicit that nothing is transformed at ingestion — so a
+POS line arriving with a loyalty number would land in bronze and this eval would not see it. That
+is not a hole in claim 7 as stated (the claim is about what a **decision** is addressed by, and a
+decision is addressed by a `DecisionKey`), but it is a hole in the sentence *"a test goes red if
+one appears"* the moment there is somewhere else for one to appear.
+
+*Why it is deferred rather than fixed.* Writing a scan against `pipelines/` that does not exist
+would be a check with nothing to check — vacuously green, and green in a way that reads as covered.
+That is the exact shape this repository refuses in `make gate-proof`'s *no unproven gate* rule.
+*Unlock condition:* T011, which builds the gold layer. `O10` already reads the metric grain the
+gold models compile from, so the extension is to the silver tables' declared schemas and to the
+Lakebase decision record — the two places a customer column would arrive with a straight face.
+
+**The two person-vocabularies are pinned, so nothing notices a name published after them** ·
+deferred 2026-08-29
+`corpus/real/` holds schema.org release 30.0 and Presidio at commit `eb93051b`, both pinned on
+purpose: *latest* is not a provenance, and a digest over a moving target is a digest that will one
+day be wrong for a reason that is nobody's fault. The cost of the pin is that the 317 names are the
+317 that existed on 2026-08-29. schema.org adds properties every release and Presidio adds
+recognizers most months; neither addition would turn anything red here.
+
+The consequence is bounded and worth stating exactly. `O4` and `O5` — the checks that *read names*
+— would not recognise a name invented after the pin. `O2`, which is the check that carries the
+claim, does not read names at all and is unaffected: it refuses a field called `q7` on the same
+evidence as one called `nationality`. So the pin ages the net, never the guard.
+
+*Why it is not fixed by fetching at run time.* An eval that downloaded its own corpus would stop
+being reproducible the day a source moved and would stop running on a laptop with no network, which
+is the property every claim in this repository depends on. The fix is a periodic re-fetch, which is
+a calendar decision and therefore gets a calendar.
+*Unlock condition:* none that a checker could evaluate — the vocabularies do not announce
+themselves.
+*Expires:* 2027-02-28 — six months, at which point `corpus/real/fetch.py` is re-run, the digests and
+row counts are restated in `MANIFEST.yaml` rather than overwritten, and the measured reach of the
+hand-written word list is published again against the new total.

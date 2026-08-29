@@ -12,6 +12,15 @@ Claim 1's eval is the first one built, so its shape is the shape the rest inheri
 records that shape, and the reasoning behind each part of it, so that claims 2, 3 and 4 do
 not each invent their own.
 
+**Where the shape has three samples rather than one — 2026-08-29.** Claim 7 (`oversight/`)
+follows it, including the `<claim>/README.md` claim 2 still owes, and it added one thing the
+first two did not need: a check may be armed by a test rather than by a `gate-proof`
+mutation, where planting the break would mean editing the *detector* instead of the system.
+`tests/evals/test_ledger.py` had already done this for `gate-proof` itself and it was never
+written down as part of the shape. It is now: **a check with no mutation names the reason it
+cannot have one, and is broken deliberately somewhere.** Silence about it is how a check
+that has stopped biting goes unnoticed.
+
 ---
 
 ## The shape
@@ -103,7 +112,10 @@ matters:
 
 ```
 make claim-1          the eval and the mutations it owns   ~3 min
-make eval-guardrail   the eval alone                       ~10 s
+make claim-2          likewise, and the most expensive     see the Makefile
+make claim-7          likewise, and the cheapest           ~27 s
+make eval-guardrail   claim 1's eval alone                 ~10 s
+make eval-oversight   claim 7's eval alone                 ~3 s
 make gate-proof       the ownership audit, runs nothing    <1 s
 ```
 

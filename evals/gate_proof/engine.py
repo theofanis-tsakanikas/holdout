@@ -29,8 +29,13 @@ same source of truth as the thing that detects it, it is one function agreeing w
 
 Three separations, and only the third is strong:
 
-* the planter edits `src/holdout/`; the detector reads `corpus/real/`. Neither reads
-  `contracts/` to decide anything;
+* the planter edits the **system** and never the detector. For claim 1 that reads "the
+  planter edits `src/holdout/`; the detector reads `corpus/real/`". **Restated 2026-08-29
+  with claim 7**, whose most valuable mutation edits `contracts/policies/ladder_policy@v1.yaml`
+  — a decision that becomes idempotent per customer changes no Python at all, and a planter
+  confined to `src/` could not have written it. The line that matters is not which directory
+  the planter may touch but which one it may not: `ops/personhood.py` and `corpus/real/` are
+  the detector, and they are never mutation targets;
 * a mutation is written as a **behaviour change in domain terms** — "the margin floor rounds
   the wrong way", "a frozen category is only a warning" — and never as "make check G2 fail".
   The check it must trip is declared in advance, in the file, and if it survives that is
@@ -84,7 +89,16 @@ REPO_ROOT = HERE.parents[1]
 #: SURVIVED while the thing it broke never ran, which is why the key does the deciding rather
 #: than this tuple. Absent directories are skipped, so a first run with no cache simply builds
 #: one.
-COPIED = ("src", "contracts", "generated", "evals", "corpus", ".worlds")
+#:
+#: `ops/` joined the tuple with claim 7. It holds the rules the product code is measured by —
+#: the corpus barrier, the deferral registry, and `ops/personhood.py`, which is the one
+#: implementation of *the decision key carries no customer dimension* that the suite and
+#: `evals/oversight/` both call. A copied `evals/` that imports it needs it beside it, and
+#: without it every claim-7 mutation would have reported `CRASHED` on an `ImportError` rather
+#: than saying anything about a gate. Nothing under `ops/` is a mutation target: the planter
+#: edits the **system** — `src/` and `contracts/` — and never the detector, which is the
+#: separation the independence argument below rests on.
+COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 
 #: A run of the eval that takes longer than this has almost certainly been mutated into a
 #: loop rather than into a bug. Bounded so `make gate-proof` cannot hang CI.

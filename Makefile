@@ -10,7 +10,7 @@
 # claim that is a paragraph is advice. `ci` discovers them by grepping this file rather than
 # by listing them, so a claim target that exists but is never run is impossible.
 #
-# Still deliberately absent: `claim-3` … `claim-7` and `preview-audit`. A green target that
+# Still deliberately absent: `claim-3` … `claim-6` and `preview-audit`. A green target that
 # proves nothing is worse than a missing one — it is a gate disarmed before it was ever
 # armed — so each arrives with the eval that earns it.
 
@@ -25,7 +25,8 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        expiry claim-1 claim-2 eval-guardrail eval-uplift gate-proof world roster corpus clean
+        expiry claim-1 claim-2 claim-7 eval-guardrail eval-uplift eval-oversight gate-proof \
+        world roster corpus clean
 
 help:  ## show this help
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -95,6 +96,20 @@ eval-uplift:  ## just claim 2's eval, without the mutations
 
 eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 	$(RUN) python -m evals.guardrail
+
+# Claim 7 is a structural claim and therefore the cheapest target here: it imports the core,
+# parses it, and plants 14,582 person-names on 46 types without touching a corpus of prices
+# or generating a world. Measured on a fourteen-core laptop: the eval alone 3.4s, the whole
+# target 27s — one baseline run plus six mutated ones. **This sets no new number.** It runs
+# in the `claims` matrix under a budget that was measured for claim 2, and a target three
+# orders of magnitude under a timeout is not an assertion about that timeout; the branch's
+# own CI run is what measures it on four cores.
+claim-7:  ## claim 7 — a decision that targets a person is structurally impossible
+	$(RUN) python -m evals.oversight
+	$(RUN) python -m evals.gate_proof --claim 7
+
+eval-oversight:  ## just claim 7's eval, without the mutations — about three seconds
+	$(RUN) python -m evals.oversight
 
 # The ledger, not the executor. Each claim target plants its own mutations, so this one
 # runs nothing and instead checks the arrangement: every mutation owned by exactly one

@@ -1,0 +1,24 @@
+id:          the-decision-key-learns-who-is-buying
+claim:       7
+eval_module: evals.oversight
+targets:     [O1.the-key-is-what-is-priced-and-where]
+
+breaks: >-
+  a decision is addressed by a customer as well as by a SKU and a store. The field is
+  optional and defaults to empty, which is how this arrives in real life: nothing breaks,
+  every existing caller keeps working, and personalised pricing becomes expressible for the
+  first time. Claim 7 says it is structurally impossible; this is the change that would make
+  it merely discouraged.
+
+file:   src/holdout/core/decision.py
+anchor: |
+  path: DecisionPath
+  sku_id: str
+  store_id: str
+  occasion: int
+replacement: |
+  path: DecisionPath
+  sku_id: str
+  store_id: str
+  occasion: int
+  customer_id: str = ""

@@ -1,0 +1,19 @@
+id:          the-actuator-is-told-who-is-buying
+claim:       7
+eval_module: evals.oversight
+targets:     [O5.no-new-identifier-in-the-core-is-a-name-a-person-is-known-by]
+
+breaks: >-
+  the function that writes a price to a shelf gains a `customer` parameter. It has a default,
+  nothing passes it, and no type in the repository changes — so no field set moves, no
+  registry entry is wrong and no contract is touched. A person arrives as an *argument*
+  rather than as a field, which is the route every check built on comparing field sets is
+  blind to by construction. This is the mutation that earns O5.
+
+file:   src/holdout/core/guardrails/certificate.py
+anchor: |
+  def dispatch_to_shelf(price: CertifiedPrice, key: DecisionKey) -> CertifiedPrice:
+replacement: |
+  def dispatch_to_shelf(
+      price: CertifiedPrice, key: DecisionKey, customer: str | None = None
+  ) -> CertifiedPrice:

@@ -1,0 +1,20 @@
+id:          the-key-becomes-an-open-record
+claim:       7
+eval_module: evals.oversight
+targets:     [O9.no-person-can-be-attached-to-a-key-at-runtime]
+
+breaks: >-
+  the decision key stops being frozen and stops declaring slots. It keeps every one of its
+  four fields, so nothing that reads a field set notices anything at all — and any caller
+  anywhere can now staple a name to a key after it was built, with one line and no diff to
+  this file. `unsafe_hash` keeps it usable in a set, which is what makes the change look
+  harmless in review: it is the shape somebody reaches for when they need to add "just one
+  thing" downstream.
+
+file:   src/holdout/core/decision.py
+anchor: |
+  @dataclass(frozen=True, slots=True, order=True)
+  class DecisionKey:
+replacement: |
+  @dataclass(order=True, unsafe_hash=True)
+  class DecisionKey:

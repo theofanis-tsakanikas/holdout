@@ -722,8 +722,73 @@ closes        make claim-7 green. The decision key carries no customer dimension
 out_of_scope  —
 stop_at       When the test covers the whole field set on every decision-path type.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed, and the number it closes on.** `make claim-7` — twelve checks, six mutations, all
+six bit — and one measurement that is the whole reason the task was worth doing.
+
+The task line said *a test goes red if one appears*. That test existed and was good: an exact field
+set for every type on the decision path, plus a tuple of person-shaped substrings as a net under it.
+What nobody had asked was **who wrote the words in the net**. They were written by whoever also
+wrote the field names they were checking, which is `CLAUDE.md`'s most frequent defect exactly — *a
+guard tested by its author is tested in the shape the guard already handles* — with no prose beside
+it to be wrong and no gate behind it. **Claim 7's row in the seven-claim table was the one row with
+no trap written beside it**, and that is where it sat.
+
+So the words came from outside. `corpus/real/` now carries a second corpus under the same four
+rules as the prices: **156 schema.org properties** whose domain or range includes `Person` (release
+30.0, pinned — *latest* is not a provenance) and **99 Presidio PII entity types** (pinned at commit
+`eb93051b`). Both extractions mechanical and total, both in the publisher's own spelling, nothing
+curated — `DATE_TIME`, `brand`, `award`, `height` and `weight` stay on the lists, because the moment
+this repository decides which of somebody else's names count, the inputs are being chosen here
+again. Between them they yield **317 names**, planted one at a time on each of the 46 types:
+
+```
+attacks planted                          14,582
+  refused by the closed field set        14,582
+  refused by the hand-written word list   1,610   (35/317 = 11.0% of the names)
+```
+
+The list misses `family_name`, `given_name`, `nationality`, `telephone`, `spouse`, `buyer`, `owner`,
+`recipient` and 275 others. `O7` turns that into a gate rather than an anecdote: **no attack may
+ever be refused by the word list alone.**
+
+**Where the task went wider than its `closes` line, and why each was necessary rather than tempting.**
+*`O5`* — a person does not have to arrive as a *field*. A `customer` parameter on `dispatch_to_shelf`
+is invisible to every field-set comparison ever written, so the eval parses the core's source text
+and reads every identifier it defines: 820 of them. *`O10`* — nor does one have to arrive in Python.
+`ladder_policy@v1.yaml` becoming idempotent per customer says, in as many words, that a decision is
+taken per customer, and it compiles into a dbt model, a SQL function, the agent's tool definition and
+the readout query with **no type moving at all**. Those two are the mutations that earn their checks.
+*`O9`* asks the question at runtime instead of by reading — 951 attempts to construct, assign and
+`replace` a person onto a key, all refused. *`O11`* is the second implementation the shape requires:
+field sets parsed from the text against field sets read off the live objects, sharing only `tokens`.
+
+**Two rules were restated by being run against.** `gate-proof`'s independence argument said *the
+planter edits `src/holdout/`*; claim 7's most valuable mutation edits a contract, and a planter
+confined to `src/` could not have written it. What matters is not which directory the planter may
+touch but which one it may **not** — `ops/` and `corpus/real/` are the detector and are never
+targets, and `engine.py` and the README now say so. And `evals/README.md` gained the half of the
+shape that had been true since `tests/evals/test_ledger.py` and never written down: **a check with
+no mutation names the reason it cannot have one, and is broken deliberately somewhere.** Six of the
+twelve are in that position, all six armed by `tests/evals/test_oversight_instrument.py`.
+
+`ops/personhood.py` now holds the registry and the word list, with `tests/core/test_decision_key.py`
+and the eval as its two callers — the arrangement `ops/isolation.py` already had for the corpus
+barrier. `ops/` joined `gate_proof`'s copied workspace for the same reason.
+
+**Two deferrals, both real.** Claim 7 is proved over `holdout.core` and the contracts and nothing
+else exists yet — a scan against a `pipelines/` that does not exist is a check with nothing to
+check, so it unlocks at T011. And the vocabularies are pinned, so nothing notices a name published
+after 2026-08-29; that ages the *net* and never the *guard* — `O2` reads no names at all — and it
+expires 2027-02-28.
+
+**No new number in configuration.** `make claim-7` is 27s on the author's laptop, in a CI matrix job
+whose 90-minute budget was measured for claim 2. A target three orders of magnitude under a timeout
+asserts nothing about that timeout, and the branch's own CI run is what measures it on four cores.
+
+`make check` green at **845 tests** · `make claim-7` **12/12 with 6/6 mutations biting**.
 
 ```
 id            T007

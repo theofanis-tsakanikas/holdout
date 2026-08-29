@@ -599,12 +599,58 @@ last two checks would have been vacuously green on the real tree, so they are ar
 skill directory built inside the test, which is what `tests/ops/test_expiry.py` already does for
 `make expiry`. The suite is **828**.
 
+**T006 — `evals/oversight/`, `make claim-7`, and the fifth instance of this project's most
+frequent defect · 2026-08-29.** Claim 7 said *the decision key has no customer dimension, and a
+test goes red if one appears*. The test existed and was good. What nobody had asked was **who
+wrote the words it looked for** — a tuple of person-shaped substrings, written by whoever also
+wrote the field names it was checking, which is a guard tested by its author with no prose and no
+gate behind it. Claim 7's row in `CLAUDE.md` was the one row of seven with **no trap written
+beside it**, and that is exactly where it sat.
+
+The answer is that the words are not ours. `corpus/real/` gained a second corpus under the same
+four rules as the first: **156 schema.org properties** whose domain or range includes `Person`
+(release 30.0, pinned) and **99 Presidio PII entity types** (pinned at a commit), both extracted
+mechanically and kept in the publisher's own spelling. They yield **317 names**. Measured:
+
+```
+attacks planted                          14,582      317 names on each of 46 types
+  refused by the closed field set        14,582
+  refused by the hand-written word list   1,610      35/317 = 11.0% of the names
+```
+
+**Eleven per cent.** The list misses `family_name`, `given_name`, `nationality`, `telephone`,
+`spouse`, `buyer`, `owner`, `recipient` and 275 others. That is not an argument for a longer list —
+a longer list is the same function agreeing with itself more loudly — it is the argument for the
+structure, and `O7` makes it a gate: no attack may ever be caught by the word list alone.
+
+Twelve checks, **six mutations, all six bit**, and the two that earn their checks are the two no
+field-set comparison can see: a `customer` **parameter** on `dispatch_to_shelf`, and a
+`ladder_policy@v1.yaml` that becomes idempotent per customer with **no Python changing at all**.
+The second one restated `gate-proof`'s independence rule, which had said the planter edits
+`src/holdout/`: what matters is not which directory the planter may touch but which one it may
+not — `ops/` and `corpus/real/` are the detector and are never mutation targets. `ops/personhood.py`
+now holds the registry and the word list with two callers, the way `ops/isolation.py` holds the
+corpus barrier.
+
+Six of the twelve checks cannot have a mutation, because breaking them means editing the detector
+rather than the system. They are armed by `tests/evals/test_oversight_instrument.py` on a
+deliberately broken arrangement — the same answer `tests/evals/test_ledger.py` already gave for
+`gate-proof` itself, which had never been written down as part of the shape. It is now, in
+`evals/README.md`: **a check with no mutation names the reason it cannot have one, and is broken
+deliberately somewhere.**
+
+Two deferrals, both real. Claim 7 is proved over `holdout.core` and the contracts and nothing else
+exists yet — unlocked by T011, because a scan against a `pipelines/` that does not exist is a check
+with nothing to check. And the two vocabularies are pinned, so nothing notices a name published
+after 2026-08-29; that ages the *net* and never the *guard*, and it expires on 2027-02-28.
+`make check` green at **845 tests** · `make claim-7` **12/12 with 6/6 mutations biting**, 27s.
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 ### Closed in this phase
 
-Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1 and 2 have closed**, and
-claim 2 is the one CLAUDE.md calls the one that separates this from a demo.
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1, 2 and 7 have closed**,
+and claim 2 is the one CLAUDE.md calls the one that separates this from a demo.
 
 **Then an integration session**, before the next phase opens: read the whole repository against
 `CLAUDE.md` and report conceptual drift. It builds nothing.
