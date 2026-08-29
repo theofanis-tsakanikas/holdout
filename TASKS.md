@@ -934,7 +934,9 @@ expires 2027-02-28.
 
 **No new number in configuration.** `make claim-7` is 37s on the author's laptop and **under two
 minutes on the four-core runner, on every CI run so far**, in a matrix job whose 90-minute budget
-was measured for claim 2. Six measurements span **1m7s to 1m45s**.
+was measured for claim 2. The measurements span **1m7s to 1m45s** — and how many of them there are
+is deliberately not written down, because that count grows with every push and stating it would
+guarantee this sentence is stale again by the next one.
 
 It is a bound rather than a point because the point was wrong three times, each for a different
 reason, and the third is the instructive one. 1m8s was measured before the seventh mutation existed

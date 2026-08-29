@@ -671,8 +671,8 @@ mutations edit `evals/uplift/`; it now names what it forbids, behind
 argument, which until this branch had no function behind it at all.
 
 `make check` green at **919 tests** · `make claim-7` **12/12 with 7/7 mutations biting**, 37s on the
-laptop and **under two minutes on the four-core runner, on every CI run so far** — six measurements
-spanning 1m7s to 1m45s. Stated as a bound because the three point estimates this line carried before
+laptop and **under two minutes on the four-core runner, on every CI run so far** — measurements
+spanning 1m7s to 1m45s, uncounted on purpose, because a count of CI runs is stale by the next push. Stated as a bound because the three point estimates this line carried before
 it were each overtaken: by a mutation landing, by the registry growing, and finally by the next run
 simply being *faster*. The quantity has two independent reasons to move, so the span is evidence for
 the bound rather than a second assertion.

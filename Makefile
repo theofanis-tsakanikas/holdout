@@ -127,9 +127,11 @@ eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 # runs in the `claims` matrix under a budget that was measured for claim 2, and a target two
 # orders of magnitude under a timeout is not an assertion about that timeout.
 #
-# On four cores it is **under two minutes, on every CI run so far**. The six measurements span
+# On four cores it is **under two minutes, on every CI run so far**. The measurements span
 # **1m7s to 1m45s** — a 40% spread on work that did not change between two of them, which is the
-# same runner variance T000 measured at 11m00s against 15m16s on an identical commit.
+# same runner variance T000 measured at 11m00s against 15m16s on an identical commit. How many
+# measurements there are is deliberately not written down: that count grows with every push, so
+# stating it would guarantee this line is stale again by the next one.
 #
 # The bound is the assertion; the span is evidence for it, not a second assertion. This line
 # has been wrong three times as a point estimate — 1m8s, left standing after a seventh mutation
