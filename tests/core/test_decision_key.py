@@ -258,6 +258,7 @@ EXACT_FIELDS: dict[type[Any], frozenset[str]] = {
             "digest_matches",
             "redraw_matches",
             "reassigned",
+            "dropped",
             "misdelivered",
             "undelivered",
             "comparison_is_vacuous",

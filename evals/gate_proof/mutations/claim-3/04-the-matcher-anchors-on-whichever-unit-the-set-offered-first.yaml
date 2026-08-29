@@ -1,0 +1,19 @@
+id:          the-matcher-anchors-on-whichever-unit-the-set-offered-first
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A5.the-same-committed-seed-reproduces-in-a-fresh-interpreter
+
+breaks: >-
+  the hardest unit to match is scanned for over the unmatched set in whatever order the set
+  offers it, instead of in id order. Ties between two equally hard units then go to whichever
+  one Python's per-process string hashing put first, so the strata — and therefore the
+  lottery drawn within them — depend on the interpreter rather than on the committed seed.
+  Every in-process repetition still agrees perfectly, which is exactly why repetition is not
+  the check.
+
+file:   src/holdout/core/experiment/strata.py
+anchor: |
+  for unit in sorted(unmatched):
+replacement: |
+  for unit in unmatched:
