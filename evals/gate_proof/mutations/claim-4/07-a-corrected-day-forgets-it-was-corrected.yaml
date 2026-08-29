@@ -1,0 +1,31 @@
+# Doctrine rule 2, one claim along: *a fallback is visible all the way to the end*. A
+# reconstructed store-day that arrives in a feature table looking like an observed one is
+# worse than a missing one, because it is silent and it teaches somebody to trust it. The
+# number is unchanged and every arithmetic check stays green, which is exactly the shape of
+# the failure — nothing goes wrong until a year later, when the two kinds of row are pooled.
+
+id:          a-corrected-day-forgets-it-was-corrected
+claim:       4
+eval_module: evals.censoring
+targets:     [C8.a-reconstructed-day-still-says-it-was-reconstructed]
+
+breaks: >-
+  a reconstructed store-day comes back marked as though the shelf had held all day. The unit
+  count is correct; what is lost is that it was reconstructed rather than observed.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+    return DemandEstimate(
+        at_least=reading.at_least,
+        units=round_half_even(Fraction(reading.at_least) / share),
+        censored=True,
+        observed_share=share,
+    )
+replacement: |
+    return DemandEstimate(
+        at_least=reading.at_least,
+        units=round_half_even(Fraction(reading.at_least) / share),
+        censored=False,
+        observed_share=share,
+    )

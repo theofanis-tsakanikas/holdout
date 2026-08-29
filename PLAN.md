@@ -39,6 +39,9 @@ The phase that decides whether the project is worth building.
   symptom of getting this wrong. *Landed 2026-08-28, replacing a re-randomisation screen that
   could not reach the declared α — see the progress note below.*
 - `evals/assignment/`, `evals/guardrail/`, `evals/censoring/` and their `gate-proof` mutations.
+  *`evals/censoring/` landed 2026-08-29: claim 4 green at 11/11 with nine mutations, the correction
+  graded on a held-out segment of full-availability store-days against receipt totals the corpus
+  emitted rather than anything the generator knows — see the progress note below.*
 - `evals/oversight/` — the decision key carries no customer dimension, and the test goes red if
   one appears. It costs minutes and needs nothing else, so it is proved here rather than left
   open for months.
@@ -646,6 +649,49 @@ is sorted, so `A4` was widened to compare the whole record the seal commits to.
 ### Closed in this phase
 
 Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1, 2 and 3 have closed**,
+
+**What claim 4 settled.** `holdout.core.demand.censoring` reads a store-SKU-day as one of two
+**types**: the shelf held and the day has `units`, or the shelf emptied and the reading has
+`at_least` and no `units` attribute at all — so a caller who wants a number has to say what it did
+about the censoring, because there is nothing to reach for. The correction fits an availability
+curve on days the shelf held and expands a censored day by the share of itself that was on sale,
+and it answers with **no number** in the two cases where there is no evidence to expand: the shelf
+was bare before the first sale, or it sold nothing before it emptied. Neither is a threshold
+somebody chose. `make claim-4` is green at 11/11 checks with 9/9 mutations biting, in about a
+minute.
+
+*Where the independence is, which is the whole of claim 4's trap.* The curve is fitted on
+store-days in the first 60% of the calendar on which the shelf held and graded on store-days in the
+last 40% on which the shelf held — censored on purpose, the hours after withheld — so **the truth
+each reconstruction is graded against is a receipt total the corpus emitted**, not a latent
+intensity the generator knows. The grader never opens the generating process, and
+`tests/evals/test_censoring_instrument.py` refuses the import in both directions. The generator
+could be replaced with a different model of shopping and every published figure would still be a
+measurement of the same thing.
+
+*The numbers.* 16,942 of 80,640 store-days emptied (21.0%) — the one corpus figure. Everything
+after it is measured on held-out days censored **on purpose**, where the withheld total is known:
+reading the truncated number as the day's demand understates by **6.0% at the last trading hour and
+91.4% at the first**, while the reconstruction lands within 0.1% of the withheld truth at a share of
+0.94 and comes out **36–40% high at 0.06**. That overshoot is selection and the eval publishes the
+evidence rather than the argument — the same expansion over *every* graded day, conditioning on
+nothing, lands at −1.5% to −0.6% on the same hour. **No threshold is declared** at which the
+reconstruction stops being usable: that number would have to come from real stock-outs, and this
+eval constructs its own.
+
+*What it cost to get honest, twice, and both from running rather than reading.* `checks.py`
+declared two censoring shapes unreachable from the corpus and one of them is reachable — W5 empties
+a shelf inside the first trading hour three times in 26,880 — found by `gate-proof` reporting
+`CRASHED` rather than by anybody reading the corpus. And `C6` offered `fit` a censored day **on its
+own**, so the mutation aimed at it reported `SURVIVED`: a `fit` that skipped censored days still
+went red, but by a different guard. *A gate can only be shown to bite where it is the gate that
+refuses.* Both were fixed in the eval, never by widening an assertion, and both are now rows in
+`CLAUDE.md` — the fifth instance of *a guard tested by its author*, and the first one `gate-proof`
+found rather than a review.
+
+### Closed in this phase
+
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1, 2 and 4 have closed**,
 and claim 2 is the one CLAUDE.md calls the one that separates this from a demo.
 
 **Then an integration session**, before the next phase opens: read the whole repository against

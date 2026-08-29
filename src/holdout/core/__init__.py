@@ -42,6 +42,8 @@ What is here
                    two different sequences ever encode to the same thing
 `decision`         the decision key (claim 7), the two paths, and the safe state
                    neither path may inherit from the other
+`demand/`          reading demand off a shelf that sometimes ran out, so a
+                   stock-out is never read as zero — claim 4
 `guardrails/`      the envelope and the certificate type — claim 1
 `ladder/`          the deterministic markdown fallback, the markdown path's
                    declared safe state

@@ -1384,3 +1384,103 @@ claim-5 work makes the two Python implementations three and therefore rewrites w
 and does not prove, or T008 if it gets there first.
 *Expires:* 2026-12-31 — a missing README has no natural deadline, so it gets a calendar one rather
 than an unlock condition alone, which `make expiry` can never evaluate.
+
+**No threshold at which a reconstruction stops being usable** · deferred 2026-08-29
+Claim 4's correction expands a censored store-day by the share of an ordinary day its open window
+covers, and how well it does that is a function of that share. Measured, on three worlds at
+`rehearsal` scale: at a share of 0.94 the reconstruction lands within 0.1% of the withheld truth;
+at 0.06 it comes out **36–40% high**. The reason is selection rather than arithmetic — a day only
+yields a point estimate if it sold something inside the observed window, so conditioning on that in
+a thin window keeps the days that over-performed in it.
+
+A real estimator would want a rule: below some share, report the lower bound and no number. This
+repository declares none, and the absence is deliberate rather than pending. Such a number is an
+assertion about what the system does wearing a number instead of a verb, and `CLAUDE.md` requires
+one to be set from the measurement of what comes out when it runs. What runs here is a *constructed*
+censoring on days that did not actually run out; a real stock-out is endogenous — it happens on
+unusually busy days — so the error at a given share on a real stock-out is not the error measured
+here. Picking a threshold off this measurement would be setting a live guard from the wrong
+distribution, which is the shape of `timeout-minutes: 45` one layer along.
+*Unlock condition:* T014, the training pipeline, which is the first consumer that has to decide what
+to do with a reconstructed store-day. The threshold — if there is one — is declared as a
+`{value, source}` pair in a contract like every other number in this repository, and the source is a
+measurement over the days the pipeline actually trains on.
+
+**The endogeneity of a real stock-out is not measured, only stated** · deferred 2026-08-29
+`evals/censoring/` grades its correction by censoring held-out store-days **on purpose**, at a
+declared grid of hours, and comparing the reconstruction against what those days actually sold. That
+is what makes the grading independent of the simulator: the truth is a receipt total the corpus
+emitted, not a latent intensity the generator knows.
+
+It is also the limit. A day censored at 16:00 by this eval is an ordinary day; a day whose shelf
+emptied at 16:00 is an unusually busy one, and the correlation between running out and selling a lot
+is exactly the thing that makes real censoring bite. Nothing in this repository holds the unserved
+demand that would let the two be compared, and that is on purpose —
+`corpus/world/events.py` says so in as many words: *"a corpus that emitted them would be handing
+claim 4 the answer it is supposed to have to reconstruct."* So the eval publishes the gap in
+`Report.notes` on every run rather than closing it.
+*Unlock condition:* a corpus stream that carries counterfactual demand **for the eval only**, sealed
+the way `corpus/world/seal.py` seals the injected truth and opened only after the reconstruction is
+written. It is the same shape as claim 2's seal and it would be built the same way. It is not built
+now because it is a second sealed channel for one claim, and the honest statement of the gap costs
+nothing and cannot rot — it is printed on every run.
+
+**One pooled availability curve per world** · deferred 2026-08-29
+`censoring.fit` takes whatever days it is given and returns one curve; pooling is deliberately the
+caller's decision, because a grouping rule baked into the core would be a silent modelling choice.
+`evals/censoring/` calls it once per world, over every store and every category together. A real
+estimator would almost certainly want a curve per category — bakery empties in the morning and
+poultry does not — and probably per store format and per day of week.
+
+Nothing here is wrong; what is missing is evidence that the correction survives being grouped. The
+eval would show it as a *smaller* residual error, which is the direction that flatters, so adding
+groupings without a consumer that needs them would be tuning a published figure.
+*Unlock condition:* T014. The training pipeline is what decides what a demand feature is grouped by,
+and the eval gains the grouping the pipeline actually uses rather than one chosen to improve a
+number.
+
+**The censoring correction has no consumer** · deferred 2026-08-29
+`holdout.core.demand.censoring` is proved by `make claim-4` and called by nothing else. `CLAUDE.md`
+puts stock-out marking in silver and the correction in training, and neither exists yet. So claim 4
+today is a proof that the arithmetic and the refusals are right, not a proof that the system uses
+them — which is the same standing at which claim 1 sat before the decision path was composed, and
+the reason `tests/core/test_composition.py` exists.
+*Unlock condition:* T014's training pipeline and T010's silver layer. When `shelf_state` is a table
+and a demand feature is built from it, the composition is what claim 4 has to survive — a censored
+day reaching a feature table unmarked is doctrine rule 2 broken, and it will be provable end to end
+rather than one module at a time.
+
+**No source has declared what `stocked_out_from_hour` means** · deferred 2026-08-29
+`holdout.core.demand.censoring` expands a censored store-day by the share of an ordinary day its
+open window covers, and which way that errs depends entirely on what the column means. The hour
+on-hand reached zero and the hour the first shopper was turned away are the same number only if
+somebody was there at the moment the shelf emptied. Measured on this repository's corpus they differ
+on **7,290 of 16,942 censored store-days (43.0%)**, by up to fourteen hours, and correcting against
+a hour derived from the last inventory movement raises the reconstructed total by **6.3%**.
+
+The eval publishes both rather than picking one, the module's docstring states the dependence
+instead of asserting a flat direction, and `C12` measures the one property that holds either way —
+that no censored day sells *after* its recorded hour, which is the only shape that would inflate a
+reconstruction without bound. What is *not* settled is which reading a real `shelf_state` will
+carry, because no `shelf_state` exists yet.
+*Unlock condition:* T010's silver layer. Stock-out marking happens there, from the inventory
+movements, and the derivation it writes is what fixes the meaning — at which point the column gets
+a declared definition and the correction's direction stops being conditional. Until then the
+conditional statement is the honest one, and it is printed on every run.
+
+**`C7`, `C11` and `C12` own no `gate-proof` mutation, and cannot** · deferred 2026-08-29
+`make gate-proof`'s "no unproven gate" rule is a **target-level** check: `claim-4` owns nine
+mutations, so the ledger is satisfied. Per check, three of claim 4's twelve are outside the net, and
+for a reason rather than by oversight. `C11` and `C12` assert properties of the **corpus** — how
+much of it is censored, and that no day sells after its recorded stock-out — and no break planted in
+`src/holdout/` can move either. `C7`'s disjointness half is a tautology, because the two segments
+are complementary predicates over one business date; only its "neither segment is empty" half can go
+red, and the check says so in its own `detail` rather than leaving a reader to assume otherwise.
+
+This is the standing limit of `gate-proof`'s guarantee and it is stated here rather than left to be
+rediscovered: a check that asserts something about the *inputs* cannot be proved to bite by mutating
+the *system*.
+*Unlock condition:* the phase-1 integration session decides whether corpus-property checks want a
+second harness — one that mutates the corpus rather than the system — or whether their value is
+that they are armed by construction and would go red the day the corpus stopped containing what
+they measure. Not built now because one harness with a clear scope beats two with an unclear one.

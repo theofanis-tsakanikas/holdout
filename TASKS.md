@@ -795,8 +795,69 @@ closes        make claim-4 green. A stock-out is never read as zero demand; the 
 out_of_scope  The full training pipeline (Phase 2, T014).
 stop_at       After claim-4 and its mutation.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed.** `src/holdout/core/demand/censoring.py` — the reading, the availability curve and
+the correction — plus `evals/censoring/`, nine mutations and `make claim-4`. Green at **11/11 checks
+and 9/9 mutations biting**, about 58 s end to end on a fourteen-core laptop; the eval alone is 5 s,
+so it needs no world cache and does not have one.
+
+*Where the independence is.* The curve is fitted on store-days in the first 60% of the calendar on
+which the shelf **held**, and graded on store-days in the last 40% on which the shelf held —
+censored on purpose at a declared grid of hours, with the hours after withheld. **The truth is a
+receipt total the corpus emitted**, never a latent intensity the generator knows, so the grader
+never opens the process that produced the data. The corpus's stock-outs come out of the
+simulation's replenishment arithmetic, written for claim 2 before this claim had a line of code, and
+W5 is in the set of three worlds because its heavy-tailed store-days are the hardest input
+available. `tests/evals/test_censoring_instrument.py` refuses any import of `corpus.world.demand`
+from the eval and any import of `corpus` from the correction, in both directions.
+
+*The figures it closes on.* 16,942 of 80,640 store-days emptied (21.0%) — the one corpus figure;
+the rest are measured on held-out days censored **on purpose**, where the withheld total is known.
+There, reading the truncated number as the day's demand understates by **6.0% at the last trading
+hour and 91.4% at the first**; the reconstruction lands within **0.1% at a share of 0.94** and comes
+out **36–40% high at 0.06**, which is selection — the same expansion conditioning on nothing lands
+at −1.5% to −0.6%, and the pair is published. 176,266 reconstructions and 48 hourly boundaries
+compared against a second implementation as integers with no tolerance: **0 disagreements**. 51,883
+censored days answered with a lower bound and no number.
+
+*Two things the measurement corrected, and neither was visible in the code.* First, `checks.py`
+declared two censoring shapes unreachable from the corpus and one of them is reachable — W5 empties
+a shelf inside the first trading hour three times in 26,880, having sold up to three units. Found by
+`gate-proof` reporting `CRASHED`, because `DemandEstimate` refused to be built with zero units over
+the two that day had sold. Which shapes come from the corpus is now measured and published rather
+than reasoned. Second, `C6` offered `fit` a censored day **on its own** and the mutation aimed at it
+reported `SURVIVED` — a `fit` that skipped censored days still went red, but by a different guard.
+*A gate can only be shown to bite where it is the gate that refuses.* The eval was fixed, not the
+assertion, and `CLAUDE.md`'s guard table has a fifth row.
+
+*What it also moved.* `CLAUDE.md`'s claim-4 row is restated: the corpus produces no censored
+store-day that sold nothing, so the literal zero is the limiting case rather than the typical one —
+the typical one is understatement on a fifth of all store-days. And the sentence *"nothing catches
+this for hooks, barriers, checks or tests"* is restated: `gate-proof` does catch it for an eval's
+checks, where a mutation is aimed at that check by name.
+
+*What is deferred, with unlock conditions in `docs/DECISIONS.md`.* No threshold at which a
+reconstruction stops being usable — that number would have to come from real stock-outs and this
+eval constructs its own; the endogeneity of a real stock-out, stated rather than measured; one
+pooled curve per world; and the correction having no consumer until T014's training pipeline and
+T010's silver layer compose it.
+
+*One number left to read off CI.* `claim-4` joins the `claims` matrix, which runs on the temporary
+90-minute timeout `docs/DECISIONS.md` already carries with a date. Measured at **58 s, serial, at
+99% CPU** — so core count is not the variable and the local figure is close to what a runner will
+see; it is two orders of magnitude under the budget either way, and nothing is changed here. The
+cold figure from CI is what that deferral's next measurement should record beside claim 2's,
+because a measurement taken on the hardware that will meet the number is the only kind this
+repository accepts.
+
+*Read off the runner, 2026-08-29:* `claim-4` is **1m51s and 2m31s** cold on `ubuntu-latest`, over
+two runs of the same commit — a 36% spread between runners, which is the same order as the ~40%
+this repository has already measured and is why a budget is never set from a single run. Against
+the matrix's 90-minute timeout that is a factor of 36, so `claim-4` puts no pressure on it. The
+deferral itself stays claim 2's to close: `claim-2` is what the 90 was sized on, at 50m26s and
+51m24s on the same two runs.
 
 ```
 id            T006
@@ -1186,6 +1247,11 @@ L8  .claude/skills/claim/ — the method for building a claim end to end, extrac
     that have closed rather than from one. CLAUDE.md's rule about a sentence widened to any
     assertion, a number in configuration included.
                                           branch ops/claim-skill                 status closed
+L9  src/holdout/core/demand/, evals/censoring/, make claim-4 — claim 4 green at 11/11 with 9/9
+    mutations biting. A stock-out reads as a type with no units attribute; the correction is
+    fitted on days the shelf held and graded on a held-out segment of them, against receipt
+    totals the corpus emitted rather than anything the generator knows.
+                                          branch evals/censoring                 status closed
 ```
 
 ---
@@ -1197,10 +1263,10 @@ T00A ─▶ T002 ─────┐    (both closed)
                   ├─▶ T00D ─▶ T00E ─▶ T003  ✅ (claim-2 green — phase 1's hardest claim)
 T001 ─▶ T002B ────┤    (both closed)                    │
 T000 ─────────────┘    (also blocks T004, T005, T006)   └─▶ T00B ✅ ─┬─▶ T004 (claim 3)
-                                                                    ├─▶ T005 (claim 4)
+                                                                    ├─▶ T005 ✅ (claim 4)
                                                                     └─▶ T006 (claim 7)
 
-remaining before T008 and phase 2:  T004 · T005 · T006, mutually independent and parallel · T007
+remaining before T008 and phase 2:  T004 · T006, mutually independent and parallel · T007
 ```
 
 **T00B sits on that edge deliberately.** It needs T003 because a method extracted from one closed
@@ -1213,6 +1279,12 @@ instrument before it is copied four times, not after.
 **T003 has closed.** Claim 2 is green at K = 200 and the four numbers are published rather than
 ticked. What still stands between here and the phase-1 integration session is claims 3, 4 and 7 —
 each of which needs nothing that T003 did not already build — and `docs/SCENARIO.md`.
+
+**T005 has closed since**, so it is claims 3 and 7 and `docs/SCENARIO.md`. Claim 4 is green at
+11/11 with 9/9 mutations biting, and it was the first claim built by following
+`.claude/skills/claim/` rather than by reading the two closed evals — which is what T00B was
+extracted for. The skill held: every step produced something, and the two findings it surfaced both
+came from steps 8 and 9, the mutations and *write down what came out*.
 
 **T00D and T00E were inserted on 2026-08-28, by T003 stopping on its first measurement.** They are
 above, with the numbers. The short version: the corpus's geography and the design engine's

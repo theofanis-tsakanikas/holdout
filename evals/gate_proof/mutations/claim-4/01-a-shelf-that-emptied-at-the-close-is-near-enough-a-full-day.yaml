@@ -1,0 +1,25 @@
+# The optimisation somebody makes on a Friday afternoon. This corpus's stock-outs cluster
+# late — measured in W6, 1,649 of 5,587 are at 22:00 (29.5%), 2,680 in the last two trading
+# hours (48.0%) and 3,411 in the last three (61.1%) — so treating the latest of them as full
+# days looks like it recovers a large slice of the population for free. What it recovers is the days that hid the least, and it recovers them by asserting
+# they hid nothing. Measured on the held-out segment, a shelf that emptied at 22:00 still
+# understates its own day by about 6%.
+
+id:          a-shelf-that-emptied-at-the-close-is-near-enough-a-full-day
+claim:       4
+eval_module: evals.censoring
+targets:     [C1.a-stock-out-is-never-a-point-observation]
+
+breaks: >-
+  a store-day whose shelf emptied in the last trading hour comes back as a fully observed
+  demand reading instead of a censored one, so its truncated total is averaged as though
+  nothing had been hidden.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+    if state.stocked_out_from_hour is None:
+        return FullyObserved(units=state.units_sold)
+replacement: |
+    if state.stocked_out_from_hour is None or state.stocked_out_from_hour == window.close_hour - 1:
+        return FullyObserved(units=state.units_sold)
