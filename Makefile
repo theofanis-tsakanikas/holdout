@@ -127,13 +127,16 @@ eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 # runs in the `claims` matrix under a budget that was measured for claim 2, and a target two
 # orders of magnitude under a timeout is not an assertion about that timeout.
 #
-# On four cores it is **under two minutes** — five CI measurements between 1m32s and 1m45s.
-# A range, and deliberately not a point. This line has been wrong twice: first at 1m8s, which
-# was the six-mutation figure left standing after a seventh mutation landed, and then at
-# "1m33s and 1m41s", which stopped being true the moment merging claims 3 and 4 grew the
-# registry — every type added to it adds 317 attacks. A number that has no reason to be stable
-# should not be asserted as though it were; what is load-bearing here is the distance to the
-# budget, and that is what this now says.
+# On four cores it is **under two minutes, on every CI run so far**. The six measurements span
+# **1m7s to 1m45s** — a 40% spread on work that did not change between two of them, which is the
+# same runner variance T000 measured at 11m00s against 15m16s on an identical commit.
+#
+# The bound is the assertion; the span is evidence for it, not a second assertion. This line
+# has been wrong three times as a point estimate — 1m8s, left standing after a seventh mutation
+# landed; "1m33s and 1m41s", overtaken when merging claims 3 and 4 grew the registry, since
+# every type added to it adds 317 attacks; and then "1m32s to 1m45s", falsified by the very
+# next run coming in *faster*. A quantity with two independent reasons to move should be
+# asserted as a bound with room in it, never as a point and never as a tight range.
 claim-7:  ## claim 7 — a decision that targets a person is structurally impossible
 	$(RUN) python -m evals.oversight
 	$(RUN) python -m evals.gate_proof --claim 7

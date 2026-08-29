@@ -933,15 +933,19 @@ after 2026-08-29; that ages the *net* and never the *guard* — `O2` reads no na
 expires 2027-02-28.
 
 **No new number in configuration.** `make claim-7` is 37s on the author's laptop and **under two
-minutes on the four-core runner** — five CI measurements between 1m32s and 1m45s — in a matrix job
-whose 90-minute budget was measured for claim 2.
+minutes on the four-core runner, on every CI run so far**, in a matrix job whose 90-minute budget
+was measured for claim 2. Six measurements span **1m7s to 1m45s**.
 
-It is a range rather than a point because the point was wrong twice. The first draft said 1m8s,
-measured before the seventh mutation existed and left standing after it landed. The second said
-"1m33s and 1m41s", which stopped being true when merging claims 3 and 4 grew the registry: every
-type added to it adds 317 attacks. **A number with no reason to be stable should not be asserted as
-though it were.** What is load-bearing is the distance to the budget, and that is now what is
-written down. A target two
+It is a bound rather than a point because the point was wrong three times, each for a different
+reason, and the third is the instructive one. 1m8s was measured before the seventh mutation existed
+and left standing after it landed. "1m33s and 1m41s" stopped being true when merging claims 3 and 4
+grew the registry — every type added to it adds 317 attacks. And "1m32s to 1m45s" was falsified by
+the very next run coming in **faster**, at 1m7s: a 40% spread on work that had not changed, which is
+the same runner variance T000 measured at 11m00s against 15m16s on an identical commit.
+
+So the quantity has two independent reasons to move — the eval grows, and the runner varies — and a
+tight range around it is a point estimate wearing a wider hat. **What is load-bearing is the distance
+to the budget.** The span is published as evidence for the bound, not as a second assertion. A target two
 orders of magnitude under a timeout asserts nothing about that timeout, and the runner figure is the
 measurement taken on the hardware that meets it rather than a projection from the laptop.
 
