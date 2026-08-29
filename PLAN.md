@@ -602,7 +602,7 @@ skill directory built inside the test, which is what `tests/ops/test_expiry.py` 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 **Claim 3 closed 2026-08-29 — the one door with no key, T004.** `make claim-3` is green at 10
-checks over 36 declared configurations, with eight planted mutations of which eight bit. What the
+checks over 36 declared configurations, with nine planted mutations of which nine bit. What the
 piece settled is mostly about **what a reproducibility claim is allowed to be checked by**.
 
 `draw` reads no clock, no environment and no random source, so calling it twice agrees with itself
@@ -623,13 +623,25 @@ asked not to take, and every substitution — including the careful forger who r
 so the seal agrees with itself — is refused, `CONTAMINATED_ASSIGNMENT` read off the refusal after
 moment 3 has actually run.
 
-**And one finding, measured rather than argued.** `contamination.check` derives the roster it walks
-from the arms it is checking, so a control store deleted from the assignment table with the digest
-recomputed to match is invisible to it — 24 of the 72 erasure routes. What refuses those is
-`readout.close`, one function later, and only because the erased store still reports an outcome.
-`docs/DECISIONS.md` carries the gap with its unlock condition. One mutation survived on the first
-run and the eval was corrected rather than the assertion widened; `evals/assignment/README.md` §6
-keeps that account.
+**And one finding in the door itself, which closed in the same branch.** As first measured,
+`contamination.check` derived the roster it walks from the arms it is checking, so a control store
+deleted from the assignment table with the digest recomputed to match was invisible to it — 24 of
+72 erasure routes, refused only by `readout.close` one function later. It was carried as a
+deferral, and **oversight level 2 found the deferral wrong rather than the measurement**: `check`
+already computes `redraw(seal)`, whose key set is the roster the lottery was drawn over, taken
+from the committed strata — and then walked `seal.roster` one line later. The fix added no
+argument and moved no signature. `A8` now asserts both layers, a ninth mutation reverts the line
+that closed the gap, and `docs/DECISIONS.md` keeps the deferral beside its restatement.
+
+That is the boxed rule pointed at a **deferral** for the first time: a deferral is an assertion
+about what the system does, wearing a cost estimate instead of a verb, and this one was written
+against an imagined fix rather than against the function that would make it true. `make expiry`
+could not have caught it — it checks that an unlock condition is present, never that it is right.
+
+**And one mutation survived on the first run**, corrected in the eval rather than by widening the
+assertion: `strata_of` is order-independent by its own sorting, not because `CovariateMatrix.units`
+is sorted, so `A4` was widened to compare the whole record the seal commits to.
+`evals/assignment/README.md` §6 keeps that account.
 
 ### Closed in this phase
 

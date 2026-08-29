@@ -1,0 +1,19 @@
+id:          the-contamination-check-trusts-the-roster-it-is-handed
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A8.an-erased-holdout-is-refused
+
+breaks: >-
+  the contamination check stops asking whether every unit the committed lottery drew is still
+  on the table, and goes back to walking a roster it derives from the arms it is checking. A
+  control store deleted from the assignment table, with the digest recomputed so the seal
+  agrees with itself, then has nothing left to compare against: the check reports the
+  assignment intact and the seal passes. This is the state the check was in until 2026-08-29,
+  planted so that the line which closed it cannot be removed in silence.
+
+file:   src/holdout/core/experiment/contamination.py
+anchor: |
+  dropped = tuple(sorted(frozenset(drawn) - frozenset(seal.roster)))
+replacement: |
+  dropped = ()

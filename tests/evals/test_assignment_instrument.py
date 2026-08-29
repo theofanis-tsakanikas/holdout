@@ -18,6 +18,7 @@ publishes, including the one that is not flattering.
 from __future__ import annotations
 
 import ast
+import tempfile
 from pathlib import Path
 from types import MappingProxyType
 
@@ -32,45 +33,88 @@ from holdout.core.experiment.assignment import digest_for
 
 PACKAGE = Path(checks.__file__).parent
 
-#: Modules under `evals/assignment/` that may reach a hash the core also uses, each with the
-#: reason. An **exclusion list, not an inclusion list** — every other module in the package is
-#: found by a glob rather than named here, so a module added later is scanned without anybody
-#: having to remember. That inversion is the lesson `evals/guardrail/`'s version of this rule
-#: was rewritten to carry: a guard that has to be remembered when a file is added is a guard
-#: that will not be.
-MAY_REACH_THE_CORE_S_HASH = {
-    #: `A10` compares the eval's own BLAKE2b against `hashlib` on purpose — that is the check,
-    #: not a leak — and the forger in `A7` recomputes the committed digest the way the system
-    #: would, because that is what a careful forger does. Neither is a second opinion about
-    #: where an arm belongs: `A1` and `A2` compare against `reference.py` alone.
-    "checks.py",
+#: What a module in this package may reach of the hashes the core also uses — **per name, not
+#: per file.** A blanket exemption for `checks.py` was the first shape of this rule, and it
+#: repeated the mistake `evals/guardrail/`'s version was rewritten to remove: *a rule scoped to
+#: the file the legitimate use happens to live in would pass on the tree that had the bug*, and
+#: `checks.py` is exactly where a reach from `A1` or `A2` would go. So each file names the
+#: individual reaches it is allowed and nothing else.
+#:
+#: An **exclusion map, not an inclusion list** — every module in the package is found by a glob
+#: and scanned; a file absent from this map is allowed nothing. That inversion is the other
+#: lesson from claim 1: a guard that has to be remembered when a file is added is a guard that
+#: will not be.
+MAY_REACH = {
+    #: `A10` compares the eval's own BLAKE2b against `hashlib` on purpose — that *is* the
+    #: check — and the forger in `A7`, `A8` and `A9` recomputes the committed digest the way
+    #: the system would, because that is what a careful forger does. Neither is a second
+    #: opinion about where an arm belongs: `A1` and `A2` compare against `reference` alone,
+    #: and the names below are the only two this file may reach.
+    "checks.py": frozenset({"hashlib", "digest_for"}),
 }
 
-#: What a module in this package may not reach: the standard library's BLAKE2b, and every
-#: name in the core that computes a digest, a key or a rank. `reference.py` and `blake2b.py`
-#: exist precisely so that the second opinion shares none of them.
-FORBIDDEN_IMPORTS = frozenset({"hashlib", "holdout.core.hashing"})
-THE_CORE_S_HASHING = frozenset(
-    {"canonical_bytes", "key_for", "rank_of", "digest_for", "covariate_digest"}
+#: What no module in this package may reach unless `MAY_REACH` names it: the standard library's
+#: BLAKE2b, and every name in the core that computes a digest, a key or a rank. `reference.py`
+#: and `blake2b.py` exist precisely so that the second opinion shares none of them.
+FORBIDDEN_MODULES = frozenset({"hashlib", "holdout.core.hashing"})
+FORBIDDEN_NAMES = frozenset(
+    {"canonical_bytes", "key_for", "rank_of", "digest_for", "covariate_digest", "digest"}
 )
+
+#: The subset of the above that is unambiguous **as an attribute**. `digest` and
+#: `covariate_digest` are not in it and cannot be: `SealedAssignment.digest` and
+#: `.covariate_digest` are fields a check legitimately reads, `reference.digest` is the eval's
+#: own second implementation, and `hashlib`'s digest object has a `.digest()` too. A guard that
+#: went red on all of those would be a guard somebody turns off. What keeps
+#: `from holdout.core import hashing` then `hashing.digest(...)` caught is the alias rule
+#: below, which fires on the import rather than on the call.
+FORBIDDEN_ATTRIBUTES = frozenset({"canonical_bytes", "key_for", "rank_of", "digest_for"})
+
+#: Modules whose *name* alone is a reach, when imported as an attribute source —
+#: `from holdout.core import hashing` followed by `hashing.digest(...)` never mentions
+#: `holdout.core.hashing` and never imports `digest`. It is the spelling that matches the file
+#: tree, which is the spelling `CLAUDE.md` records the corpus barrier missing.
+FORBIDDEN_MODULE_ALIASES = frozenset({"hashing", "assignment"})
 
 
 def _reaches_the_core_s_hash(source: Path) -> list[str]:
-    tree = ast.parse(source.read_text(encoding="utf-8"))
+    """Every reach in one module: imports, aliased module imports, and attribute access.
+
+    The attribute scan is the half the first version of this rule did not have, and it is the
+    half `evals/guardrail/`'s equivalent does. Without it `from holdout.core import hashing`
+    then `hashing.digest(...)`, and `from holdout.core.experiment import assignment as a` then
+    `a.digest_for(...)`, both pass — the two most natural spellings of the thing forbidden.
+    """
+    allowed = MAY_REACH.get(source.name, frozenset())
     found: list[str] = []
+
+    def offend(line: int, what: str, reach: str) -> None:
+        if reach not in allowed:
+            found.append(f"{source.name}:{line} {what}")
+
+    tree = ast.parse(source.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name in FORBIDDEN_IMPORTS:
-                    found.append(f"{source.name}:{node.lineno} imports {alias.name}")
+                if alias.name in FORBIDDEN_MODULES:
+                    offend(node.lineno, f"imports {alias.name}", alias.name)
         if isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            if module in FORBIDDEN_IMPORTS:
-                found.append(f"{source.name}:{node.lineno} imports from {module}")
-            if module.startswith("holdout."):
+            if module in FORBIDDEN_MODULES:
+                offend(node.lineno, f"imports from {module}", module)
+            if module.startswith("holdout"):
                 for alias in node.names:
-                    if alias.name in THE_CORE_S_HASHING:
-                        found.append(f"{source.name}:{node.lineno} imports {alias.name}")
+                    if alias.name in FORBIDDEN_NAMES:
+                        offend(node.lineno, f"imports {alias.name} from {module}", alias.name)
+                    elif alias.name in FORBIDDEN_MODULE_ALIASES:
+                        offend(
+                            node.lineno,
+                            f"imports the module {alias.name} from {module}, which puts its "
+                            "hashing one attribute away",
+                            alias.name,
+                        )
+        if isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_ATTRIBUTES:
+            offend(node.lineno, f"reaches {ast.unparse(node)}", node.attr)
     return found
 
 
@@ -81,13 +125,59 @@ def test_the_second_implementation_never_reaches_the_hash_it_is_a_second_opinion
     primitive — under a docstring claiming independence. Here the equivalent would be
     `reference.py` calling `hashlib.blake2b`, or importing `digest_for`: the two would then
     agree on a wrong digest and `A2` would report 100% while saying nothing.
+
+    **What this does not cover**, because a static scan cannot and the alternative would be a
+    sentence pretending otherwise: a reach assembled at run time (`getattr(module, name)`, an
+    `importlib` call, a name rebound through a dict); a reach through a *third* module that is
+    itself allowed nothing today but could be added; and any equivalence that is not a shared
+    call at all — `reference.py` re-deriving the same wrong constant as the core would pass
+    this and every other check here. What answers the last one is `A10`, which pins the eval's
+    hash to a vector published by somebody who has never seen this repository.
     """
     offences: list[str] = []
     for source in sorted(PACKAGE.glob("*.py")):
-        if source.name in MAY_REACH_THE_CORE_S_HASH:
-            continue
         offences.extend(_reaches_the_core_s_hash(source))
     assert not offences, "\n".join(offences)
+
+
+def test_the_exemption_map_names_only_files_that_exist() -> None:
+    """A rule may not carry an exemption for a module nobody has.
+
+    Claim 1's version of this test is `test_every_module_that_may_round_with_the_core_still
+    _exists`, and the reason is the same: an exemption outliving its file is a hole with a
+    name, waiting for somebody to create that file again for an unrelated reason.
+    """
+    missing = sorted(name for name in MAY_REACH if not (PACKAGE / name).exists())
+    assert not missing, f"{missing} is exempted and does not exist"
+
+
+def test_the_guard_catches_the_two_spellings_that_match_the_file_tree() -> None:
+    """The guard, shown to bite, on cases its author did not invent.
+
+    Both come from oversight level 2 reading this branch in fresh context: they are the
+    spellings the first version of the rule missed, and they are the ones somebody reaching
+    for the core's hash would actually write, because they are what the file tree looks like.
+    `CLAUDE.md` records the identical miss in the corpus barrier — `import src.holdout`, the
+    spelling that matches the tree — so this is that defect's second appearance and the first
+    time it is planted rather than found.
+    """
+    planted = {
+        "from holdout.core import hashing": "from holdout.core import hashing\nx = hashing.digest([])\n",
+        "assignment as a": (
+            "from holdout.core.experiment import assignment as a\ny = a.digest_for()\n"
+        ),
+        "import hashlib": "import hashlib\n",
+        "from hashlib import blake2b": "from hashlib import blake2b\n",
+        "from holdout.core.hashing import digest": "from holdout.core.hashing import digest\n",
+        "attribute reach": "import m\nz = m.canonical_bytes([])\n",
+        "aliased attribute reach": (
+            "from holdout.core.experiment import assignment\nw = assignment.rank_of('a', b'')\n"
+        ),
+    }
+    tmp = Path(tempfile.mkdtemp()) / "planted.py"
+    for label, source in planted.items():
+        tmp.write_text(source, encoding="utf-8")
+        assert _reaches_the_core_s_hash(tmp), f"the guard did not catch: {label}"
 
 
 def test_the_independent_lottery_can_actually_disagree() -> None:
@@ -129,17 +219,28 @@ def one_seal() -> tuple[build.Drawn, SealedAssignment]:
     return drawn, drawn.seal
 
 
-def test_a_coordinated_deletion_is_invisible_to_the_contamination_check(
+def test_a_coordinated_deletion_is_caught_by_the_committed_strata(
     one_seal: tuple[build.Drawn, SealedAssignment],
 ) -> None:
-    """The finding claim 3's eval produced, pinned so that fixing it is a restatement.
+    """The finding claim 3's eval produced, and the line that closed it — both pinned.
 
-    `contamination.check` derives the roster it walks **from the arms it is checking**, so a
-    control store deleted from the assignment table with the digest recomputed to match leaves
-    nothing for it to compare against. It reports the assignment intact. The eval publishes
-    this as `48/72 = 66.67%`, and `evals/assignment/README.md` and `docs/DECISIONS.md` both
-    say so; a change that closes the gap makes this test red, which is doctrine rule 4 working
-    rather than a test in the way.
+    **This test used to assert the opposite, and the name it had was
+    `test_a_coordinated_deletion_is_invisible_to_the_contamination_check`.** That was true
+    when it was written: `contamination.check` walked `seal.roster`, which
+    `SealedAssignment` derives as `tuple(sorted(self.arms))`, so a control store deleted from
+    the assignment table with the digest recomputed to match left the check nothing to
+    compare against — it reported the assignment intact and `sealed()` agreed. The eval
+    measured it at 24 of 72 erasure routes and published `48/72 = 66.67%`.
+
+    Oversight level 2 read the deferral that carried it and found the deferral wrong rather
+    than the measurement: `check` already computes `redraw(seal)`, whose key set is the
+    roster the lottery was drawn over — from the **strata**, which are committed and digested
+    as their own section — and then discarded it one line later. The prior wording stays in
+    `docs/DECISIONS.md` per doctrine rule 4, and this test now asserts the closure.
+
+    The strata are a *sound* witness and not merely an available one, which the second half
+    below is what shows: a forger who deletes the unit from the strata as well changes which
+    unit holds the smallest rank in that stratum, so `reassigned` fires instead.
     """
     item, seal = one_seal
     victim = seal.control[0]
@@ -162,19 +263,65 @@ def test_a_coordinated_deletion_is_invisible_to_the_contamination_check(
             control_policy=build.CONTROL_POLICY,
             form_digest=item.configuration.form_digest,
         )
-        assert found.redraw_matches
+        # Everything the forgery was designed to satisfy still holds — and it is refused anyway.
         assert sealed(seal)
+        assert found.digest_matches
+        assert found.redraw_matches
+        assert found.dropped == (victim,)
+        assert not found.is_clean
     assert sealed(seal), "the seal did not survive being attacked and restored"
 
 
-def test_what_refuses_that_erasure_is_the_readout_one_function_later(
+def test_deleting_the_unit_from_the_strata_as_well_is_caught_by_the_redraw(
     one_seal: tuple[build.Drawn, SealedAssignment],
 ) -> None:
-    """The other half of the same finding, driven rather than named.
+    """The obvious counter-move, and why the strata are a sound witness rather than a handy one.
+
+    The case is not one this test's author invented: it is the move oversight level 2 made
+    when checking whether the closure above could be walked around, and it is the move an
+    attacker who has read `contamination.py` would make next.
+    """
+    item, seal = one_seal
+    victim = seal.control[0]
+    without = MappingProxyType({u: a for u, a in seal.arms.items() if u != victim})
+    strata = tuple(tuple(u for u in stratum if u != victim) for stratum in seal.strata)
+    with checks._rewritten(
+        seal,
+        _arms=without,
+        _strata=strata,
+        _digest=digest_for(
+            experiment_id=seal.experiment_id,
+            seed=seal.seed,
+            form_digest=seal.form_digest,
+            strata=strata,
+            arms=without,
+        ),
+    ):
+        found = contamination_module.check(
+            seal,
+            delivered=dict.fromkeys(seal.roster, build.CONTROL_POLICY),
+            treatment_policy=build.TREATMENT_POLICY,
+            control_policy=build.CONTROL_POLICY,
+            form_digest=item.configuration.form_digest,
+        )
+        assert found.dropped == (), "the strata no longer name the erased store"
+        assert not found.redraw_matches, (
+            "removing a stratum's control changes which unit holds the smallest rank in it, "
+            "so the redraw disagrees with the arms even though both were rewritten together"
+        )
+        assert not found.is_clean
+    assert sealed(seal)
+
+
+def test_the_readout_still_refuses_the_erasure_one_function_later(
+    one_seal: tuple[build.Drawn, SealedAssignment],
+) -> None:
+    """Defence in depth, kept because it is what held the door while the check could not see.
 
     An erased store still reports an outcome, and `close` refuses outcomes from units it never
-    assigned. That is what stops the erasure, and it is one function past the check whose
-    docstring points at this route.
+    assigned. That is a *second* refusal now rather than the only one, and `A8` asserts both
+    layers for exactly that reason: the contamination check catching it is what should hold,
+    and this is what held it before anything did.
     """
     item, seal = one_seal
     contracts = load()

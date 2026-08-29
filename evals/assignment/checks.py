@@ -92,10 +92,13 @@ HASH_SEEDS = ("0", "1", "524287")
 #: The lengths are chosen against what would actually go wrong: the empty message, both sides of
 #: every 128-byte block boundary, and two multi-block lengths, because the counter fed to the
 #: compression function and the last-block flag are the two things a plausible reimplementation
-#: gets wrong and neither is exercised inside one block. The committed digest's own message
-#: measures **3,324 to 13,022 bytes** across this grid — a stratum list, a roster and an arm per
-#: unit — so 4,096 is inside the range the lottery actually hashes rather than a round number,
-#: and the chaining is driven instead of extrapolated to.
+#: gets wrong and neither is exercised inside one block. The committed digest's own message —
+#: a stratum list, a roster and an arm per unit — measures **623 to 13,022 bytes** across the
+#: thirty configurations `A2` hashes, and 3,324 to 13,022 over the twenty-four at the contract's
+#: own share. 4,096 is inside that range rather than a round number, so the chaining is driven
+#: instead of extrapolated to. It is a declared sweep and not an exhaustive one: it straddles
+#: one 128-byte boundary and samples four lengths beyond it, which is enough to exercise the
+#: block counter and the last-block flag and is not a claim to have covered every length.
 SWEEP_MESSAGE_LENGTHS = (0, 1, 63, 64, 65, 127, 128, 129, 200, 1000, 4096)
 #: 32 bytes is the key width the lottery uses; 0, 1 and 64 are the boundaries of the keyed mode.
 SWEEP_KEY_LENGTHS = (0, 1, 32, 64)
@@ -359,7 +362,17 @@ def _permuted(roster: tuple[str, ...], name: str) -> tuple[str, ...]:
 
 
 def check_a_fresh_interpreter_reproduces(here: str) -> Check:
-    """A5 — the answer under another process's string hashing. See `crossprocess.py`."""
+    """A5 — the answer under another process's string hashing. See `crossprocess.py`.
+
+    **One of the three may be repetition, and the figure says which.** `gate_proof.engine`
+    runs an eval with `PYTHONHASHSEED=0`, so under `make claim-3` the parent is at 0 and the
+    child at `"0"` is bit-identical by construction — the very thing this check exists to
+    replace. Under `make eval-assignment` from a shell the parent's seed is randomised and all
+    three are informative. Rather than drop the seed or pretend, the check counts how many
+    children run at a seed the parent is not using and publishes that beside the total.
+    """
+    parent = os.environ.get("PYTHONHASHSEED")
+    informative = sum(1 for seed in HASH_SEEDS if seed != parent)
     agreed = 0
     failures: list[str] = []
     for seed in HASH_SEEDS:
@@ -388,7 +401,10 @@ def check_a_fresh_interpreter_reproduces(here: str) -> Check:
             "PYTHONHASHSEED, does the whole grid produce the same strata and the same arms?"
         ),
         passed=not failures,
-        figure=f"{_fraction(agreed, len(HASH_SEEDS))} interpreters agree · {here[:16]}…",
+        figure=(
+            f"{_fraction(agreed, len(HASH_SEEDS))} interpreters agree, {informative} of them "
+            f"at a seed the parent is not using · {here[:16]}…"
+        ),
         detail=(
             "Python randomises string hashing per process, so a tie broken by set-iteration "
             "order answers differently here and identically under any in-process repetition"
@@ -672,26 +688,53 @@ def _contamination(seal: SealedAssignment, delivered: Mapping[str, str], form_di
 
 
 @dataclass(frozen=True, slots=True)
-class Erasure:
-    """One way to erase a unit or an arm, and how far it got."""
+class ErasureRoute:
+    """One way to erase a unit or an arm, and the two things that must refuse it.
+
+    `readout_guard` is the phrase `close`'s refusal has to carry, declared **per route**
+    rather than left as "any `ReadoutError`". The two routes that delete a store are refused
+    because that store still reports an outcome; the one that empties the holdout is refused
+    because an arm is gone. Counting any exception as either would let a reordering of
+    `close`'s guards keep this check green while changing which sentence is true.
+    """
 
     name: str
+    readout_guard: str
+
+
+ERASURE_ROUTES = (
+    ErasureRoute("a control store deleted", "never assigned"),
+    ErasureRoute("the holdout emptied", "attrition emptied an arm"),
+    ErasureRoute("a control store deleted, digest rewritten", "never assigned"),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class Erasure:
+    """One route run against one seal, and what each of the two layers did about it."""
+
+    route: ErasureRoute
     origin: str
     caught_by_the_contamination_check: bool
-    refused_by_a_reason_that_names_it: bool
-    refused_by: str
+    refused_by_the_readout: bool
+    readout_said: str
+
+    @property
+    def refused(self) -> bool:
+        return self.caught_by_the_contamination_check and self.refused_by_the_readout
 
 
 def erasures(drawn: Sequence[build.Drawn], contracts: ContractSet) -> tuple[Erasure, ...]:
-    """The three erasure routes, run against every seal.
+    """The three erasure routes, run against every seal, judged at **both** layers.
 
-    The third one is the finding this eval produced and it is worth stating before the
-    numbers arrive: `contamination.check` derives the roster it walks **from the arms it is
-    checking**, so a unit deleted from the assignment table with the digest recomputed to
-    match leaves nothing for it to compare. It reports clean. What refuses that erasure is
-    `readout.close`, one function later, and only because the erased store still reports an
-    outcome — an outcome from outside the experiment is a unit whose price nobody
-    randomised. Both halves are driven here rather than argued about.
+    Both, and not either, because the two answer different questions and this eval found out
+    the hard way what happens when only one of them is asked. Until 2026-08-29
+    `contamination.check` walked a roster it derived from the arms it was checking, so route
+    3 — a store deleted with the digest recomputed to match — was invisible to it, and the
+    only thing refusing that erasure was `close`'s stray-outcome guard, which holds solely
+    while the erased store still reports an outcome. The check now compares the key set of
+    the redraw, which comes from the committed strata; `docs/DECISIONS.md` records the gap
+    and its closure rather than overwriting either.
     """
     found: list[Erasure] = []
     for item in drawn:
@@ -705,45 +748,51 @@ def erasures(drawn: Sequence[build.Drawn], contracts: ContractSet) -> tuple[Eras
         without = MappingProxyType({u: a for u, a in seal.arms.items() if u != victim})
         emptied = MappingProxyType(dict.fromkeys(seal.roster, Arm.TREATMENT))
 
-        # 1 · a control store deleted from the table, and nothing else touched.
-        with _rewritten(seal, _arms=without):
-            caught = not _contamination(seal, delivered, form_digest).is_clean
-            named, by = _named_at_readout(item, seal, contracts)
-        found.append(Erasure("a control store deleted", origin, caught, caught or named, by))
-
-        # 2 · the holdout emptied outright, with the digest recomputed to match.
-        with _rewritten(seal, _arms=emptied, _digest=_core_digest(seal, emptied)):
-            caught = not _contamination(seal, delivered, form_digest).is_clean
-            named, by = _named_at_readout(item, seal, contracts)
-        found.append(Erasure("the holdout emptied", origin, caught, caught or named, by))
-
-        # 3 · the coordinated deletion: the store removed and the digest rewritten to agree.
-        with _rewritten(seal, _arms=without, _digest=_core_digest(seal, without)):
-            caught = not _contamination(seal, delivered, form_digest).is_clean
-            named, by = _named_at_readout(item, seal, contracts)
-        found.append(
-            Erasure(
-                "a control store deleted, digest rewritten", origin, caught, caught or named, by
+        for route, slots in (
+            # 1 · a control store deleted from the table, and nothing else touched.
+            (ERASURE_ROUTES[0], {"_arms": without}),
+            # 2 · the holdout emptied outright, with the digest recomputed to match.
+            (
+                ERASURE_ROUTES[1],
+                {"_arms": emptied, "_digest": _core_digest(seal, emptied)},
+            ),
+            # 3 · the coordinated deletion: the store removed and the digest rewritten to agree.
+            (
+                ERASURE_ROUTES[2],
+                {"_arms": without, "_digest": _core_digest(seal, without)},
+            ),
+        ):
+            with _rewritten(seal, **slots):
+                caught = not _contamination(seal, delivered, form_digest).is_clean
+                refused, said = _refused_by_the_readout(item, seal, contracts, route)
+            found.append(
+                Erasure(
+                    route=route,
+                    origin=origin,
+                    caught_by_the_contamination_check=caught,
+                    refused_by_the_readout=refused,
+                    readout_said=said,
+                )
             )
-        )
     return tuple(found)
 
 
-def _named_at_readout(
-    item: build.Drawn, seal: SealedAssignment, contracts: ContractSet
+def _refused_by_the_readout(
+    item: build.Drawn, seal: SealedAssignment, contracts: ContractSet, route: ErasureRoute
 ) -> tuple[bool, str]:
     """Whether moment 3 refuses this seal **for the erasure**, rather than merely refusing.
 
-    The distinction is the whole check. A readout that refuses `POWER_NOT_REACHED` on an
-    assignment somebody has emptied has not caught anything — it declined for an unrelated
-    reason and would have declined identically on an intact one. So only two answers count:
-    the contamination check failing, or `close` refusing to run at all because a store
-    reports an outcome nobody randomised.
+    The distinction is the whole point of the second layer. A readout that declines
+    `POWER_NOT_REACHED` on an assignment somebody has emptied has caught nothing — it
+    declined for an unrelated reason and would have declined identically on an intact one.
+    So the only answer that counts is `close` refusing to run at all, with the refusal
+    carrying the phrase this route declared in advance.
     """
     try:
         result = _close(item, seal, contracts)
     except ReadoutError as error:
-        return True, f"ReadoutError from close: {str(error).split('.')[0][:60]}"
+        said = str(error).split(".")[0][:70]
+        return route.readout_guard in str(error), f"ReadoutError: {said}"
     if isinstance(result, ReadoutRefusal):
         return False, "refused for an unrelated reason: " + ", ".join(
             code.value for code in result.codes
@@ -752,35 +801,42 @@ def _named_at_readout(
 
 
 def check_an_erased_holdout_is_refused(found: Sequence[Erasure]) -> Check:
-    """A8 — *the holdout is neither erased*, judged on whether a number ever comes out."""
-    refused = sum(1 for e in found if e.refused_by_a_reason_that_names_it)
+    """A8 — *the holdout is neither erased*, judged at both layers that are supposed to see it."""
     caught = sum(1 for e in found if e.caught_by_the_contamination_check)
+    refused = sum(1 for e in found if e.refused_by_the_readout)
     failures = [
-        f"{e.origin}: {e.name} was not named — {e.refused_by}"
+        f"{e.origin}: {e.route.name} — "
+        + (
+            "the contamination check reported the assignment intact"
+            if not e.caught_by_the_contamination_check
+            else f"the readout did not name it ({e.readout_said})"
+        )
         for e in found
-        if not e.refused_by_a_reason_that_names_it
+        if not e.refused
     ]
-    invisible = sorted({e.name for e in found if not e.caught_by_the_contamination_check})
+    if not found:
+        failures.append(
+            "no erasure was driven, so this check asked nothing. A check that cannot fail is "
+            "one somebody will later mistake for a check that passed."
+        )
     return Check(
         id="A8.an-erased-holdout-is-refused",
         question=(
             "Erase a control store from the assignment table, or empty the holdout outright — "
-            "is the erasure refused for a reason that names it, whichever route it took? A "
-            "readout that declined for POWER_NOT_REACHED has not caught anything."
+            "is the erasure refused by the contamination check **and** named by the readout, "
+            "whichever route it took? A readout that declined POWER_NOT_REACHED has not "
+            "caught anything."
         ),
         passed=not failures,
         figure=(
-            f"{_fraction(refused, len(found))} erasures refused by name · "
-            f"{_fraction(caught, len(found))} of them by the contamination check"
+            f"{_fraction(caught, len(found))} caught by the contamination check · "
+            f"{_fraction(refused, len(found))} named by the readout"
         ),
         detail=(
-            "the contamination check does not see "
-            + "; ".join(invisible)
-            + ": it derives the roster it walks from the arms it is checking. What refuses "
-            "that one is close()'s stray-outcome check, one function later"
-        )
-        if invisible
-        else "every erasure is refused by the contamination check itself",
+            "both layers, not either. The contamination check compares the key set of the "
+            "redraw, which comes from the committed strata; the readout refuses an outcome "
+            "from a unit it never assigned. Each is a declared phrase, matched per route"
+        ),
         counterexamples=tuple(failures[:40]),
     )
 
@@ -931,9 +987,9 @@ def check_the_second_implementation_is_a_blake2b() -> Check:
         id="A10.the-second-implementation-is-a-blake2b",
         question=(
             "Does the eval's own BLAKE2b reproduce the digest RFC 7693 publishes, and agree "
-            "with the standard library over a sweep that covers both sides of the block "
-            "boundary, multi-block chaining, and every key width and digest size the lottery "
-            "uses?"
+            "with the standard library over a declared sweep — both sides of a 128-byte block "
+            "boundary, four multi-block lengths, and every key width and digest size the "
+            "lottery uses?"
         ),
         passed=not failures,
         figure=f"RFC 7693 Appendix A reproduced · {_fraction(agreed, total)} of a declared sweep",
@@ -1007,9 +1063,9 @@ def run(contracts: ContractSet | None = None) -> Report:
             ),
             (
                 "erasure routes driven",
-                f"{len(found)} through moment 3, over the {len(readable)} configurations at "
-                f"the contract's share · {len(ROUTES)} in-process routes, "
-                f"{PER_SEAL_ROUTES} of them per seal",
+                f"{len(found)} through moment 3 — {len(ERASURE_ROUTES)} routes over the "
+                f"{len(readable)} configurations at the contract's share · {len(ROUTES)} "
+                f"in-process routes, {PER_SEAL_ROUTES} of them per seal",
             ),
             ("interpreters asked", " · ".join(f"PYTHONHASHSEED={s}" for s in HASH_SEEDS)),
         ),

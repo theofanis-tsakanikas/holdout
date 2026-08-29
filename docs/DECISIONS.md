@@ -830,6 +830,44 @@ Until then the gap is a published figure rather than a sentence, and `A8` asks w
 refused **for a reason that names it** rather than whether a number came out, so a readout that
 declined `POWER_NOT_REACHED` on an emptied assignment does not count as a catch.
 
+> **Closed the same day, and the deferral was wrong rather than premature. Restated
+> 2026-08-29 after oversight level 2.** The measurement above stands — 24 of 72 routes were
+> invisible to the check, and `readout.close` was what refused them. The paragraph that does
+> not stand is *"the fix is a **contract and signature change**, not an eval change"*, and the
+> unlock condition built on it.
+>
+> **The witness was already inside the function.** `check` computes `drawn = redraw(seal)` and
+> then walks `seal.roster`, one line apart. `redraw` returns an arm for every unit the
+> committed **strata** hold, so its key set *is* the roster the lottery was drawn over —
+> obtained from the strata, which `digest_for` commits as their own section, rather than from
+> the arms table being checked. `frozenset(drawn) - frozenset(seal.roster)` names the erased
+> store. No argument was added, no signature moved, no contract value was involved:
+> `Contamination` gained a `dropped` field and `is_clean` gained a clause.
+>
+> **And the strata are a sound witness, not merely an available one.** The obvious counter —
+> delete the unit from the strata as well, so the key sets agree again — changes which unit
+> holds the smallest rank in that stratum, so `reassigned` fires instead.
+> `tests/evals/test_assignment_instrument.py` drives both, and `A8` now asserts the
+> contamination check **and** the readout's stray-outcome guard, per route, against a phrase
+> each route declares in advance. `gate-proof` gained
+> `09-the-contamination-check-trusts-the-roster-it-is-handed`, which reverts the line and must
+> make `A8` go red, so the closure cannot be removed in silence.
+>
+> **What this does not close**, and the boundary is where it was: a seal whose arms, seed,
+> strata **and** digest are all rewritten together still agrees with itself, because a seal
+> never held independent evidence of its own provenance. That is the declared limit in
+> `tests/core/test_assignment_forgery.py` and it is a different, wider thing than the gap
+> above — which is exactly why the gap was closable and that one is not.
+>
+> The prior wording stays because doctrine rule 4 says a correction never erases what was
+> previously stated, and because **the delta is the finding**: a deferral is an assertion about
+> what the system does, wearing a cost estimate instead of a verb, and this one was written
+> against an imagined fix rather than against the function that would make it true. The rule
+> `CLAUDE.md` boxes — *written against the function that would make it true, named, and against
+> the measurement of what comes out when it runs* — had never been pointed at a deferral before.
+> `make expiry` could not have caught it: it checks that an unlock condition is present, never
+> that the condition is the right one.
+
 **Claim 3's strata are matched on three of the contract's five balance covariates** · deferred
 2026-08-29
 `contracts/design/balance_covariates.yaml` declares five. `corpus/world/chain.py` supplies three of

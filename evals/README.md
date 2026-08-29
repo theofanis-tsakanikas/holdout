@@ -106,7 +106,7 @@ matters:
 ```
 make claim-1          the eval and the mutations it owns   ~3 min
 make claim-2          the eval and the mutations it owns   ~1 h 11 min cold
-make claim-3          the eval and the mutations it owns   ~3 min
+make claim-3          the eval and the mutations it owns   ~3 min 14 s
 make eval-guardrail   the eval alone                       ~10 s
 make eval-uplift      the eval alone                       ~32 min
 make eval-assignment  the eval alone                       ~17 s

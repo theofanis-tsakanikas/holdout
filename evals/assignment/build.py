@@ -7,8 +7,14 @@ about the corpus. What they meet over is here, where it can be read as one thing
 
 Observed, derived, swept
 ------------------------
-Doctrine rule 3 is the easiest rule in this repository to break by accident, so the three
-columns are kept sharp and every input below is in exactly one of them.
+Doctrine rule 3 is the easiest rule in this repository to break by accident, so the columns
+are kept sharp. There are **four**, not three, and saying so is the point: the fourth is the
+eval's own instrument settings — `PERIOD_WEEKS`, `REFERENCE_DRAWS`, `CANDIDATE_SCAN`,
+`PER_UNIT_STRIDE`, `HASH_SEEDS`, the two policy refs, `METRIC_ID`, the experiment seed and the
+form digest. None of them is observed, derived or swept; each is a **declared constant of the
+measuring instrument**, deterministic, argued for beside its definition and printed where it
+decides a figure. Leaving them out of the taxonomy would be the taxonomy quietly excusing
+whatever did not fit it, which is how a default becomes a lie with a plausible shape.
 
 **observed** — from `corpus/world/chain.py`, which places shops in towns and gives each one a
 format, a size index, a pricing zone, a location and an opening date. Which stores exist, how
@@ -79,6 +85,7 @@ from holdout.contracts.model import BalanceCovariates, ContractSet
 from holdout.core.design import neighbour_exclusions
 from holdout.core.experiment import (
     Arm,
+    AssignmentError,
     CovariateKind,
     CovariateMatrix,
     CovariateValue,
@@ -267,7 +274,12 @@ def _configuration(
     roster = tuple(unit for unit in all_stores if unit not in excluded)
     try:
         control_size = control_size_for(len(roster), share)
-    except Exception:
+    except AssignmentError:
+        # Narrow on purpose. A bare `except Exception` here would let a genuine defect in the
+        # matrix or the chain shrink the grid in silence, and "36 declared" would then be a
+        # number the code does not guarantee. `AssignmentError` is the one expected answer:
+        # the share's arithmetic against this roster has no answer at all, which is a
+        # different sentence from the lottery refusing and is counted as its own number.
         return None
     period = _period(scale)
     origin = f"{world.id}·{scale.name}·{chain_seed}·holdout {share}%"

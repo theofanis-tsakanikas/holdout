@@ -5,7 +5,7 @@
 > *The one door with no key.*
 
 ```
-make claim-3          the eval, and the eight mutations claim 3 owns   ~3 min
+make claim-3          the eval, and the nine mutations claim 3 owns    ~3 min 14 s
 make eval-assignment  the eval alone                                   ~17 s
 ```
 
@@ -26,7 +26,7 @@ through the table a readout reads a month later. Ten questions:
 | `A5.the-same-committed-seed-reproduces-in-a-fresh-interpreter` | does another process, under another `PYTHONHASHSEED`, reach the same answer? |
 | `A6.no-in-process-route-moves-a-unit-between-arms` | is every route an attacker would take inside the process refused **by the seal itself**? |
 | `A7.a-flattering-candidate-cannot-be-substituted-after-the-fact` | anyone holding the seed can see which candidate would have flattered the design — is substituting it refused, even when the digest is recomputed to match? |
-| `A8.an-erased-holdout-is-refused` | erase a control store, or empty the holdout — is the erasure refused **for a reason that names it**? |
+| `A8.an-erased-holdout-is-refused` | erase a control store, or empty the holdout — is the erasure caught by the contamination check **and** named by the readout? |
 | `A9.a-tampered-assignment-refuses-at-readout-with-its-own-code` | driven through the whole of moment 3, does a clean assignment pass and a substituted one refuse `CONTAMINATED_ASSIGNMENT`? |
 | `A10.the-second-implementation-is-a-blake2b` | does the eval's own hash reproduce RFC 7693's published vector and agree with the standard library across a declared sweep? |
 
@@ -102,9 +102,9 @@ seal's record rather than in place of it.
 `A10` is what makes that worth anything. Two implementations agree loudly when both are wrong
 in the same way, so the eval's own hash is driven against the digest **RFC 7693 Appendix A**
 publishes for the message `abc` — an answer chosen by somebody who has never seen this
-repository — and against `hashlib` over a declared sweep: both sides of every 128-byte block
-boundary, two multi-block lengths, and every key width and digest size the lottery uses. It is
-a declared sweep and not an exhaustive one.
+repository — and against `hashlib` over a declared sweep: both sides of a 128-byte block
+boundary, four lengths beyond it, and every key width and digest size the lottery uses. The
+longest is thirty-three blocks. It is a declared sweep and not an exhaustive one.
 
 ---
 
@@ -115,6 +115,13 @@ a declared sweep and not an exhaustive one.
 | **observed** | which stores exist, how they cluster, and each one's format, size index, pricing zone and opening date — from `corpus/world/chain.py` |
 | **derived**, with the arithmetic written out | `store_size_sqm` = `round(size_index × 1000)`; the unit outcome = `(period.ends_on − opened_on).days`; `mde_absolute` = a tenth of the mean unit outcome |
 | **swept**, over a declared deterministic grid | six worlds · two chain seeds · two scales · the holdout share |
+| **declared**, as settings of the measuring instrument | the experiment seed and form digest, `PERIOD_WEEKS`, `REFERENCE_DRAWS`, `CANDIDATE_SCAN`, `PER_UNIT_STRIDE`, `HASH_SEEDS`, the two policy refs, `METRIC_ID` |
+
+The fourth column exists because the first three did not fit everything, and a taxonomy that
+quietly excuses what does not fit it is how a default becomes a lie with a plausible shape.
+Each of these is deterministic, argued for beside its definition, and printed where it decides
+a figure — but none of them is observed, derived or swept, and saying "three columns" while
+holding nine values in a fourth was the sentence, not the code, being wrong.
 
 The **holdout share** is swept for the reason claim 1 sweeps envelopes. The contract's 20% is
 the share every figure that carries the claim is measured at; the other two are not claims
@@ -143,11 +150,11 @@ A5   3/3 interpreters agree on one fingerprint of every stratum and every arm
 A6   273/273 attempts refused · 12 declared in-process routes, 9 of them per seal
 A7   30/30 forgeries refused, over the 15 designs of 30 where a better-balanced
      candidate exists within the scan — careless and careful each
-A8   72/72 erasures refused by name · 48/72 = 66.67% of them by the contamination check
+A8   72/72 caught by the contamination check · 72/72 named by the readout
 A9   24/24 clean readouts pass · 9/9 substituted readouts refuse CONTAMINATED_ASSIGNMENT
 A10  RFC 7693 Appendix A reproduced · 176/176 of a declared sweep against hashlib
 
-gate-proof   8 mutations planted, 8 bit
+gate-proof   9 mutations planted, 9 bit
 ```
 
 **The incentive is real and it is published.** A better-balanced candidate exists for 15 of
@@ -155,24 +162,50 @@ the 30 designs within a 24-candidate scan, improving the worst standardised diff
 **0.2422** on average — against a declared tolerance of 0.10. That is the size of the prize
 somebody holding the committed seed is being asked not to take, and it is why `A7` exists.
 
-### The finding: 48 of 72, and what the other 24 are
+### The finding: 48 of 72, and the line that closed it
 
-**`contamination.check` does not see a store erased from the assignment table.** It derives
-the roster it walks *from the arms it is checking*, so a unit deleted with the digest
-recomputed to match leaves nothing for it to compare: it reports the assignment intact, and
-`sealed()` agrees. Two of the three erasure routes are caught there; the third is not, and the
-figure says which.
+**As first measured, `contamination.check` did not see a store erased from the assignment
+table.** It derived the roster it walks *from the arms it is checking*, so a unit deleted with
+the digest recomputed to match left nothing to compare: it reported the assignment intact, and
+`sealed()` agreed. Two of the three erasure routes were caught there; the third was not, and
+the eval published the split as `48/72 = 66.67%`. What refused the remaining 24 was
+`readout.close`, one function later, and only because the erased store still reported an
+outcome — *an outcome from outside the experiment is not a small addition to the mean; it is a
+unit whose price nobody randomised.*
 
-What refuses that one is `readout.close`, one function later, and only because the erased
-store still reports an outcome — *an outcome from outside the experiment is not a small
-addition to the mean; it is a unit whose price nobody randomised*. Both halves are driven
-here. `A8` therefore asks whether the erasure is refused **for a reason that names it**, not
-merely whether a number came out: a readout that declined `POWER_NOT_REACHED` on an emptied
-assignment has caught nothing, and would have declined identically on an intact one.
+That was carried as a deferral, on the argument that closing it needed a contract and
+signature change. **Oversight level 2 read the deferral against the function and found the
+deferral wrong rather than the measurement.** `check` already computes `redraw(seal)` and then
+walks `seal.roster`, one line apart. `redraw` returns an arm for every unit the committed
+**strata** hold, so its key set *is* the roster the lottery was drawn over — from the strata,
+which `digest_for` commits as their own section, rather than from the arms table being
+checked. `frozenset(drawn) - frozenset(seal.roster)` names the erased store. The fix added no
+argument and moved no signature: `Contamination` gained a `dropped` field and `is_clean`
+gained a clause.
 
-The gap this leaves is in *what this does not prove*, below, and in `docs/DECISIONS.md`.
+```
+A8   72/72 caught by the contamination check · 72/72 named by the readout
+```
 
----
+**The strata are a sound witness and not merely an available one.** The obvious counter-move —
+delete the unit from the strata as well, so the key sets agree again — changes which unit holds
+the smallest rank in that stratum, so `reassigned` fires instead. Both are driven in
+`tests/evals/test_assignment_instrument.py`.
+
+`A8` now asserts **both** layers rather than either, per route, against a phrase each route
+declares in advance. Either alone would have hidden this: while the contamination check could
+not see route 3, an `A8` that accepted any refusal would have stayed green — and a readout that
+declined `POWER_NOT_REACHED` on an emptied assignment has caught nothing and would have
+declined identically on an intact one. Two mutations hold the pair open:
+`08-an-outcome-from-outside-the-experiment-is-just-another-row` breaks the readout's guard and
+`09-the-contamination-check-trusts-the-roster-it-is-handed` reverts the line that closed the
+gap; both must make `A8` go red.
+
+`docs/DECISIONS.md` keeps the deferral and its restatement rather than deleting either. The
+delta is the finding: **a deferral is an assertion about what the system does, wearing a cost
+estimate instead of a verb**, and this one was written against an imagined fix rather than
+against the function that would make it true. `make expiry` could not have caught it — it
+checks that an unlock condition is present, never that the condition is the right one.
 
 ## 5 · What this does not prove
 
@@ -186,11 +219,11 @@ The gap this leaves is in *what this does not prove*, below, and in `docs/DECISI
   its own provenance. The limit is asserted rather than hidden, here and in
   `tests/core/test_assignment_forgery.py`. What *is* caught is every edit that is not
   coordinated — which is every edit that happens by accident, and most that do not.
-* **That an erasure carried through every table at once is caught.** The 24 above are refused
-  because the erased store still reports an outcome. Delete it from the assignment table, the
-  digest and the outcomes together and nothing here notices; that is the same coordinated
-  forgery one door along, and it is why the assignment table is written before the period
-  opens and then read-only in the lakehouse rather than defended by arithmetic alone.
+* **That an erasure carried through every table at once is caught.** The strata are what
+  refuses a deleted store, so an erasure that rewrites the arms, the strata and the digest
+  together is the coordinated forgery above wearing another coat, and nothing here notices it.
+  That is why the assignment table is written before the period opens and then read-only in
+  the lakehouse, rather than defended by arithmetic alone.
 * **That these are the strata a real design draws under.** Three of the contract's five
   balance covariates are matched on here — the format, the size and the pricing zone, which
   the chain supplies directly. The other two need a POS aggregation over eight months of
@@ -205,7 +238,7 @@ The gap this leaves is in *what this does not prove*, below, and in `docs/DECISI
 
 ## 6 · The mutation that survived, and what it corrected
 
-Eight mutations are planted and eight bite. One of them did not, first time, and the record
+Nine mutations are planted and nine bite. One of them did not, first time, and the record
 stays because doctrine rule 4 says a correction never erases what was previously stated — and
 because the correction is the most useful thing in this file.
 

@@ -37,10 +37,11 @@ speed          microseconds                              milliseconds, and that 
 What makes this a BLAKE2b rather than something that resembles one
 ------------------------------------------------------------------
 `A10` drives it against the digest RFC 7693 Appendix A publishes for the message ``abc``,
-and against `hashlib` over a declared sweep: both sides of every 128-byte block boundary,
-two multi-block lengths — because the block counter and the last-block flag are what a
+and against `hashlib` over a declared sweep: both sides of a 128-byte block boundary and
+four lengths beyond it — because the block counter and the last-block flag are what a
 plausible reimplementation gets wrong and neither is exercised inside one block — and every
-key width and digest size the lottery uses. The vector is quoted from the instrument, not
+key width and digest size the lottery uses. The longest, 4,096 bytes with a 32-byte key, is
+thirty-three blocks compared against the standard library. The vector is quoted from the instrument, not
 from this repository, and the sweep's answers come from the standard library rather than
 from anything here. It is a declared sweep and not an exhaustive one, which is the same
 thing every other sweep in this repository is.
