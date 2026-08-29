@@ -103,7 +103,11 @@ eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 # whole target 36s — one baseline run plus seven mutated ones. **This sets no new number.** It
 # runs in the `claims` matrix under a budget that was measured for claim 2, and a target two
 # orders of magnitude under a timeout is not an assertion about that timeout. The four-core
-# measurement is 1m8s, from this branch's own CI run.
+# measurement is 1m33s and 1m41s, from this branch's own two CI runs — and it is quoted from
+# the run that has the seventh mutation in it. The first version of this line said 1m8s, which
+# was the six-mutation measurement, still sitting here after the seventh landed. A number
+# measured before the change it is supposed to describe is a projection wearing a measurement's
+# clothes, which is the defect this comment exists to avoid.
 claim-7:  ## claim 7 — a decision that targets a person is structurally impossible
 	$(RUN) python -m evals.oversight
 	$(RUN) python -m evals.gate_proof --claim 7

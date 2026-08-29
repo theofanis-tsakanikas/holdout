@@ -668,7 +668,7 @@ mutations edit `evals/uplift/`; it now names what it forbids, behind
 argument, which until this branch had no function behind it at all.
 
 `make check` green at **871 tests** · `make claim-7` **12/12 with 7/7 mutations biting**, 36s on the
-laptop and **1m8s on the four-core runner**.
+laptop and **1m33s / 1m41s on the four-core runners**, measured on the run that carries all seven.
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
