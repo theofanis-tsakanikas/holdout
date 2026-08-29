@@ -1,0 +1,22 @@
+# The shape of a real bug: a loop written against a range that stops one short, or a closing
+# hour that the source system reports on the next business date. Every share comes out
+# inflated because the denominator is missing a day's last hour, so every reconstruction is
+# too small — and the curve still looks entirely plausible, monotone and ending at one.
+
+id:          the-shape-is-learned-without-the-closing-hour
+claim:       4
+eval_module: evals.censoring
+targets:     [C10.the-reconstruction-lands-where-the-independent-arithmetic-puts-it]
+
+breaks: >-
+  the availability curve is fitted over every trading hour except the last, so the units it
+  normalises on are short by a whole hour of trade and every share it reports is too large.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+        for index, units in enumerate(day.units_by_hour):
+            totals[index] += units
+replacement: |
+        for index, units in enumerate(day.units_by_hour[:-1]):
+            totals[index] += units

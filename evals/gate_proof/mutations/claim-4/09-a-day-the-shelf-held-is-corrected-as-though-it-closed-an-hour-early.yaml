@@ -1,0 +1,36 @@
+# The tidying-up change: one code path instead of two, every day expanded by the share of
+# itself that was on sale, and an uncensored day is "just the one whose window is the whole
+# day". Written one hour short — the shape a closing-hour boundary produces — it inflates
+# every store-day in the estate by about six per cent, including the ones where nothing was
+# hidden at all. Demand invented out of a curve rather than read off evidence, which is
+# doctrine rule 3 in the one place it is easiest to break by accident.
+
+id:          a-day-the-shelf-held-is-corrected-as-though-it-closed-an-hour-early
+claim:       4
+eval_module: evals.censoring
+targets:     [C4.a-day-the-shelf-held-is-never-moved]
+
+breaks: >-
+  a store-day with full shelf availability is put through the same expansion as a censored
+  one, against the share of the day that has arrived by the start of the final trading hour,
+  so every uncensored day is inflated by whatever that hour ordinarily carries.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+    if isinstance(reading, FullyObserved):
+        return DemandEstimate(
+            at_least=reading.units,
+            units=reading.units,
+            censored=False,
+            observed_share=Fraction(1),
+        )
+replacement: |
+    if isinstance(reading, FullyObserved):
+        whole_day = curve.share_before(curve.window.close_hour - 1)
+        return DemandEstimate(
+            at_least=reading.units,
+            units=round_half_even(Fraction(reading.units) / whole_day),
+            censored=False,
+            observed_share=whole_day,
+        )

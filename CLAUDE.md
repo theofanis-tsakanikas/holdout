@@ -128,6 +128,28 @@ workspace and no credentials. If a change does not serve one of them, question i
 
 **Claim 2 is the one that separates this from a demo. Claim 6 is the one nobody builds.**
 
+> **Claim 4's row restated 2026-08-29 (T005), because the corpus does not produce the shape it
+> names.** The row says *a stock-out is never read as zero demand*, and the two functions that make
+> it true are `censoring.read` — which returns a type with no `units` attribute at all — and
+> `censoring.correct`, which answers with a lower bound and **no number** where the observed window
+> is empty. Both hold. What the measurement says is that the literal zero is almost unreachable:
+> across three worlds and 80,640 store-days, **no censored store-day sold nothing**, so the only
+> route to a zero is a shelf that emptied before its first sale, which this corpus never produces
+> and `evals/censoring/` therefore constructs.
+>
+> What the corpus *does* produce is the failure the row is really about, and it is a much larger
+> number: reading a truncated day as its demand understates by **6.0% when the shelf emptied in the
+> last trading hour and 91.4% when it emptied in the first**, on 21.0% of all store-days. So the
+> claim's content is systematic understatement, and "zero" is its limiting case rather than its
+> typical one.
+>
+> The prior wording stays, per doctrine rule 4, and it stays for a second reason: **the limiting
+> case is where the arithmetic stops defending itself.** `DemandEstimate` refuses to be built
+> claiming fewer units than the receipts show, so a zero written over a day that sold eleven is
+> already impossible — and zero is not below zero, so the one day on which the claim can still be
+> violated is the one the row names. The sentence is right about where to look and wrong about how
+> often you find it there.
+
 ### How claim 2 is proved
 
 Five artefacts, all provable local.
@@ -930,7 +952,7 @@ Anyone who clones this repository gets the whole thing — what was built *and* 
 
 ## A guard tested by its author
 
-The project's most frequent defect, four times over:
+The project's most frequent defect, five times over:
 
 > **A guard tested by its author is tested in the shape the guard already handles.**
 
@@ -940,12 +962,23 @@ The project's most frequent defect, four times over:
 | G3's tolerance | did not catch a bound that was *too strict* — the direction this project's own history says its bugs appear in |
 | `main_guard` | refused `git add -A && git commit` on one line and allowed the same two commands on two lines. It bit the shape a reviewer writes in a test and missed the shape a session actually writes |
 | the corpus barrier | missed `import src.holdout`, which works because `src/` is an implicit namespace package — the spelling that matches the file tree, and the one T00A's own description used. **The gate behind the hook had the same hole, and the branch that rewrote that gate did not close it** |
+| claim 4's `C6` | offered `fit` a censored store-day **on its own** and demanded a refusal. A `fit` that skipped censored days instead of refusing them still went red on a pile of one, because the empty curve it then built was refused by a *different* guard. The check tested the shape its author pictured — one bad day — rather than the shape a caller hands over, which is a pile with a bad day in it |
 
 Each of the first three was declared impossible by prose sitting beside the code.
 
 `gate-proof` catches this for gates, because a mutation is planted by something that is not the
-detector. **Nothing catches it for hooks, barriers, checks or tests**, and that is where it keeps
-happening.
+detector. **Nothing catches it for hooks, barriers or tests**, and that is where it keeps happening.
+
+> **Restated 2026-08-28 → 2026-08-29 (T005): it does catch it for an eval's checks, and the fifth
+> row above is the proof.** The sentence read *"hooks, barriers, checks or tests"*, and `checks` was
+> wrong to be in that list — an eval's check is a gate like any other, and a `claim-N` target owns
+> mutations aimed at it by name. `the-curve-learns-from-the-days-the-shelf-emptied` reported
+> `SURVIVED`, which is exactly the harness saying *this check does not bite where you claimed it
+> does*, and the fix was to the check rather than to the assertion. **The condition is that a
+> mutation is aimed at that check specifically** — a check with no mutation of its own is still
+> outside the net, which is what `make gate-proof`'s "no claim target with nothing planted against
+> it" makes structural at the target level and cannot make structural per check. Hooks, barriers and
+> tests remain uncovered, and the prior wording stays per doctrine rule 4.
 
 **So: the case a guard is tested on may not come from whoever built the guard's idea of the
 failure.** It comes from a shape the guard did not anticipate — a command somebody actually ran, an

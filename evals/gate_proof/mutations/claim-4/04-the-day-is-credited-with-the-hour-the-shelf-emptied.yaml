@@ -1,0 +1,22 @@
+# An off-by-one on the word "before". The shelf emptied *during* 16:00, so the hours it was
+# reliably on sale for are the ones up to 15:59; counting the whole of 16:00 credits the day
+# with demand that arrived after the shelf was bare. It moves the reconstruction down —
+# toward the naive reading, which is the direction this module exists to prevent — and at the
+# last trading hour it collapses the correction into a no-op.
+
+id:          the-day-is-credited-with-the-hour-the-shelf-emptied
+claim:       4
+eval_module: evals.censoring
+targets:     [C10.the-reconstruction-lands-where-the-independent-arithmetic-puts-it]
+
+breaks: >-
+  the share of the day the observed window covers is read through the end of the hour the
+  shelf emptied instead of up to its start, so every reconstruction is smaller than the
+  evidence supports and the last trading hour corrects nothing at all.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+        elapsed = self.units_by_hour[: self.window.index_of(hour)]
+replacement: |
+        elapsed = self.units_by_hour[: self.window.index_of(hour) + 1]

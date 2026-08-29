@@ -1301,3 +1301,68 @@ claim-5 work makes the two Python implementations three and therefore rewrites w
 and does not prove, or T008 if it gets there first.
 *Expires:* 2026-12-31 — a missing README has no natural deadline, so it gets a calendar one rather
 than an unlock condition alone, which `make expiry` can never evaluate.
+
+**No threshold at which a reconstruction stops being usable** · deferred 2026-08-29
+Claim 4's correction expands a censored store-day by the share of an ordinary day its open window
+covers, and how well it does that is a function of that share. Measured, on three worlds at
+`rehearsal` scale: at a share of 0.94 the reconstruction lands within 0.1% of the withheld truth;
+at 0.06 it comes out **36–40% high**. The reason is selection rather than arithmetic — a day only
+yields a point estimate if it sold something inside the observed window, so conditioning on that in
+a thin window keeps the days that over-performed in it.
+
+A real estimator would want a rule: below some share, report the lower bound and no number. This
+repository declares none, and the absence is deliberate rather than pending. Such a number is an
+assertion about what the system does wearing a number instead of a verb, and `CLAUDE.md` requires
+one to be set from the measurement of what comes out when it runs. What runs here is a *constructed*
+censoring on days that did not actually run out; a real stock-out is endogenous — it happens on
+unusually busy days — so the error at a given share on a real stock-out is not the error measured
+here. Picking a threshold off this measurement would be setting a live guard from the wrong
+distribution, which is the shape of `timeout-minutes: 45` one layer along.
+*Unlock condition:* T014, the training pipeline, which is the first consumer that has to decide what
+to do with a reconstructed store-day. The threshold — if there is one — is declared as a
+`{value, source}` pair in a contract like every other number in this repository, and the source is a
+measurement over the days the pipeline actually trains on.
+
+**The endogeneity of a real stock-out is not measured, only stated** · deferred 2026-08-29
+`evals/censoring/` grades its correction by censoring held-out store-days **on purpose**, at a
+declared grid of hours, and comparing the reconstruction against what those days actually sold. That
+is what makes the grading independent of the simulator: the truth is a receipt total the corpus
+emitted, not a latent intensity the generator knows.
+
+It is also the limit. A day censored at 16:00 by this eval is an ordinary day; a day whose shelf
+emptied at 16:00 is an unusually busy one, and the correlation between running out and selling a lot
+is exactly the thing that makes real censoring bite. Nothing in this repository holds the unserved
+demand that would let the two be compared, and that is on purpose —
+`corpus/world/events.py` says so in as many words: *"a corpus that emitted them would be handing
+claim 4 the answer it is supposed to have to reconstruct."* So the eval publishes the gap in
+`Report.notes` on every run rather than closing it.
+*Unlock condition:* a corpus stream that carries counterfactual demand **for the eval only**, sealed
+the way `corpus/world/seal.py` seals the injected truth and opened only after the reconstruction is
+written. It is the same shape as claim 2's seal and it would be built the same way. It is not built
+now because it is a second sealed channel for one claim, and the honest statement of the gap costs
+nothing and cannot rot — it is printed on every run.
+
+**One pooled availability curve per world** · deferred 2026-08-29
+`censoring.fit` takes whatever days it is given and returns one curve; pooling is deliberately the
+caller's decision, because a grouping rule baked into the core would be a silent modelling choice.
+`evals/censoring/` calls it once per world, over every store and every category together. A real
+estimator would almost certainly want a curve per category — bakery empties in the morning and
+poultry does not — and probably per store format and per day of week.
+
+Nothing here is wrong; what is missing is evidence that the correction survives being grouped. The
+eval would show it as a *smaller* residual error, which is the direction that flatters, so adding
+groupings without a consumer that needs them would be tuning a published figure.
+*Unlock condition:* T014. The training pipeline is what decides what a demand feature is grouped by,
+and the eval gains the grouping the pipeline actually uses rather than one chosen to improve a
+number.
+
+**The censoring correction has no consumer** · deferred 2026-08-29
+`holdout.core.demand.censoring` is proved by `make claim-4` and called by nothing else. `CLAUDE.md`
+puts stock-out marking in silver and the correction in training, and neither exists yet. So claim 4
+today is a proof that the arithmetic and the refusals are right, not a proof that the system uses
+them — which is the same standing at which claim 1 sat before the decision path was composed, and
+the reason `tests/core/test_composition.py` exists.
+*Unlock condition:* T014's training pipeline and T010's silver layer. When `shelf_state` is a table
+and a demand feature is built from it, the composition is what claim 4 has to survive — a censored
+day reaching a feature table unmarked is doctrine rule 2 broken, and it will be provable end to end
+rather than one module at a time.

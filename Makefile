@@ -10,7 +10,7 @@
 # claim that is a paragraph is advice. `ci` discovers them by grepping this file rather than
 # by listing them, so a claim target that exists but is never run is impossible.
 #
-# Still deliberately absent: `claim-3` … `claim-7` and `preview-audit`. A green target that
+# Still deliberately absent: `claim-3`, `claim-5` … `claim-7` and `preview-audit`. A green target that
 # proves nothing is worse than a missing one — it is a gate disarmed before it was ever
 # armed — so each arrives with the eval that earns it.
 
@@ -25,7 +25,8 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        expiry claim-1 claim-2 eval-guardrail eval-uplift gate-proof world roster corpus clean
+        expiry claim-1 claim-2 claim-4 eval-guardrail eval-uplift eval-censoring gate-proof \
+        world roster corpus clean
 
 help:  ## show this help
 	@grep -hE '^[a-z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -92,6 +93,18 @@ claim-2:  ## claim 2 — no uplift without a valid holdout, and A/A holds agains
 
 eval-uplift:  ## just claim 2's eval, without the mutations
 	$(RUN) python -m evals.uplift
+
+# Claim 4 reads demand off a shelf that sometimes ran out. The eval fits an availability
+# curve on store-days where the shelf held, grades it on a **held-out** segment of such days
+# by censoring them on purpose, and compares every reconstruction against a second
+# implementation that never forms a share. Three worlds at rehearsal scale, about five
+# seconds; no cache, because nothing here is expensive enough to earn one.
+claim-4:  ## claim 4 — a stock-out is never read as zero demand
+	$(RUN) python -m evals.censoring
+	$(RUN) python -m evals.gate_proof --claim 4
+
+eval-censoring:  ## just claim 4's eval, without the mutations
+	$(RUN) python -m evals.censoring
 
 eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 	$(RUN) python -m evals.guardrail

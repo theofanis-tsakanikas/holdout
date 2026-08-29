@@ -1,0 +1,26 @@
+# The guard that makes `C3`'s first tamper impossible, removed. It is the constructor check,
+# not the arithmetic, that stops a reconstruction contradicting a receipt — the arithmetic
+# cannot currently produce one, which is precisely why the guard is the thing worth breaking:
+# a defence that is never exercised by the happy path is a defence nobody would notice going.
+
+id:          an-estimate-may-be-built-under-the-evidence-it-came-from
+claim:       4
+eval_module: evals.censoring
+targets:     [C3.a-shape-that-would-hide-a-stock-out-is-refused]
+
+breaks: >-
+  a demand estimate can be constructed claiming fewer units than the shelf actually sold, so
+  a caller assembling one by hand — or a later correction with a different expansion rule —
+  can put a number below its own receipts into a feature table without anything refusing it.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+        if self.units is not None and self.units < self.at_least:
+            raise CensoringError(
+                f"a reconstruction of {self.units} units under the {self.at_least} the shelf "
+                "actually sold. The observed units are evidence; an estimate below them "
+                "contradicts a receipt."
+            )
+replacement: |
+        return
