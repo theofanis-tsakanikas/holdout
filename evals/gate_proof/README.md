@@ -128,7 +128,7 @@ author is a curated mutation set that was written after looking at the answers.
 ## What this does not prove
 
 **That every gate bites on every mutation.** These are the breaks we thought of — the same
-honest limit the six adversarial worlds carry for claim 2 — and thirty-one curated mutations
+honest limit the six adversarial worlds carry for claim 2 — and forty-nine curated mutations
 are not mutation testing. A gate can be perfect against all of them and still have a hole
 nobody imagined.
 

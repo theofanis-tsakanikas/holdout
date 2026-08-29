@@ -22,16 +22,16 @@ asked who wrote it.
 ## 1 · What is attacked
 
 Three hundred and seventeen names that two published vocabularies use for a person are
-planted, one at a time, on every one of the forty-nine types a decision passes through —
-**15,533 attacks** — and the question is who refuses.
+planted, one at a time, on every one of the fifty-six types a decision passes through —
+**17,752 attacks** — and the question is who refuses.
 
 | id | the question it would answer `false` |
 |---|---|
 | `O1.the-key-is-what-is-priced-and-where` | is a decision addressed by a SKU, a store, a path and an occasion, those four and nothing else? |
 | `O2.every-decision-path-type-carries-exactly-the-fields-written-down` | does every type carry exactly the fields a human wrote down beside it? |
 | `O3.every-type-in-the-core-is-written-down` | can claim 7 be defeated by adding a *type* rather than a field? |
-| `O4.no-field-is-a-name-a-person-is-known-by` | does any of the 222 fields carry one of the 317 published names? |
-| `O5.no-new-identifier-in-the-package-is-a-name-a-person-is-known-by` | and any of the 1,147 identifiers `src/holdout/` defines — parameters and enum members included? |
+| `O4.no-field-is-a-name-a-person-is-known-by` | does any of the 242 fields carry one of the 317 published names? |
+| `O5.no-new-identifier-in-the-package-is-a-name-a-person-is-known-by` | and any of the 1,181 identifiers `src/holdout/` defines — parameters and enum members included? |
 | `O6.every-planted-person-is-refused` | planting each name on each type, does the structural assertion refuse every one? |
 | `O7.the-word-list-never-refuses-alone` | is the hand-written word list ever the *only* thing that catches an attack? |
 | `O8.the-scan-reaches-the-types-that-are-not-dataclasses` | do the types whose constructors refuse report their fields, or are they invisible? |
@@ -98,7 +98,7 @@ them is planted*. Nothing under `ops/` is ever a mutation target — the planter
 
 | | |
 |---|---|
-| **observed** | 156 schema.org properties, 99 Presidio entity types, both committed and digest-checked; the 49 field sets; the 1,147 identifiers; every metric grain, idempotency key and covariate id |
+| **observed** | 156 schema.org properties, 99 Presidio entity types, both committed and digest-checked; the 56 field sets; the 1,181 identifiers; every metric grain, idempotency key and covariate id |
 | **derived**, with the arithmetic written out | the *spelling*. `familyName` and `US_SSN` become `family_name` and `us_ssn`, because that is how a field is written here. One further derivation: a Presidio entity whose leading token is a two-letter region code also contributes its remainder, so `DE_TAX_ID` yields `tax_id` as well. It only ever **adds** names, so it errs towards more attacks and never fewer, and the duplicates it creates are collapsed and counted |
 | **swept** | the attack grid — the lexicon sorted, the types sorted, their product in that order. Nothing is drawn at random, so a red run reproduces exactly and prints the same counterexamples every time |
 
@@ -107,9 +107,9 @@ them is planted*. Nothing under `ops/` is ever a mutation target — the planter
 ## 4 · The measurement, which is the whole point
 
 ```
-attacks planted                          15,533
-  refused by the closed field set        15,533
-  refused by the hand-written word list  1,715 (35/317 = 11.0% of the names)
+attacks planted                          17,752
+  refused by the closed field set        17,752
+  refused by the hand-written word list  1,960 (35/317 = 11.0% of the names)
 ```
 
 **The word list this repository was carrying catches eleven per cent of the names two
@@ -129,7 +129,7 @@ and its own prose was written the same way.
 
 That is not an argument for a longer list. A list twice as long would be the same function
 agreeing with itself twice as loudly, and the next name would be the one nobody wrote down.
-It is the argument for the *structure*: `O2` refuses every one of the 15,533, and it would
+It is the argument for the *structure*: `O2` refuses every one of the 17,752, and it would
 refuse a field called `q7` on the same evidence, because it never reads the name at all.
 
 `O7` is that sentence made into a gate: **no attack may ever be caught by the word list

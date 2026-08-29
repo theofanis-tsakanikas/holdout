@@ -1,0 +1,25 @@
+# The censoring bias in miniature, applied by the function written to remove it. Rounding a
+# reconstruction down is the same instinct that reads a truncated day as its demand: prefer
+# the number you saw to the number the evidence supports. Half a unit per store-day, always
+# in the same direction, over 2.4 million decisions a day.
+
+id:          the-reconstruction-rounds-toward-what-was-observed
+claim:       4
+eval_module: evals.censoring
+targets:     [C10.the-reconstruction-lands-where-the-independent-arithmetic-puts-it]
+
+breaks: >-
+  the expansion truncates toward the observed units instead of rounding half-even, so about
+  half of all reconstructions come out one unit low and never one unit high.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+    whole, remainder = divmod(value.numerator, value.denominator)
+    twice = 2 * remainder
+    if twice > value.denominator or (twice == value.denominator and whole % 2):
+        whole += 1
+    return whole
+replacement: |
+    whole, _ = divmod(value.numerator, value.denominator)
+    return whole

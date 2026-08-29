@@ -1,0 +1,40 @@
+# Claim 4's own sentence, broken in the one place where nothing else can catch it.
+#
+# `DemandEstimate` already refuses to be built claiming fewer units than the receipts show, so
+# a zero written over a day that sold 11 is impossible. The day that sold **nothing** before
+# the shelf emptied is the exception: zero is not below zero, the constructor is satisfied, and
+# the column comes out complete. It is also the day where the mistake matters most — it is what
+# teaches a demand model that a shelf which empties before it sells anything is a shelf nobody
+# wants, which is the self-confirming loop the claim exists to break.
+#
+# The first version of this mutation set `units=0` on both no-evidence branches and was
+# reported `CRASHED`: the constructor caught the other one, on a real W5 store-day that emptied
+# in the first trading hour having sold two units. That is the guard doing its job, and it is
+# why this mutation is narrowed to the branch the guard cannot see.
+
+id:          an-empty-shelf-sold-nothing-so-demand-was-nothing
+claim:       4
+eval_module: evals.censoring
+targets:     [C2.a-stock-out-is-never-corrected-to-zero-demand]
+
+breaks: >-
+  a store-day whose shelf emptied before it had sold anything is corrected to zero units of
+  demand instead of answering with a lower bound and no number. Nothing else in the module
+  refuses it: zero is not below the zero the receipts show.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+    if share == 0 or reading.at_least == 0:
+        return DemandEstimate(
+            at_least=reading.at_least, units=None, censored=True, observed_share=share
+        )
+replacement: |
+    if share == 0:
+        return DemandEstimate(
+            at_least=reading.at_least, units=None, censored=True, observed_share=share
+        )
+    if reading.at_least == 0:
+        return DemandEstimate(
+            at_least=reading.at_least, units=0, censored=True, observed_share=share
+        )

@@ -1,0 +1,18 @@
+id:          the-assignment-digest-does-not-frame-its-parts
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A2.the-committed-digest-matches-an-independent-recomputation
+
+breaks: >-
+  the canonical encoding stops length-prefixing its parts, so a digest is taken over plain
+  concatenation. Two different rosters then encode to the same bytes — a roster of
+  ["ab", "c"] and one of ["a", "bc"] — and an assignment digest that cannot tell them apart
+  is one that misses the edit somebody actually made. It is the exact failure
+  `holdout/core/hashing.py`'s own docstring says the framing exists to prevent.
+
+file:   src/holdout/core/hashing.py
+anchor: |
+  out += len(raw).to_bytes(LENGTH_BYTES, "big")
+replacement: |
+  pass

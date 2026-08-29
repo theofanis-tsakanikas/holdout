@@ -10,7 +10,9 @@ the guardrail set refused, because nothing in the suite was trying to break anyt
 
 Claim 1's eval is the first one built, so its shape is the shape the rest inherit. This file
 records that shape, and the reasoning behind each part of it, so that claims 2, 3 and 4 do
-not each invent their own.
+not each invent their own. **The procedure that builds one is `.claude/skills/claim/`**,
+extracted from claims 1 and 2 once there were two samples to tell a rule from a variation;
+this file stays the source of truth for the *shape*, and the skill does not restate it.
 
 **Where the shape has three samples rather than one — 2026-08-29.** Claim 7 (`oversight/`)
 follows it, including the `<claim>/README.md` claim 2 still owes, and it added one thing the
@@ -112,12 +114,23 @@ matters:
 
 ```
 make claim-1          the eval and the mutations it owns   ~3 min
-make claim-2          likewise, and the most expensive     see the Makefile
-make claim-7          likewise, and the cheapest           ~36 s
+make claim-2          the eval and the mutations it owns   ~1 h 11 min cold
+make claim-3          the eval and the mutations it owns   ~3 min 14 s
+make claim-4          the eval and the mutations it owns   ~1 min
+make claim-7          the eval and the mutations it owns   ~37 s
 make eval-guardrail   claim 1's eval alone                 ~10 s
+make eval-uplift      claim 2's eval alone                 ~32 min
+make eval-assignment  claim 3's eval alone                 ~17 s
+make eval-censoring   claim 4's eval alone                 ~6 s
 make eval-oversight   claim 7's eval alone                 ~4 s
 make gate-proof       the ownership audit, runs nothing    <1 s
 ```
+
+Every figure above is a **cold measurement on a fourteen-core laptop**, not a projection —
+`CLAUDE.md`: *a timeout, a K, a tolerance, a threshold or a budget is an assertion wearing a
+number instead of a verb.* Claim 2's is dominated by generating six worlds and is much lower
+once `.worlds/` is warm; claim 3 has nothing to cache, because a chain is placement arithmetic
+rather than a simulation.
 
 `make check` deliberately does **not** run them: it is the fast local gate and the claims
 take minutes. CI runs every claim target that exists.

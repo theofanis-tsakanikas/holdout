@@ -684,8 +684,95 @@ closes        make claim-3 green. Assignment from a committed seed, exactly repr
 out_of_scope  The other claims.
 stop_at       After claim-3 and its mutation refuse the planted break by name.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed, and the numbers it closes on.** `make claim-3` is green: **10 checks over 36
+declared configurations, and nine planted mutations of which nine bit.**
+
+```
+A1   4129/4129 units agree with an independently implemented lottery, over 30 configurations
+A5   3/3 interpreters agree on one fingerprint of every stratum and every arm
+A6   273/273 attempts refused · 12 declared in-process routes, 9 of them per seal
+A7   30/30 forgeries refused, over the 15 designs of 30 where a better-balanced candidate
+     exists inside a 24-candidate scan — careless and careful each
+A8   72/72 caught by the contamination check · 72/72 named by the readout
+A9   24/24 clean readouts pass · 9/9 substituted readouts refuse CONTAMINATED_ASSIGNMENT
+A10  RFC 7693 Appendix A reproduced · 176/176 of a declared sweep against hashlib
+```
+
+**The trap was named before any code was written, and it is not the one the other claims carry.**
+Verifying that a draw is reproducible by running the draw again is a deterministic function
+repeated: `draw` reads no clock, no environment and no random source, so it agrees with itself —
+and would agree just as loudly on a lottery that ignored the committed seed, or one that handed the
+holdout to the lowest-numbered store in each stratum. So the independence arrives by three other
+doors, each named on the check that uses it:
+
+- **a second implementation** — `evals/assignment/blake2b.py` is BLAKE2b written out from RFC 7693
+  in Python, and `reference.py` recomputes the draw and the digest over it with its own framing, its
+  own rank arithmetic and its own selection. `A10` drives that hash against the vector **RFC 7693
+  Appendix A** publishes, which is the only expected answer in this eval chosen by somebody who has
+  never seen the repository;
+- **the per-unit path** — `A3` re-derives a store's arm the way a readout a month later has to, from
+  the seed, the candidate index and that store's own stratum, never touching the seal;
+- **another interpreter** — `A5` recomputes the whole grid in subprocesses under three declared
+  `PYTHONHASHSEED` values, which is the only way to see a tie broken by set-iteration order. The
+  mutation that makes `strata._hardest_to_match` scan its unmatched set unsorted is invisible to
+  every in-process repetition and bites here.
+
+**The incentive to fish is measured, not asserted.** Anyone holding the committed seed can generate
+every candidate and see which one flatters the design. In this grid a better-balanced candidate
+exists for **15 of 30** designs, improving the worst standardised difference by **0.2422** on
+average against a declared tolerance of 0.10. `A7` substitutes it — including as the careful forger
+who recomputes the digest so the seal agrees with itself — and `A9` drives the substitution through
+the whole of moment 3 and reads `CONTAMINATED_ASSIGNMENT` off the refusal.
+
+**The finding, and it closed in the same branch.** As first measured, `contamination.check` did
+not see a store erased from the assignment table: it derives the roster it walks **from the arms
+it is checking**, so a control store deleted with the digest recomputed to match left nothing to
+compare — it reported the assignment intact and `sealed()` agreed. 24 of 72 erasure routes, and
+what refused them was `readout.close`'s stray-outcome guard one function later, holding only
+while the erased store still reports an outcome. The eval published the split as
+`48/72 = 66.67%` and `docs/DECISIONS.md` carried the rest as a deferral.
+
+**Oversight level 2 found the deferral wrong rather than the measurement.** `check` already
+computes `redraw(seal)` and then walks `seal.roster`, one line apart — and `redraw`'s key set
+*is* the roster the lottery was drawn over, taken from the committed **strata**, which
+`digest_for` commits as their own section. `frozenset(drawn) - frozenset(seal.roster)` names the
+erased store. The deferral's argument — that closing it needed a contract and signature change —
+was written against an imagined fix rather than against the function that would make it true.
+No argument was added and no signature moved: `Contamination` gained a `dropped` field and
+`is_clean` a clause. The strata are a **sound** witness rather than a handy one, because deleting
+the unit from them as well changes which unit holds the smallest rank in that stratum and
+`reassigned` fires instead.
+
+`A8` now asserts **both** layers, per route, against a phrase each route declares in advance —
+either alone would have hidden this, and a readout that declined `POWER_NOT_REACHED` on an
+emptied assignment has caught nothing. Two mutations hold the pair open, and the ninth
+(`the-contamination-check-trusts-the-roster-it-is-handed`) reverts the line that closed the gap
+so it cannot be removed in silence. `docs/DECISIONS.md` keeps the deferral **and** its
+restatement: the delta is the finding, because a deferral is an assertion about what the system
+does wearing a cost estimate instead of a verb, and `make expiry` checks only that an unlock
+condition is present, never that it is the right one.
+
+**One mutation survived and the eval was fixed, not the assertion.** The break that walks the
+covariate matrix in arrival order reported `SURVIVED` against `A4`, and correctly: `strata_of` is
+order-independent at every point by its own sorting, not because `CovariateMatrix.units` is sorted.
+What the break does move is `covariate_digest`, so `A4` now compares the whole record the seal
+commits to — strata, arms, covariate digest and the standardised differences — and it bites.
+`evals/assignment/README.md` §6 keeps the account.
+
+**Two shapes reached from the corpus that the contract's own values cannot.** At the declared 20%
+holdout share no roster this corpus produces can reach the `None` the design engine turns into
+`NO_ADMISSIBLE_ASSIGNMENT` — a 20% control arm always leaves five units to a stratum — so the grid
+sweeps the share and six configurations reach it at 70%. And the rosters are the ones that survive
+`feasibility.neighbour_exclusions`, not the store counts. Over the eval's own two chain seeds:
+100 stores leave a roster of **65 to 83** depending on how clustered the world is, and 320 leave
+**218 to 269**.
+
+**Cost.** `make eval-assignment` is about 17 s; `make claim-3` is 3 min 14 s cold, which is
+ten runs of the eval — one baseline and nine mutations. A chain is placement arithmetic rather than a
+simulation, so there is no world cache and no smaller mutation configuration to keep in step.
 
 **What T002B changed about what claim 3 has to prove.** "Exactly reproducible" now takes **two**
 committed things, not one: the seed, and the **strata** the lottery drew within. The strata are a
@@ -708,8 +795,69 @@ closes        make claim-4 green. A stock-out is never read as zero demand; the 
 out_of_scope  The full training pipeline (Phase 2, T014).
 stop_at       After claim-4 and its mutation.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed.** `src/holdout/core/demand/censoring.py` — the reading, the availability curve and
+the correction — plus `evals/censoring/`, nine mutations and `make claim-4`. Green at **11/11 checks
+and 9/9 mutations biting**, about 58 s end to end on a fourteen-core laptop; the eval alone is 5 s,
+so it needs no world cache and does not have one.
+
+*Where the independence is.* The curve is fitted on store-days in the first 60% of the calendar on
+which the shelf **held**, and graded on store-days in the last 40% on which the shelf held —
+censored on purpose at a declared grid of hours, with the hours after withheld. **The truth is a
+receipt total the corpus emitted**, never a latent intensity the generator knows, so the grader
+never opens the process that produced the data. The corpus's stock-outs come out of the
+simulation's replenishment arithmetic, written for claim 2 before this claim had a line of code, and
+W5 is in the set of three worlds because its heavy-tailed store-days are the hardest input
+available. `tests/evals/test_censoring_instrument.py` refuses any import of `corpus.world.demand`
+from the eval and any import of `corpus` from the correction, in both directions.
+
+*The figures it closes on.* 16,942 of 80,640 store-days emptied (21.0%) — the one corpus figure;
+the rest are measured on held-out days censored **on purpose**, where the withheld total is known.
+There, reading the truncated number as the day's demand understates by **6.0% at the last trading
+hour and 91.4% at the first**; the reconstruction lands within **0.1% at a share of 0.94** and comes
+out **36–40% high at 0.06**, which is selection — the same expansion conditioning on nothing lands
+at −1.5% to −0.6%, and the pair is published. 176,266 reconstructions and 48 hourly boundaries
+compared against a second implementation as integers with no tolerance: **0 disagreements**. 51,883
+censored days answered with a lower bound and no number.
+
+*Two things the measurement corrected, and neither was visible in the code.* First, `checks.py`
+declared two censoring shapes unreachable from the corpus and one of them is reachable — W5 empties
+a shelf inside the first trading hour three times in 26,880, having sold up to three units. Found by
+`gate-proof` reporting `CRASHED`, because `DemandEstimate` refused to be built with zero units over
+the two that day had sold. Which shapes come from the corpus is now measured and published rather
+than reasoned. Second, `C6` offered `fit` a censored day **on its own** and the mutation aimed at it
+reported `SURVIVED` — a `fit` that skipped censored days still went red, but by a different guard.
+*A gate can only be shown to bite where it is the gate that refuses.* The eval was fixed, not the
+assertion, and `CLAUDE.md`'s guard table has a fifth row.
+
+*What it also moved.* `CLAUDE.md`'s claim-4 row is restated: the corpus produces no censored
+store-day that sold nothing, so the literal zero is the limiting case rather than the typical one —
+the typical one is understatement on a fifth of all store-days. And the sentence *"nothing catches
+this for hooks, barriers, checks or tests"* is restated: `gate-proof` does catch it for an eval's
+checks, where a mutation is aimed at that check by name.
+
+*What is deferred, with unlock conditions in `docs/DECISIONS.md`.* No threshold at which a
+reconstruction stops being usable — that number would have to come from real stock-outs and this
+eval constructs its own; the endogeneity of a real stock-out, stated rather than measured; one
+pooled curve per world; and the correction having no consumer until T014's training pipeline and
+T010's silver layer compose it.
+
+*One number left to read off CI.* `claim-4` joins the `claims` matrix, which runs on the temporary
+90-minute timeout `docs/DECISIONS.md` already carries with a date. Measured at **58 s, serial, at
+99% CPU** — so core count is not the variable and the local figure is close to what a runner will
+see; it is two orders of magnitude under the budget either way, and nothing is changed here. The
+cold figure from CI is what that deferral's next measurement should record beside claim 2's,
+because a measurement taken on the hardware that will meet the number is the only kind this
+repository accepts.
+
+*Read off the runner, 2026-08-29:* `claim-4` is **1m51s and 2m31s** cold on `ubuntu-latest`, over
+two runs of the same commit — a 36% spread between runners, which is the same order as the ~40%
+this repository has already measured and is why a budget is never set from a single run. Against
+the matrix's 90-minute timeout that is a factor of 36, so `claim-4` puts no pressure on it. The
+deferral itself stays claim 2's to close: `claim-2` is what the 90 was sized on, at 50m26s and
+51m24s on the same two runs.
 
 ```
 id            T006
@@ -742,12 +890,12 @@ rules as the prices: **156 schema.org properties** whose domain or range include
 `eb93051b`). Both extractions mechanical and total, both in the publisher's own spelling, nothing
 curated — `DATE_TIME`, `brand`, `award`, `height` and `weight` stay on the lists, because the moment
 this repository decides which of somebody else's names count, the inputs are being chosen here
-again. Between them they yield **317 names**, planted one at a time on each of the 49 types:
+again. Between them they yield **317 names**, planted one at a time on each of the 56 types:
 
 ```
-attacks planted                          15,533
-  refused by the closed field set        15,533
-  refused by the hand-written word list   1,715   (35/317 = 11.0% of the names)
+attacks planted                          17,752
+  refused by the closed field set        17,752
+  refused by the hand-written word list   1,960   (35/317 = 11.0% of the names)
 ```
 
 The list misses `family_name`, `given_name`, `nationality`, `job_title`, `spouse`, `buyer`, `owner`,
@@ -757,7 +905,7 @@ ever be refused by the word list alone.**
 **Where the task went wider than its `closes` line, and why each was necessary rather than tempting.**
 *`O5`* — a person does not have to arrive as a *field*. A `customer` parameter on `dispatch_to_shelf`
 is invisible to every field-set comparison ever written, so the eval parses the package's source
-text and reads every identifier it defines: 1,147 of them. *`O10`* — nor does one have to arrive in Python.
+text and reads every identifier it defines: 1,181 of them. *`O10`* — nor does one have to arrive in Python.
 `ladder_policy@v1.yaml` becoming idempotent per customer says, in as many words, that a decision is
 taken per customer, and it compiles into a dbt model, a SQL function, the agent's tool definition and
 the readout query with **no type moving at all**. Those two are the mutations that earn their checks.
@@ -815,7 +963,7 @@ pinned in `tests/evals/test_oversight_instrument.py` in both directions, the way
 the version of the rule that lived in the test, where it read as hygiene. What it did was leave one
 spelling that walks past the guard: the reviewer renamed the class mutation 03 plants and watched it
 survive. The exemption is gone, the estimator's three private types are written down like everything
-else (registry 46 → **49**), and `07-the-second-key-arrives-with-a-private-name.yaml` plants the
+else (registry 46 → **49**, and **56** after merging claims 3 and 4), and `07-the-second-key-arrives-with-a-private-name.yaml` plants the
 underscored break so nothing but the code decides whether the hole is shut. **This is a guard tested
 by its author, inside the branch whose subject is guards tested by their authors** — `CLAUDE.md`'s
 table carries it as its own row.
@@ -823,7 +971,7 @@ table carries it as its own row.
 *(3) The deferral said the scan covered the whole system, and `src/holdout/contracts/` — fifteen
 modules — was outside it.* `reference.CORE` stopped at `core/`'s boundary, so a `customer` parameter
 on `compile_agent_tool`, the exact shape mutation 05 proves `O5` catches inside `core/`, would not
-have been seen. `identifiers()` now reads all of `src/holdout/` (820 → **1,147**), and the three
+have been seen. `identifiers()` now reads all of `src/holdout/` (820 → **1,181**), and the three
 collisions that surfaced — `parents`, `url`, `compile_agent_tool` — are published with their reasons
 rather than filtered. The deferral is restated rather than overwritten.
 
@@ -840,7 +988,15 @@ rather than on the bare identifier, so an entry for `members` no longer pre-appr
 `members` anywhere in the package; and three figures in prose were corrected against what the eval
 prints.
 
-`make check` green at **871 tests** · `make claim-7` **12/12 with 7/7 mutations biting**.
+`make check` green at **919 tests** · `make claim-7` **12/12 with 7/7 mutations biting**.
+
+**Restated after merging `main`.** Claims 3 and 4 landed first and brought seven types and twenty
+fields with them, so every product in this note moved: 49 → **56** types, 222 → **242** fields,
+15,533 → **17,752** attacks, 1,715 → **1,960** refused by the word list. **35 of 317 and 11.0% did
+not move**, because they are properties of the two published vocabularies rather than of this
+estate — which is the distinction the whole claim turns on. The merge also carried claim 4's seven
+demand types and claim 3's `Contamination.dropped` into `ops/personhood.py`, and the guard named
+them itself: `unlisted()` and `misdeclared()` printed exactly the seven and the one.
 
 ```
 id            T007
@@ -1216,6 +1372,11 @@ L8  .claude/skills/claim/ — the method for building a claim end to end, extrac
     that have closed rather than from one. CLAUDE.md's rule about a sentence widened to any
     assertion, a number in configuration included.
                                           branch ops/claim-skill                 status closed
+L9  src/holdout/core/demand/, evals/censoring/, make claim-4 — claim 4 green at 11/11 with 9/9
+    mutations biting. A stock-out reads as a type with no units attribute; the correction is
+    fitted on days the shelf held and graded on a held-out segment of them, against receipt
+    totals the corpus emitted rather than anything the generator knows.
+                                          branch evals/censoring                 status closed
 ```
 
 ---
@@ -1227,10 +1388,10 @@ T00A ─▶ T002 ─────┐    (both closed)
                   ├─▶ T00D ─▶ T00E ─▶ T003  ✅ (claim-2 green — phase 1's hardest claim)
 T001 ─▶ T002B ────┤    (both closed)                    │
 T000 ─────────────┘    (also blocks T004, T005, T006)   └─▶ T00B ✅ ─┬─▶ T004 (claim 3)
-                                                                    ├─▶ T005 (claim 4)
+                                                                    ├─▶ T005 ✅ (claim 4)
                                                                     └─▶ T006 (claim 7)
 
-remaining before T008 and phase 2:  T004 · T005 · T006, mutually independent and parallel · T007
+remaining before T008 and phase 2:  T004 · T006, mutually independent and parallel · T007
 ```
 
 **T00B sits on that edge deliberately.** It needs T003 because a method extracted from one closed
@@ -1243,6 +1404,12 @@ instrument before it is copied four times, not after.
 **T003 has closed.** Claim 2 is green at K = 200 and the four numbers are published rather than
 ticked. What still stands between here and the phase-1 integration session is claims 3, 4 and 7 —
 each of which needs nothing that T003 did not already build — and `docs/SCENARIO.md`.
+
+**T005 has closed since**, so it is claims 3 and 7 and `docs/SCENARIO.md`. Claim 4 is green at
+11/11 with 9/9 mutations biting, and it was the first claim built by following
+`.claude/skills/claim/` rather than by reading the two closed evals — which is what T00B was
+extracted for. The skill held: every step produced something, and the two findings it surfaced both
+came from steps 8 and 9, the mutations and *write down what came out*.
 
 **T00D and T00E were inserted on 2026-08-28, by T003 stopping on its first measurement.** They are
 above, with the numbers. The short version: the corpus's geography and the design engine's

@@ -1,0 +1,23 @@
+id:          an-outcome-from-outside-the-experiment-is-just-another-row
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A8.an-erased-holdout-is-refused
+
+breaks: >-
+  the readout stops refusing outcomes from units it never assigned. A store deleted from the
+  assignment table — with the digest rewritten so the seal agrees with itself — is then
+  invisible everywhere: the contamination check walks the roster it derives from the arms it
+  is checking and finds nothing missing, and the readout quietly drops the store's outcome
+  instead of saying that a unit whose price nobody randomised has reported.
+
+file:   src/holdout/core/experiment/readout.py
+anchor: |
+  if stray:
+      raise ReadoutError(
+          f"{len(stray)} unit(s) report an outcome and were never assigned: {stray[:8]}. "
+          "An outcome from outside the experiment is not a small addition to the mean; it "
+          "is a unit whose price nobody randomised."
+      )
+replacement: |
+  outcomes = {u: v for u, v in outcomes.items() if u not in set(stray)}

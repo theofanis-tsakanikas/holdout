@@ -1,0 +1,28 @@
+# Claim 4's trap, planted. A corrector fitted on the pathology it is about to remove learns
+# exactly as much of it as the censoring left behind, and then removes exactly that much —
+# one function agreeing with itself, and green everywhere it is graded on the same mixture.
+# The difference between refusing a censored day and quietly filtering it out is invisible
+# from outside a single call, which is why `fit` raises rather than skips.
+
+id:          the-curve-learns-from-the-days-the-shelf-emptied
+claim:       4
+eval_module: evals.censoring
+targets:     [C6.the-curve-learns-only-from-days-the-shelf-held]
+
+breaks: >-
+  the availability curve accepts store-days whose shelf emptied, skipping them silently
+  instead of refusing them. A caller who hands over an unsorted pile gets a curve back and no
+  indication that a fifth of it was censored.
+
+file: src/holdout/core/demand/censoring.py
+
+anchor: |
+        if day.state.ran_out:
+            raise CensoringError(
+                f"{day.state.key} emptied at hour {day.state.stocked_out_from_hour} and cannot "
+                "be fitted on. The curve is what a full day looks like; a censored day is "
+                "what this curve is for."
+            )
+replacement: |
+        if day.state.ran_out:
+            continue

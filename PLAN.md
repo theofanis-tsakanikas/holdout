@@ -39,6 +39,9 @@ The phase that decides whether the project is worth building.
   symptom of getting this wrong. *Landed 2026-08-28, replacing a re-randomisation screen that
   could not reach the declared α — see the progress note below.*
 - `evals/assignment/`, `evals/guardrail/`, `evals/censoring/` and their `gate-proof` mutations.
+  *`evals/censoring/` landed 2026-08-29: claim 4 green at 11/11 with nine mutations, the correction
+  graded on a held-out segment of full-availability store-days against receipt totals the corpus
+  emitted rather than anything the generator knows — see the progress note below.*
 - `evals/oversight/` — the decision key carries no customer dimension, and the test goes red if
   one appears. It costs minutes and needs nothing else, so it is proved here rather than left
   open for months.
@@ -613,9 +616,9 @@ four rules as the first: **156 schema.org properties** whose domain or range inc
 mechanically and kept in the publisher's own spelling. They yield **317 names**. Measured:
 
 ```
-attacks planted                          15,533      317 names on each of 49 types
-  refused by the closed field set        15,533
-  refused by the hand-written word list   1,715      35/317 = 11.0% of the names
+attacks planted                          17,752      317 names on each of 56 types
+  refused by the closed field set        17,752
+  refused by the hand-written word list   1,960      35/317 = 11.0% of the names
 ```
 
 **Eleven per cent.** The list misses `family_name`, `given_name`, `nationality`, `job_title`,
@@ -661,20 +664,105 @@ down"*; the reviewer renamed the class the mutation plants and watched it surviv
 now 49 and a seventh mutation plants `_VisitContext`. Its deferral said the scan covered the whole
 system while `src/holdout/contracts/` — fifteen modules — sat outside `reference.CORE`, so a
 `customer` parameter on `compile_agent_tool` would have gone unseen; the identifier scan now reads
-all of `src/holdout/`, 820 → 1,147. And its restatement of `gate-proof`'s independence rule
+all of `src/holdout/`, 820 → 1,181. And its restatement of `gate-proof`'s independence rule
 enumerated what the planter *may* edit and was false of the committed set, because three claim-2
 mutations edit `evals/uplift/`; it now names what it forbids, behind
 `ledger.no-mutation-edits-the-detector` — the separation `engine.py` calls the one that carries its
 argument, which until this branch had no function behind it at all.
 
-`make check` green at **871 tests** · `make claim-7` **12/12 with 7/7 mutations biting**, 36s on the
-laptop and **1m33s / 1m41s on the four-core runners**, measured on the run that carries all seven.
+`make check` green at **919 tests** · `make claim-7` **12/12 with 7/7 mutations biting**, 37s on the
+laptop and **1m32s–1m41s on the four-core runners**, measured on the run that carries all seven.
+*Figures restated after merging `main`: claims 3 and 4 added seven types and twenty fields to the
+registry, so the products moved — 15,533 → 17,752 attacks over 49 → 56 types. The 35 of 317 and the
+11.0% did not move, because they are properties of the two vocabularies and not of this estate.*
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
+**Claim 3 closed 2026-08-29 — the one door with no key, T004.** `make claim-3` is green at 10
+checks over 36 declared configurations, with nine planted mutations of which nine bit. What the
+piece settled is mostly about **what a reproducibility claim is allowed to be checked by**.
+
+`draw` reads no clock, no environment and no random source, so calling it twice agrees with itself
+by construction — and would agree just as loudly on a lottery that never consulted the committed
+seed. That is claim 3's trap and it is not the shape the other claims wear. Three doors carry the
+independence instead: **a second implementation** (BLAKE2b written out from RFC 7693 in Python,
+with its own framing, rank arithmetic and selection, driven against the vector RFC 7693 Appendix A
+publishes); **the per-unit path**, which re-derives one store's arm the way a readout a month later
+has to, from the seed, the candidate index and that store's own stratum; and **another
+interpreter**, three subprocesses under declared `PYTHONHASHSEED` values, which is the only way to
+see a tie broken by set-iteration order. The mutation that makes `strata._hardest_to_match` scan
+unsorted is invisible to every in-process repetition and bites there.
+
+**The incentive is published as a number.** A better-balanced candidate exists for **15 of 30**
+designs inside a 24-candidate scan, improving the worst standardised difference by **0.2422**
+against a declared tolerance of 0.10. That is the size of the prize somebody holding the seed is
+asked not to take, and every substitution — including the careful forger who recomputes the digest
+so the seal agrees with itself — is refused, `CONTAMINATED_ASSIGNMENT` read off the refusal after
+moment 3 has actually run.
+
+**And one finding in the door itself, which closed in the same branch.** As first measured,
+`contamination.check` derived the roster it walks from the arms it is checking, so a control store
+deleted from the assignment table with the digest recomputed to match was invisible to it — 24 of
+72 erasure routes, refused only by `readout.close` one function later. It was carried as a
+deferral, and **oversight level 2 found the deferral wrong rather than the measurement**: `check`
+already computes `redraw(seal)`, whose key set is the roster the lottery was drawn over, taken
+from the committed strata — and then walked `seal.roster` one line later. The fix added no
+argument and moved no signature. `A8` now asserts both layers, a ninth mutation reverts the line
+that closed the gap, and `docs/DECISIONS.md` keeps the deferral beside its restatement.
+
+That is the boxed rule pointed at a **deferral** for the first time: a deferral is an assertion
+about what the system does, wearing a cost estimate instead of a verb, and this one was written
+against an imagined fix rather than against the function that would make it true. `make expiry`
+could not have caught it — it checks that an unlock condition is present, never that it is right.
+
+**And one mutation survived on the first run**, corrected in the eval rather than by widening the
+assertion: `strata_of` is order-independent by its own sorting, not because `CovariateMatrix.units`
+is sorted, so `A4` was widened to compare the whole record the seal commits to.
+`evals/assignment/README.md` §6 keeps that account.
+
+
+**What claim 4 settled.** `holdout.core.demand.censoring` reads a store-SKU-day as one of two
+**types**: the shelf held and the day has `units`, or the shelf emptied and the reading has
+`at_least` and no `units` attribute at all — so a caller who wants a number has to say what it did
+about the censoring, because there is nothing to reach for. The correction fits an availability
+curve on days the shelf held and expands a censored day by the share of itself that was on sale,
+and it answers with **no number** in the two cases where there is no evidence to expand: the shelf
+was bare before the first sale, or it sold nothing before it emptied. Neither is a threshold
+somebody chose. `make claim-4` is green at 11/11 checks with 9/9 mutations biting, in about a
+minute.
+
+*Where the independence is, which is the whole of claim 4's trap.* The curve is fitted on
+store-days in the first 60% of the calendar on which the shelf held and graded on store-days in the
+last 40% on which the shelf held — censored on purpose, the hours after withheld — so **the truth
+each reconstruction is graded against is a receipt total the corpus emitted**, not a latent
+intensity the generator knows. The grader never opens the generating process, and
+`tests/evals/test_censoring_instrument.py` refuses the import in both directions. The generator
+could be replaced with a different model of shopping and every published figure would still be a
+measurement of the same thing.
+
+*The numbers.* 16,942 of 80,640 store-days emptied (21.0%) — the one corpus figure. Everything
+after it is measured on held-out days censored **on purpose**, where the withheld total is known:
+reading the truncated number as the day's demand understates by **6.0% at the last trading hour and
+91.4% at the first**, while the reconstruction lands within 0.1% of the withheld truth at a share of
+0.94 and comes out **36–40% high at 0.06**. That overshoot is selection and the eval publishes the
+evidence rather than the argument — the same expansion over *every* graded day, conditioning on
+nothing, lands at −1.5% to −0.6% on the same hour. **No threshold is declared** at which the
+reconstruction stops being usable: that number would have to come from real stock-outs, and this
+eval constructs its own.
+
+*What it cost to get honest, twice, and both from running rather than reading.* `checks.py`
+declared two censoring shapes unreachable from the corpus and one of them is reachable — W5 empties
+a shelf inside the first trading hour three times in 26,880 — found by `gate-proof` reporting
+`CRASHED` rather than by anybody reading the corpus. And `C6` offered `fit` a censored day **on its
+own**, so the mutation aimed at it reported `SURVIVED`: a `fit` that skipped censored days still
+went red, but by a different guard. *A gate can only be shown to bite where it is the gate that
+refuses.* Both were fixed in the eval, never by widening an assertion, and both are now rows in
+`CLAUDE.md` — the fifth instance of *a guard tested by its author*, and the first one `gate-proof`
+found rather than a review.
+
 ### Closed in this phase
 
-Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1, 2 and 7 have closed**,
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **All five have closed**,
 and claim 2 is the one CLAUDE.md calls the one that separates this from a demo.
 
 **Then an integration session**, before the next phase opens: read the whole repository against

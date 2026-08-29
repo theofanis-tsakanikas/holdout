@@ -124,9 +124,34 @@ workspace and no credentials. If a change does not serve one of them, question i
 | **4** | **A stock-out is never read as zero demand.** *Trap: a simulator that generates censoring with the model that corrects it → validated on a held-out segment with full shelf availability.* | `evals/censoring/` |
 | **5** | **One definition, three mechanisms, the same number.** The source of truth is the contract in this repository, compiled into a Delta view, the agent's tool definition and the experiment readout. Compared as integers, no tolerance. *Trap: two consumers calling the same function prove nothing → three genuinely different mechanisms, sharing only the definition.* | `evals/definition/` |
 | **6** | **The design engine refuses an invalid design regardless of where the judgment came from** — human, declared policy, or model. When the source is a model: N designs proposed, M refused, and K of those would have produced a confidently wrong number. *Trap: an LLM judge in the same family is a correlated critic → **the judge never rules on validity**; code does. The judge rules only on design quality.* | `evals/design/` |
-| **7** | **A decision that targets a person is structurally impossible.** The decision key has no customer dimension, and a test goes red if one appears — on every type on the decision path and in the contracts, which compile into four consumers without a Python type moving. *Trap: a list of person-shaped words written by whoever also wrote the field names is one function agreeing with itself → the words come from two published vocabularies, and the guard is the **closed field set**, which reads no names at all.* **Measured: the hand-written list catches 35 of 317; the closed field set refuses 15,533 of 15,533.** | `evals/oversight/` |
+| **7** | **A decision that targets a person is structurally impossible.** The decision key has no customer dimension, and a test goes red if one appears — on every type on the decision path and in the contracts, which compile into four consumers without a Python type moving. *Trap: a list of person-shaped words written by whoever also wrote the field names is one function agreeing with itself → the words come from two published vocabularies, and the guard is the **closed field set**, which reads no names at all.* **Measured: the hand-written list catches 35 of 317; the closed field set refuses 17,752 of 17,752.** | `evals/oversight/` |
 
 **Claim 2 is the one that separates this from a demo. Claim 6 is the one nobody builds.**
+
+> **Claim 4's row restated 2026-08-29 (T005), because the corpus does not produce the shape it
+> names.** The row says *a stock-out is never read as zero demand*, and the two functions that make
+> it true are `censoring.read` — which returns a type with no `units` attribute at all — and
+> `censoring.correct`, which answers with a lower bound and **no number** where the observed window
+> is empty. Both hold. What the measurement says is that the literal zero is almost unreachable:
+> across three worlds and 80,640 store-days, **no censored store-day sold nothing**, so the only
+> route to a zero is a shelf that emptied before its first sale, which this corpus never produces
+> and `evals/censoring/` therefore constructs.
+>
+> What the corpus *does* produce is the failure the row is really about: **21.0% of all store-days
+> emptied**, every one of them a day whose sales understate its demand by an unknown amount. How
+> much is not a corpus figure and is not stated as one — it is measured on held-out days censored
+> **on purpose**, where the withheld total is known, and there reading the truncated number as the
+> day's demand understates by **6.0% at the last trading hour and 91.4% at the first**. A day
+> censored on purpose is not a stock-out, which is the eval's own first note, so the two halves of
+> that sentence are kept apart. The claim's content is systematic understatement, and "zero" is its
+> limiting case rather than its typical one.
+>
+> The prior wording stays, per doctrine rule 4, and it stays for a second reason: **the limiting
+> case is where the arithmetic stops defending itself.** `DemandEstimate` refuses to be built
+> claiming fewer units than the receipts show, so a zero written over a day that sold eleven is
+> already impossible — and zero is not below zero, so the one day on which the claim can still be
+> violated is the one the row names. The sentence is right about where to look and wrong about how
+> often you find it there.
 
 ### How claim 2 is proved
 
@@ -932,7 +957,7 @@ Anyone who clones this repository gets the whole thing — what was built *and* 
 
 ## A guard tested by its author
 
-The project's most frequent defect, four times over:
+The project's most frequent defect, five times over:
 
 > **A guard tested by its author is tested in the shape the guard already handles.**
 
@@ -942,6 +967,7 @@ The project's most frequent defect, four times over:
 | G3's tolerance | did not catch a bound that was *too strict* — the direction this project's own history says its bugs appear in |
 | `main_guard` | refused `git add -A && git commit` on one line and allowed the same two commands on two lines. It bit the shape a reviewer writes in a test and missed the shape a session actually writes |
 | the corpus barrier | missed `import src.holdout`, which works because `src/` is an implicit namespace package — the spelling that matches the file tree, and the one T00A's own description used. **The gate behind the hook had the same hole, and the branch that rewrote that gate did not close it** |
+| claim 4's `C6` | offered `fit` a censored store-day **on its own** and demanded a refusal. A `fit` that skipped censored days instead of refusing them still went red on a pile of one, because the empty curve it then built was refused by a *different* guard. The check tested the shape its author pictured — one bad day — rather than the shape a caller hands over, which is a pile with a bad day in it |
 | claim 7's word list | the guard against a customer dimension was a tuple of person-shaped substrings, written by whoever also wrote the field names it was checking. Measured against 156 schema.org properties and 99 Presidio entity types — 317 names, chosen by two publishers who have never read this repository — **it catches 35 of them, 11%**. It misses `family_name`, `nationality`, `job_title`, `spouse`, `buyer`, `owner`, `recipient` and 275 others |
 | claim 7's own registry | and then, one row down, the same defect inside the fix. `unlisted()` exempted any type whose name begins with `_`, so the guard refused a planted `VisitContext` and waved through `_VisitContext` — while printing the question *"is **every** type written down"*. It was found by oversight level 2 renaming the class the mutation plants. **A guard tested by its author is tested in the shape the author's own naming convention produces** |
 
@@ -962,8 +988,18 @@ level 2 existing at all rather than being a formality: three of the four rows ab
 by a reviewer, and so was this one.
 
 `gate-proof` catches this for gates, because a mutation is planted by something that is not the
-detector. **Nothing catches it for hooks, barriers, checks or tests**, and that is where it keeps
-happening.
+detector. **Nothing catches it for hooks, barriers or tests**, and that is where it keeps happening.
+
+> **Restated 2026-08-28 → 2026-08-29 (T005): it does catch it for an eval's checks, and the fifth
+> row above is the proof.** The sentence read *"hooks, barriers, checks or tests"*, and `checks` was
+> wrong to be in that list — an eval's check is a gate like any other, and a `claim-N` target owns
+> mutations aimed at it by name. `the-curve-learns-from-the-days-the-shelf-emptied` reported
+> `SURVIVED`, which is exactly the harness saying *this check does not bite where you claimed it
+> does*, and the fix was to the check rather than to the assertion. **The condition is that a
+> mutation is aimed at that check specifically** — a check with no mutation of its own is still
+> outside the net, which is what `make gate-proof`'s "no claim target with nothing planted against
+> it" makes structural at the target level and cannot make structural per check. Hooks, barriers and
+> tests remain uncovered, and the prior wording stays per doctrine rule 4.
 
 **So: the case a guard is tested on may not come from whoever built the guard's idea of the
 failure.** It comes from a shape the guard did not anticipate — a command somebody actually ran, an

@@ -148,6 +148,14 @@ jobs:
     # It is this job's timeout and not the `gate` one: `TASKS.md`'s instruction was that the
     # gate does not go up a third time, and it came back down to 15 in the same change that
     # created this job — measured at 2m33s on the first run under the new topology.
+    #
+    # **The budget is per matrix target, and `claim-3` shares it without re-sizing it.** Claim 3
+    # is 3m14s cold on the same fourteen-core laptop — ten runs of a seventeen-second eval, one
+    # baseline and nine mutations, with no world to generate because a chain is placement
+    # arithmetic. That is an order of magnitude under the number above, so the headroom claim 2
+    # needed covers it several times over rather than being projected onto it. If a later claim
+    # target arrives that is not obviously inside this budget, it gets its own cold measurement
+    # on a runner before it gets a number here.
     timeout-minutes: 90
     strategy:
       fail-fast: false

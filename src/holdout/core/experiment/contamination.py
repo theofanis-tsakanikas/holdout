@@ -8,6 +8,27 @@ table no longer matches either. The redraw is the stronger of the two, because i
 the seal's arms not at all — only the seed, the strata and the draw index — so it
 catches an edit even where somebody was careful enough to recompute the digest to match.
 
+The redraw answers **two** questions and for a while it was only asked one
+--------------------------------------------------------------------------
+`redraw` returns an arm for every unit the committed strata hold, so its key set *is* the
+roster the lottery was drawn over — obtained from the strata, which are committed and
+digested as their own section, rather than from the arms table being checked. Comparing
+arms answers *did a unit change arm*. Comparing the **key sets** answers *is every unit the
+lottery drew still on the table*, and nothing else in this module can.
+
+It was computed and discarded, one line apart, until 2026-08-29. `check` walked
+`seal.roster` — which `SealedAssignment` derives as `tuple(sorted(self.arms))` — so a store
+deleted from the assignment table with the digest recomputed to match left nothing to
+compare against: the check reported the assignment intact and `sealed()` agreed. Claim 3's
+eval measured it at **24 of 72 erasure routes invisible here**, and what refused them was
+`readout.close`'s stray-outcome guard one function later, which holds only while the erased
+store still reports an outcome. `dropped` closes it, and the fix needed no new argument and
+no signature change: the witness was already inside the function.
+
+**Deleting the unit from the strata as well does not help a forger**, which is what makes
+the strata a sound witness rather than merely an available one: removing a stratum's member
+changes which unit holds the smallest rank in it, so `reassigned` fires instead.
+
 **Did each unit get its own arm's policy?** Every delivered policy is compared against the
 policy its arm declared. A treated store running the control policy is not a small dilution
 to correct for; it is a unit that measures the other arm and is attributed to this one.
@@ -47,6 +68,14 @@ class Contamination:
     digest_matches: bool
     redraw_matches: bool
     reassigned: tuple[str, ...]
+    dropped: tuple[str, ...]
+    """Units the committed lottery drew that the assignment table no longer carries.
+
+    From the strata by way of `redraw`, never from the arms — see the module docstring. It
+    is the erasure half of *the holdout is neither erased nor chosen after the fact*, and it
+    is separate from `reassigned` because the two are different sentences: one unit holds an
+    arm nobody drew, the other has no row at all."""
+
     misdelivered: tuple[str, ...]
     undelivered: tuple[str, ...]
     comparison_is_vacuous: bool
@@ -57,6 +86,7 @@ class Contamination:
             self.digest_matches
             and self.redraw_matches
             and not self.reassigned
+            and not self.dropped
             and not self.misdelivered
             and not self.undelivered
         )
@@ -73,6 +103,11 @@ class Contamination:
         if not self.redraw_matches:
             parts.append(
                 f"{len(self.reassigned)} unit(s) hold an arm the committed seed does not draw"
+            )
+        if self.dropped:
+            parts.append(
+                f"{len(self.dropped)} unit(s) the committed lottery drew are missing from the "
+                "assignment table"
             )
         if self.misdelivered:
             parts.append(f"{len(self.misdelivered)} unit(s) received the other arm's policy")
@@ -108,6 +143,10 @@ def check(
 
     drawn = redraw(seal)
     reassigned = tuple(u for u in seal.roster if drawn.get(u) is not seal.arms[u])
+    # The roster the lottery was actually drawn over, taken from the committed strata rather
+    # than from the arms being checked. See the module docstring: this line and the one above
+    # it are the same redraw asked two different questions, and only one of them used to be.
+    dropped = tuple(sorted(frozenset(drawn) - frozenset(seal.roster)))
 
     expected = {Arm.TREATMENT: treatment_policy, Arm.CONTROL: control_policy}
     misdelivered = tuple(
@@ -121,6 +160,7 @@ def check(
         digest_matches=digest_matches,
         redraw_matches=not reassigned,
         reassigned=reassigned,
+        dropped=dropped,
         misdelivered=misdelivered,
         undelivered=undelivered,
         comparison_is_vacuous=treatment_policy == control_policy,

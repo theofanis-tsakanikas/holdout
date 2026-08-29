@@ -46,6 +46,15 @@ from typing import Any
 
 import holdout.core
 from holdout.core.decision import DecisionKey
+from holdout.core.demand.censoring import (
+    AvailabilityCurve,
+    DemandEstimate,
+    FullyObserved,
+    HourlySales,
+    RightCensored,
+    ShelfState,
+    TradingWindow,
+)
 from holdout.core.design import (
     DecisionRule,
     DesignForm,
@@ -195,6 +204,23 @@ FIELDS_ON_THE_DECISION_PATH: dict[type[Any], frozenset[str]] = {
         {"perishable_exemption", "lookback_days", "progressive_reduction_window_days", "safe_state"}
     ),
     Money: frozenset({"cents"}),
+    # ------------------------------------------------------- reading demand off a shelf
+    #
+    # Claim 4's types, and they are the closest thing in this package to a place a person
+    # could be smuggled in: a demand observation is exactly where a real retailer would be
+    # tempted to carry a basket, a loyalty number or a shopper segment, because that is what
+    # makes a demand model better. The grain here is a store, a SKU and a business date, and
+    # the addition of anything finer is a red test rather than a design review.
+    TradingWindow: frozenset({"open_hour", "close_hour"}),
+    ShelfState: frozenset(
+        {"store_id", "sku_id", "business_date", "units_sold", "stocked_out_from_hour"}
+    ),
+    HourlySales: frozenset({"state", "units_by_hour"}),
+    FullyObserved: frozenset({"units"}),
+    #: No `units`, and the absence is the claim. See `censoring.RightCensored`.
+    RightCensored: frozenset({"at_least", "stocked_out_from_hour"}),
+    AvailabilityCurve: frozenset({"window", "units_by_hour", "days"}),
+    DemandEstimate: frozenset({"at_least", "units", "censored", "observed_share"}),
     # ------------------------------------------------------- the design engine
     #
     # Not on the decision path: an experiment design is about *which* units get *which
@@ -268,6 +294,7 @@ FIELDS_ON_THE_DECISION_PATH: dict[type[Any], frozenset[str]] = {
             "digest_matches",
             "redraw_matches",
             "reassigned",
+            "dropped",
             "misdelivered",
             "undelivered",
             "comparison_is_vacuous",
