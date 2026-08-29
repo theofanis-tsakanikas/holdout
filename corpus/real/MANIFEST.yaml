@@ -322,9 +322,11 @@ sources:
 
     what_it_is_not: >-
       Not person-shaped in every entry. `DATE_TIME`, `LOCATION`, `URL` and `UUID` are on the
-      published list and are kept on it, unedited. They cost nothing — measured, none of the
-      317 names either vocabulary yields collides with any of the 222 field names on this
-      system's decision path — and removing them would be this repository curating an input
+      published list and are kept on it, unedited. They cost almost nothing — measured, none
+      of the 317 names either vocabulary yields collides with any of the 222 fields carried by
+      the 56 types in `holdout.core`, which is what `O4` scans. `URL` does collide once, with
+      `Provenance.url` in the contract loader, and that collision is published with its reason
+      rather than filtered away. Removing an entry would be this repository curating an input
       it does not own.
 
 # ------------------------------------------------------------------------ what is derived

@@ -74,6 +74,7 @@ from holdout.core.experiment import (
     Standardised,
     Statistic,
 )
+from holdout.core.experiment.estimator import _ArmPlan, _Shifted, _Sums
 from holdout.core.guardrails import Announcement, Assessment, CertifiedPrice, ProposedPrice, Refusal
 from holdout.core.guardrails.benchmark import MarginOnPrice, MarkupOnCost
 from holdout.core.guardrails.envelope import (
@@ -297,6 +298,21 @@ FIELDS_ON_THE_DECISION_PATH: dict[type[Any], frozenset[str]] = {
             "balance",
         }
     ),
+    # The estimator's three private helpers. They are not on the decision path and their
+    # names say so — which is exactly why they were exempt until 2026-08-29, and exactly the
+    # hole that exemption opened. A leading underscore is a convention, not a boundary, and a
+    # registry that any spelling can walk past is not a registry. See `unlisted`.
+    _ArmPlan: frozenset({"rank", "rows", "solve"}),
+    _Shifted: frozenset(
+        {
+            "difference_at_zero",
+            "difference_slope",
+            "variance_at_zero",
+            "variance_curve",
+            "variance_slope",
+        }
+    ),
+    _Sums: frozenset({"cross", "right", "shift_right", "total_square", "treated_count"}),
     ReadoutRefusal: frozenset(
         {
             "experiment_id",
@@ -386,13 +402,25 @@ def unlisted(
 
     Without this, claim 7 could be defeated by adding a *type* rather than a field — a
     `CustomerContext` nobody listed, carried on a proposal, asserted nowhere.
+
+    **A leading underscore exempted a type from this until 2026-08-29, and it should never
+    have.** The exemption was inherited from the version of this rule that lived in
+    `tests/core/test_decision_key.py`, where it read as ordinary hygiene: private helpers are
+    not on the decision path, so why write them down. What it actually did was leave one
+    spelling that walks straight past the guard — rename the type `_VisitContext` and it is
+    invisible — and the guard's own printed question said *every* type. That is this project's
+    most frequent defect in the shape its own naming convention produces, and it was found by
+    oversight level 2 renaming the mutation's planted class. The three private types the
+    estimator carries are now written down like everything else, and
+    `evals/gate_proof/mutations/claim-7/07-…` plants the underscored version so that nothing
+    but the code decides whether the hole is closed.
     """
     found = core_types() if types is None else list(types)
     written = FIELDS_ON_THE_DECISION_PATH if registry is None else registry
     return [
         f"{cls.__module__}.{cls.__name__}"
         for cls in found
-        if cls not in written and not cls.__name__.startswith("_") and field_names(cls)
+        if cls not in written and field_names(cls)
     ]
 
 

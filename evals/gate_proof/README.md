@@ -79,12 +79,15 @@ agreeing with itself.*
 
 Three separations, and only the third does real work:
 
-* **the planter edits the system; the detector reads `corpus/real/` and `ops/`.** For claim 1
-  that means the planter edits `src/holdout/` and nothing else. **Restated 2026-08-29 with
-  claim 7**, whose most valuable mutation edits `contracts/policies/ladder_policy@v1.yaml`:
-  a decision that becomes idempotent per customer changes no Python at all, and a planter
-  confined to `src/` could not have written it. What matters is not which directory the
-  planter may touch but which one it may not — the detector is never a mutation target;
+* **the planter never edits the detector.** For claim 1 that reads "the planter edits
+  `src/holdout/`; the detector reads `corpus/real/`". **Restated 2026-08-29 with claim 7**,
+  whose most valuable mutation edits `contracts/policies/ladder_policy@v1.yaml`: a decision
+  that becomes idempotent per customer changes no Python at all, and a planter confined to
+  `src/` could not have written it. So the rule names what it forbids rather than what it
+  allows — `ops/` and `corpus/`, refused by `ledger.no-mutation-edits-the-detector`. The
+  first attempt at this restatement enumerated the trees a planter *may* edit and was false
+  of the committed set: three of the thirty mutations edit `evals/uplift/`, because claim 2's
+  machinery is partly what claim 2 is proving;
 * **a mutation is written as a behaviour change in domain terms** — "the margin floor rounds
   the wrong way", "a frozen category is only a warning" — and never as "make `G2` fail". The
   check it must trip is declared in the file, in advance;
@@ -125,7 +128,7 @@ author is a curated mutation set that was written after looking at the answers.
 ## What this does not prove
 
 **That every gate bites on every mutation.** These are the breaks we thought of — the same
-honest limit the six adversarial worlds carry for claim 2 — and thirty curated mutations
+honest limit the six adversarial worlds carry for claim 2 — and thirty-one curated mutations
 are not mutation testing. A gate can be perfect against all of them and still have a hole
 nobody imagined.
 

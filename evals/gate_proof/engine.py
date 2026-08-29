@@ -29,13 +29,15 @@ same source of truth as the thing that detects it, it is one function agreeing w
 
 Three separations, and only the third is strong:
 
-* the planter edits the **system** and never the detector. For claim 1 that reads "the
-  planter edits `src/holdout/`; the detector reads `corpus/real/`". **Restated 2026-08-29
-  with claim 7**, whose most valuable mutation edits `contracts/policies/ladder_policy@v1.yaml`
-  — a decision that becomes idempotent per customer changes no Python at all, and a planter
-  confined to `src/` could not have written it. The line that matters is not which directory
-  the planter may touch but which one it may not: `ops/personhood.py` and `corpus/real/` are
-  the detector, and they are never mutation targets;
+* the planter never edits the **detector**. For claim 1 that reads "the planter edits
+  `src/holdout/`; the detector reads `corpus/real/`". **Restated 2026-08-29 with claim 7**,
+  whose most valuable mutation edits `contracts/policies/ladder_policy@v1.yaml` — a decision
+  that becomes idempotent per customer changes no Python at all, and a planter confined to
+  `src/` could not have written it. So the rule is stated by what it forbids rather than by
+  what it allows: `ops/` and `corpus/` are the detector and the inputs, and
+  `ledger.no-mutation-edits-the-detector` refuses a mutation naming either. Enumerating what
+  the planter *may* edit was tried here first and was false of the repository it sat in —
+  three of the thirty committed mutations edit `evals/uplift/`;
 * a mutation is written as a **behaviour change in domain terms** — "the margin floor rounds
   the wrong way", "a frozen category is only a warning" — and never as "make check G2 fail".
   The check it must trip is declared in advance, in the file, and if it survives that is
@@ -95,9 +97,15 @@ REPO_ROOT = HERE.parents[1]
 #: implementation of *the decision key carries no customer dimension* that the suite and
 #: `evals/oversight/` both call. A copied `evals/` that imports it needs it beside it, and
 #: without it every claim-7 mutation would have reported `CRASHED` on an `ImportError` rather
-#: than saying anything about a gate. Nothing under `ops/` is a mutation target: the planter
-#: edits the **system** — `src/` and `contracts/` — and never the detector, which is the
-#: separation the independence argument below rests on.
+#: than saying anything about a gate.
+#:
+#: **A mutation may never edit the detector**, and since 2026-08-29 that is a check rather
+#: than a sentence: `ledger.no-mutation-edits-the-detector` refuses a mutation whose `file:`
+#: is under `ops/` or `corpus/`. It is stated negatively on purpose. An earlier wording here
+#: enumerated what the planter *may* edit — "`src/` and `contracts/`" — and oversight level 2
+#: pointed out that three of the thirty committed mutations edit `evals/uplift/`, because
+#: claim 2's machinery is partly what claim 2 is proving. The rule was never about which tree
+#: the planter may touch. It is about the two it may not.
 COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 
 #: A run of the eval that takes longer than this has almost certainly been mutated into a

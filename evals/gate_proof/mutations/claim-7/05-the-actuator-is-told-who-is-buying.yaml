@@ -1,7 +1,7 @@
 id:          the-actuator-is-told-who-is-buying
 claim:       7
 eval_module: evals.oversight
-targets:     [O5.no-new-identifier-in-the-core-is-a-name-a-person-is-known-by]
+targets:     [O5.no-new-identifier-in-the-package-is-a-name-a-person-is-known-by]
 
 breaks: >-
   the function that writes a price to a shelf gains a `customer` parameter. It has a default,

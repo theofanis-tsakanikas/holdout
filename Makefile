@@ -97,18 +97,18 @@ eval-uplift:  ## just claim 2's eval, without the mutations
 eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 	$(RUN) python -m evals.guardrail
 
-# Claim 7 is a structural claim and therefore the cheapest target here: it imports the core,
-# parses it, and plants 14,582 person-names on 46 types without touching a corpus of prices
-# or generating a world. Measured on a fourteen-core laptop: the eval alone 3.4s, the whole
-# target 27s — one baseline run plus six mutated ones. **This sets no new number.** It runs
-# in the `claims` matrix under a budget that was measured for claim 2, and a target three
-# orders of magnitude under a timeout is not an assertion about that timeout; the branch's
-# own CI run is what measures it on four cores.
+# Claim 7 is a structural claim and therefore the cheapest target here: it imports the
+# package, parses it, and plants 15,533 person-names on 49 types without touching a corpus of
+# prices or generating a world. Measured on a fourteen-core laptop: the eval alone 4.0s, the
+# whole target 36s — one baseline run plus seven mutated ones. **This sets no new number.** It
+# runs in the `claims` matrix under a budget that was measured for claim 2, and a target two
+# orders of magnitude under a timeout is not an assertion about that timeout. The four-core
+# measurement is 1m8s, from this branch's own CI run.
 claim-7:  ## claim 7 — a decision that targets a person is structurally impossible
 	$(RUN) python -m evals.oversight
 	$(RUN) python -m evals.gate_proof --claim 7
 
-eval-oversight:  ## just claim 7's eval, without the mutations — about three seconds
+eval-oversight:  ## just claim 7's eval, without the mutations — about four seconds
 	$(RUN) python -m evals.oversight
 
 # The ledger, not the executor. Each claim target plants its own mutations, so this one

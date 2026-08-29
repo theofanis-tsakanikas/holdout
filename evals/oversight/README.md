@@ -8,8 +8,8 @@
 > so it is guaranteed to find nothing and guaranteed to feel like a guard.*
 
 ```
-make claim-7          the eval, and the six mutations claim 7 owns    ~27 s
-make eval-oversight   the eval alone                                  ~3 s
+make claim-7          the eval, and the seven mutations claim 7 owns  ~36 s
+make eval-oversight   the eval alone                                  ~4 s
 ```
 
 Claim 7's row in `CLAUDE.md` was the one row in the table of seven with no trap beside it.
@@ -22,8 +22,8 @@ asked who wrote it.
 ## 1 · What is attacked
 
 Three hundred and seventeen names that two published vocabularies use for a person are
-planted, one at a time, on every one of the forty-six types a decision passes through —
-**14,582 attacks** — and the question is who refuses.
+planted, one at a time, on every one of the forty-nine types a decision passes through —
+**15,533 attacks** — and the question is who refuses.
 
 | id | the question it would answer `false` |
 |---|---|
@@ -31,7 +31,7 @@ planted, one at a time, on every one of the forty-six types a decision passes th
 | `O2.every-decision-path-type-carries-exactly-the-fields-written-down` | does every type carry exactly the fields a human wrote down beside it? |
 | `O3.every-type-in-the-core-is-written-down` | can claim 7 be defeated by adding a *type* rather than a field? |
 | `O4.no-field-is-a-name-a-person-is-known-by` | does any of the 222 fields carry one of the 317 published names? |
-| `O5.no-new-identifier-in-the-core-is-a-name-a-person-is-known-by` | and any of the 820 identifiers — parameters and enum members included? |
+| `O5.no-new-identifier-in-the-package-is-a-name-a-person-is-known-by` | and any of the 1,147 identifiers `src/holdout/` defines — parameters and enum members included? |
 | `O6.every-planted-person-is-refused` | planting each name on each type, does the structural assertion refuse every one? |
 | `O7.the-word-list-never-refuses-alone` | is the hand-written word list ever the *only* thing that catches an attack? |
 | `O8.the-scan-reaches-the-types-that-are-not-dataclasses` | do the types whose constructors refuse report their fields, or are they invisible? |
@@ -98,7 +98,7 @@ them is planted*. Nothing under `ops/` is ever a mutation target — the planter
 
 | | |
 |---|---|
-| **observed** | 156 schema.org properties, 99 Presidio entity types, both committed and digest-checked; the 46 field sets; the 820 identifiers; every metric grain, idempotency key and covariate id |
+| **observed** | 156 schema.org properties, 99 Presidio entity types, both committed and digest-checked; the 49 field sets; the 1,147 identifiers; every metric grain, idempotency key and covariate id |
 | **derived**, with the arithmetic written out | the *spelling*. `familyName` and `US_SSN` become `family_name` and `us_ssn`, because that is how a field is written here. One further derivation: a Presidio entity whose leading token is a two-letter region code also contributes its remainder, so `DE_TAX_ID` yields `tax_id` as well. It only ever **adds** names, so it errs towards more attacks and never fewer, and the duplicates it creates are collapsed and counted |
 | **swept** | the attack grid — the lexicon sorted, the types sorted, their product in that order. Nothing is drawn at random, so a red run reproduces exactly and prints the same counterexamples every time |
 
@@ -107,40 +107,57 @@ them is planted*. Nothing under `ops/` is ever a mutation target — the planter
 ## 4 · The measurement, which is the whole point
 
 ```
-attacks planted                          14,582
-  refused by the closed field set        14,582
-  refused by the hand-written word list  1,610 (35/317 = 11.0% of the names)
+attacks planted                          15,533
+  refused by the closed field set        15,533
+  refused by the hand-written word list  1,715 (35/317 = 11.0% of the names)
 ```
 
 **The word list this repository was carrying catches eleven per cent of the names two
 published vocabularies use for a person.** It misses `family_name`, `given_name`,
-`nationality`, `telephone`, `job_title`, `spouse`, `sibling`, `nif`, `aadhaar`,
-`personnummer`, `fiscal_code`, `passport`, `buyer`, `owner`, `recipient` and 267 others.
+`nationality`, `job_title`, `spouse`, `sibling`, `nif`, `aadhaar`, `fiscal_code`,
+`passport`, `buyer`, `owner`, `recipient` and 269 others.
+
+Those thirteen are pinned in `tests/evals/test_oversight_instrument.py`, in both directions,
+because **the first version of this paragraph was wrong**. It also named `telephone` and
+`personnummer`, and the word list catches both: `PERSON_SHAPED` contains `phone` and `person`
+and it matches by substring. The aggregate figures — 35, 282, 11.0% — were right the whole
+time; the illustrations had been picked by reading the lexicon rather than by asking
+`ops.personhood.person_shaped`, the function that would make the sentence true. Found by
+oversight level 2, and the prior wording is named here rather than deleted, per doctrine rule
+4, because the delta *is* the finding: this is the branch about a guard tested by its author,
+and its own prose was written the same way.
 
 That is not an argument for a longer list. A list twice as long would be the same function
 agreeing with itself twice as loudly, and the next name would be the one nobody wrote down.
-It is the argument for the *structure*: `O2` refuses every one of the 14,582, and it would
+It is the argument for the *structure*: `O2` refuses every one of the 15,533, and it would
 refuse a field called `q7` on the same evidence, because it never reads the name at all.
 
 `O7` is that sentence made into a gate: **no attack may ever be caught by the word list
 alone.** If one were, claim 7 would be resting on words somebody here chose.
 
-### The eight explained collisions, published rather than filtered
+### The eleven explained collisions, published rather than filtered
 
 Ordinary engineering English and the vocabulary of personhood overlap, and hiding the overlap
-would mean curating the input. So it is printed in full, with a reason each — six of them in
-the core, two more in the compiled consumers under `generated/`: `AGENT` and
-`agent` are the design engine's LLM and not schema.org's person; `agent_tool` is the metric
-contract's third consumer; `candidate` is a candidate *price*; `candidate_weeks` is a
-duration; `members` are the units in a stratum; `weight_c` and `weight_t` are the estimator's
-arm weights. A seventh appearing turns `O5` red, and the fix is a conversation — never an
-addition made in the same commit as the name. `O12` refuses an explanation that has outlived
-the thing it explained, because an unused entry is a name pre-approved for whoever adds it
+would mean curating the input. So it is printed in full, with a reason each — nine of them in
+`src/holdout/`, two more in the compiled consumers under `generated/`: `AGENT`, `agent`,
+`agent_tool` and `compile_agent_tool` are the design engine's LLM and the tool definition it
+is given, not schema.org's person; `candidate` is a candidate *price* and `candidate_weeks` a
+duration; `members` are the units in a stratum; `parents` is `pathlib`'s keyword in
+`mkdir(parents=True)`; `url` is where a guardrail value's citation points; `weight_c` and
+`weight_t` are the estimator's arm weights. A twelfth appearing turns `O5` or `O10` red, and
+the fix is a conversation — never an addition made in the same commit as the name.
+
+**Each entry is keyed by the *pair* — the name here and the name there — and that was a
+finding too.** It was keyed on the bare identifier until oversight level 2 asked what that
+excuses: an entry for `members` would have pre-approved any future `members` anywhere in the
+package, including one that really is a collection of people, and `O12` would have stayed
+green because the name still matched something. `O12` refuses an explanation that has outlived
+the collision it explained, because an unused entry is a name pre-approved for whoever adds it
 next.
 
 ---
 
-## 5 · The six mutations, and the six checks that cannot have one
+## 5 · The seven mutations, and the six checks that cannot have one
 
 Each mutation is written as a behaviour change in domain terms and names its check in advance.
 
@@ -149,20 +166,32 @@ Each mutation is written as a behaviour change in domain terms and names its che
 | `core/decision.py` | the key learns who is buying — an optional `customer_id`, defaulted, breaking no caller | `O1` |
 | `core/guardrails/certificate.py` | the certificate that reaches a shelf remembers the loyalty tier — planted on the one type that is **not** a dataclass | `O2` |
 | `core/decision.py` | a second key rides alongside the first: a new *type*, no existing field touched | `O3` |
+| `core/decision.py` | **the same second key, named `_VisitContext`** | `O3` |
 | `core/decision.py` | the key stops being frozen and slotted, keeps all four fields, and anything can be stapled to it afterwards | `O9` |
 | `core/guardrails/certificate.py` | the actuator is told who is buying — a `customer` **parameter**, which no field-set comparison can see | `O5` |
 | `contracts/policies/ladder_policy@v1.yaml` | a decision becomes idempotent per customer. **No Python changes at all** | `O10` |
 
-The last two are the ones that earn their checks. A parameter is not a field and a contract is
-not Python; every check built on comparing field sets is blind to both by construction.
+Two of them earn their checks. A parameter is not a field and a contract is not Python; every
+check built on comparing field sets is blind to both by construction.
+
+**And the fourth exists because the third survived a rename.** `unlisted()` skipped any class
+whose name begins with `_`, inherited from the version of the rule that lived in
+`tests/core/test_decision_key.py` where it read as ordinary hygiene — a private helper is not
+on the decision path, so why write it down. What it did was leave one spelling that walks
+straight past the guard while `O3`'s printed question said *every* type. Oversight level 2
+renamed the class this table's third row plants, and watched it survive. The exemption is gone,
+the estimator's three private types are written down like everything else, and the underscored
+break is planted rather than argued about.
 
 **Six checks have no mutation and cannot have one**, and the reason is the same in each case:
 breaking them means editing the detector or the eval rather than the system, and a planter that
-may edit the detector is the independence gone. They are armed instead by
-`tests/evals/test_oversight_instrument.py`, which breaks each of them on a deliberately broken
-arrangement — a scan that lost `__slots__`, a vocabulary whose words are ours after all, an
-explanation that explains nothing — and requires the red. That is the arrangement
-`tests/evals/test_ledger.py` already has for `gate-proof` itself.
+may edit the detector is the independence gone. That is no longer a convention either —
+`ledger.no-mutation-edits-the-detector` refuses a mutation whose `file:` is under `ops/` or
+`corpus/`. The six are armed instead by `tests/evals/test_oversight_instrument.py`, which
+breaks each of them on a deliberately broken arrangement — a scan that lost `__slots__`, a
+vocabulary whose words are ours after all, an explanation that explains nothing — and requires
+the red. That is the arrangement `tests/evals/test_ledger.py` already has for `gate-proof`
+itself.
 
 ---
 
@@ -182,8 +211,9 @@ explanation that explains nothing — and requires the red. That is the arrangem
 * **That a person could not be re-identified by joining store, SKU and time outside this
   system.** Claim 7 is that no decision *targets* a person. It is not a statement about what
   somebody else could infer from an aggregate, and it would be dishonest to let it read as one.
-* **That the eight explained collisions are the only ones that will ever be innocent.** Each
+* **That the eleven explained collisions are the only ones that will ever be innocent.** Each
   new overlap is a conversation.
-* **That the mutation set is complete.** Six breaks are the breaks we thought of. A gate can be
+* **That the mutation set is complete.** Seven breaks are the breaks we thought of — and one
+  of the seven exists only because a reviewer thought of a spelling we had not. A gate can be
   perfect against all of them and still have a hole nobody imagined — the same honest limit the
   six adversarial worlds carry for claim 2.

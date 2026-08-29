@@ -163,6 +163,37 @@ def test_a_mutation_naming_a_file_that_does_not_exist_is_caught() -> None:
 # ----------------------------------------------------------------- the real arrangement
 
 
+@pytest.mark.parametrize(
+    ("file", "why"),
+    [
+        ("ops/personhood.py", "the registry claim 7's guard is made of"),
+        ("ops/isolation.py", "the corpus barrier"),
+        ("corpus/real/data/ons-price-quotes-2025.csv.gz", "the prices claim 1 attacks from"),
+        ("corpus/world/chain.py", "the generator claim 2 attacks from"),
+    ],
+)
+def test_a_mutation_that_edits_the_detector_is_caught(file: str, why: str) -> None:
+    """`engine.py` says its third separation is the one that carries the argument: *the
+    planter cannot tune the inputs*. Until this check existed that was prose — the workspace
+    copies `corpus/` and `ops/` because the evals import them, and `_inside()` asks only
+    whether a path escapes the workspace, never which tree inside it is being edited."""
+    check = ledger.check_no_mutation_edits_the_detector([_mutation(file=file)])
+    assert not check.passed, why
+    assert file in check.counterexamples[0]
+
+
+def test_a_mutation_that_edits_the_system_is_not_caught() -> None:
+    """Both trees the committed set actually uses, including the one the first restatement of
+    this rule got wrong: three claim-2 mutations edit `evals/uplift/`, because claim 2's
+    machinery is partly the thing claim 2 is proving."""
+    for file in (
+        "src/holdout/core/money.py",
+        "contracts/policies/ladder_policy@v1.yaml",
+        "evals/uplift/outcomes.py",
+    ):
+        assert ledger.check_no_mutation_edits_the_detector([_mutation(file=file)]).passed, file
+
+
 def test_the_repository_s_own_arrangement_audits_clean() -> None:
     report = ledger.audit()
     assert report.passed, [c.id for c in report.checks if not c.passed]

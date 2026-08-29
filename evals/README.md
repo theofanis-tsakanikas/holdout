@@ -113,9 +113,9 @@ matters:
 ```
 make claim-1          the eval and the mutations it owns   ~3 min
 make claim-2          likewise, and the most expensive     see the Makefile
-make claim-7          likewise, and the cheapest           ~27 s
+make claim-7          likewise, and the cheapest           ~36 s
 make eval-guardrail   claim 1's eval alone                 ~10 s
-make eval-oversight   claim 7's eval alone                 ~3 s
+make eval-oversight   claim 7's eval alone                 ~4 s
 make gate-proof       the ownership audit, runs nothing    <1 s
 ```
 

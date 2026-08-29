@@ -45,6 +45,21 @@ from evals.report import Check, Report
 
 MAKEFILE = REPO_ROOT / "Makefile"
 
+#: The trees a mutation may never edit, because they are what *detects* a mutation.
+#:
+#: `engine.py`'s independence argument has three separations and says the third carries it:
+#: *the planter cannot tune the inputs*. Until 2026-08-29 that was prose with nothing behind
+#: it — `_inside()` refuses a path that escapes the workspace and asks nothing about which
+#: tree inside it a mutation edits, and the workspace copies `corpus/` and `ops/` because the
+#: evals import them. So a mutation could have been written against `corpus/real/`'s committed
+#: prices, or against `ops/personhood.py`'s registry, and it would have been applied silently
+#: and reported `bit`. Nothing would have been proved and nothing would have gone red.
+#:
+#: Found by oversight level 2 on the branch that made it reachable: claim 7 added `ops` to
+#: `engine.COPIED`, and before that a mutation naming it would at least have failed on a
+#: missing file. `CLAUDE.md` asks which function makes a sentence true. This is the function.
+DETECTOR = ("ops/", "corpus/")
+
 #: The module both halves live in. Naming it is not enough to be executing: `engine.run`
 #: requires a claim, so a recipe that names this module **with** `--claim` executes
 #: mutations and one that names it without runs this ledger. There is no third thing it
@@ -264,6 +279,35 @@ def check_every_anchor_is_aimed_at_one_place(mutations: Sequence[Mutation]) -> C
     )
 
 
+def check_no_mutation_edits_the_detector(mutations: Sequence[Mutation]) -> Check:
+    """The separation `engine.py` says carries its independence argument, made structural.
+
+    A mutation edits the **system**. The corpus is what the system is attacked *from* and
+    `ops/` is where the rules the system is measured by live; a planter that may edit either
+    is a planter that can make any gate appear to bite. This is asked here, in the cheap
+    target, because it is a question about a string and needs nothing to run.
+    """
+    offences = [
+        f"{mutation.ref} edits {mutation.file}, which is the detector rather than the system"
+        for mutation in mutations
+        if mutation.file.startswith(DETECTOR)
+    ]
+    return Check(
+        id="ledger.no-mutation-edits-the-detector",
+        question=(
+            "Does every planted break edit the system rather than the thing that detects it — "
+            f"nothing under {' or '.join(DETECTOR)}?"
+        ),
+        passed=not offences,
+        figure=f"{len(mutations) - len(offences)}/{len(mutations)} edit the system",
+        detail=(
+            "a planter that can tune the inputs or rewrite the registry can make any gate "
+            "appear to bite, which is the separation engine.py says carries its argument"
+        ),
+        counterexamples=tuple(offences),
+    )
+
+
 def check_the_mutation_tree_is_all_yaml() -> Check:
     """Nothing under `mutations/` that `load_mutations` would silently skip."""
     strays = [
@@ -304,6 +348,7 @@ def audit() -> Report:
         check_mutation_ids_are_unique(mutations),
         check_mutation_lives_under_the_claim_it_declares(mutations),
         check_every_anchor_is_aimed_at_one_place(mutations),
+        check_no_mutation_edits_the_detector(mutations),
         check_the_mutation_tree_is_all_yaml(),
     )
 

@@ -1304,16 +1304,28 @@ than an unlock condition alone, which `make expiry` can never evaluate.
 
 **Claim 7 is proved over `holdout.core` and the contracts, and nothing else exists yet** · deferred
 2026-08-29
-`evals/oversight/` scans every type in `holdout.core`, every identifier the core's source text
-defines, every metric grain, every idempotency key, every balance covariate and every compiled
-consumer under `generated/`. That is the whole of the system today, which is why the eval can say
+`evals/oversight/` scans every type in `holdout.core`, **every identifier `src/holdout/` defines**,
+every metric grain, every idempotency key, every balance covariate and every compiled consumer
+under `generated/`. That is the whole of the system today, which is why the eval can say
 *structurally impossible* rather than *not currently present*. It will stop being the whole of the
 system at T009.
 
-The routes it does **not** cover, named rather than left to be discovered: `src/holdout/adapters/`
-is empty; `pipelines/silver/` and `pipelines/gold/` do not exist; and a bronze table is *the
-source's shape* by design — CLAUDE.md is explicit that nothing is transformed at ingestion — so a
-POS line arriving with a loyalty number would land in bronze and this eval would not see it. That
+*Restated 2026-08-29, before this entry was a day old.* The first wording said the identifier scan
+read *the core's* source text, and named the uncovered routes as `adapters/` and `pipelines/`. That
+was false by omission: `src/holdout/contracts/` is fifteen modules of loader and compilers, neither
+empty nor nonexistent, and `reference.CORE` stopped at `core/`'s boundary — so a `customer`
+parameter on `compile_agent_tool`, the exact shape mutation 05 proves `O5` catches inside `core/`,
+was outside the scan. Oversight level 2 found it. `reference.identifiers` now reads all of
+`src/holdout/`, which is what closed it, and the collisions that surfaced — `parents`, `url`,
+`compile_agent_tool` — are published with their reasons rather than filtered. The **type** registry
+still stops at `holdout.core`, deliberately: `O2`, `O3`, `O4` and `O11` are about the types a
+decision passes through, and those are all in `core/`.
+
+The routes still **not** covered, named rather than left to be discovered: `src/holdout/adapters/`
+is empty; `pipelines/silver/` and `pipelines/gold/` do not exist; the contract loader's own types
+are read for their *identifiers* but are not in the registry; and a bronze table is *the source's
+shape* by design — CLAUDE.md is explicit that nothing is transformed at ingestion — so a POS line
+arriving with a loyalty number would land in bronze and this eval would not see it. That
 is not a hole in claim 7 as stated (the claim is about what a **decision** is addressed by, and a
 decision is addressed by a `DecisionKey`), but it is a hole in the sentence *"a test goes red if
 one appears"* the moment there is somewhere else for one to appear.

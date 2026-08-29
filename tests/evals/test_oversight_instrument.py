@@ -1,6 +1,6 @@
 """Arm claim 7's eval: break each check that has no mutation, and demand it goes red.
 
-`make claim-7` plants six mutations in `src/` and `contracts/` and demands that the check
+`make claim-7` plants seven mutations in `src/` and `contracts/` and demands that the check
 each one names refuses. Six of the twelve checks are covered that way. The other six are not,
 and for each of them there is a reason no mutation could be written:
 
@@ -81,6 +81,61 @@ def test_a_short_entity_does_not_match_inside_a_longer_word() -> None:
     assert not checks.matched_by("enrolment_period", nrp)
 
 
+# ------------------------------------------------- the names the prose names, pinned
+
+#: The names quoted in prose as ones the hand-written word list **misses**.
+#:
+#: Pinned because the first version of that prose was wrong, and wrong in this project's own
+#: most frequent shape: the examples were picked by reading the 317-name lexicon rather than
+#: by asking `ops.personhood.person_shaped`, the function that would make the sentence true.
+#: `telephone` contains `phone` and `personnummer` contains `person`, so the word list catches
+#: both — and four documents said it missed them. The aggregate figures were right the whole
+#: time; only the illustrations were invented. `tests/evals/test_guardrail_instrument.py` pins
+#: claim 1's 716 and 6,650 for the same reason: a figure in prose that the code contradicts is
+#: red in the suite rather than wrong in a paragraph.
+NAMED_AS_MISSED = (
+    "family_name",
+    "given_name",
+    "nationality",
+    "job_title",
+    "spouse",
+    "sibling",
+    "buyer",
+    "owner",
+    "recipient",
+    "nif",
+    "aadhaar",
+    "fiscal_code",
+    "passport",
+)
+
+#: And the ones prose names as caught, so the claim is pinned in both directions.
+NAMED_AS_CAUGHT = ("customer", "telephone", "personnummer")
+
+
+@pytest.mark.parametrize("name", NAMED_AS_MISSED)
+def test_a_name_the_prose_calls_missed_is_really_missed(name: str) -> None:
+    assert name in {external.name for external in lexicon()}, f"{name} is not in the lexicon"
+    assert not personhood.person_shaped(name), (
+        f"the prose in evals/oversight/README.md, CLAUDE.md, PLAN.md and TASKS.md says the "
+        f"hand-written word list misses {name!r}, and it does not: "
+        f"{personhood.person_shaped(name)}"
+    )
+
+
+@pytest.mark.parametrize("name", NAMED_AS_CAUGHT)
+def test_a_name_the_prose_calls_caught_is_really_caught(name: str) -> None:
+    assert name in {external.name for external in lexicon()}
+    assert personhood.person_shaped(name)
+
+
+def test_the_published_reach_is_the_one_the_prose_quotes() -> None:
+    """35 of 317, and 282 missed. Every document on this branch quotes those three."""
+    names = [external.name for external in lexicon()]
+    caught = [name for name in names if personhood.person_shaped(name)]
+    assert (len(names), len(caught), len(names) - len(caught)) == (317, 35, 282)
+
+
 # ------------------------------------------------------------------------ O4 · O1 · O10
 
 
@@ -124,11 +179,38 @@ def test_o12_goes_red_on_an_explanation_that_explains_nothing(
     monkeypatch.setattr(
         checks,
         "EXPLAINED",
-        {**checks.EXPLAINED, "spouse": "nothing in this repository is called that"},
+        {**checks.EXPLAINED, ("spouse", "spouse"): "nothing in this repository is called that"},
     )
     check = checks.check_every_explanation_still_explains_something(lexicon())
     assert not check.passed
     assert any("spouse" in example for example in check.counterexamples)
+
+
+def test_a_private_type_is_not_exempt_from_the_registry() -> None:
+    """A leading underscore exempted a type from `unlisted()` until 2026-08-29.
+
+    It read as hygiene — a private helper is not on the decision path — and what it actually
+    did was leave one spelling that walks past the guard while `O3`'s printed question said
+    *every* type. Found by oversight level 2 renaming the class that
+    `03-a-second-key-rides-alongside-the-first.yaml` plants, and watching it survive.
+    `07-the-second-key-arrives-with-a-private-name.yaml` is the same break in that spelling;
+    this test is the half that runs without planting anything.
+    """
+
+    @dataclasses.dataclass(frozen=True, slots=True)
+    class _VisitContext:
+        till_id: str
+        visit_ordinal: int
+
+    @dataclasses.dataclass(frozen=True, slots=True)
+    class VisitContext:
+        till_id: str
+        visit_ordinal: int
+
+    for cls in (_VisitContext, VisitContext):
+        assert personhood.unlisted(types=[cls], registry={}) == [
+            f"{cls.__module__}.{cls.__name__}"
+        ], f"{cls.__name__} walked past the registry"
 
 
 # ------------------------------------------------------------------------------ O6 · O7

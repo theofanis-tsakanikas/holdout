@@ -725,8 +725,8 @@ review        yes
 status        closed
 ```
 
-**What it landed, and the number it closes on.** `make claim-7` — twelve checks, six mutations, all
-six bit — and one measurement that is the whole reason the task was worth doing.
+**What it landed, and the number it closes on.** `make claim-7` — twelve checks, seven mutations,
+all seven bit — and one measurement that is the whole reason the task was worth doing.
 
 The task line said *a test goes red if one appears*. That test existed and was good: an exact field
 set for every type on the decision path, plus a tuple of person-shaped substrings as a net under it.
@@ -742,22 +742,22 @@ rules as the prices: **156 schema.org properties** whose domain or range include
 `eb93051b`). Both extractions mechanical and total, both in the publisher's own spelling, nothing
 curated — `DATE_TIME`, `brand`, `award`, `height` and `weight` stay on the lists, because the moment
 this repository decides which of somebody else's names count, the inputs are being chosen here
-again. Between them they yield **317 names**, planted one at a time on each of the 46 types:
+again. Between them they yield **317 names**, planted one at a time on each of the 49 types:
 
 ```
-attacks planted                          14,582
-  refused by the closed field set        14,582
-  refused by the hand-written word list   1,610   (35/317 = 11.0% of the names)
+attacks planted                          15,533
+  refused by the closed field set        15,533
+  refused by the hand-written word list   1,715   (35/317 = 11.0% of the names)
 ```
 
-The list misses `family_name`, `given_name`, `nationality`, `telephone`, `spouse`, `buyer`, `owner`,
-`recipient` and 275 others. `O7` turns that into a gate rather than an anecdote: **no attack may
+The list misses `family_name`, `given_name`, `nationality`, `job_title`, `spouse`, `buyer`, `owner`,
+`recipient` and 274 others. `O7` turns that into a gate rather than an anecdote: **no attack may
 ever be refused by the word list alone.**
 
 **Where the task went wider than its `closes` line, and why each was necessary rather than tempting.**
 *`O5`* — a person does not have to arrive as a *field*. A `customer` parameter on `dispatch_to_shelf`
-is invisible to every field-set comparison ever written, so the eval parses the core's source text
-and reads every identifier it defines: 820 of them. *`O10`* — nor does one have to arrive in Python.
+is invisible to every field-set comparison ever written, so the eval parses the package's source
+text and reads every identifier it defines: 1,147 of them. *`O10`* — nor does one have to arrive in Python.
 `ladder_policy@v1.yaml` becoming idempotent per customer says, in as many words, that a decision is
 taken per customer, and it compiles into a dbt model, a SQL function, the agent's tool definition and
 the readout query with **no type moving at all**. Those two are the mutations that earn their checks.
@@ -784,11 +784,61 @@ check, so it unlocks at T011. And the vocabularies are pinned, so nothing notice
 after 2026-08-29; that ages the *net* and never the *guard* — `O2` reads no names at all — and it
 expires 2027-02-28.
 
-**No new number in configuration.** `make claim-7` is 27s on the author's laptop, in a CI matrix job
-whose 90-minute budget was measured for claim 2. A target three orders of magnitude under a timeout
-asserts nothing about that timeout, and the branch's own CI run is what measures it on four cores.
+**No new number in configuration.** `make claim-7` is 36s on the author's laptop and **1m8s on the
+four-core runner**, in a CI matrix job whose 90-minute budget was measured for claim 2. A target two
+orders of magnitude under a timeout asserts nothing about that timeout, and the runner figure is the
+measurement taken on the hardware that meets it rather than a projection from the laptop.
 
-`make check` green at **845 tests** · `make claim-7` **12/12 with 6/6 mutations biting**.
+**What oversight level 2 sent back, and what it cost.** Four blocking findings, and the review did
+the one thing this branch could not do for itself: it re-downloaded both vocabularies, wrote its own
+extractor without touching `corpus/real/fetch.py`, and reproduced both committed CSVs **byte for
+byte** — 156 and 99, all six MANIFEST digests recomputed, 317 derived independently, and every
+ALL_CAPS token in the Presidio source that is *not* in the corpus accounted for (67 acronyms in
+prose; `PH_MOBILE_NUMBER` and `TR_PHONE_NUMBER`, both inside a description cell as configuration
+examples). **The extraction is mechanical. Nobody filtered.** That is the finding the whole claim
+rests on and it could only be established by somebody who had not written the extractor.
+
+Then the four:
+
+*(1) The prose named two names the word list actually catches.* Four documents said the list misses
+`telephone` and `personnummer`. `PERSON_SHAPED` contains `phone` and `person` and matches by
+substring, so it catches both — and both are among the 35 the eval reports as caught. **The
+aggregates were right the whole time; the illustrations were picked by reading the lexicon rather
+than by asking `ops.personhood.person_shaped`, which is the function that would make the sentence
+true.** It is this branch's own subject, one layer up, in the branch about it. The exemplars are now
+pinned in `tests/evals/test_oversight_instrument.py` in both directions, the way
+`test_guardrail_instrument.py` pins claim 1's 716 and 6,650.
+
+*(2) `O3` printed "every type" and exempted every type whose name begins with `_`.* Inherited from
+the version of the rule that lived in the test, where it read as hygiene. What it did was leave one
+spelling that walks past the guard: the reviewer renamed the class mutation 03 plants and watched it
+survive. The exemption is gone, the estimator's three private types are written down like everything
+else (registry 46 → **49**), and `07-the-second-key-arrives-with-a-private-name.yaml` plants the
+underscored break so nothing but the code decides whether the hole is shut. **This is a guard tested
+by its author, inside the branch whose subject is guards tested by their authors** — `CLAUDE.md`'s
+table carries it as its own row.
+
+*(3) The deferral said the scan covered the whole system, and `src/holdout/contracts/` — fifteen
+modules — was outside it.* `reference.CORE` stopped at `core/`'s boundary, so a `customer` parameter
+on `compile_agent_tool`, the exact shape mutation 05 proves `O5` catches inside `core/`, would not
+have been seen. `identifiers()` now reads all of `src/holdout/` (820 → **1,147**), and the three
+collisions that surfaced — `parents`, `url`, `compile_agent_tool` — are published with their reasons
+rather than filtered. The deferral is restated rather than overwritten.
+
+*(4) The restated independence rule was false of the repository it sits in.* It enumerated what the
+planter may edit — "`src/` and `contracts/`" — and three of the thirty committed mutations edit
+`evals/uplift/`, because claim 2's machinery is partly what claim 2 is proving. It now names what it
+**forbids**, and `ledger.no-mutation-edits-the-detector` is the function behind it: a mutation whose
+`file:` is under `ops/` or `corpus/` is refused. Until this branch that separation — the one
+`engine.py` says carries its whole argument — was prose with nothing behind it, and this branch made
+it reachable by adding `ops` to `COPIED`.
+
+Two latent findings fixed with them: `EXPLAINED` is keyed on the **pair** `(name here, name there)`
+rather than on the bare identifier, so an entry for `members` no longer pre-approves any future
+`members` anywhere in the package; and three figures in prose were corrected against what the eval
+prints.
+
+`make check` green at **871 tests** · `make claim-7` **12/12 with 7/7 mutations biting**.
 
 ```
 id            T007

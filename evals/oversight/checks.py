@@ -1,4 +1,4 @@
-"""Claim 7's checks — eleven questions, and the numbers behind each of them.
+"""Claim 7's checks — twelve questions, and the numbers behind each of them.
 
 `CLAUDE.md`, claim 7: *a decision that targets a person is structurally impossible. The
 decision key has no customer dimension, and a test goes red if one appears.*
@@ -28,7 +28,8 @@ would arrive as a *parameter* or an *enum member* rather than as a field. `O6` a
 each external name on each type and ask who refuses. `O8` is coverage. `O9` asks the question
 at runtime instead of by reading. `O10` leaves Python entirely: a customer dimension can
 arrive through a contract and compile into a dbt model, an agent tool definition and the
-readout query without a single dataclass changing. `O11` is the second implementation.
+readout query without a single dataclass changing. `O11` is the second implementation, and
+`O12` refuses an explanation that has outlived the collision it explained.
 """
 
 from __future__ import annotations
@@ -78,39 +79,61 @@ GENERATED = REPO_ROOT / "generated"
 #: without opening another file. If the two ever disagree, `O1` fails and says which.
 THE_KEY_IS = frozenset({"path", "sku_id", "store_id", "occasion"})
 
-#: Names the core defines that a published person-vocabulary also uses, with the reason each
-#: one means something else here.
+#: Names this package or its compiled consumers use that a published person-vocabulary also
+#: uses, keyed by **(the name here, the name there)** and carrying the reason it means
+#: something else.
 #:
 #: **Every entry was found by the scan, not by anticipation.** Ordinary engineering English
 #: and the vocabulary of personhood overlap — that is not a defect in either list, it is the
 #: reason a word list can never be the guard — and the honest response is to publish the
-#: overlap in full rather than to quietly filter the input. A name arriving here that is not
-#: on this list turns `O5` red, and the fix is a conversation, never an addition made in the
-#: same commit as the name.
+#: overlap in full rather than to quietly filter the input. A collision arriving that is not
+#: on this list turns `O5` or `O10` red, and the fix is a conversation, never an addition made
+#: in the same commit as the name.
+#:
+#: **The key is a pair, and that was a finding.** It was the bare identifier until oversight
+#: level 2 pointed out what that excuses: an entry for `members` would have pre-approved *any*
+#: future `members` anywhere in the package — including one that really is a collection of
+#: people — and `O12` would have stayed green, because the name still matched something. An
+#: explanation is about one collision, so it is keyed by one collision.
 #:
 #: Reviewed 2026-08-29 (T006), against schema.org 30.0 and Presidio eb93051b.
-EXPLAINED: dict[str, str] = {
-    "AGENT": (
+EXPLAINED: dict[tuple[str, str], str] = {
+    ("AGENT", "agent"): (
         "`FilledBy.AGENT` — one of the three sources that may fill a design form. schema.org's "
         "`agent` names a person; this one is the LLM, and `CLAUDE.md` is explicit that it "
         "never fills `max_duration` or `decision_rule` and never goes near the decision path"
     ),
-    "agent": "the same enum value and the same word, as it is spelled on the wire",
-    "agent_tool": (
+    ("agent", "agent"): "the same enum value and the same word, as it is spelled on the wire",
+    ("agent_tool", "agent"): (
         "the metric contract's third consumer — the JSON tool definition the design agent is "
         "given so that it never writes SQL"
     ),
-    "candidate": (
+    ("compile_agent_tool", "agent"): "the function that writes that definition",
+    ("candidate", "candidate"): (
         "a candidate *price* in `pricing/selection.py`. schema.org's `candidate` is a person "
         "standing for election"
     ),
-    "candidate_weeks": "the durations feasibility scans over before it refuses one",
-    "members": (
+    ("candidate_weeks", "candidate"): (
+        "the durations feasibility scans over before it refuses one"
+    ),
+    ("members", "members"): (
         "the units in a stratum. The experiment layer's vocabulary is arm, unit, stratum and "
         "roster; schema.org's `member` is a person belonging to an organisation"
     ),
-    "weight_c": "the control arm's weight in the estimator's variance, not a person's mass",
-    "weight_t": "the treatment arm's, likewise",
+    ("parents", "parents"): (
+        "`pathlib`'s keyword in `mkdir(parents=True)`, and `Path.parents` in a repository-root "
+        "walk. The standard library's word, caught because the scan is deliberately generous "
+        "about what counts as writing a name down — narrowing the scan to make this go away "
+        "would be curating the input"
+    ),
+    ("url", "URL"): (
+        "`Provenance.url` — where a guardrail value's citation points. Presidio looks for a "
+        "URL because one can identify a person; this one addresses a ministerial decision"
+    ),
+    ("weight_c", "weight"): (
+        "the control arm's weight in the estimator's variance, not a person's mass"
+    ),
+    ("weight_t", "weight"): "the treatment arm's, likewise",
 }
 
 
@@ -224,12 +247,12 @@ def check_no_field_is_a_person_name(names: tuple[ExternalName, ...]) -> Check:
     )
 
 
-def collisions_in_the_core(names: tuple[ExternalName, ...]) -> set[str]:
-    """Which identifiers defined under `src/holdout/core/` a published person-name matches."""
+def collisions_in_the_package(names: tuple[ExternalName, ...]) -> set[tuple[str, str]]:
+    """Every (name here, name there) pair a published person-vocabulary matches in `src/holdout/`."""
     return {
-        identifier.name
+        (identifier.name, external.published_as)
         for identifier in reference.identifiers()
-        if matched_by(identifier.name, names)
+        for external in matched_by(identifier.name, names)
     }
 
 
@@ -245,12 +268,12 @@ def check_no_identifier_is_a_person_name(names: tuple[ExternalName, ...]) -> Che
         f"{identifier.name} ({identifier.kind}, {identifier.where}) matches "
         f"{external.published_as} — {external.why}"
         for identifier, external in hits
-        if identifier.name not in EXPLAINED
+        if (identifier.name, external.published_as) not in EXPLAINED
     ]
     return Check(
-        id="O5.no-new-identifier-in-the-core-is-a-name-a-person-is-known-by",
+        id="O5.no-new-identifier-in-the-package-is-a-name-a-person-is-known-by",
         question=(
-            "Every name the core defines — class, function, parameter, enum member, "
+            "Every name `src/holdout/` defines — class, function, parameter, enum member, "
             "constant — read from the source text: is each one that a published "
             "person-vocabulary also uses on the reviewed list, with the reason it means "
             "something else here?"
@@ -508,7 +531,7 @@ def check_no_contract_declares_a_customer_dimension(names: tuple[ExternalName, .
         f"{kind} {where}: {token} matches {external.published_as} — {external.why}"
         for kind, where, token in declared
         for external in matched_by(token, names)
-        if token not in EXPLAINED
+        if (token, external.published_as) not in EXPLAINED
     ]
     return Check(
         id="O10.no-contract-declares-a-customer-dimension",
@@ -585,14 +608,16 @@ def check_every_explanation_still_explains_something(names: tuple[ExternalName, 
     after the identifier it excused was renamed is a name pre-approved for whoever adds it
     next, and it would be approved by a line nobody remembers writing.
     """
-    live = collisions_in_the_core(names) | {
-        token for _, _, token in declared_contract_names() if matched_by(token, names)
+    live = collisions_in_the_package(names) | {
+        (token, external.published_as)
+        for _, _, token in declared_contract_names()
+        for external in matched_by(token, names)
     }
     stale = [
-        f"{name} is explained here and nothing in the core or the contracts is called that "
-        "any more — the explanation is now a pre-approval"
-        for name in sorted(EXPLAINED)
-        if name not in live
+        f"{name} vs {published} is explained here and that collision no longer occurs "
+        "anywhere in the package or the contracts — the explanation is now a pre-approval"
+        for name, published in sorted(EXPLAINED)
+        if (name, published) not in live
     ]
     return Check(
         id="O12.every-explanation-still-explains-something",
@@ -662,7 +687,10 @@ def run() -> Report:
                 f"{len(caught_by_the_word_list) * 100 / len(names):.1f}% of the names)",
             ),
             ("explained collisions", str(len(EXPLAINED))),
-            *((f"  {name}", _one_line(why)) for name, why in sorted(EXPLAINED.items())),
+            *(
+                (f"  {name} vs {published}", _one_line(why))
+                for (name, published), why in sorted(EXPLAINED.items())
+            ),
         ),
         notes=(
             "that a name neither vocabulary publishes would be *recognised* — O4 and O5 read "
@@ -679,7 +707,7 @@ def run() -> Report:
             "that a person could not be re-identified by joining store, SKU and time outside "
             "this system. Claim 7 is that no decision *targets* a person; it is not a "
             "statement about what somebody else could infer from an aggregate",
-            "that the eight explained collisions are the only ones that will ever be "
+            "that the eleven explained collisions are the only ones that will ever be "
             "innocent. Ordinary engineering English overlaps with the vocabulary of "
             "personhood, and each new overlap is a conversation rather than an addition",
         ),

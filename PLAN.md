@@ -613,17 +613,17 @@ four rules as the first: **156 schema.org properties** whose domain or range inc
 mechanically and kept in the publisher's own spelling. They yield **317 names**. Measured:
 
 ```
-attacks planted                          14,582      317 names on each of 46 types
-  refused by the closed field set        14,582
-  refused by the hand-written word list   1,610      35/317 = 11.0% of the names
+attacks planted                          15,533      317 names on each of 49 types
+  refused by the closed field set        15,533
+  refused by the hand-written word list   1,715      35/317 = 11.0% of the names
 ```
 
-**Eleven per cent.** The list misses `family_name`, `given_name`, `nationality`, `telephone`,
-`spouse`, `buyer`, `owner`, `recipient` and 275 others. That is not an argument for a longer list —
+**Eleven per cent.** The list misses `family_name`, `given_name`, `nationality`, `job_title`,
+`spouse`, `buyer`, `owner`, `recipient` and 274 others. That is not an argument for a longer list —
 a longer list is the same function agreeing with itself more loudly — it is the argument for the
 structure, and `O7` makes it a gate: no attack may ever be caught by the word list alone.
 
-Twelve checks, **six mutations, all six bit**, and the two that earn their checks are the two no
+Twelve checks, **seven mutations, all seven bit**, and the two that earn their checks are the two no
 field-set comparison can see: a `customer` **parameter** on `dispatch_to_shelf`, and a
 `ladder_policy@v1.yaml` that becomes idempotent per customer with **no Python changing at all**.
 The second one restated `gate-proof`'s independence rule, which had said the planter edits
@@ -643,7 +643,32 @@ Two deferrals, both real. Claim 7 is proved over `holdout.core` and the contract
 exists yet — unlocked by T011, because a scan against a `pipelines/` that does not exist is a check
 with nothing to check. And the two vocabularies are pinned, so nothing notices a name published
 after 2026-08-29; that ages the *net* and never the *guard*, and it expires on 2027-02-28.
-`make check` green at **845 tests** · `make claim-7` **12/12 with 6/6 mutations biting**, 27s.
+
+**What the review cost, and the one thing it could establish that the branch could not.** Oversight
+level 2 re-downloaded both vocabularies, wrote its own extractor without touching
+`corpus/real/fetch.py`, and reproduced both committed CSVs **byte for byte** — 156, 99, six digests,
+317 derived independently, and every ALL_CAPS token in the Presidio source that is not in the corpus
+accounted for. **The extraction is mechanical; nobody filtered.** An author cannot establish that
+about their own extractor, which is the whole reason level 2 is not a formality.
+
+Then four blocking findings, and the shape of all four is the same. **The branch about guards tested
+by their authors shipped three of them in its own work.** Its prose named `telephone` and
+`personnummer` as names the word list misses — it catches both, because `PERSON_SHAPED` contains
+`phone` and `person` and matches by substring, and the exemplars had been picked by reading the
+lexicon rather than by asking the function that would make the sentence true. Its replacement guard
+exempted any type whose name begins with `_` while printing the question *"is every type written
+down"*; the reviewer renamed the class the mutation plants and watched it survive, so the registry is
+now 49 and a seventh mutation plants `_VisitContext`. Its deferral said the scan covered the whole
+system while `src/holdout/contracts/` — fifteen modules — sat outside `reference.CORE`, so a
+`customer` parameter on `compile_agent_tool` would have gone unseen; the identifier scan now reads
+all of `src/holdout/`, 820 → 1,147. And its restatement of `gate-proof`'s independence rule
+enumerated what the planter *may* edit and was false of the committed set, because three claim-2
+mutations edit `evals/uplift/`; it now names what it forbids, behind
+`ledger.no-mutation-edits-the-detector` — the separation `engine.py` calls the one that carries its
+argument, which until this branch had no function behind it at all.
+
+`make check` green at **871 tests** · `make claim-7` **12/12 with 7/7 mutations biting**, 36s on the
+laptop and **1m8s on the four-core runner**.
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 

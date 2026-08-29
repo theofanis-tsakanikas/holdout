@@ -47,6 +47,18 @@ from pathlib import Path
 
 CORE = Path(__file__).resolve().parents[2] / "src" / "holdout" / "core"
 
+#: The identifier scan reads **the whole package**, not `core/` alone.
+#:
+#: `field_sets` and `seals` answer questions about the types on the decision path, and those
+#: live in `core/`. `identifiers` answers a different question — *is anything in this system
+#: named after a person* — and the answer must not stop at a directory boundary. Oversight
+#: level 2 found the boundary doing real damage: `src/holdout/contracts/` is fifteen modules
+#: of loader and compilers, and a `customer` parameter on `compile_agent_tool` is the exact
+#: shape `gate-proof`'s mutation 05 proves `O5` catches inside `core/` — and it was outside
+#: the scan. `adapters/` is empty today and is read anyway, so it is covered on the day it
+#: stops being empty rather than on the day somebody remembers.
+PACKAGE = Path(__file__).resolve().parents[2] / "src" / "holdout"
+
 
 @dataclass(frozen=True, slots=True)
 class Identifier:
@@ -60,12 +72,12 @@ class Identifier:
     """`class` · `function` · `parameter` · `assignment` · `attribute` · `keyword`."""
 
 
-def _sources() -> Iterator[Path]:
-    yield from sorted(CORE.rglob("*.py"))
+def _sources(root: Path = CORE) -> Iterator[Path]:
+    yield from sorted(root.rglob("*.py"))
 
 
 def _module_name(path: Path) -> str:
-    relative = path.relative_to(CORE.parent.parent).with_suffix("")
+    relative = path.relative_to(PACKAGE.parent).with_suffix("")
     return ".".join(relative.parts)
 
 
@@ -130,14 +142,16 @@ def field_sets() -> dict[str, frozenset[str]]:
 
 
 def identifiers() -> tuple[Identifier, ...]:
-    """Every name the core defines: classes, functions, parameters, assignments, attributes.
+    """Every name **the package** defines: classes, functions, parameters, assignments, attributes.
 
-    Deliberately generous. A name that is only *read* here — `Decimal`, `frozenset` — is
-    somebody else's and says nothing about this system's vocabulary; a name this code
-    **writes down** is a choice somebody made, and claim 7 is about the choices.
+    Deliberately generous, in two directions. A name that is only *read* here — `Decimal`,
+    `frozenset` — is somebody else's and says nothing about this system's vocabulary; a name
+    this code **writes down** is a choice somebody made, and claim 7 is about the choices. And
+    it reads all of `src/holdout/`, not `core/` alone: see `PACKAGE` for what that boundary
+    was hiding.
     """
     found: set[tuple[str, str, str]] = set()
-    for path in _sources():
+    for path in _sources(PACKAGE):
         module = _module_name(path)
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
