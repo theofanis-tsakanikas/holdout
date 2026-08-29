@@ -71,6 +71,45 @@ figure depends on corpus size it is reported as such, never extrapolated to the 
 > with a control arm of 9" is the thing a claim rests on, and only one of the two can be checked
 > against a claim.
 
+> **Restated again 2026-08-29, because the restatement above carried three unmeasured figures —
+> and one of them was the very number it was written to insist on measuring.**
+>
+> The chain of the paragraph above — *100 → 109 pairs → roster 45 → control arm 9* — was measured
+> before **T00E** moved the chain's placement rule, and nobody re-read it afterwards. Measured now,
+> by `python -m ops.roster`, which is the one place that number lives:
+>
+> | scale | stores | pairs | excluded | roster | control arm |
+> |---|---|---|---|---|---|
+> | `scenario` | 100 | 18 | 17 | **83** | 16 |
+> | `scenario` · W2 | 100 | 47 | 34 | **66** | 13 |
+> | `harness` | 320 | 59 | 51 | **269** | 53 |
+> | `harness` · W2 | 320 | 148 | 98 | **222** | 44 |
+>
+> Three things above are wrong, and they fail in three different ways.
+>
+> **The chain is stale.** 109 pairs and a roster of 45 belong to a placement rule the repository no
+> longer has. The finding they carried was real — two files, each correct alone — and T00D and T00E
+> are what closed it. The figures are what the closing made obsolete.
+>
+> **"1,200 leave a roster of 212" was never a measurement.** `--scale` accepts `smoke`,
+> `rehearsal`, `harness` and `scenario`, and the largest is 320. No declared scale reaches 1,200,
+> so that figure was a projection presented in a sentence whose whole argument is that projections
+> are not measurements. It is withdrawn rather than corrected: **1,200 stores is the scenario the
+> system is written for, not a scale this repository has ever run.**
+>
+> **And "the corpus is 100" names the wrong scale.** Claim 2 runs at `harness` — **320 stores, a
+> surviving roster of 269** — and 100 is `scenario`, which proves nothing. The paragraph written to
+> stop the nominal number standing in for the load-bearing one had the nominal number wrong too.
+>
+> *(`about 36M POS lines` is also stale; `corpus/world/README.md` restated it to **39.2M** under
+> T00E and recorded the mismatch against this file. It stayed here for a day.)*
+>
+> **What survives is the argument, and it survives untouched**: the number a claim rests on is the
+> roster a lottery is drawn over, and it is the only one of the two that can be checked. What did
+> not survive is any figure in the paragraph that asserted it — which is the eighth form of the
+> rule in `A guard tested by its author`, and the sharpest: **the statement of a rule is not exempt
+> from it.**
+
 ### The real envelope — what a supermarket may actually do
 
 The system does **not** change prices wherever and whenever it likes. Encoding the envelope so it
