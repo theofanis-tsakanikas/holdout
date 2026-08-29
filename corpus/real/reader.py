@@ -33,6 +33,10 @@ ITEMS_FILE = DATA / "item_categories.csv"
 BASKET_FILE = DATA / "greek-regulated-basket-2026.csv"
 MARGIN_FILE = DATA / "eurostat-sbs-gross-margin-el.csv"
 
+#: Claim 7's corpus: two published vocabularies of the names a person is known by.
+PERSON_PROPERTIES_FILE = DATA / "schemaorg-person-properties.csv"
+PII_ENTITIES_FILE = DATA / "presidio-pii-entities.csv"
+
 #: The months in the corpus, in order, and the pairs that are consecutive. April 2025 is
 #: absent — it is published as a spreadsheet rather than a CSV — so three pairs, not four.
 #: `MANIFEST.yaml` records the gap; nothing here infers across it.
@@ -189,3 +193,57 @@ def median_gross_margin_fraction() -> Decimal:
     figure and this one cannot drift apart. `tests/corpus/test_manifest.py` asserts they agree.
     """
     return statistics.median(o.gross_margin_pct_of_turnover for o in margin_series()) / 100
+
+
+# --------------------------------------------------- claim 7's independent vocabularies
+#
+# The same rule as everything above it: somebody who has never read this repository chose
+# these names. Nothing here decides what a person is, and nothing here knows that a
+# decision key exists — the rows are handed out in the spelling their publishers use, and
+# whoever consumes them declares the derivation that turns `familyName` into `family_name`.
+
+
+@dataclass(frozen=True, slots=True)
+class PersonProperty:
+    """One schema.org property that touches `Person`, as release 30.0 publishes it."""
+
+    property: str
+    describes_a_person: bool
+    """`Person` is in the property's `domainIncludes` — an attribute a person has."""
+
+    names_a_person: bool
+    """`Person` is in the property's `rangeIncludes` — a field that *holds* a person.
+
+    This is the half that matters to a pricing system. `customer`, `member`, `buyer`,
+    `owner`, `recipient` and `underName` all arrive here, and not one of them describes a
+    birthday or a body: they are the shapes a person takes when a record points at one.
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class PiiEntity:
+    """One entity type Microsoft Presidio ships a recognizer for."""
+
+    entity: str
+    region: str
+    """The heading it was published under — Global, USA, UK, Spain, … Carried because it is
+    published, not because anything needs it."""
+
+
+def person_properties() -> tuple[PersonProperty, ...]:
+    with PERSON_PROPERTIES_FILE.open(encoding="utf-8", newline="") as handle:
+        return tuple(
+            PersonProperty(
+                property=row["property"],
+                describes_a_person=row["describes_a_person"] == "true",
+                names_a_person=row["names_a_person"] == "true",
+            )
+            for row in csv.DictReader(handle)
+        )
+
+
+def pii_entities() -> tuple[PiiEntity, ...]:
+    with PII_ENTITIES_FILE.open(encoding="utf-8", newline="") as handle:
+        return tuple(
+            PiiEntity(entity=row["entity"], region=row["region"]) for row in csv.DictReader(handle)
+        )

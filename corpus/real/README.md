@@ -1,9 +1,16 @@
-# `corpus/real/` — prices this project did not choose
+# `corpus/real/` — inputs this project did not choose
 
 Claim 1's trap is that *a planter reading the same contract as the detector is one function
 agreeing with itself*. This directory is the answer to it: real retail prices, a real
 regulated-goods list and a real industry margin, all published by people who have never seen
 this repository.
+
+**Two corpora since 2026-08-29, not one.** Claim 7's trap is the same trap in different
+clothes — *a list of person-shaped words written by whoever also wrote the field names is one
+function agreeing with itself* — so the words are not ours either. Two published vocabularies
+of the names a person is known by now sit beside the prices, under the same four rules and the
+same digests. The rule that decides what belongs in this directory has never been "prices"; it
+is **somebody who has never read this repository chose the inputs**.
 
 **Nothing here imports `holdout`.** No refusal code, no `Money`, no opinion about whether a
 price is admissible. `tests/boundary/test_corpus_imports_nothing.py` fails the build if that
@@ -25,10 +32,32 @@ cannot be edited without something going red. This file is the summary.
 | `data/ons-price-quotes-2025.csv.gz` | 32,480 | individual price quotes collected by hand in UK shops, February–July 2025 |
 | `data/greek-regulated-basket-2026.csv` | 63 | the categories under the Greek gross-margin cap, ΦΕΚ Β΄ 1411/12.03.2026 |
 | `data/eurostat-sbs-gross-margin-el.csv` | 13 | gross margin on goods for resale, Greek supermarkets, 2008–2020 |
+| `data/schemaorg-person-properties.csv` | 156 | schema.org 30.0 — every property whose domain or range includes `Person` |
+| `data/presidio-pii-entities.csv` | 99 | Microsoft Presidio's published list of the PII entity types it detects |
 | `data/item_categories.csv` | 37 | **ours** — the map from an ONS item to a scenario category and a decision ordinal |
 
-The fourth file is in a separate file from the first three because it is the only one this
-repository wrote. Keeping the line visible in a directory listing is deliberate.
+The last file is in a separate file from the rest because it is the only one this repository
+wrote. Keeping the line visible in a directory listing is deliberate.
+
+### The names a person is known by
+
+Two publishers with nothing to do with each other, asking the question from opposite ends.
+schema.org says what a person **has** — `birthDate`, `familyName`, `nationality`, `jobTitle`,
+`taxID` — and, in the half nobody writing a blacklist thinks of, what **holds** a person:
+`customer`, `member`, `buyer`, `owner`, `recipient`, `borrower`, `underName`. Presidio says
+what a de-identification tool goes **looking for**: `US_SSN`, `UK_NHS`, `ES_NIF`,
+`IT_FISCAL_CODE`, `IN_AADHAAR`, `SE_PERSONNUMMER`, `IBAN_CODE`.
+
+Both extractions are mechanical and total — nothing curated, nothing dropped, the publisher's
+own spelling kept — and both are pinned to an exact version rather than to a branch. The
+derivation that turns `familyName` into `family_name` happens in `evals/oversight/build.py`
+and is declared there, not here: a corpus that pre-chewed its rows into the shape the consumer
+wanted would be a corpus the consumer had already touched.
+
+Measured against the 317 names they yield between them, the hand-written list of person-shaped
+words this repository had been carrying catches **35 — eleven per cent**. That number is the
+reason this half of the corpus exists, and `evals/oversight/README.md` argues what follows
+from it.
 
 ### The prices
 

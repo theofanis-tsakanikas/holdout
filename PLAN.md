@@ -602,6 +602,84 @@ last two checks would have been vacuously green on the real tree, so they are ar
 skill directory built inside the test, which is what `tests/ops/test_expiry.py` already does for
 `make expiry`. The suite is **828**.
 
+**T006 — `evals/oversight/`, `make claim-7`, and the fifth instance of this project's most
+frequent defect · 2026-08-29.** Claim 7 said *the decision key has no customer dimension, and a
+test goes red if one appears*. The test existed and was good. What nobody had asked was **who
+wrote the words it looked for** — a tuple of person-shaped substrings, written by whoever also
+wrote the field names it was checking, which is a guard tested by its author with no prose and no
+gate behind it. Claim 7's row in `CLAUDE.md` was the one row of seven with **no trap written
+beside it**, and that is exactly where it sat.
+
+The answer is that the words are not ours. `corpus/real/` gained a second corpus under the same
+four rules as the first: **156 schema.org properties** whose domain or range includes `Person`
+(release 30.0, pinned) and **99 Presidio PII entity types** (pinned at a commit), both extracted
+mechanically and kept in the publisher's own spelling. They yield **317 names**. Measured:
+
+```
+attacks planted                          17,752      317 names on each of 56 types
+  refused by the closed field set        17,752
+  refused by the hand-written word list   1,960      35/317 = 11.0% of the names
+```
+
+**Eleven per cent.** The list misses `family_name`, `given_name`, `nationality`, `job_title`,
+`spouse`, `buyer`, `owner`, `recipient` and 274 others. That is not an argument for a longer list —
+a longer list is the same function agreeing with itself more loudly — it is the argument for the
+structure, and `O7` makes it a gate: no attack may ever be caught by the word list alone.
+
+Twelve checks, **seven mutations, all seven bit**, and the two that earn their checks are the two no
+field-set comparison can see: a `customer` **parameter** on `dispatch_to_shelf`, and a
+`ladder_policy@v1.yaml` that becomes idempotent per customer with **no Python changing at all**.
+The second one restated `gate-proof`'s independence rule, which had said the planter edits
+`src/holdout/`: what matters is not which directory the planter may touch but which one it may
+not — `ops/` and `corpus/real/` are the detector and are never mutation targets. `ops/personhood.py`
+now holds the registry and the word list with two callers, the way `ops/isolation.py` holds the
+corpus barrier.
+
+Six of the twelve checks cannot have a mutation, because breaking them means editing the detector
+rather than the system. They are armed by `tests/evals/test_oversight_instrument.py` on a
+deliberately broken arrangement — the same answer `tests/evals/test_ledger.py` already gave for
+`gate-proof` itself, which had never been written down as part of the shape. It is now, in
+`evals/README.md`: **a check with no mutation names the reason it cannot have one, and is broken
+deliberately somewhere.**
+
+Two deferrals, both real. Claim 7 is proved over `holdout.core` and the contracts and nothing else
+exists yet — unlocked by T011, because a scan against a `pipelines/` that does not exist is a check
+with nothing to check. And the two vocabularies are pinned, so nothing notices a name published
+after 2026-08-29; that ages the *net* and never the *guard*, and it expires on 2027-02-28.
+
+**What the review cost, and the one thing it could establish that the branch could not.** Oversight
+level 2 re-downloaded both vocabularies, wrote its own extractor without touching
+`corpus/real/fetch.py`, and reproduced both committed CSVs **byte for byte** — 156, 99, six digests,
+317 derived independently, and every ALL_CAPS token in the Presidio source that is not in the corpus
+accounted for. **The extraction is mechanical; nobody filtered.** An author cannot establish that
+about their own extractor, which is the whole reason level 2 is not a formality.
+
+Then four blocking findings, and the shape of all four is the same. **The branch about guards tested
+by their authors shipped three of them in its own work.** Its prose named `telephone` and
+`personnummer` as names the word list misses — it catches both, because `PERSON_SHAPED` contains
+`phone` and `person` and matches by substring, and the exemplars had been picked by reading the
+lexicon rather than by asking the function that would make the sentence true. Its replacement guard
+exempted any type whose name begins with `_` while printing the question *"is every type written
+down"*; the reviewer renamed the class the mutation plants and watched it survive, so the registry is
+now 49 and a seventh mutation plants `_VisitContext`. Its deferral said the scan covered the whole
+system while `src/holdout/contracts/` — fifteen modules — sat outside `reference.CORE`, so a
+`customer` parameter on `compile_agent_tool` would have gone unseen; the identifier scan now reads
+all of `src/holdout/`, 820 → 1,181. And its restatement of `gate-proof`'s independence rule
+enumerated what the planter *may* edit and was false of the committed set, because three claim-2
+mutations edit `evals/uplift/`; it now names what it forbids, behind
+`ledger.no-mutation-edits-the-detector` — the separation `engine.py` calls the one that carries its
+argument, which until this branch had no function behind it at all.
+
+`make check` green at **919 tests** · `make claim-7` **12/12 with 7/7 mutations biting**, 37s on the
+laptop and **under two minutes on the four-core runner, on every CI run so far** — measurements
+spanning 1m7s to 1m45s, uncounted on purpose, because a count of CI runs is stale by the next push. Stated as a bound because the three point estimates this line carried before
+it were each overtaken: by a mutation landing, by the registry growing, and finally by the next run
+simply being *faster*. The quantity has two independent reasons to move, so the span is evidence for
+the bound rather than a second assertion.
+*Figures restated after merging `main`: claims 3 and 4 added seven types and twenty fields to the
+registry, so the products moved — 15,533 → 17,752 attacks over 49 → 56 types. The 35 of 317 and the
+11.0% did not move, because they are properties of the two vocabularies and not of this estate.*
+
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
 **Claim 3 closed 2026-08-29 — the one door with no key, T004.** `make claim-3` is green at 10
@@ -646,9 +724,6 @@ assertion: `strata_of` is order-independent by its own sorting, not because `Cov
 is sorted, so `A4` was widened to compare the whole record the seal commits to.
 `evals/assignment/README.md` §6 keeps that account.
 
-### Closed in this phase
-
-Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1, 2 and 3 have closed**,
 
 **What claim 4 settled.** `holdout.core.demand.censoring` reads a store-SKU-day as one of two
 **types**: the shelf held and the day has `units`, or the shelf emptied and the reading has
@@ -691,7 +766,7 @@ found rather than a review.
 
 ### Closed in this phase
 
-Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1, 2 and 4 have closed**,
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **All five have closed**,
 and claim 2 is the one CLAUDE.md calls the one that separates this from a demo.
 
 **Then an integration session**, before the next phase opens: read the whole repository against

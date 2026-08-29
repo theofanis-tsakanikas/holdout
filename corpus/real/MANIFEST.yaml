@@ -1,9 +1,18 @@
-# The independent corpus — what is in it, where each number came from, and what it is not.
+# The independent corpora — what is in them, where each number came from, and what they are not.
 #
 # Claim 1's declared trap is that *a planter reading the same contract as the detector is
 # one function agreeing with itself*. This file is the answer. Every price, every category
 # and every margin below was published by somebody who has never seen this repository, and
 # `corpus/real/` imports nothing from `src/holdout/` — a test enforces that.
+#
+# **Restated 2026-08-29 (T006).** This directory now holds two corpora, not one. The second
+# answers claim 7's trap, which is the same trap in different clothes: *a list of
+# person-shaped words written by whoever also wrote the field names is one function agreeing
+# with itself.* So the words are not ours either. `schemaorg-person-properties.csv` and
+# `presidio-pii-entities.csv` are two published vocabularies of the names a person is known
+# by, from two publishers with nothing to do with each other and nothing to do with this
+# project. Measured against them, the hand-written word list this repository had been
+# carrying catches **35 of 317** — which is why it is a net and not the guard.
 #
 # Four rules, the same four the contract layer lives by:
 #
@@ -233,6 +242,92 @@ sources:
       publishes it. The derivation below uses the **median** of the thirteen years rather
       than the mean, so the break moves nothing — which is why a median was chosen, and it is
       said here rather than the row being deleted.
+
+  - id: schemaorg_person_properties
+    kind: observed
+    title: >-
+      schema.org vocabulary, release 30.0 — every property whose domain or range includes
+      `Person`
+    publisher: schema.org (W3C Schema.org Community Group)
+    url: https://schema.org/version/30.0/schemaorg-current-https-properties.csv
+    licence: >-
+      Creative Commons Attribution-ShareAlike 3.0 (https://schema.org/docs/terms.html).
+    attribution: >-
+      Contains the schema.org vocabulary, released by the W3C Schema.org Community Group
+      under CC BY-SA 3.0.
+    retrieved_on: 2026-08-29
+    file: data/schemaorg-person-properties.csv
+    sha256: 37456e276cc9c6f3168957fd33ae1bf029645f43ecb68e15a76b495d6cba7bb5
+    rows: 156
+
+    what_it_is: >-
+      The names the most widely deployed data vocabulary on the web uses when a record has
+      anything to do with a person. Two kinds, and the file keeps them apart because they are
+      different questions. `describes_a_person` — `Person` is in the property's
+      `domainIncludes` — is an attribute a person **has**: `birthDate`, `familyName`,
+      `nationality`, `jobTitle`, `telephone`, `taxID`. `names_a_person` — `Person` is in its
+      `rangeIncludes` — is a field that **holds** one: `customer`, `member`, `buyer`, `owner`,
+      `recipient`, `underName`, `borrower`, `attendee`. The second kind is the one a pricing
+      system would actually grow, and it is the one no reasonable person writing a blacklist
+      of "person-shaped words" thinks of.
+
+    extraction: >-
+      Mechanical and total. A row is kept when the exact IRI `https://schema.org/Person`
+      appears in `domainIncludes` or in `rangeIncludes`; nothing is curated, dropped or
+      renamed, and the property is written down in the publisher's own camelCase. **Turning
+      `familyName` into `family_name` is a derivation and it does not happen here** — it
+      happens in `evals/oversight/build.py`, which says so. A corpus that pre-chewed its rows
+      into the shape the consumer wanted would be a corpus the consumer had already touched.
+
+    pinned_at_a_version_on_purpose: >-
+      Release 30.0, not `latest`. "Latest" is not a provenance: it names a different file
+      every few months and nothing would go red. Verified 2026-08-29 that the 30.0 file and
+      the then-current `latest` file are byte-identical, so the pin costs nothing today and
+      is the difference between reproducible and not tomorrow.
+
+    what_it_is_not: >-
+      Not a list of what is personal data in law, and not a claim that every one of these 156
+      names would identify somebody. `brand`, `award`, `height` and `weight` are on it because
+      schema.org attaches them to `Person`, and they are kept for the reason everything else
+      is kept: the moment this repository starts deciding which of somebody else's names count,
+      it is choosing its own inputs again.
+
+  - id: presidio_pii_entities
+    kind: observed
+    title: PII entities supported by Microsoft Presidio
+    publisher: Microsoft (Presidio, MIT licence)
+    url: https://raw.githubusercontent.com/microsoft/presidio/eb93051b60b7daa44b4b8b1acdcce60522bacc8a/docs/supported_entities.md
+    licence: MIT
+    retrieved_on: 2026-08-29
+    file: data/presidio-pii-entities.csv
+    rows: 99
+    sha256: 9555c959654c234de6a07667eadda23e1b676f3c6c69dfd9e9dfbd6af849f893
+
+    what_it_is: >-
+      The other half of the question, asked by somebody solving the opposite problem. schema.org
+      says what a person **has**; a de-identification tool says what a detector goes **looking
+      for** — `US_SSN`, `UK_NHS`, `ES_NIF`, `IT_FISCAL_CODE`, `IN_AADHAAR`, `SE_PERSONNUMMER`,
+      `IBAN_CODE`, `MEDICAL_LICENSE`. Two publishers who have never coordinated, disagreeing
+      about what matters, is worth more than either list twice as long.
+
+    extraction: >-
+      Every first cell of every Markdown table row that is an ALL_CAPS token, with the `###`
+      heading it appeared under carried alongside it. Nothing curated. The heading is recorded
+      because it is published, not because anything uses it.
+
+    pinned_at_a_commit_on_purpose: >-
+      Commit eb93051b, not `main`. Same argument as the schema.org version pin: a branch is a
+      moving target and a digest over a moving target is a digest that will one day be wrong
+      for a reason that is nobody's fault.
+
+    what_it_is_not: >-
+      Not person-shaped in every entry. `DATE_TIME`, `LOCATION`, `URL` and `UUID` are on the
+      published list and are kept on it, unedited. They cost almost nothing — measured, none
+      of the 317 names either vocabulary yields collides with any of the 222 fields carried by
+      the 56 types in `holdout.core`, which is what `O4` scans. `URL` does collide once, with
+      `Provenance.url` in the contract loader, and that collision is published with its reason
+      rather than filtered away. Removing an entry would be this repository curating an input
+      it does not own.
 
 # ------------------------------------------------------------------------ what is derived
 

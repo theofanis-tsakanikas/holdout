@@ -24,6 +24,8 @@ from corpus.real import (
     items,
     margin_series,
     median_gross_margin_fraction,
+    person_properties,
+    pii_entities,
     quotes,
     regulated_basket,
 )
@@ -74,10 +76,36 @@ def test_declared_row_counts_are_the_rows_that_are_there(manifest: dict[str, Any
         "data/greek-regulated-basket-2026.csv": len(regulated_basket()),
         "data/eurostat-sbs-gross-margin-el.csv": len(margin_series()),
         "data/item_categories.csv": len(items()),
+        "data/schemaorg-person-properties.csv": len(person_properties()),
+        "data/presidio-pii-entities.csv": len(pii_entities()),
     }
     declared = {source["file"]: source["rows"] for source in manifest["sources"]}
     declared.update({entry["file"]: entry["rows"] for entry in manifest["ours"]})
     assert counted == declared
+
+
+def test_the_two_vocabularies_are_somebody_else_s_words_in_somebody_else_s_spelling() -> None:
+    """Claim 7's corpus, held to the same rule as claim 1's: nothing here was chosen here.
+
+    Two properties, and they are the whole of why these files are evidence. The spellings
+    are the publishers' own — camelCase from schema.org, SCREAMING_SNAKE from Presidio — so
+    a reader can see that nothing was pre-chewed into the shape the eval wanted. And both
+    kinds of schema.org property are present: an attribute a person *has*, and a field that
+    *holds* one. A corpus with only the first kind would have missed `customer` entirely,
+    which is the name a supermarket would actually reach for.
+    """
+    properties = person_properties()
+    assert any(p.property == "familyName" and p.describes_a_person for p in properties)
+    assert any(p.property == "customer" and p.names_a_person for p in properties)
+    assert sum(1 for p in properties if p.names_a_person) > 0
+    assert sum(1 for p in properties if p.describes_a_person) > 0
+
+    entities = pii_entities()
+    assert any(e.entity == "US_SSN" and e.region == "USA" for e in entities)
+    assert all(e.entity == e.entity.upper() for e in entities)
+    assert all(e.region for e in entities), (
+        "every entity carries the heading it was published under"
+    )
 
 
 def test_the_greek_table_is_the_63_the_decision_states(manifest: dict[str, Any]) -> None:

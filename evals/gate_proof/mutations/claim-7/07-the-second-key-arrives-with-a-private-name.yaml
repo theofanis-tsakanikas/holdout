@@ -1,0 +1,29 @@
+id:          the-second-key-arrives-with-a-private-name
+claim:       7
+eval_module: evals.oversight
+targets:     [O3.every-type-in-the-core-is-written-down]
+
+breaks: >-
+  the same second key as mutation 03, spelled with a leading underscore. It is the same
+  break in the one shape the registry's own convention makes invisible: `unlisted()` used to
+  skip any class whose name starts with `_`, on the reasoning that a private helper is not on
+  the decision path — so `VisitContext` was refused and `_VisitContext` walked straight
+  through, while `O3`'s printed question said *every* type.
+
+  This mutation exists because oversight level 2 renamed the class in mutation 03 and watched
+  it survive. It is planted rather than argued about, so that nothing but the code decides
+  whether the hole is shut.
+
+file:   src/holdout/core/decision.py
+anchor: |
+  class PriceSource(StrEnum):
+replacement: |
+  @dataclass(frozen=True, slots=True)
+  class _VisitContext:
+      """Which trip to the till this decision belongs to."""
+
+      till_id: str
+      visit_ordinal: int
+
+
+  class PriceSource(StrEnum):

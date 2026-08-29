@@ -1,0 +1,17 @@
+id:          the-metric-is-defined-per-customer
+claim:       7
+eval_module: evals.oversight
+targets:     [O10.no-contract-declares-a-customer-dimension]
+
+breaks: >-
+  the ladder policy becomes idempotent per customer as well as per SKU, store and rung. Read
+  it plainly and it says the thing claim 7 denies: a decision is taken *per customer*. Not one
+  line of Python changes — the contract layer is where a grain and an idempotency key are
+  declared, and they compile into a dbt model, a SQL function, the agent's tool definition and
+  the readout query. Every check in this eval that reads Python stays green.
+
+file:   contracts/policies/ladder_policy@v1.yaml
+anchor: |
+  idempotency_key: [sku_id, store_id, ladder_step]
+replacement: |
+  idempotency_key: [sku_id, store_id, ladder_step, customer_id]

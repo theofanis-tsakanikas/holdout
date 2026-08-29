@@ -1,0 +1,45 @@
+id:          the-actuation-type-remembers-the-shopper
+claim:       7
+eval_module: evals.oversight
+targets:     [O2.every-decision-path-type-carries-exactly-the-fields-written-down]
+
+breaks: >-
+  the certificate that reaches an electronic shelf label carries the loyalty tier the price
+  was issued for. It is planted on `CertifiedPrice` deliberately, because that type is the
+  one place claim 7 was blind: it is not a dataclass — its constructor refuses, which is most
+  of claim 1 — so a scan built on `dataclasses.fields` sees nothing here at all. A review
+  found exactly this hole in an earlier version of the suite's own test.
+
+  `loyalty` is on the hand-written word list and on neither published vocabulary, so O4 stays
+  green and the closed field set is the only thing that refuses. That is the point.
+
+file:   src/holdout/core/guardrails/certificate.py
+anchor: |
+  __slots__ = (
+      "_announcement",
+      "_bounds",
+      "_checks",
+      "_cost_freshness",
+      "_decided_at",
+      "_decided_on",
+      "_key",
+      "_marker",
+      "_price",
+      "_source",
+      "_witness",
+  )
+replacement: |
+  __slots__ = (
+      "_announcement",
+      "_bounds",
+      "_checks",
+      "_cost_freshness",
+      "_decided_at",
+      "_decided_on",
+      "_key",
+      "_loyalty_tier",
+      "_marker",
+      "_price",
+      "_source",
+      "_witness",
+  )

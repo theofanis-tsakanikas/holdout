@@ -1,8 +1,9 @@
 # `gate-proof` — break every gate on purpose, and know who owns each break
 
 A gate that has never refused anything has not been tested. This directory refuses to take
-that on trust: it plants a deliberate break in `src/holdout/`, runs a claim's eval against
-it, and demands that **the check named in advance** goes red for the stated reason.
+that on trust: it plants a deliberate break in the system — `src/holdout/`, and since claim 7
+`contracts/` as well — runs a claim's eval against it, and demands that **the check named in
+advance** goes red for the stated reason.
 
 Two halves, and they are different jobs.
 
@@ -78,8 +79,15 @@ agreeing with itself.*
 
 Three separations, and only the third does real work:
 
-* **the planter edits `src/holdout/`; the detector reads `corpus/real/`.** Neither consults
-  `contracts/` to decide anything;
+* **the planter never edits the detector.** For claim 1 that reads "the planter edits
+  `src/holdout/`; the detector reads `corpus/real/`". **Restated 2026-08-29 with claim 7**,
+  whose most valuable mutation edits `contracts/policies/ladder_policy@v1.yaml`: a decision
+  that becomes idempotent per customer changes no Python at all, and a planter confined to
+  `src/` could not have written it. So the rule names what it forbids rather than what it
+  allows — `ops/` and `corpus/`, refused by `ledger.no-mutation-edits-the-detector`. The
+  first attempt at this restatement enumerated the trees a planter *may* edit and was false
+  of the committed set: three of the thirty mutations edit `evals/uplift/`, because claim 2's
+  machinery is partly what claim 2 is proving;
 * **a mutation is written as a behaviour change in domain terms** — "the margin floor rounds
   the wrong way", "a frozen category is only a warning" — and never as "make `G2` fail". The
   check it must trip is declared in the file, in advance;
@@ -120,7 +128,7 @@ author is a curated mutation set that was written after looking at the answers.
 ## What this does not prove
 
 **That every gate bites on every mutation.** These are the breaks we thought of — the same
-honest limit the six adversarial worlds carry for claim 2 — and sixteen curated mutations
+honest limit the six adversarial worlds carry for claim 2 — and forty-nine curated mutations
 are not mutation testing. A gate can be perfect against all of them and still have a hole
 nobody imagined.
 

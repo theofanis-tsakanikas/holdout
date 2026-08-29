@@ -124,7 +124,7 @@ workspace and no credentials. If a change does not serve one of them, question i
 | **4** | **A stock-out is never read as zero demand.** *Trap: a simulator that generates censoring with the model that corrects it → validated on a held-out segment with full shelf availability.* | `evals/censoring/` |
 | **5** | **One definition, three mechanisms, the same number.** The source of truth is the contract in this repository, compiled into a Delta view, the agent's tool definition and the experiment readout. Compared as integers, no tolerance. *Trap: two consumers calling the same function prove nothing → three genuinely different mechanisms, sharing only the definition.* | `evals/definition/` |
 | **6** | **The design engine refuses an invalid design regardless of where the judgment came from** — human, declared policy, or model. When the source is a model: N designs proposed, M refused, and K of those would have produced a confidently wrong number. *Trap: an LLM judge in the same family is a correlated critic → **the judge never rules on validity**; code does. The judge rules only on design quality.* | `evals/design/` |
-| **7** | **A decision that targets a person is structurally impossible.** The decision key has no customer dimension, and a test goes red if one appears. | `evals/oversight/` |
+| **7** | **A decision that targets a person is structurally impossible.** The decision key has no customer dimension, and a test goes red if one appears — on every type on the decision path and in the contracts, which compile into four consumers without a Python type moving. *Trap: a list of person-shaped words written by whoever also wrote the field names is one function agreeing with itself → the words come from two published vocabularies, and the guard is the **closed field set**, which reads no names at all.* **Measured: the hand-written list catches 35 of 317; the closed field set refuses 17,752 of 17,752.** | `evals/oversight/` |
 
 **Claim 2 is the one that separates this from a demo. Claim 6 is the one nobody builds.**
 
@@ -638,11 +638,13 @@ src/holdout/core/      pure functions — no SDK, no engine
 src/holdout/adapters/  thin cloud callers
 contracts/             the source of truth (above)
 corpus/world/          the six adversarial worlds — NO import path to core/
-corpus/real/           real published prices — claim 1's independent corpus, digest-checked
+corpus/real/           what somebody else published, digest-checked — claim 1's prices, and
+                       claim 7's two vocabularies of the names a person is known by
 evals/                 one directory per claim · report.py is the shared shape
   gate_proof/          the planted mutations: green first, named target, STALE on a moved one
-ops/                   the rules the product code is measured by — the corpus barrier
-                       (one implementation, two callers) and the deferral registry
+ops/                   the rules the product code is measured by — the corpus barrier and
+                       the decision key's closed field set (one implementation, two callers
+                       each: a test and an eval) and the deferral registry
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
 pipelines/ingest/      Zerobus driver · Lakeflow Connect · the S3 bulk load
@@ -966,8 +968,24 @@ The project's most frequent defect, five times over:
 | `main_guard` | refused `git add -A && git commit` on one line and allowed the same two commands on two lines. It bit the shape a reviewer writes in a test and missed the shape a session actually writes |
 | the corpus barrier | missed `import src.holdout`, which works because `src/` is an implicit namespace package — the spelling that matches the file tree, and the one T00A's own description used. **The gate behind the hook had the same hole, and the branch that rewrote that gate did not close it** |
 | claim 4's `C6` | offered `fit` a censored store-day **on its own** and demanded a refusal. A `fit` that skipped censored days instead of refusing them still went red on a pile of one, because the empty curve it then built was refused by a *different* guard. The check tested the shape its author pictured — one bad day — rather than the shape a caller hands over, which is a pile with a bad day in it |
+| claim 7's word list | the guard against a customer dimension was a tuple of person-shaped substrings, written by whoever also wrote the field names it was checking. Measured against 156 schema.org properties and 99 Presidio entity types — 317 names, chosen by two publishers who have never read this repository — **it catches 35 of them, 11%**. It misses `family_name`, `nationality`, `job_title`, `spouse`, `buyer`, `owner`, `recipient` and 275 others |
+| claim 7's own registry | and then, one row down, the same defect inside the fix. `unlisted()` exempted any type whose name begins with `_`, so the guard refused a planted `VisitContext` and waved through `_VisitContext` — while printing the question *"is **every** type written down"*. It was found by oversight level 2 renaming the class the mutation plants. **A guard tested by its author is tested in the shape the author's own naming convention produces** |
 
-Each of the first three was declared impossible by prose sitting beside the code.
+Each of the first three was declared impossible by prose sitting beside the code. **The word
+list had no prose at all and no gate behind it either** — claim 7's row in the table above was
+the one row of seven with no *trap* written beside it, and that is exactly where it sat
+unexamined. Six claims had somebody write down what agreeing with itself would look like here;
+this one had a tuple of words and nobody had asked who wrote them. A missing trap is not a
+formatting omission. It is the place the defect is.
+
+**And the row after it is the one worth reading twice.** The branch that fixed the word list —
+the branch whose entire subject was *who chose the case this guard is tested on* — shipped the
+same defect one layer in, in its own replacement guard, and did not see it. Its author wrote the
+mutation that plants a type the registry has not been told about, chose the name
+`VisitContext`, watched it bite, and never tried the other spelling. **The rule does not stop
+applying to the person who has just finished quoting it**, which is the argument for oversight
+level 2 existing at all rather than being a formality: three of the four rows above were found
+by a reviewer, and so was this one.
 
 `gate-proof` catches this for gates, because a mutation is planted by something that is not the
 detector. **Nothing catches it for hooks, barriers or tests**, and that is where it keeps happening.
