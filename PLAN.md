@@ -604,6 +604,52 @@ skill directory built inside the test, which is what `tests/ops/test_expiry.py` 
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
+**Claim 3 closed 2026-08-29 — the one door with no key, T004.** `make claim-3` is green at 10
+checks over 36 declared configurations, with nine planted mutations of which nine bit. What the
+piece settled is mostly about **what a reproducibility claim is allowed to be checked by**.
+
+`draw` reads no clock, no environment and no random source, so calling it twice agrees with itself
+by construction — and would agree just as loudly on a lottery that never consulted the committed
+seed. That is claim 3's trap and it is not the shape the other claims wear. Three doors carry the
+independence instead: **a second implementation** (BLAKE2b written out from RFC 7693 in Python,
+with its own framing, rank arithmetic and selection, driven against the vector RFC 7693 Appendix A
+publishes); **the per-unit path**, which re-derives one store's arm the way a readout a month later
+has to, from the seed, the candidate index and that store's own stratum; and **another
+interpreter**, three subprocesses under declared `PYTHONHASHSEED` values, which is the only way to
+see a tie broken by set-iteration order. The mutation that makes `strata._hardest_to_match` scan
+unsorted is invisible to every in-process repetition and bites there.
+
+**The incentive is published as a number.** A better-balanced candidate exists for **15 of 30**
+designs inside a 24-candidate scan, improving the worst standardised difference by **0.2422**
+against a declared tolerance of 0.10. That is the size of the prize somebody holding the seed is
+asked not to take, and every substitution — including the careful forger who recomputes the digest
+so the seal agrees with itself — is refused, `CONTAMINATED_ASSIGNMENT` read off the refusal after
+moment 3 has actually run.
+
+**And one finding in the door itself, which closed in the same branch.** As first measured,
+`contamination.check` derived the roster it walks from the arms it is checking, so a control store
+deleted from the assignment table with the digest recomputed to match was invisible to it — 24 of
+72 erasure routes, refused only by `readout.close` one function later. It was carried as a
+deferral, and **oversight level 2 found the deferral wrong rather than the measurement**: `check`
+already computes `redraw(seal)`, whose key set is the roster the lottery was drawn over, taken
+from the committed strata — and then walked `seal.roster` one line later. The fix added no
+argument and moved no signature. `A8` now asserts both layers, a ninth mutation reverts the line
+that closed the gap, and `docs/DECISIONS.md` keeps the deferral beside its restatement.
+
+That is the boxed rule pointed at a **deferral** for the first time: a deferral is an assertion
+about what the system does, wearing a cost estimate instead of a verb, and this one was written
+against an imagined fix rather than against the function that would make it true. `make expiry`
+could not have caught it — it checks that an unlock condition is present, never that it is right.
+
+**And one mutation survived on the first run**, corrected in the eval rather than by widening the
+assertion: `strata_of` is order-independent by its own sorting, not because `CovariateMatrix.units`
+is sorted, so `A4` was widened to compare the whole record the seal commits to.
+`evals/assignment/README.md` §6 keeps that account.
+
+### Closed in this phase
+
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1, 2 and 3 have closed**,
+
 **What claim 4 settled.** `holdout.core.demand.censoring` reads a store-SKU-day as one of two
 **types**: the shelf held and the day has `units`, or the shelf emptied and the reading has
 `at_least` and no `units` attribute at all — so a caller who wants a number has to say what it did

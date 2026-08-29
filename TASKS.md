@@ -684,8 +684,95 @@ closes        make claim-3 green. Assignment from a committed seed, exactly repr
 out_of_scope  The other claims.
 stop_at       After claim-3 and its mutation refuse the planted break by name.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed, and the numbers it closes on.** `make claim-3` is green: **10 checks over 36
+declared configurations, and nine planted mutations of which nine bit.**
+
+```
+A1   4129/4129 units agree with an independently implemented lottery, over 30 configurations
+A5   3/3 interpreters agree on one fingerprint of every stratum and every arm
+A6   273/273 attempts refused · 12 declared in-process routes, 9 of them per seal
+A7   30/30 forgeries refused, over the 15 designs of 30 where a better-balanced candidate
+     exists inside a 24-candidate scan — careless and careful each
+A8   72/72 caught by the contamination check · 72/72 named by the readout
+A9   24/24 clean readouts pass · 9/9 substituted readouts refuse CONTAMINATED_ASSIGNMENT
+A10  RFC 7693 Appendix A reproduced · 176/176 of a declared sweep against hashlib
+```
+
+**The trap was named before any code was written, and it is not the one the other claims carry.**
+Verifying that a draw is reproducible by running the draw again is a deterministic function
+repeated: `draw` reads no clock, no environment and no random source, so it agrees with itself —
+and would agree just as loudly on a lottery that ignored the committed seed, or one that handed the
+holdout to the lowest-numbered store in each stratum. So the independence arrives by three other
+doors, each named on the check that uses it:
+
+- **a second implementation** — `evals/assignment/blake2b.py` is BLAKE2b written out from RFC 7693
+  in Python, and `reference.py` recomputes the draw and the digest over it with its own framing, its
+  own rank arithmetic and its own selection. `A10` drives that hash against the vector **RFC 7693
+  Appendix A** publishes, which is the only expected answer in this eval chosen by somebody who has
+  never seen the repository;
+- **the per-unit path** — `A3` re-derives a store's arm the way a readout a month later has to, from
+  the seed, the candidate index and that store's own stratum, never touching the seal;
+- **another interpreter** — `A5` recomputes the whole grid in subprocesses under three declared
+  `PYTHONHASHSEED` values, which is the only way to see a tie broken by set-iteration order. The
+  mutation that makes `strata._hardest_to_match` scan its unmatched set unsorted is invisible to
+  every in-process repetition and bites here.
+
+**The incentive to fish is measured, not asserted.** Anyone holding the committed seed can generate
+every candidate and see which one flatters the design. In this grid a better-balanced candidate
+exists for **15 of 30** designs, improving the worst standardised difference by **0.2422** on
+average against a declared tolerance of 0.10. `A7` substitutes it — including as the careful forger
+who recomputes the digest so the seal agrees with itself — and `A9` drives the substitution through
+the whole of moment 3 and reads `CONTAMINATED_ASSIGNMENT` off the refusal.
+
+**The finding, and it closed in the same branch.** As first measured, `contamination.check` did
+not see a store erased from the assignment table: it derives the roster it walks **from the arms
+it is checking**, so a control store deleted with the digest recomputed to match left nothing to
+compare — it reported the assignment intact and `sealed()` agreed. 24 of 72 erasure routes, and
+what refused them was `readout.close`'s stray-outcome guard one function later, holding only
+while the erased store still reports an outcome. The eval published the split as
+`48/72 = 66.67%` and `docs/DECISIONS.md` carried the rest as a deferral.
+
+**Oversight level 2 found the deferral wrong rather than the measurement.** `check` already
+computes `redraw(seal)` and then walks `seal.roster`, one line apart — and `redraw`'s key set
+*is* the roster the lottery was drawn over, taken from the committed **strata**, which
+`digest_for` commits as their own section. `frozenset(drawn) - frozenset(seal.roster)` names the
+erased store. The deferral's argument — that closing it needed a contract and signature change —
+was written against an imagined fix rather than against the function that would make it true.
+No argument was added and no signature moved: `Contamination` gained a `dropped` field and
+`is_clean` a clause. The strata are a **sound** witness rather than a handy one, because deleting
+the unit from them as well changes which unit holds the smallest rank in that stratum and
+`reassigned` fires instead.
+
+`A8` now asserts **both** layers, per route, against a phrase each route declares in advance —
+either alone would have hidden this, and a readout that declined `POWER_NOT_REACHED` on an
+emptied assignment has caught nothing. Two mutations hold the pair open, and the ninth
+(`the-contamination-check-trusts-the-roster-it-is-handed`) reverts the line that closed the gap
+so it cannot be removed in silence. `docs/DECISIONS.md` keeps the deferral **and** its
+restatement: the delta is the finding, because a deferral is an assertion about what the system
+does wearing a cost estimate instead of a verb, and `make expiry` checks only that an unlock
+condition is present, never that it is the right one.
+
+**One mutation survived and the eval was fixed, not the assertion.** The break that walks the
+covariate matrix in arrival order reported `SURVIVED` against `A4`, and correctly: `strata_of` is
+order-independent at every point by its own sorting, not because `CovariateMatrix.units` is sorted.
+What the break does move is `covariate_digest`, so `A4` now compares the whole record the seal
+commits to — strata, arms, covariate digest and the standardised differences — and it bites.
+`evals/assignment/README.md` §6 keeps the account.
+
+**Two shapes reached from the corpus that the contract's own values cannot.** At the declared 20%
+holdout share no roster this corpus produces can reach the `None` the design engine turns into
+`NO_ADMISSIBLE_ASSIGNMENT` — a 20% control arm always leaves five units to a stratum — so the grid
+sweeps the share and six configurations reach it at 70%. And the rosters are the ones that survive
+`feasibility.neighbour_exclusions`, not the store counts. Over the eval's own two chain seeds:
+100 stores leave a roster of **65 to 83** depending on how clustered the world is, and 320 leave
+**218 to 269**.
+
+**Cost.** `make eval-assignment` is about 17 s; `make claim-3` is 3 min 14 s cold, which is
+ten runs of the eval — one baseline and nine mutations. A chain is placement arithmetic rather than a
+simulation, so there is no world cache and no smaller mutation configuration to keep in step.
 
 **What T002B changed about what claim 3 has to prove.** "Exactly reproducible" now takes **two**
 committed things, not one: the seed, and the **strata** the lottery drew within. The strata are a

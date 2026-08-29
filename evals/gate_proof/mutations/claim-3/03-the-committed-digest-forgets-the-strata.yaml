@@ -1,0 +1,20 @@
+id:          the-committed-digest-forgets-the-strata
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A2.the-committed-digest-matches-an-independent-recomputation
+  - A6.no-in-process-route-moves-a-unit-between-arms
+
+breaks: >-
+  the digest that survives a round trip through a table stops covering the strata. The strata
+  are the restriction the lottery drew under, so a moved boundary changes which draws were
+  ever possible — the same edit as a moved arm wearing a subtler coat — and after this it
+  changes nothing the seal can notice about itself.
+
+file:   src/holdout/core/experiment/assignment.py
+anchor: |
+  for stratum in strata:
+      parts.append("stratum")
+      parts.extend(stratum)
+replacement: |
+  pass
