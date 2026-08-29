@@ -959,6 +959,20 @@ to record until there is an estate; `SCENARIO.md` is a writing task, not a block
 phase 3, and specifically before the network path from the workspace to RDS is attempted — CLAUDE.md
 requires that verification to happen **before** phase 3, not inside it.
 
+> **Half closed 2026-08-30 by T007.** `docs/SCENARIO.md` exists and the condition it carried is met
+> ahead of phase 2. `DAY-ONE.md` is untouched and stays here on its original condition: it still has
+> nothing to record until there is an estate, and writing it now would be a document describing
+> manual work nobody has attempted.
+>
+> **What the writing of it cost, recorded because it is the reason the entry was worth keeping.**
+> The file is written under a four-way rule — every number is measured, declared, cited or scenario,
+> and anything that fits none of the four does not go in. Recording a figure as *measured* means
+> re-running the command rather than copying it, and W5's four counts in `corpus/world/README.md`
+> did not come back the same at either scale. They were taken before T003 moved that world's
+> pathology from the basket line to the store-day, and nothing re-runs them — which is the entry
+> two above this one, *the scenario scale is measured by hand, not by a gate*, costing something for
+> the first time. The figures are restated in that README rather than overwritten.
+
 **Greek citations point at gazette mirrors, not `et.gr` permalinks** · deferred 2026-08-27
 No working direct-download URL at `et.gr` could be constructed; the citations resolve to
 `sate.gr`, `elinyae.gr`, `dsanet.gr` and `kataggelies.mindev.gov.gr`. Also: `sate.gr` returns 403 to
@@ -1542,3 +1556,34 @@ themselves.
 *Expires:* 2027-02-28 — six months, at which point `corpus/real/fetch.py` is re-run, the digests and
 row counts are restated in `MANIFEST.yaml` rather than overwritten, and the measured reach of the
 hand-written word list is published again against the new total.
+
+**`CLAUDE.md` asserts an ESL penetration figure with no source behind it** · deferred 2026-08-30
+The envelope table's row for free dynamic pricing reads *"ESL penetration is ~30% of large European
+retailers; display rules are tightening"*. The row's conclusion is right and is not in question: a
+price cannot be changed on a shelf that has no electronic label, and that is a real constraint on
+what the system may claim to do. The **number** is the problem. It occurs exactly once in the
+repository, and nothing stands behind it: no command produces it, no contract holds it so
+`make contracts` has never asked it for a `source`, it is not a statement about the synthetic
+scenario, and there is no publisher, no URL and no verification date for it anywhere — not in
+`docs/REGULATORY.md`, not in `corpus/real/MANIFEST.yaml`.
+
+That is the one shape this repository makes a build failure inside `contracts/`: a value about the
+outside world with no citation. Doctrine rule 3 does not care what extension the file has, and
+`CLAUDE.md` is the file every session reads first.
+
+*How it was found:* by writing `docs/SCENARIO.md` under a rule that every number must be
+classifiable as measured, declared, cited or scenario. This one is none of the four, so it did not
+go into that file, and the absence is named there rather than left for somebody to notice.
+
+*Why it is not fixed here:* two reasons and both are about where a change lands. Fixing it means
+either finding a source — a real retail-technology survey, opened and dated, which is research and
+not an edit — or deleting the number and leaving the sentence, which is a change to `CLAUDE.md`'s
+envelope table made on a documentation branch, in the file that governs every other branch. A
+project's own context file is the last place to make an unrequested edit.
+
+*Unlock condition:* the phase-1 integration session (T008), which reads the whole repository against
+`CLAUDE.md` and is the level empowered to propose a restatement — and which is the right place to
+decide between citing the figure and dropping it. Failing that, the publication checklist, since
+this is a number a public README would repeat.
+*Expires:* 2026-11-30 — because an unlock condition is prose and can never expire, and a sourceless
+number in the file every session reads first should not be able to sit here indefinitely.

@@ -681,6 +681,8 @@ registry, so the products moved — 15,533 → 17,752 attacks over 49 → 56 typ
 11.0% did not move, because they are properties of the two vocabularies and not of this estate.*
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
+*Restated 2026-08-30 by T007: `docs/SCENARIO.md` exists. `docs/DAY-ONE.md` is still absent and has
+nothing to record until there is an estate — T015, before phase 3.*
 
 **Claim 3 closed 2026-08-29 — the one door with no key, T004.** `make claim-3` is green at 10
 checks over 36 declared configurations, with nine planted mutations of which nine bit. What the
@@ -763,6 +765,51 @@ went red, but by a different guard. *A gate can only be shown to bite where it i
 refuses.* Both were fixed in the eval, never by widening an assertion, and both are now rows in
 `CLAUDE.md` — the fifth instance of *a guard tested by its author*, and the first one `gate-proof`
 found rather than a review.
+
+**T007 — `docs/SCENARIO.md`, and the rule a background document had to be written under ·
+2026-08-30.** The file the "read this first" table has pointed at since the repository was opened
+now exists: the operator and the three roles that touch the design form, the three decisions with
+their horizons and the one legal provision that lets the fresh path actuate itself, the ten bronze
+sources and the two committed corpora that are not ours, six things that make the problem hard, and
+what the synthetic corpus does and does not model.
+
+**It is prose full of numbers, which is this repository's most expensive shape.** Eight times now
+the same defect: an assertion written against a table or a projection instead of against the
+measurement of what comes out when it runs. A background document is where the boxed rule is
+easiest to break, because nothing in it compiles, no consumer is generated from it and no gate reads
+it. So every number in the file carries one of **four kinds** — `[M]` measured, with the command,
+the scale and the seed; `[D]` declared, a contract value `make contracts` refuses without a
+`source`; `[C]` cited, an instrument or a publisher with a verification date; `[S]` scenario, the
+chain the system is written *for*, carrying the words *it has never run*. `[D]` and `[C]` are
+deliberately two kinds and not one: a declared value this project invented is held up by a gate, a
+cited value somebody else measured is held up by a citation and a date, and `docs/REGULATORY.md`
+exists because they were once the same field. **Anything that fits none of the four is not in the
+file**, and the two things that did not fit are named in it rather than dropped.
+
+**The rule paid for itself inside the branch, which is the part worth keeping.** Recording a figure
+as `[M]` means running the command again rather than copying it, and W5's did not come back the
+same. At the same default seed `corpus/world/README.md` records **33,582,648** POS lines at
+`scenario` and **4,588,490** at `harness`; the command prints **38,068,537** and **5,028,772**, and
+W5's acknowledgements come out *above* W1's rather than 40% below, which is what the prose beside
+the table asserted. W1 reproduces to the line at both scales, so it is not the seed — it is **T003
+moving W5's pathology from the basket line to the store-day**, a change this file already records,
+and counts taken before it. That README's own six-worlds table still read *"heavy-tailed baskets"*
+while `worlds.py` had read *"Heavy-tailed store-day demand"* since the move. Four figures, one row
+and two sentences are restated there rather than overwritten. **A measured table is measured only as
+of the last time somebody ran it**, and `docs/DECISIONS.md`'s *"the scenario scale is measured by
+hand, not by a gate"* deferral is the entry that had been carrying the risk — this is the first time
+it cost anything.
+
+**And one number was excluded for having nothing behind it at all.** `CLAUDE.md`'s *"ESL penetration
+is ~30% of large European retailers"* is not `[M]`, not `[D]`, not `[S]` — and not `[C]` either,
+because no publisher, no URL and no verification date sits behind it anywhere in the repository. It
+is a fact asserted about the outside world with no source, which is the one shape the guardrail
+contracts make a build failure and which nothing checks in prose. It is a `docs/DECISIONS.md`
+deferral rather than an edit: rewriting `CLAUDE.md`'s envelope table inside a documentation task
+would be a change made in the place it is least reviewed.
+
+*The file republishes no claim's figures.* Those are each eval's evidence, printed on every run, and
+a copy of them in a document nothing executes is the stale table above waiting to happen again.
 
 ### Closed in this phase
 
