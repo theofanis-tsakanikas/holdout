@@ -623,13 +623,15 @@ intensity the generator knows. The grader never opens the generating process, an
 could be replaced with a different model of shopping and every published figure would still be a
 measurement of the same thing.
 
-*The numbers.* 16,942 of 80,640 store-days emptied (21.0%). Reading a truncated day as its demand
-understates by **6.0% at the last trading hour and 91.4% at the first**. The reconstruction lands
-within 0.1% of the withheld truth at a share of 0.94 and comes out **36–40% high at 0.06** — a
-selection effect, because a day only yields a point estimate if it sold something inside a window
-that thin, so what is kept is what over-performed. Published, with **no threshold declared** at
-which the reconstruction stops being usable: that number would have to come from real stock-outs,
-and this eval constructs its own.
+*The numbers.* 16,942 of 80,640 store-days emptied (21.0%) — the one corpus figure. Everything
+after it is measured on held-out days censored **on purpose**, where the withheld total is known:
+reading the truncated number as the day's demand understates by **6.0% at the last trading hour and
+91.4% at the first**, while the reconstruction lands within 0.1% of the withheld truth at a share of
+0.94 and comes out **36–40% high at 0.06**. That overshoot is selection and the eval publishes the
+evidence rather than the argument — the same expansion over *every* graded day, conditioning on
+nothing, lands at −1.5% to −0.6% on the same hour. **No threshold is declared** at which the
+reconstruction stops being usable: that number would have to come from real stock-outs, and this
+eval constructs its own.
 
 *What it cost to get honest, twice, and both from running rather than reading.* `checks.py`
 declared two censoring shapes unreachable from the corpus and one of them is reachable — W5 empties

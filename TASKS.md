@@ -726,12 +726,14 @@ W5 is in the set of three worlds because its heavy-tailed store-days are the har
 available. `tests/evals/test_censoring_instrument.py` refuses any import of `corpus.world.demand`
 from the eval and any import of `corpus` from the correction, in both directions.
 
-*The figures it closes on.* 16,942 of 80,640 store-days emptied (21.0%). Reading a truncated day as
-its demand understates by **6.0% at the last trading hour and 91.4% at the first**; the
-reconstruction lands within **0.1% at a share of 0.94** and comes out **36–40% high at 0.06**.
-176,266 reconstructions and 48 hourly boundaries compared against a second implementation as
-integers with no tolerance: **0 disagreements**. 51,883 censored days answered with a lower bound
-and no number.
+*The figures it closes on.* 16,942 of 80,640 store-days emptied (21.0%) — the one corpus figure;
+the rest are measured on held-out days censored **on purpose**, where the withheld total is known.
+There, reading the truncated number as the day's demand understates by **6.0% at the last trading
+hour and 91.4% at the first**; the reconstruction lands within **0.1% at a share of 0.94** and comes
+out **36–40% high at 0.06**, which is selection — the same expansion conditioning on nothing lands
+at −1.5% to −0.6%, and the pair is published. 176,266 reconstructions and 48 hourly boundaries
+compared against a second implementation as integers with no tolerance: **0 disagreements**. 51,883
+censored days answered with a lower bound and no number.
 
 *Two things the measurement corrected, and neither was visible in the code.* First, `checks.py`
 declared two censoring shapes unreachable from the corpus and one of them is reachable — W5 empties
@@ -756,9 +758,12 @@ pooled curve per world; and the correction having no consumer until T014's train
 T010's silver layer compose it.
 
 *One number left to read off CI.* `claim-4` joins the `claims` matrix, which runs on the temporary
-90-minute timeout `docs/DECISIONS.md` already carries with a date. 58 s on fourteen cores is two
-orders of magnitude under it, so nothing is changed here — but the cold figure on a four-core runner
-is what that deferral's next measurement should record beside claim 2's.
+90-minute timeout `docs/DECISIONS.md` already carries with a date. Measured at **58 s, serial, at
+99% CPU** — so core count is not the variable and the local figure is close to what a runner will
+see; it is two orders of magnitude under the budget either way, and nothing is changed here. The
+cold figure from CI is still what that deferral's next measurement should record beside claim 2's,
+because a measurement taken on the hardware that will meet the number is the only kind this
+repository accepts.
 
 ```
 id            T006

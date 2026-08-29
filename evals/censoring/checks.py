@@ -89,6 +89,10 @@ class GridPoint:
     truth_units: int = 0
     naive_units: int = 0
     reconstructed_units: int = 0
+    all_truth_units: int = 0
+    """Every graded day, including the ones that produced no point estimate. The denominator
+    of the *unconditional* estimand — see `pooled_recovery`."""
+    all_naive_units: int = 0
 
     @property
     def naive_recovery(self) -> Fraction | None:
@@ -98,9 +102,20 @@ class GridPoint:
 
     @property
     def reconstructed_recovery(self) -> Fraction | None:
+        """Ratio of sums over the days that produced a point estimate — the conditional one."""
         if not self.truth_units:
             return None
         return Fraction(self.reconstructed_units, self.truth_units)
+
+    @property
+    def pooled_recovery(self) -> Fraction | None:
+        """The same expansion applied to the **sum** over every graded day, conditioning on
+        nothing. It is what separates a selection effect from a broken correction: if the
+        overshoot at a thin share is the days with no first-hour sales dropping out, this
+        number lands on one and the conditional one does not."""
+        if not self.all_truth_units or self.share == 0:
+            return None
+        return Fraction(self.all_naive_units, 1) / self.share / self.all_truth_units
 
     def __str__(self) -> str:
         naive, built = self.naive_recovery, self.reconstructed_recovery
@@ -137,6 +152,12 @@ class Measured:
     disagreed_with_the_reference: list[str] = field(default_factory=list)
     censored_days_fit_accepted: list[str] = field(default_factory=list)
     keys_in_both_segments: list[str] = field(default_factory=list)
+
+    sales_after_the_recorded_stock_out: list[str] = field(default_factory=list)
+    censored_days_with_sales: int = 0
+    recorded_hour_later_than_the_last_sale: int = 0
+    reconstructed_as_recorded: int = 0
+    reconstructed_from_the_last_movement: int = 0
 
     censored_corrections: int = 0
     no_window_at_all: int = 0
@@ -292,7 +313,51 @@ def _read_the_corpus(
             )
         hour = state.stocked_out_from_hour
         _record(measured, state, estimate, hour, before, grand_total, origin, swept=False)
+        if hour is not None and state.units_sold:
+            _weigh_the_recorded_hour(measured, day, curve, estimate, origin)
     measured.boundaries_compared = _compare_the_curve(measured, curve, before, grand_total)
+
+
+def _weigh_the_recorded_hour(
+    measured: Measured,
+    day: HourlySales,
+    curve: AvailabilityCurve,
+    estimate: DemandEstimate,
+    origin: str,
+) -> None:
+    """What `stocked_out_from_hour` means in this corpus, measured rather than taken on trust.
+
+    The correction's declared direction depends on it. If the column is the hour on-hand
+    reached zero, the observed units include a partly-traded hour the share excludes and the
+    reconstruction errs **high**; if it is the hour the first shopper was turned away, the
+    share covers hours in which nothing could have sold and it errs **low**. The two are the
+    same number only where somebody was there at the moment the shelf emptied.
+
+    So both are computed: the correction as the column records it, and the correction against a
+    stock-out hour derived from the **last inventory movement** — the last hour that sold
+    anything, which is what silver's own derivation would produce. The gap is published as a
+    number rather than argued about in a paragraph.
+
+    The one thing that must not happen is a sale **after** the recorded hour: those units sit
+    in the numerator while the share's window excludes them, and the reconstruction inflates
+    without any bound at all. That is `C12`, and it is measured here.
+    """
+    measured.censored_days_with_sales += 1
+    last_selling = max(index for index, units in enumerate(day.units_by_hour) if units)
+    last_hour = last_selling + build.WINDOW.open_hour
+    recorded = day.state.stocked_out_from_hour
+    assert recorded is not None
+    if last_hour > recorded:
+        measured.sales_after_the_recorded_stock_out.append(
+            f"{origin} last sold at {last_hour:02d}:00, recorded empty from {recorded:02d}:00"
+        )
+    elif last_hour < recorded:
+        measured.recorded_hour_later_than_the_last_sale += 1
+    derived = correct(
+        RightCensored(at_least=day.state.units_sold, stocked_out_from_hour=last_hour), curve
+    )
+    measured.reconstructed_as_recorded += estimate.units or 0
+    measured.reconstructed_from_the_last_movement += derived.units or 0
 
 
 def _compare_the_curve(
@@ -361,6 +426,8 @@ def _grade_on_the_held_out_segment(
                 swept=True,
             )
             point.days += 1
+            point.all_truth_units += truth
+            point.all_naive_units += observed
             if estimate.units is None:
                 continue
             point.with_a_point_estimate += 1
@@ -491,12 +558,18 @@ def _attempt_the_tampers(curve: AvailabilityCurve) -> list[str]:
         (TAMPERS[6][0], lambda: curve.share_before(window.close_hour)),
     )
     survived: list[str] = []
-    for name, attempt in attempts:
+    for (name, guard), (_, attempt) in zip(TAMPERS, attempts, strict=True):
         try:
             attempt()
         except CensoringError:
             continue
-        survived.append(name)
+        except Exception as error:
+            # Refused, but by the wrong thing. A `TypeError` three lines later is not the
+            # contract refusing; it is the interpreter, and it would stop being raised the day
+            # somebody adds an annotation. `gate-proof` calls the same shape `CRASHED`.
+            survived.append(f"{name} — {guard} raised {type(error).__name__}, not CensoringError")
+            continue
+        survived.append(f"{name} — {guard} accepted it")
     return survived
 
 
@@ -725,6 +798,38 @@ def _c11(worlds: Sequence[Measured]) -> Check:
     )
 
 
+def _c12(worlds: Sequence[Measured]) -> Check:
+    """The corpus property the correction's whole direction argument rests on."""
+    after = [origin for m in worlds for origin in m.sales_after_the_recorded_stock_out]
+    days = sum(m.censored_days_with_sales for m in worlds)
+    later = sum(m.recorded_hour_later_than_the_last_sale for m in worlds)
+    recorded = sum(m.reconstructed_as_recorded for m in worlds)
+    movement = sum(m.reconstructed_from_the_last_movement for m in worlds)
+    drift = (movement - recorded) / recorded if recorded else 0.0
+    return Check(
+        id="C12.no-sale-falls-after-the-hour-the-shelf-is-recorded-as-empty",
+        question=(
+            "does any censored store-day sell something after the hour its shelf is recorded "
+            "as empty from — which would put units in the numerator the share's window "
+            "excludes, and inflate the reconstruction without bound?"
+        ),
+        passed=not after and days > 0,
+        figure=(
+            f"{len(after)} of {days:,} censored store-days sold after their recorded stock-out "
+            f"· {_share_pct(later, days)} recorded strictly later than the last sale"
+        ),
+        detail=(
+            "The column is the hour the first shopper was turned away, not the hour on-hand "
+            "reached zero, and the two come apart by however long the shelf stood bare. That "
+            "is safe — it costs accuracy, never a bound — but it reverses the direction the "
+            f"correction errs in on those days: against a stock-out hour derived from the last "
+            f"inventory movement the reconstructed total is {drift:+.1%}. Published, not "
+            "reconciled: what a source means by this column is a fact about that source."
+        ),
+        counterexamples=tuple(after[:5]),
+    )
+
+
 def run() -> Report:
     worlds = tuple(_measure(days) for days in build.worlds())
     checks = (
@@ -739,6 +844,7 @@ def run() -> Report:
         _c9(worlds),
         _c10(worlds),
         _c11(worlds),
+        _c12(worlds),
     )
     return Report(
         claim=4,
@@ -766,10 +872,19 @@ def _numbers(worlds: Sequence[Measured]) -> tuple[tuple[str, str], ...]:
                 f"fitted on {measured.fitted_on:,}, graded on {measured.graded_on:,}",
             )
         )
+    rows.append(
+        (
+            "the estimand",
+            "a ratio of sums over the days that produced a point estimate; `pooled` beside it "
+            "is the same expansion over the sum of **every** graded day, conditioning on "
+            "nothing. The pair is what tells a selection effect from a broken correction",
+        )
+    )
     for hour in build.CENSOR_HOUR_GRID:
         points = [p for m in worlds for p in m.grid if p.hour == hour]
         naive = [p.naive_recovery for p in points if p.naive_recovery is not None]
         built = [p.reconstructed_recovery for p in points if p.reconstructed_recovery is not None]
+        pooled = [p.pooled_recovery for p in points if p.pooled_recovery is not None]
         share = points[0].share if points else Fraction(0)
         if not naive or not built:
             rows.append(
@@ -785,9 +900,22 @@ def _numbers(worlds: Sequence[Measured]) -> tuple[tuple[str, str], ...]:
                 f"censored at {hour:02d}:00",
                 f"share {float(share):.4f} · naive "
                 f"{_pct(min(naive) - 1)}…{_pct(max(naive) - 1)} · reconstructed "
-                f"{_pct(min(built) - 1)}…{_pct(max(built) - 1)}",
+                f"{_pct(min(built) - 1)}…{_pct(max(built) - 1)} · pooled "
+                f"{_pct(min(pooled) - 1)}…{_pct(max(pooled) - 1)}",
             )
         )
+    recorded = sum(m.reconstructed_as_recorded for m in worlds)
+    movement = sum(m.reconstructed_from_the_last_movement for m in worlds)
+    rows.append(
+        (
+            "the stock-out hour",
+            f"the corpus's censored days correct to {recorded:,} units as the column records "
+            f"the hour and {movement:,} against one derived from the last inventory movement "
+            f"({(movement - recorded) / recorded:+.1%}) — the column is the hour a shopper was "
+            "turned away, not the hour the shelf emptied, and which one a source supplies "
+            "decides the direction the correction errs in",
+        )
+    )
     rows.append(
         (
             "no point estimate",
@@ -819,12 +947,25 @@ NOTES: tuple[str, ...] = (
     "The corpus spreads a price segment's arrivals uniformly across its hours, so the intraday "
     "shape this curve has to learn is close to a straight line. A lumpier real profile would "
     "be harder, and the residual error published above is a floor rather than an estimate.",
-    "The error is not monotone in the share, and the 08:00 row is why. A day only yields a "
-    "point estimate if it sold something inside the observed window, so conditioning on that "
-    "in a thin window selects the days that over-performed in it — measured, +36% to +40% at "
-    "a share of 0.06 against under 1% at 0.94. The reconstruction is trustworthy in "
-    "proportion to how much of the day it saw, and this eval declares no threshold at which "
-    "it stops being: that number is not something the corpus can supply.",
+    "The error is not monotone in the share, and the 08:00 row is why: +36% to +40% at a share "
+    "of 0.06 against under 1% at 0.94. It is **selection, not a correction that breaks in a "
+    "thin window**, and the pooled column is the evidence rather than the argument — the same "
+    "expansion over every graded day, conditioning on nothing, lands at -1.5% to -0.6% on the "
+    "same hour. A day only yields a point estimate if it sold something inside the observed "
+    "window, so conditioning on that in a thin window keeps the days that over-performed in "
+    "it. Either way the reconstruction is trustworthy in proportion to how much of the day it "
+    "saw, and this eval declares no threshold at which it stops being: that number is not "
+    "something the corpus can supply.",
+    "C5 is weakest exactly where the published error is largest. At a share of 0.06 the bar it "
+    "sets is 'beat -91.2%', which almost any reconstruction clears — so the +36% to +40% is "
+    "bounded by nothing in this eval, it is only measured and printed. What C5 does bound is "
+    "the wide-window end, where the naive reading is already close.",
+    "Which way the correction errs is a property of the **source**, not of the arithmetic. "
+    "This corpus records the hour a shopper was turned away rather than the hour the shelf "
+    "emptied, and the two differ on 43.0% of censored store-days — see C12 and the stock-out "
+    "hour row. Against a hour derived from the last inventory movement the same corpus "
+    "corrects 6.3% higher. Nothing here reconciles the two: what a column means belongs to "
+    "whoever writes it.",
     "A real stock-out hour is partly traded and a constructed one is not, so the direction the "
     "correction errs in on a real stock-out is argued from the arithmetic rather than measured.",
     "One pooled curve per world. A curve per category, store format or day of week is a "

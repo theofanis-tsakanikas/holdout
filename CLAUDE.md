@@ -137,11 +137,14 @@ workspace and no credentials. If a change does not serve one of them, question i
 > route to a zero is a shelf that emptied before its first sale, which this corpus never produces
 > and `evals/censoring/` therefore constructs.
 >
-> What the corpus *does* produce is the failure the row is really about, and it is a much larger
-> number: reading a truncated day as its demand understates by **6.0% when the shelf emptied in the
-> last trading hour and 91.4% when it emptied in the first**, on 21.0% of all store-days. So the
-> claim's content is systematic understatement, and "zero" is its limiting case rather than its
-> typical one.
+> What the corpus *does* produce is the failure the row is really about: **21.0% of all store-days
+> emptied**, every one of them a day whose sales understate its demand by an unknown amount. How
+> much is not a corpus figure and is not stated as one — it is measured on held-out days censored
+> **on purpose**, where the withheld total is known, and there reading the truncated number as the
+> day's demand understates by **6.0% at the last trading hour and 91.4% at the first**. A day
+> censored on purpose is not a stock-out, which is the eval's own first note, so the two halves of
+> that sentence are kept apart. The claim's content is systematic understatement, and "zero" is its
+> limiting case rather than its typical one.
 >
 > The prior wording stays, per doctrine rule 4, and it stays for a second reason: **the limiting
 > case is where the arithmetic stops defending itself.** `DemandEstimate` refuses to be built

@@ -25,19 +25,31 @@ derived, arithmetic stated   the hourly breakdown of a store-SKU-day, summed fro
                              member is for
 ===========================  ==========================================================
 
-Three worlds, and the third one is not decoration
--------------------------------------------------
-`W1` is the null world running the contract ladder on every store; `W6` runs the candidate
-markdown schedule on half of them, which moves trade later in the day and therefore changes
-the very shape the correction is fitted on. `W5` is the world whose store-day demand is
-heavy-tailed from half way through its calendar — built for claim 2, and the hardest possible
-input for this one, because a shock the replenishment planner ordered for and the analyst
-never saw is precisely what empties a shelf. None of the three was built to exercise claim 4.
+Three worlds, and what they actually vary — measured, not assumed
+-----------------------------------------------------------------
+`W1` is the null world running the contract ladder on every store, `W6` runs the candidate
+markdown schedule on half of them, and `W5` is the world whose store-day demand is heavy-tailed
+from half way through its calendar. None of the three was built to exercise claim 4; all three
+were built for claim 2.
+
+**They barely vary the intraday shape, and an earlier version of this paragraph claimed they
+did.** It said W6's schedule *"moves trade later in the day and therefore changes the very
+shape the correction is fitted on"*. Measured, the three fitted curves lie within **0.0023** of
+one another over all sixteen boundaries, and W6's cumulative share is *higher* than W1's at
+every hour — marginally **earlier**, not later. The sentence was written against the mechanism
+rather than against the run, which is the defect `CLAUDE.md`'s checklist names.
+
+What they do vary is the population the claim is about: how many store-days empty, when, and
+with how much sold first. W5 earns its place there and not on shape — its shock is a thing the
+replenishment planner ordered against and the analyst never saw, which is precisely what
+empties a shelf, and it is the only world in the three that produces a stock-out inside the
+first trading hour.
 
 **No module in this package may import `corpus.world.demand`.** That is where the simulator's
 own intraday shape lives — `HOURLY_PROFILE`, the elasticities, the seasonal swing — and an
 eval that read it would be handing the corrector the answer sheet.
 `tests/evals/test_censoring_instrument.py` scans for it.
+
 """
 
 from __future__ import annotations
@@ -73,10 +85,19 @@ WORLDS: tuple[str, ...] = ("W1", "W5", "W6")
 #: random one, for the same reason `CLAUDE.md` gives about training: a random split lets the
 #: fit see a neighbouring day of the same week and grades itself on what it already knows.
 #:
-#: It costs accuracy and that cost is published rather than tuned away: the two halves fall in
-#: different weeks of a season, so the shape drifts between them and the reconstruction comes
-#: out slightly low. A random split would have made every figure in `C5` look better and would
-#: have measured less.
+#: **It costs almost nothing, and an earlier version of this comment asserted otherwise.** It
+#: said the drift between the halves made the reconstruction come out *low* and that a random
+#: split *"would have made every figure in `C5` look better"*. Neither survives being run: the
+#: reconstruction comes out **high** at eleven of the fifteen grid points that produce one, and
+#: a random 60% split graded on the same days is better at seven and worse at eight, every
+#: difference under 0.5 percentage points. The shape being learned is close to stationary — the
+#: curve fitted on the graded half differs from the fitted half by 0.6% to 1.5% relative at 08:00
+#: and under 0.3% everywhere else.
+#:
+#: It is kept anyway, because it is free and because it is the split a training pipeline has to
+#: use for reasons that have nothing to do with this curve. But **the split is not where the
+#: independence comes from** — grading against receipt totals is — and `C7` says so rather than
+#: letting a reader infer otherwise from its position in the list.
 FIT_SHARE_PCT = 60
 
 #: The hours a held-out day is artificially censored at. Deterministic, declared, and three of

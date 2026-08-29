@@ -30,6 +30,7 @@ been hidden?**
 | `C9.every-censoring-shape-is-reached` | is there an input for every declared shape, so no branch passes by never being tried? |
 | `C10.the-reconstruction-lands-where-the-independent-arithmetic-puts-it` | does a second implementation land on the same integer, and on the same hourly boundaries? |
 | `C11.the-naive-reading-is-wrong-here-and-the-corpus-says-so` | is there enough censoring in these worlds for any of the above to mean anything? |
+| `C12.no-sale-falls-after-the-hour-the-shelf-is-recorded-as-empty` | does any censored day sell after the hour its shelf is recorded empty from — which would inflate the reconstruction without bound? |
 
 **`C2` carries the claim and `C5` is what makes it worth having.** A system that answers "no
 number" to every censored day satisfies `C2` perfectly and is useless — which is the same
@@ -112,29 +113,49 @@ Measured, three worlds at `rehearsal` scale, seed `holdout-w-0001`:
 ```
 16,942 of 80,640 store-days emptied (21.0%)   ·   fitted on 37,144, graded on 26,554
 
-censored at   share    naive reading      reconstruction
+censored at   share    naive reading      reconstruction     pooled
    07:00      0.0000   no point estimate on any of 26,554 days
-   08:00      0.0629   -91.4% … -91.2%    +36.4% … +40.5%
-   12:00      0.3063   -68.2% … -67.8%     +3.8% …  +5.3%
-   16:00      0.5523   -44.2% … -44.0%     +0.7% …  +1.2%
-   19:00      0.7451   -25.1% … -25.0%     -0.0% …  +0.4%
-   22:00      0.9393    -6.0% …  -5.8%     -0.1% …  +0.0%
+   08:00      0.0629   -91.4% … -91.2%    +36.4% … +40.5%    -1.5% … -0.6%
+   12:00      0.3063   -68.2% … -67.8%     +3.8% …  +5.3%    +0.1% … +0.3%
+   16:00      0.5523   -44.2% … -44.0%     +0.7% …  +1.2%    -0.2% … +0.3%
+   19:00      0.7451   -25.1% … -25.0%     -0.0% …  +0.4%    -0.2% … +0.3%
+   22:00      0.9393    -6.0% …  -5.8%     -0.1% …  +0.0%    +0.0% … +0.2%
+
+176,266 reconstructions + 48 hourly boundaries vs a second implementation,
+as integers with no tolerance: 0 disagreements
 ```
 
-**The 08:00 row is the interesting one and it was not expected.** A day only produces a point
-estimate if it sold something inside the observed window, so conditioning on that in a
-*thin* window selects the days that over-performed in it — and the reconstruction comes out
-36–40% high at a share of 0.06 while it is under 1% off at 0.94. The error is not monotone in
-anything the caller controls; it is a function of how much of the day the window saw. That is
-published and **no threshold is declared at which the reconstruction stops being usable**,
-because that number is not something this corpus can supply — `docs/DECISIONS.md` carries it
-with the condition that would.
+**The estimand is named because the choice of one would otherwise be doing work.**
+`reconstruction` is a ratio of sums over the days that produced a point estimate. `pooled` is the
+same expansion applied to the **sum** over every graded day, conditioning on nothing.
 
-The direction is the safe one. `censoring.py` declares that the reconstruction errs high
-rather than low, because understating is the failure the claim exists to prevent, and the
-measurement agrees at every censor hour with a point estimate.
+**The 08:00 row was not expected, and the pair is what settles what it is.** A day only yields a
+point estimate if it sold something inside the observed window, so conditioning on that in a *thin*
+window keeps the days that over-performed in it — and the conditional figure comes out 36–40% high
+while the unconditional one lands at −1.5% to −0.6% on the very same hour. That is selection, not a
+correction that breaks at small shares, and the column is published so a reader does not have to
+take the sentence's word for it. Three things that could have produced the number instead, and did
+not: the fit/grade drift at 08:00 is −0.6% to −1.5% relative, which pushes the reconstruction *low*
+and is a thirtieth of the size; ratio-of-sums is the most flattering of the three estimands, not the
+least (mean-of-ratios is +97% to +162%, the median +45% to +78%); and `C10` puts the arithmetic
+itself against a second implementation at every boundary.
 
----
+**`C5` is weakest exactly where the error is largest**, and that is worth saying beside the row it
+concerns. At a share of 0.06 the bar `C5` sets is *beat −91.2%*, which almost any reconstruction
+clears — so the +40% is measured and printed, bounded by nothing here. What `C5` bounds is the
+wide-window end, where the naive reading is already close and there is little room to hide.
+
+**Which way the correction errs is a property of the source.** `censoring.py` argues that the
+reconstruction errs high, because the observed units include a partly-traded emptying hour the share
+excludes. That holds only if `stocked_out_from_hour` is the hour the shelf emptied. In this corpus
+it is the hour the **first shopper was turned away**, and on **7,290 of 16,942 censored store-days
+(43.0%)** that is strictly later than the last hour anything sold — by up to fourteen hours — so on
+those days the share covers hours nothing could have sold in and the reconstruction errs *low*
+instead. Against a stock-out hour derived from the last inventory movement the same corpus corrects
+**+6.3%**. Nothing here reconciles the two: what a column means belongs to whoever writes it, and
+the module says so rather than defaulting. What does not depend on the source is the bound —
+`C12` measures that no censored day sells *after* its recorded hour, which is the one shape that
+would inflate a reconstruction without limit.
 
 ## 5 · What this does not prove
 
@@ -196,3 +217,33 @@ that filters silently returns a perfectly good curve from that pile, and only `f
 can catch it. This is the fifth instance of *a guard tested by its author is tested in the
 shape the guard already handles* — and, this time, it was the mutation harness that found it
 rather than a review.
+
+### Three sentences that were true of the mechanism and false of the run
+
+Found by oversight level 2 in fresh context, by running things rather than by reading three
+documents that had been written from the same sentence. All three are the defect
+`CLAUDE.md`'s checklist names — an assertion written against a projection instead of against the
+measurement of what comes out — and all three are corrected in place with the prior wording kept.
+
+* **`build.py` said the time split cost accuracy.** *"The shape drifts between them and the
+  reconstruction comes out slightly low. A random split would have made every figure in `C5` look
+  better."* Neither half survives: the reconstruction comes out **high** at eleven of the fifteen
+  grid points, and a random 60% split graded on the same days is better at seven and worse at
+  eight, every difference under 0.5 points. The split is cheap insurance; **grading against receipt
+  totals is where the independence comes from**, and §2 now says so in that order.
+* **`build.py` said W6 changes the shape the correction is fitted on.** The three fitted curves lie
+  within **0.0023** of one another, and W6's cumulative share is marginally *earlier* than W1's, not
+  later. The worlds vary the stock-out population, not the intraday shape, and W5 earns its place
+  on that rather than on shape.
+* **`ShelfState` said the stock-out hour is derivable from inventory movements.** On 43.0% of
+  censored store-days in this corpus it is not — see §4. The docstring now states the two readings a
+  source might supply and which way each makes the correction err, and `C12` measures the one
+  property that does not depend on the answer.
+
+The review also confirmed, by running it, the thing this eval most needed confirming from outside:
+the fitted curve recovers the generator's **uniform-within-segment arrival draw** and not
+`HOURLY_PROFILE` — `max|curve − profile|` is 0.105 against `max|curve − uniform|` of 0.010 — and
+substituting a hand-copied `HOURLY_PROFILE` for the fitted curve in *both* implementations, so `C10`
+stays green, turns `C5` red at +193.5%. That backstop is real but contingent: it works because the
+profile is not the realised shape. Had the generator drawn arrivals per hour from it, copying the
+constant would be the right answer and nothing here would notice.

@@ -1,7 +1,7 @@
-# The optimisation somebody makes on a Friday afternoon. Almost all of this corpus's
-# stock-outs happen in the last two trading hours — measured, 1,649 of 5,587 in W6 are at
-# 22:00 — so treating them as full days looks like it recovers most of the population for
-# free. What it recovers is the days that hid the least, and it recovers them by asserting
+# The optimisation somebody makes on a Friday afternoon. This corpus's stock-outs cluster
+# late — measured in W6, 1,649 of 5,587 are at 22:00 (29.5%), 2,680 in the last two trading
+# hours (48.0%) and 3,411 in the last three (61.1%) — so treating the latest of them as full
+# days looks like it recovers a large slice of the population for free. What it recovers is the days that hid the least, and it recovers them by asserting
 # they hid nothing. Measured on the held-out segment, a shelf that emptied at 22:00 still
 # understates its own day by about 6%.
 

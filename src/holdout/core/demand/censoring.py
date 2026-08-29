@@ -34,14 +34,31 @@ In both, `DemandEstimate.units` is `None` and `at_least` stands alone. `CLAUDE.m
 the comparison cannot be trusted, the system produces no number.* This is that rule, one
 layer down from the readout.
 
-Which way it errs, stated rather than left to be discovered
------------------------------------------------------------
-The share is read **through the end of the hour before** the shelf emptied, while the
-observed units include whatever sold inside the emptying hour itself. So the numerator covers
-slightly more of the day than the denominator does, and the reconstruction errs **high** — it
-overstates rather than understates. That direction is chosen: understating is the failure
-this module exists to prevent, and a correction that split the difference would be trading a
-known-safe direction for a smaller average error.
+Which way it errs, and the fact about the source that decides it
+----------------------------------------------------------------
+The share is read **through the end of the hour before** the shelf emptied, while the observed
+units include whatever sold inside the emptying hour itself. Where the recorded hour *is* the
+hour trade stopped, the numerator therefore covers slightly more of the day than the
+denominator does and the reconstruction errs **high** — which is the chosen direction, because
+understating is the failure this module exists to prevent.
+
+**That holds only if the source means by `stocked_out_from_hour` the hour the shelf emptied.**
+A source that records the hour the *first shopper was turned away* means something later, and
+the two come apart by however long the shelf stood bare before anyone reached for it. Then the
+denominator covers hours in which nothing could have sold, and the reconstruction errs **low**
+instead. It is not a rounding-sized difference: measured on this repository's own corpus, the
+recorded hour is strictly later than the last hour that sold anything on **7,290 of 16,942
+censored store-days (43.0%)**, by up to fourteen hours, and correcting against a hour derived
+from the last inventory movement instead raises the reconstructed total by **6.3%**.
+
+So the direction this module errs in is **a property of the source, not of this arithmetic**,
+and it is stated that way rather than as a flat guarantee. What the arithmetic does guarantee
+is the half that does not depend on the source: the reconstruction is never below the units the
+receipts show, whatever the recorded hour means, because the share can never exceed one.
+
+The one thing a source must not do is record an hour **earlier** than the last sale, which
+would put units in the numerator that the denominator's window excludes and inflate without
+bound. `evals/censoring/`'s `C12` measures that against the corpus rather than assuming it.
 
 The expansion rounds **half-even**, not down. A rule that rounded a reconstruction toward the
 number that was observed would be the censoring bias in miniature, applied by the very
@@ -106,9 +123,19 @@ class TradingWindow:
 class ShelfState:
     """One store, one SKU, one day, as silver records it.
 
-    `stocked_out_from_hour` is observable — it is derivable from inventory movements, which is
-    why stock-out marking belongs in silver where the movements are. What is deliberately not
-    a field here is the demand that went unserved: nothing in this system has ever seen it.
+    `stocked_out_from_hour` is observable — stock-out marking belongs in silver because that is
+    where the inventory movements are. **What a source means by it is a fact about that
+    source**, and there are two readings a real one might supply: the hour on-hand reached
+    zero, and the hour the first shopper was turned away. They are the same number only if
+    somebody was there at the moment it emptied. Which one arrives decides the direction the
+    correction errs in — see the module docstring, and the 43.0% this repository's own corpus
+    measures.
+
+    It is not defaulted, inferred or reconciled here. A field that quietly picked one reading
+    would be doctrine rule 3 broken in the one column claim 4 rests on.
+
+    What is deliberately not a field is the demand that went unserved: nothing in this system
+    has ever seen it.
     """
 
     store_id: str

@@ -1366,3 +1366,38 @@ the reason `tests/core/test_composition.py` exists.
 and a demand feature is built from it, the composition is what claim 4 has to survive — a censored
 day reaching a feature table unmarked is doctrine rule 2 broken, and it will be provable end to end
 rather than one module at a time.
+
+**No source has declared what `stocked_out_from_hour` means** · deferred 2026-08-29
+`holdout.core.demand.censoring` expands a censored store-day by the share of an ordinary day its
+open window covers, and which way that errs depends entirely on what the column means. The hour
+on-hand reached zero and the hour the first shopper was turned away are the same number only if
+somebody was there at the moment the shelf emptied. Measured on this repository's corpus they differ
+on **7,290 of 16,942 censored store-days (43.0%)**, by up to fourteen hours, and correcting against
+a hour derived from the last inventory movement raises the reconstructed total by **6.3%**.
+
+The eval publishes both rather than picking one, the module's docstring states the dependence
+instead of asserting a flat direction, and `C12` measures the one property that holds either way —
+that no censored day sells *after* its recorded hour, which is the only shape that would inflate a
+reconstruction without bound. What is *not* settled is which reading a real `shelf_state` will
+carry, because no `shelf_state` exists yet.
+*Unlock condition:* T010's silver layer. Stock-out marking happens there, from the inventory
+movements, and the derivation it writes is what fixes the meaning — at which point the column gets
+a declared definition and the correction's direction stops being conditional. Until then the
+conditional statement is the honest one, and it is printed on every run.
+
+**`C7`, `C11` and `C12` own no `gate-proof` mutation, and cannot** · deferred 2026-08-29
+`make gate-proof`'s "no unproven gate" rule is a **target-level** check: `claim-4` owns nine
+mutations, so the ledger is satisfied. Per check, three of claim 4's twelve are outside the net, and
+for a reason rather than by oversight. `C11` and `C12` assert properties of the **corpus** — how
+much of it is censored, and that no day sells after its recorded stock-out — and no break planted in
+`src/holdout/` can move either. `C7`'s disjointness half is a tautology, because the two segments
+are complementary predicates over one business date; only its "neither segment is empty" half can go
+red, and the check says so in its own `detail` rather than leaving a reader to assume otherwise.
+
+This is the standing limit of `gate-proof`'s guarantee and it is stated here rather than left to be
+rediscovered: a check that asserts something about the *inputs* cannot be proved to bite by mutating
+the *system*.
+*Unlock condition:* the phase-1 integration session decides whether corpus-property checks want a
+second harness — one that mutates the corpus rather than the system — or whether their value is
+that they are armed by construction and would go red the day the corpus stopped containing what
+they measure. Not built now because one harness with a clear scope beats two with an unclear one.
