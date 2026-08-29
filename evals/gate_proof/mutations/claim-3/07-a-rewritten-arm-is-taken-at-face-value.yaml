@@ -1,0 +1,27 @@
+id:          a-rewritten-arm-is-taken-at-face-value
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A6.no-in-process-route-moves-a-unit-between-arms
+
+breaks: >-
+  a seal stops recomputing its own digest from its own fields, so it no longer carries a
+  contradiction about itself when somebody writes into its slots. `object.__setattr__` is the
+  one route Python does not let the type close, and this is what was standing behind it: a
+  store moved between arms, a seed swapped, a stratification replaced, all of them now pass
+  as a seal this process drew and nobody touched.
+
+file:   src/holdout/core/experiment/assignment.py
+anchor: |
+  return bool(
+      recorded
+      == digest_for(
+          experiment_id=experiment_id,
+          seed=seed,
+          form_digest=form_digest,
+          strata=strata,
+          arms=arms,
+      )
+  )
+replacement: |
+  return True

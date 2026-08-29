@@ -10,7 +10,9 @@ the guardrail set refused, because nothing in the suite was trying to break anyt
 
 Claim 1's eval is the first one built, so its shape is the shape the rest inherit. This file
 records that shape, and the reasoning behind each part of it, so that claims 2, 3 and 4 do
-not each invent their own.
+not each invent their own. **The procedure that builds one is `.claude/skills/claim/`**,
+extracted from claims 1 and 2 once there were two samples to tell a rule from a variation;
+this file stays the source of truth for the *shape*, and the skill does not restate it.
 
 ---
 
@@ -103,9 +105,19 @@ matters:
 
 ```
 make claim-1          the eval and the mutations it owns   ~3 min
+make claim-2          the eval and the mutations it owns   ~1 h 11 min cold
+make claim-3          the eval and the mutations it owns   ~3 min
 make eval-guardrail   the eval alone                       ~10 s
+make eval-uplift      the eval alone                       ~32 min
+make eval-assignment  the eval alone                       ~17 s
 make gate-proof       the ownership audit, runs nothing    <1 s
 ```
+
+Every figure above is a **cold measurement on a fourteen-core laptop**, not a projection —
+`CLAUDE.md`: *a timeout, a K, a tolerance, a threshold or a budget is an assertion wearing a
+number instead of a verb.* Claim 2's is dominated by generating six worlds and is much lower
+once `.worlds/` is warm; claim 3 has nothing to cache, because a chain is placement arithmetic
+rather than a simulation.
 
 `make check` deliberately does **not** run them: it is the fast local gate and the claims
 take minutes. CI runs every claim target that exists.

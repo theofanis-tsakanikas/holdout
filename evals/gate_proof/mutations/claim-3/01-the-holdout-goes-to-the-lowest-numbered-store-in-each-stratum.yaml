@@ -1,0 +1,19 @@
+id:          the-holdout-goes-to-the-lowest-numbered-store-in-each-stratum
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A1.arms-match-an-independently-implemented-lottery
+  - A3.a-unit-s-arm-is-re-derivable-from-the-committed-record-alone
+
+breaks: >-
+  the holdout is no longer drawn. Each stratum gives its control to whichever of its stores
+  has the lowest id, so two experiments over the same estate hold back the same shops
+  whatever seed either of them committed to — and the seed becomes decoration on a lottery
+  that never happens. This is the shape claim 3's trap wears: the assignment is still
+  perfectly reproducible, and re-running `draw` would agree with it every time.
+
+file:   src/holdout/core/experiment/assignment.py
+anchor: |
+  chosen = min(stratum, key=lambda unit: (rank_of(unit, key), unit))
+replacement: |
+  chosen = min(stratum)

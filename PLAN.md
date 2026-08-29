@@ -601,10 +601,40 @@ skill directory built inside the test, which is what `tests/ops/test_expiry.py` 
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 
+**Claim 3 closed 2026-08-29 — the one door with no key, T004.** `make claim-3` is green at 10
+checks over 36 declared configurations, with eight planted mutations of which eight bit. What the
+piece settled is mostly about **what a reproducibility claim is allowed to be checked by**.
+
+`draw` reads no clock, no environment and no random source, so calling it twice agrees with itself
+by construction — and would agree just as loudly on a lottery that never consulted the committed
+seed. That is claim 3's trap and it is not the shape the other claims wear. Three doors carry the
+independence instead: **a second implementation** (BLAKE2b written out from RFC 7693 in Python,
+with its own framing, rank arithmetic and selection, driven against the vector RFC 7693 Appendix A
+publishes); **the per-unit path**, which re-derives one store's arm the way a readout a month later
+has to, from the seed, the candidate index and that store's own stratum; and **another
+interpreter**, three subprocesses under declared `PYTHONHASHSEED` values, which is the only way to
+see a tie broken by set-iteration order. The mutation that makes `strata._hardest_to_match` scan
+unsorted is invisible to every in-process repetition and bites there.
+
+**The incentive is published as a number.** A better-balanced candidate exists for **15 of 30**
+designs inside a 24-candidate scan, improving the worst standardised difference by **0.2422**
+against a declared tolerance of 0.10. That is the size of the prize somebody holding the seed is
+asked not to take, and every substitution — including the careful forger who recomputes the digest
+so the seal agrees with itself — is refused, `CONTAMINATED_ASSIGNMENT` read off the refusal after
+moment 3 has actually run.
+
+**And one finding, measured rather than argued.** `contamination.check` derives the roster it walks
+from the arms it is checking, so a control store deleted from the assignment table with the digest
+recomputed to match is invisible to it — 24 of the 72 erasure routes. What refuses those is
+`readout.close`, one function later, and only because the erased store still reports an outcome.
+`docs/DECISIONS.md` carries the gap with its unlock condition. One mutation survived on the first
+run and the eval was corrected rather than the assertion widened; `evals/assignment/README.md` §6
+keeps that account.
+
 ### Closed in this phase
 
-Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1 and 2 have closed**, and
-claim 2 is the one CLAUDE.md calls the one that separates this from a demo.
+Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **Claims 1, 2 and 3 have closed**,
+and claim 2 is the one CLAUDE.md calls the one that separates this from a demo.
 
 **Then an integration session**, before the next phase opens: read the whole repository against
 `CLAUDE.md` and report conceptual drift. It builds nothing.

@@ -1,0 +1,19 @@
+id:          the-redraw-consults-the-arms-it-is-checking
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A7.a-flattering-candidate-cannot-be-substituted-after-the-fact
+  - A9.a-tampered-assignment-refuses-at-readout-with-its-own-code
+
+breaks: >-
+  the contamination check's independent half stops being independent. Instead of re-deriving
+  the arms from the committed seed, the strata and the candidate index, it hands back the
+  arms it was given — so it agrees with whatever is in the assignment table, including a
+  candidate somebody substituted after seeing which one flattered the design. The digest half
+  still passes, because a careful forger recomputes it, and nothing is left that disagrees.
+
+file:   src/holdout/core/experiment/assignment.py
+anchor: |
+  return candidate(seal.strata, seed=seal.seed, draw_index=seal.draw_index)
+replacement: |
+  return seal.arms

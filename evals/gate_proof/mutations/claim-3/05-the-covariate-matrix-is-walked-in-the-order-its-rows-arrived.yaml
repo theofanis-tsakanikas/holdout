@@ -1,0 +1,18 @@
+id:          the-covariate-matrix-is-walked-in-the-order-its-rows-arrived
+claim:       3
+eval_module: evals.assignment
+targets:
+  - A4.the-lottery-does-not-depend-on-the-order-its-inputs-arrived-in
+
+breaks: >-
+  the units of a covariate matrix come back in the order their rows were written rather than
+  in store-id order. The matching, the cells and the allocation all walk that order, so the
+  same roster and the same covariates produce different strata depending on how somebody
+  happened to write the roster down — and a roster that moves is an experiment nobody can
+  reproduce.
+
+file:   src/holdout/core/experiment/balance.py
+anchor: |
+  return tuple(sorted(self.rows))
+replacement: |
+  return tuple(self.rows)
