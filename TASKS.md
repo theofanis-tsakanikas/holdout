@@ -1021,8 +1021,43 @@ closes        The file exists — the operator, the decision paths, the data, wh
 out_of_scope  docs/DAY-ONE.md (T015, before Phase 3).
 stop_at       Before Phase 2 opens — the pipelines assume it.
 review        no
-status        open
+status        closed
 ```
+
+**Closed 2026-08-30.** `docs/SCENARIO.md` exists: the operator and the three roles that touch the
+design form, the three decisions with their horizons and the one legal provision that lets the
+fresh path actuate itself, the ten bronze sources and the two committed corpora that are not ours,
+six things that make the problem hard, and what the synthetic corpus does and does not model.
+
+**The file is written under a rule rather than a word count, and the rule is the point.** It is
+prose full of numbers, which is the exact shape of the defect this repository has found eight
+times — an assertion written against a table or a projection instead of against the measurement of
+what comes out when it runs. So **every number carries one of four kinds**: `[M]` measured, with
+the command, the scale and the seed; `[D]` declared, a contract value `make contracts` refuses
+without a `source`; `[C]` cited, an instrument or a publisher with a verification date; `[S]`
+scenario, the chain the system is written *for*, carrying the words *it has never run*. `[D]` and
+`[C]` are deliberately not one kind: one this project invented and a gate holds up, the other
+somebody else measured and a citation holds up, and `docs/REGULATORY.md` exists because they were
+once the same field. Anything that fits none of the four is **not in the file**.
+
+**Applying the rule excluded two numbers, and both are named in the file rather than dropped.**
+`CLAUDE.md`'s *"ESL penetration is ~30% of large European retailers"* is a fact asserted about the
+outside world with no publisher, no URL and no verification date anywhere in the repository — not
+`[M]`, not `[D]`, not `[S]`, and not `[C]` either. It is now a deferral in `docs/DECISIONS.md`
+rather than an edit made on a documentation branch. And the corpus's own placement constants carry
+a real argument where they live but are not contract values, because `corpus/` may not read a
+contract at all — structural rather than sloppy, so what the file states instead is **the roster
+they produce**, which is measured.
+
+**Two figures in `CLAUDE.md`'s scale paragraph do not reproduce, and the file says which is which.**
+Its *100 stores → 109 pairs → roster 45* was measured before T00E moved the chain's placement rule
+and is stale — `python -m ops.roster --scale scenario` prints a roster of **83** today. Its
+*"1,200 leave a roster of 212"* is a different failure: `--scale` accepts four names and the
+largest is `harness` at 320 stores, so no run of 1,200 has ever existed and that figure is a
+projection, sitting in a paragraph whose whole argument is that projections are not measurements.
+`CLAUDE.md` is not edited here — that restatement is its own branch's work, and rewriting the
+project's own context file inside a documentation task is a change made in the place it is least
+reviewed.
 
 ```
 id            T008          <- Phase-1 integration session (oversight level 3)
@@ -1404,6 +1439,7 @@ T000 ─────────────┘    (also blocks T004, T005, T006
                                                                     └─▶ T006 (claim 7)
 
 remaining before T008 and phase 2:  T004 · T006, mutually independent and parallel · T007
+                                    — all three closed; nothing remains. See below.
 ```
 
 **T00B sits on that edge deliberately.** It needs T003 because a method extracted from one closed

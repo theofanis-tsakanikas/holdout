@@ -28,7 +28,7 @@ function, a bug in it would cancel out and both would agree on a wrong number.
 | **W2** | real effect + interference between neighbouring stores | SUTVA | **exclude the interfering units at design**, then estimate on what is left |
 | **W3** | real effect + exposure fails on 30% of treated units | assignment ≠ exposure | report ITT with the realised rate printed, or refuse below the declared threshold — never silently dilute |
 | **W4** | an effect that decays (novelty) | a constant effect over the window | no result before the declared end, then report what the declared window aggregated |
-| **W5** | heavy-tailed baskets | the variance the power calculation assumed | the power check fails, or the interval is honestly wide |
+| **W5** | heavy-tailed **store-day** demand | the variance the power calculation assumed | the power check fails, or the interval is honestly wide |
 | **W6** | everything works, a real effect is present | nothing — and that is the point | **produce the number.** No refusal |
 
 **W6 matters as much as W1.** A system that refuses everything passes every other world and is
@@ -205,7 +205,7 @@ with `python -m corpus.world count --scale harness`:
 | **W2** | 5,282,580 | 370,036 | 430,080 | 370,036 | 21.2 |
 | **W3** | 5,400,461 | 352,332 | 430,080 | 352,332 | 21.6 |
 | **W4** | 5,388,111 | 349,616 | 430,080 | 349,616 | 21.7 |
-| **W5** | 4,588,490 | 202,080 | 430,080 | 202,080 | 18.6 |
+| **W5** | **5,028,772** | **367,376** | 430,080 | **367,376** | 18.6 |
 | **W6** | 5,364,336 | 354,096 | 430,080 | 354,096 | 21.9 |
 
 At the scenario scale, with the default seed `holdout-w-0001`, from
@@ -217,7 +217,7 @@ At the scenario scale, with the default seed `holdout-w-0001`, from
 | **W2** | 39,264,442 | 1,922,012 | 2,928,000 | 1,922,012 |
 | **W3** | 40,228,156 | 1,818,638 | 2,928,000 | 1,818,638 |
 | **W4** | 40,041,576 | 1,820,154 | 2,928,000 | 1,820,154 |
-| **W5** | 33,582,648 | 1,119,581 | 2,928,000 | 1,119,581 |
+| **W5** | **38,068,537** | **1,945,238** | 2,928,000 | **1,945,238** |
 | **W6** | 39,976,813 | 1,830,229 | 2,928,000 | 1,830,229 |
 
 > **Restated 2026-08-28 (T00E), because the chain moved.** The table read 36.7M POS lines on
@@ -240,13 +240,36 @@ At the scenario scale, with the default seed `holdout-w-0001`, from
 day count is identical everywhere and is the only figure in the table that is arithmetic rather
 than a measurement: 100 stores × 120 SKUs × 244 days, one row each, whatever happened on them.
 
-Two of the rows say something. **W5 is over 6M lines short of the others**, because a
-heavy-tailed basket empties a shelf in fewer transactions and a shelf that is empty sells
-nothing else that day — and its price decisions are down by 40% for the same reason: stock that
-has already gone never reaches a markdown rung. **W3's acknowledgements match its decisions** exactly, as
+One of the rows says something. **W3's acknowledgements match its decisions** exactly, as
 they do in every world: a label that refuses the new price still answers, and `accepted` is a
 column rather than a missing row. A world where a failed acknowledgement simply did not arrive
 would make exposure unmeasurable by deletion instead of by evidence.
+
+> **Restated 2026-08-30 (T007), because W5's four counts did not reproduce.** Both tables above
+> carried W5 at **4,588,490** POS lines and **202,080** acknowledgements at `harness`, and
+> **33,582,648** and **1,119,581** at `scenario`. Re-run at the same default seed while
+> `docs/SCENARIO.md` was being written, the command prints **5,028,772 / 367,376** and
+> **38,068,537 / 1,945,238**. W1 reproduces to the line at both scales, so it is not the seed.
+>
+> The prose that sat here said **"W5 is over 6M lines short of the others"** and **"its price
+> decisions are down by 40%"**, and explained both by a heavy-tailed *basket* emptying a shelf
+> in fewer transactions. Neither half survives: W5 is about 1.2M lines short at `scenario`, and
+> its decisions come out **above** W1's rather than 40% below. Both sentences are withdrawn
+> rather than corrected, because the mechanism they described is not the one the world has.
+>
+> **The cause is in this file's own first table, one screen up.** T003 moved W5's pathology off
+> the basket line and onto the store-day — a heavy tail on a basket is averaged away by the
+> sixteen thousand of them the metric aggregates, which is why the world with the declared
+> variance pathology had measured a standard error *below* the world with none. The counts here
+> were taken before that move, and the six-worlds table still read *"heavy-tailed baskets"*
+> while `worlds.py` had read *"Heavy-tailed store-day demand"* since the day it changed. That
+> row is corrected above.
+>
+> The prior figures stay per doctrine rule 4, and the delta is the finding: **a measured table
+> is measured only as of the last time somebody ran it.** Nothing in the repository re-runs
+> these — `docs/DECISIONS.md` already carries *"the scenario scale is measured by hand, not by a
+> gate"* as a deferral, and this is the first time that deferral cost something. It is a figure
+> in a README rather than a figure in a claim, which is the reason it cost only this much.
 
 Every one of those figures comes from the command above, not from arithmetic on a smaller run. `CLAUDE.md` forbids extrapolating a corpus-size figure to the full estate, and the same
 rule applies one level down: `--only-stores` is a **window** onto the same world and a count
