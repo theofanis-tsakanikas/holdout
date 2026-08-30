@@ -1085,6 +1085,47 @@ detector. **Nothing catches it for hooks, barriers or tests**, and that is where
 > it" makes structural at the target level and cannot make structural per check. Hooks, barriers and
 > tests remain uncovered, and the prior wording stays per doctrine rule 4.
 
+### And a fifth time, in a tool that was not installed — coverage is the variable
+
+The four above are a sentence, a number in configuration, a deferral and a task note. **The
+fifth is not written down anywhere at all: it is a check that did not run.** The language rule
+was measured with `grep -P`, which BSD grep on macOS does not implement. `grep` exited 1,
+`2>/dev/null` discarded the reason, and *no matches* and *no such option* are the same two
+characters on a terminal. A count of **zero** was reported from a command that never ran the
+check.
+
+And once that is named, a second instance is visible that nobody had called the same thing.
+`ci.yml`'s `discover` matched claim targets with `claim-[1-7]`, so a **`claim-8` would have been
+invisible to it** — and `claims-complete`, the required check, aggregates only what `discover`
+emits. A whole claim could have landed with its gate never running, and the merge would have been
+green.
+
+Those are not two defects. They are one defect at two coverages: zero, and seven of eight.
+
+> **A gate reports on what it examined. It becomes a lie when it reports what it examined as if
+> it were what exists.**
+
+**So every gate declares how its population is enumerated, and `make figures` enumerates it a
+second time and compares.** The declaration is a *rule*, never a frozen count — a count is an
+assertion needing its own measurement, which is the defect one row up. And the comparison is
+**one-sided: red when `examined < exists`, never when `examined > exists`.** Under-coverage is
+the lie; over-coverage is a tool doing more than asked. Measured: `ruff` reports 190 files where
+an independent count of `*.py` gives 182, because ruff formats Python inside Markdown and has
+since a version nobody here chose. Freezing either number would go red on that upgrade for a
+reason that is not a defect. It is `Money`'s rule one layer up — *a bound that rounds toward what
+it forbids is not a bound.*
+
+**And an instrument that cannot answer raises rather than returning zero.** A tool that will not
+run, a pattern that no longer matches its own output, a population that cannot be enumerated —
+each is a red run with its own message. That is the whole content of the `grep -P` failure:
+silence and success looked identical.
+
+**Proved by two attacks, not one.** `tests/ops/test_language.py` **removes** the instrument — the
+detector edited into something that cannot match. `tests/ops/test_figures.py` **narrows** it — a
+path outside the walked list, and `claim-[1-7]` against a Makefile that carries a `claim-8`. The
+second shape is the one no reviewer notices, because the gate still runs, still prints, and still
+says what it always said.
+
 **So: the case a guard is tested on may not come from whoever built the guard's idea of the
 failure.** It comes from a shape the guard did not anticipate — a command somebody actually ran, an
 import somebody actually wrote, a price list nobody here drew. Where that is genuinely impossible,

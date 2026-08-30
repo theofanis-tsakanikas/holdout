@@ -467,6 +467,75 @@ closed costs the session. The one exception is `main_guard` on a command line it
 tokenise, where it falls back to a coarser match and refuses: an unbalanced quote is the single
 case where guessing in the safe direction costs only a retry.
 
+**A gate reports on what it examined, and `make figures` is the difference.** · 2026-08-30
+Two events in this repository's record are the same defect at two coverages, and nobody had called
+them the same thing. **At zero:** the language rule was checked with `grep -P`, which BSD grep on
+macOS does not implement; it exited 1, stderr was discarded, and a count of zero was read off a
+command that never ran the check. **At seven of eight:** `ci.yml`'s `discover` matched claim
+targets with `claim-[1-7]`, so a `claim-8` would have been invisible to it — and `claims-complete`,
+the required check, aggregates only what `discover` emits. A whole claim could have landed with its
+gate never running and the merge would have been green.
+
+> **A gate reports on what it examined. It becomes a lie when it reports what it examined as if it
+> were what exists.**
+
+**Every gate declares how its population is enumerated, and `ops/figures.py` enumerates it a second
+time.** It is `evals/README.md`'s rule 5 — *a boundary that has to be known is computed twice* —
+pointed at coverage rather than at arithmetic.
+
+**The declaration is a rule and never a frozen count**, and that is the first place this deviates
+from how it was asked for. A count is an assertion needing its own measurement, which is the defect
+`CLAUDE.md` catalogues ten times; an enumeration rule goes stale only when the thing it enumerates
+changes shape. So a gate does not declare `[D] 182`; it declares *`*.py` under the six directories
+`PYTHON_DIRS` names*, and the number is recomputed on every run.
+
+**And the comparison is one-sided: red when `examined < exists`, never when `examined > exists`.**
+That is the second deviation, and it was measured rather than argued. On 2026-08-30, ruff 0.16.4
+reported 190 files over those six directories against an independent count of 182 `*.py`. The eight
+are Markdown — ruff formats Python inside fenced blocks, and has since a version nobody here chose.
+A gate that froze 190 would have gone red on that upgrade for a reason that is not a defect; one
+that froze 182 would go red when ruff stops. Only under-coverage is a lie about what exists. It is
+`Money`'s rule one layer up: *a bound that rounds toward what it forbids is not a bound.*
+
+**An instrument that cannot answer raises rather than returning zero.** A tool that will not run, a
+pattern that no longer matches its own output, a `PYTHON_DIRS` line that has moved — each is a red
+run with its own message. That is the entire content of the `grep -P` failure, made structural:
+silence and success looked identical, and now they do not.
+
+**Six gates come out. The seventh does not, and the reason is circularity.** `lint`, `typecheck`,
+`language`, `expiry`, `gate-proof` and `discover` each report what they examined against an
+independent enumeration. **`test` cannot**: a suite's examined is what actually ran, which is known
+only after it runs, while `make figures` runs before it inside the same `make check`. Asking pytest
+to collect twice would measure collection against collection, which is a number agreeing with
+itself. It is recorded as uncovered rather than covered badly.
+
+**The prose half is deliberately small, and its size is printed rather than implied.** Two figures
+are registered — the sizes of `ops/language.py`'s two closed lists — and `PLAN.md` and `TASKS.md`
+are excluded on purpose: doctrine rule 4 keeps superseded figures there forever with the
+restatement beside them, so re-running those would go red on history that is correct as written.
+Only present-tense text can be checked this way, and *which* text is present-tense is a judgment,
+not a rule, so the registry is written by hand. `docs/SCENARIO.md` does the same job with `[M]`
+tags and the command beside each figure; this is the half a command can re-run.
+
+*It found one thing on its first run:* a number in `ops/figures.py`'s own docstring, stale by two
+before the module was committed. The fix was not to update it but to **date it** — it is a
+measurement of a moment supporting an argument about direction, not an assertion about today, so it
+carries `Measured 2026-08-30, on ruff 0.16.4` and is not in the registry. That distinction is what
+makes the prose half tractable at all.
+
+**Proved by two attacks, and the second is the one that matters.** `tests/ops/test_language.py`
+**removes** the instrument — the detector edited into something that cannot match.
+`tests/ops/test_figures.py` **narrows** it: a path outside the walked list, and `claim-[1-7]`
+against a Makefile carrying a `claim-8`, which is the exact state `main` was in until this branch.
+Narrowing is the shape no reviewer notices, because the gate still runs, still prints, and still
+says what it always said.
+
+**`discover` also gains a floor.** `claim-[0-9]+` cannot miss a target the way `claim-[1-7]` could,
+but a target *deleted* still shrinks the list in silence, and a shrinking gate is the same lie one
+step along. `FLOOR=6` is what exists today; finding more is ordinary growth and finding fewer is a
+claim whose gate stopped running. `make figures` checks that floor against the Makefile, so it
+cannot go stale downward without something going red.
+
 **The language rule becomes `make language`, and it is the first gate that has to prove it can
 see.** · 2026-08-30
 `CLAUDE.md`'s first line — *all repository content in English. Conversation with the author in
