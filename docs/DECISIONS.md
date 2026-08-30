@@ -467,6 +467,101 @@ closed costs the session. The one exception is `main_guard` on a command line it
 tokenise, where it falls back to a coarser match and refuses: an unbalanced quote is the single
 case where guessing in the safe direction costs only a retry.
 
+**`make expiry` learns what closure is, and prints how much of itself it can check.** · 2026-08-31
+Three things, and the first is the one `docs/reviews/phase-1.md` §2a found.
+
+**A closed deferral is not an open one, and this target could not tell.** It read headers and
+nothing else, so an entry whose finding had already returned was counted among the live ones
+forever — and its `*Expires:*` date went on ticking. `next expiry 2026-09-30` pointed at *CI's gate
+job runs on a temporary 25-minute timeout*, **closed on 2026-08-28 by T003**, which was the only
+dated entry in the registry and the one the registry credits with arming this target at all. CI was
+going to go red for a finding that had already returned. A `*Closed:* YYYY-MM-DD` marker is now read
+like `*Unlock condition:*` and `*Expires:*`, a closed entry cannot expire, and open and closed are
+counted apart. `next expiry` moved to **2026-11-30**, which is a real one.
+
+It is a marker and not a scan over the closing argument, which is a block quote. A regex over prose
+would be a second definition of *closed* that agrees with itself until somebody words it
+differently.
+
+**The standing limit becomes a number.** *An unlock condition is prose and no checker can evaluate
+it* was written honestly in `ops/expiry.py`'s docstring from the day it was written. What it never
+was is **countable**, so nobody could see how much of the registry it covered. The run now prints
+`checked for TRUTH n of m` beside `checked for PRESENCE only`: today **4 of 33 open entries, 12%**.
+That is `make figures`' question — *a gate reports on what it examined; it becomes a lie when it
+reports what it examined as if it were what exists* — turned on this target, which is the honest
+place to point it first.
+
+**Published, not gated.** A condition-only deferral is legitimate by the registry's own rule, so
+refusing one would refuse the thing the section exists for. What is refused is not saying how many
+there are. And the figure is deliberately **not** written into the docstring: a live number in prose
+is the assertion this repository has watched go stale ten times.
+
+**And the thirteenth form of *a guard tested by its author*, which is the sharpest yet.** On
+2026-08-30 `CLAUDE.md` gained *an unlock condition that names a session rather than an event is not
+a condition; it is a date without a calendar.* **The registry was not swept when the rule was
+written.** Nine open entries reached for "the phase-1 integration session" — five as the unlock
+condition itself, four as a fallback clause — and the session in question had already happened
+without answering any of them, which is the evidence that they were places to put a question down
+rather than conditions.
+
+The twelve before it were rules that went stale, or numbers written against a projection. **This one
+is a rule that was correct, published, and simply not applied to what already existed at the moment
+it was written.** Nothing decayed. The new rule and the old registry were never run against each
+other — which is the fourth finding's shape, *two components each correct on its own with no test
+between them*, pointed at a rule and a document instead of at two modules.
+
+**Six were given the branch that closes them, and nothing was invented.** `floor.yaml`'s rule id →
+`contracts/floor-rule-id`; the scenario-scale measurement → `evals/world-cache-measured`, because
+whether a periodic run earns its CI minutes is the same question about the same minutes; W6's
+`IMBALANCED_PRE_PERIOD` threshold and the `C7`/`C11`/`C12` mutations → `evals/unarmed-checks`; the
+ESL penetration figure → `docs/layout-and-restatements`, the one change that opens `CLAUDE.md`
+anyway; the ladder ceiling → `docs/doctrine-rule-1-ceiling`. Each condition now names the **state**
+that change produces, with the branch as the pointer rather than as the condition.
+
+**Three had a real condition already and only a fallback clause to lose**, so the clause was removed
+rather than reassigned: claim 3's strata (the cache across evals), the regulated basket (the decision
+and its argument), and W2's luck (the variant existing). Inventing a condition for those would have
+been worse than the sentence it replaced.
+
+*What is not enforced, and why it is a sweep rather than a gate:* telling a session from an event
+means reading English. `tests/ops/test_expiry.py` asserts the **state the sweep left** — no open
+entry's unlock condition names the session — which will catch a new one added in the old shape, and
+will not catch one phrased differently. Closed entries keep their original wording and every
+restatement quotes what it replaced, per doctrine rule 4, so the phrase survives in the file on
+purpose and a blind search for it would be wrong.
+
+**The split is published rather than a single number**, because the structure is the thing:
+
+```
+33 open deferrals
+   4  carry *Expires:*                       -> checkable for truth
+  29  carry an unlock condition only         -> checkable for presence
+   5  name the integration session as the unlock condition
+   4  name it as a fallback clause           -> still session-named; it just fails second
+   8  name a task id first
+```
+
+*And these counts are this branch's own measurement, taken with `ops.expiry` itself — which
+matters, because a different set reached the branch with the instruction and it was wrong.* The
+figures that arrived were 25 entries, 5 dated, 20 condition-only. Measured here: **35 headers, 2
+closed, 33 open, 4 dated, 29 condition-only.** Neither was adopted on authority and the method is
+stated so anybody can re-run it.
+
+**The disagreement was then explained, and it is `make figures`' own rule broken one message after
+it was insisted on.** The other count came from a regex requiring `· deferred YYYY-MM-DD` on a
+single line. Ten of the thirty-five headers **wrap** between the title, the middle dot and the date
+— which is the exact case `ops/expiry.py`'s `_ENTRY` carries a written comment about, because a
+checker that silently skipped them would under-report the registry rather than fail. So that
+instrument saw **25 of 35 and reported as though it were all of them**: a gate reporting what it
+examined as if it were what exists, at a coverage of 71%, in the same exchange that established the
+rule.
+
+It is the third instance of that rule in three days and the second from the reviewing side — the
+first being `grep -P`, absent on macOS, at a coverage of zero. Both were found by re-execution and
+neither by reading, which is the standing lesson: **an instrument's coverage is not visible in its
+output, and reading its output more carefully does not make it visible.** Only running a second one
+does.
+
 **A gate reports on what it examined, and `make figures` is the difference.** · 2026-08-30
 Two events in this repository's record are the same defect at two coverages, and nobody had called
 them the same thing. **At zero:** the language rule was checked with `grep -P`, which BSD grep on
@@ -990,6 +1085,11 @@ declined `POWER_NOT_REACHED` on an emptied assignment does not count as a catch.
 > the measurement of what comes out when it runs* — had never been pointed at a deferral before.
 > `make expiry` could not have caught it: it checks that an unlock condition is present, never
 > that the condition is the right one.
+>
+> *Closed:* 2026-08-29 — by T004, in the same branch that measured the gap. `contamination.check`
+> gained a `dropped` field and `is_clean` a clause; `gate-proof` gained
+> `09-the-contamination-check-trusts-the-roster-it-is-handed`, so the closure cannot be removed
+> in silence.
 
 **Claim 3's strata are matched on three of the contract's five balance covariates** · deferred
 2026-08-29
@@ -1003,10 +1103,13 @@ simulation.
 what the covariates mean, and `evals/uplift/` already draws over all five, two hundred times, on
 this same lottery. What it leaves open is a defect that only appears with five columns — a matching
 path reached by a fifth covariate and by nothing else — which claim 3 would not see.
-*Unlock condition:* if `evals/uplift/`'s per-world aggregation is ever cached across evals, claim 3
-reads the five-covariate matrix from that cache and the sweep grows. Failing that, it is a
-deliberate item for the phase-1 integration session, which is allowed to decide the three columns
-are enough and say so once rather than in two files.
+*Unlock condition:* `evals/uplift/`'s per-world aggregation being cached across evals — at which
+point claim 3 reads the five-covariate matrix from that cache and the sweep grows on its own.
+*Restated 2026-08-31:* the second half read *"failing that, a deliberate item for the phase-1
+integration session, which is allowed to decide the three columns are enough"*. That named a
+session, and it named one that has since happened without deciding anything — so the clause is
+removed rather than reassigned. The condition above was always the real one; the fallback was a
+place to put the question down.
 
 **`floor.yaml`'s rule id `refuse_when_no_legal_price_sells`** · deferred 2026-08-27
 The refusal code it corresponds to was renamed to `NO_PRICE_SATISFIES_EVERY_GUARDRAIL`, because the
@@ -1022,10 +1125,14 @@ restatement chain and anything that has already recorded that id. The refusal co
 `core/` and by claim 1's counting; the rule id is consumed by the contract layer alone, so the
 overreach is contained to prose in one file.
 
-*Unlock condition:* the next time `floor.yaml` opens a **new** effective window for an unrelated
-reason. The new window carries the corrected id and its restatement; the closed window keeps the old
-one, which is exactly what "never deleted" is for. Failing that, it is a deliberate item for the
-phase-1 integration session, which is allowed to propose a restatement.
+*Unlock condition:* the next time `floor.yaml` opens a **new** effective window — for this reason
+or any other. The new window carries the corrected id and its restatement; the closed window keeps
+the old one, which is exactly what "never deleted" is for. `contracts/floor-rule-id` is the branch
+that opens it, and `docs/reviews/phase-1.md` §3d carries the correction that goes with it: the gate
+that turns red on the rename is `O2`, because the id is a field name in `ops/personhood.py`'s
+registry — not `G10`, which never bounds this rule at all.
+*Restated 2026-08-31:* this read *"failing that, a deliberate item for the phase-1 integration
+session"*, which names a session rather than an event and is what `CLAUDE.md` now refuses.
 
 **`corpus/world/` writes gzipped CSV, not Parquet** · deferred 2026-08-27
 `CLAUDE.md` describes the scenario corpus as *"a few GB of Parquet"*, and on the estate it will be.
@@ -1043,9 +1150,13 @@ figures are produced by `python -m corpus.world count --scale scenario` and reco
 `corpus/world/README.md` with the seed that produced them. So the number in that README is a
 measurement somebody took, not a number CI keeps honest, and it can drift from the code the day a
 demand constant moves.
-*Unlock condition:* the phase-1 integration session decides whether a periodic scenario-scale run
-earns its minutes in CI, once T003 has shown what the A/A harness actually costs. Until then the
-smoke scale is the gate and the README's figures carry their command.
+*Unlock condition:* CI's world-cache budget being set from measurement — the change
+`evals/world-cache-measured` makes. Whether a periodic scenario-scale run earns its minutes is the
+same question about the same minutes, priced against the 35 measured `claim-2` runs rather than
+against an estimate, so it is answered there or not at all. Until then the smoke scale is the gate
+and the README's figures carry their command.
+*Restated 2026-08-31:* this read *"the phase-1 integration session decides"*, which names a session
+rather than an event.
 
 **The world's prices are not certified prices** · deferred 2026-08-27
 `corpus/world/` applies a markdown policy's declared depths and stops. It knows nothing about the
@@ -1297,9 +1408,12 @@ counts beside it as numbers, rather than widening an assertion until the finding
 question is how often it would happen against real costs, not how to make the number smaller. And a
 ladder that took a ceiling would need `floor_behaviour`'s counterpart in the policy contract, which
 is a contract change with a restatement.
-*Unlock condition:* the phase-1 integration session, which reads the whole repository against
-`CLAUDE.md` and is allowed to propose a restatement — or phase 2's gold layer, which supplies a
-realised per-code margin and would replace the derived cost with a measured one.
+*Unlock condition:* doctrine rule 1 being restated to admit an empty safe state — the change
+`docs/doctrine-rule-1-ceiling` makes, on the 716 of 26,600 that `make eval-guardrail` still
+publishes. Or phase 2's gold layer, which supplies a realised per-code margin and would replace the
+derived cost with a measured one, at which point the frequency is a different number.
+*Restated 2026-08-31:* this read *"the phase-1 integration session, which is allowed to propose a
+restatement"*, which names a session rather than an event.
 
 **The regulated basket's benchmark does not say which denominator it is in** · deferred 2026-08-27
 ΥΑ 21330/2026 άρθρο 4 παρ. 4 defines the capped margin as
@@ -1334,8 +1448,11 @@ from it, the eval's regulated set and the envelope's regulated set have the same
 trap, restored. Separately, the change opens a new effective window on a live guardrail and pulls a
 restatement chain with it.
 *Unlock condition:* a decision that the scenario's basket should mirror the real one, taken
-deliberately and with the eval's independence re-argued — the phase-1 integration session is the
-right place. `docs/REGULATORY.md` item 6 carries the restatement in the meantime.
+deliberately and with the eval's independence re-argued in the same change — because the moment the
+contract is populated from `corpus/real/`, the eval's regulated set and the envelope's have the same
+author again. `docs/REGULATORY.md` item 6 carries the restatement in the meantime.
+*Restated 2026-08-31:* this ended *"the phase-1 integration session is the right place"*. The
+condition is the decision and its argument, not the sitting at which somebody takes it.
 
 **No deferral in this registry carries a date, so `make expiry` is armed by its tests alone** ·
 deferred 2026-08-27
@@ -1388,6 +1505,12 @@ the first entry that arms it.
 > what `TASKS.md`'s `stop_at` demanded, and the discovery property survives untouched: the targets
 > are still never listed in the workflow, so a claim target that exists but is never run is still
 > impossible by construction. The entry below carries the new job's own budget.
+>
+> *Closed:* 2026-08-28 — by T003, which split the claim targets into their own matrix jobs and
+> brought `gate` back to 15 minutes. **This entry is why `ops/expiry.py` learned what closure is:
+> it kept its `*Expires:* 2026-09-30` for three days after it was answered, and it was the only
+> dated entry in the registry, so `make expiry` was going to go red on 2026-09-30 for a finding
+> that had already returned.**
 
 **CI's `claims` job runs on a temporary 90-minute timeout** · deferred 2026-08-28
 `make claim-2` is the most expensive target in the repository and it is expensive for a reason
@@ -1446,8 +1569,12 @@ an afternoon.
 *Unlock condition:* a W2 variant at a spillover low enough to pass the power check, which would
 **demonstrate** the silent contaminated number rather than argue for it. That world is cheap to add
 and it is deliberately not added here, because the branch that finds a limit should not also be the
-branch that decides what to do about it. The phase-1 integration session (T008) is where the two
-are weighed against each other.
+branch that decides what to do about it.
+*Restated 2026-08-31:* this ended *"the phase-1 integration session (T008) is where the two are
+weighed against each other"*. The session happened and weighed nothing, which is the evidence the
+clause was a place to put the question down rather than a condition. What would unlock this is the
+variant existing; adding it is still a decision somebody has to take, and no date is invented for
+it here.
 
 **W6's `IMBALANCED_PRE_PERIOD` rate is published with no threshold on it** · deferred 2026-08-28
 `false_refusal_max_pct` — claim 2's statement that *a world where everything works produces the
@@ -1478,9 +1605,14 @@ more than one roster size, so its dependence on the control arm is a **measured 
 one point with an argument attached; and a declared statement, with a source, of how often a healthy
 world may be refused before the system stops being worth running — which is a judgment about the
 product and not an output of the harness.
-*Unlock condition:* the phase-1 integration session (T008), which is the level empowered to ask
-whether a gate has stopped biting and to propose a restatement, with T003's published rate over all
-five world seeds and both rosters in front of it.
+*Unlock condition:* the two things this entry says are missing actually existing — the rate
+measured across more than one roster size, so its dependence on the control arm is a curve rather
+than one point, and a declared statement with a source of how often a healthy world may be refused.
+`evals/unarmed-checks` is where the first is produced, because it is already opening `evals/uplift/`
+to arm `U1`, `U3` and `U5`; the second is a contract change and belongs with it or after it.
+*Restated 2026-08-31:* this read *"the phase-1 integration session (T008), which is the level
+empowered to ask"*, which names a session rather than an event — and names one that has since
+happened without the threshold moving, which is the evidence that it was never a condition.
 
 **Branch protection covers `main` only** · deferred 2026-08-27
 `main` is protected by a repository ruleset with **no bypass actors**, so the rule binds the owner
@@ -1688,10 +1820,13 @@ red, and the check says so in its own `detail` rather than leaving a reader to a
 This is the standing limit of `gate-proof`'s guarantee and it is stated here rather than left to be
 rediscovered: a check that asserts something about the *inputs* cannot be proved to bite by mutating
 the *system*.
-*Unlock condition:* the phase-1 integration session decides whether corpus-property checks want a
-second harness — one that mutates the corpus rather than the system — or whether their value is
-that they are armed by construction and would go red the day the corpus stopped containing what
-they measure. Not built now because one harness with a clear scope beats two with an unclear one.
+*Unlock condition:* `evals/unarmed-checks`, which is the change that answers this for all 21
+checks that own no mutation rather than for these three alone: each gets either a mutation or a
+written reason it cannot have one. Whether corpus-property checks want a second harness — one that
+mutates the corpus rather than the system — is decided there, with the whole list in front of it.
+Not built before then because one harness with a clear scope beats two with an unclear one.
+*Restated 2026-08-31:* this read *"the phase-1 integration session decides"*, which names a session
+rather than an event.
 
 **Claim 7 is proved over `holdout.core` and the contracts, and nothing else exists yet** · deferred
 2026-08-29
@@ -1775,9 +1910,11 @@ not an edit — or deleting the number and leaving the sentence, which is a chan
 envelope table made on a documentation branch, in the file that governs every other branch. A
 project's own context file is the last place to make an unrequested edit.
 
-*Unlock condition:* the phase-1 integration session (T008), which reads the whole repository against
-`CLAUDE.md` and is the level empowered to propose a restatement — and which is the right place to
-decide between citing the figure and dropping it. Failing that, the publication checklist, since
-this is a number a public README would repeat.
+*Unlock condition:* `docs/layout-and-restatements`, the branch that edits `CLAUDE.md` for the
+review's other findings and is therefore the one change where this figure can be cited or dropped
+without `CLAUDE.md` being opened for it alone. Failing that, the publication checklist, since this
+is a number a public README would repeat.
+*Restated 2026-08-31:* this read *"the phase-1 integration session (T008)"*, which names a session
+rather than an event — and the session came and went while the figure stayed.
 *Expires:* 2026-11-30 — because an unlock condition is prose and can never expire, and a sourceless
 number in the file every session reads first should not be able to sit here indefinitely.
