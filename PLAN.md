@@ -811,6 +811,52 @@ would be a change made in the place it is least reviewed.
 *The file republishes no claim's figures.* Those are each eval's evidence, printed on every run, and
 a copy of them in a document nothing executes is the stale table above waiting to happen again.
 
+**T008 — the phase-1 integration review, and the first thing it found was that it had nowhere to
+live · 2026-08-30.** Oversight level 3 read the whole repository against `CLAUDE.md` and the report
+is `docs/reviews/phase-1.md`. It is committed rather than delivered in a terminal, which is the
+defect it catalogues ten times over: an assertion with no place anybody but its author reads.
+
+**No claim's proof has collapsed.** The two independence barriers hold, the five closed claims are
+green, and `ops.roster` reproduces the scale table `CLAUDE.md` restated on 2026-08-29 exactly. The
+drift is in the layer around the proof, and it comes in three shapes. **Gates that count the wrong
+thing:** `make expiry` has no notion of a deferral being closed, so its "35 deferred" includes three
+that are, and its `next expiry 2026-09-30` points at an entry that closed on 2026-08-28 — the one
+dated entry the registry credits with arming it. **Assertions never measured:** across 31 CI runs
+`make claim-2` spans 32.2 to 77.1 minutes with the two *fastest* being cache misses, so *"generation
+is about half the harness"* — carried in `ci.yml`, `docs/DECISIONS.md` and `evals/README.md` — has no
+measurement behind it, and the cache key over-covers by digesting `corpus/real/`, which produces no
+world. **Rules applied to one sample:** 21 of 57 checks own no mutation and 8 of those name no
+reason, including three of claim 2's four published numbers; the rule requiring that reason was
+written from claim 7 on 2026-08-29 and never applied backwards.
+
+Two things landed here rather than in a later branch, both because they are sentences in the file
+that governs every other branch. **Doctrine rule 7 is restated:** the repository holds three seals of
+identical construction, each declaring that a coordinated forgery is not caught, so *today the
+guarantee is detection* — unopenability arrives in phase 3 with the read-only assignment table, and
+the door this rule names is `gold.experiment_assignment` rather than a Python type. And **an unlock
+condition now has to name an event rather than a session**: nine open deferrals pointed at T008, so
+the review whose job was to read arrived owing eleven decisions. Both prior wordings stay, per
+doctrine rule 4.
+
+**And the review found the tenth instance of this project's most frequent defect inside T008's own
+task note.** `TASKS.md` instructs the session that renaming `floor.yaml`'s rule id turns `G10` red,
+so move the contract and the eval together. `refuse_when_no_legal_price_sells` is never a
+`Bound.rule_id` — `envelope.py` attributes six and it is not among them — so `G10` would not move at
+all; what goes red is `O2`, because the id is a field name in `ops/personhood.py`'s registry. The
+note was written against `G10`'s *argument* rather than against its six strings. **The nine known
+forms were a sentence, a timeout, a deferral, a cost estimate, a stale measurement, a minuted
+figure, a cache hypothesis and the rule's own statement; the tenth is an instruction to the next
+session** — the form with the longest reach, because it does not describe the system, it aims the
+hand that changes it. Nothing caught it: it was found by reading the six `rule_id=` lines.
+
+The report's own conclusion is that the rule cannot be completed by widening it again. Ten
+instances, ten forms, one invariant — *the assertion was checked against the artefact it came from
+rather than against the thing that would falsify it* — which is already what the boxed rule says.
+What it lacks is a gate, and `docs/SCENARIO.md`'s four-kinds discipline is the one mechanism in this
+repository that has caught this defect by construction instead of by reading. Extending it to every
+published number, with a target that re-runs the commands behind the `[M]`s, is the first of the
+nine branches the report opens and the only one that stops the rest recurring.
+
 ### Closed in this phase
 
 Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **All five have closed**,

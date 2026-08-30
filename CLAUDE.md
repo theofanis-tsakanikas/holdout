@@ -295,6 +295,32 @@ rigged" is that validity comes from the lottery, not from the simulator.**
    including an approver. From the moment it can, every number the system produces becomes
    unfalsifiable. Having exactly one unopenable door is what keeps the other six honest.
 
+> **Restated 2026-08-30 by T008, because *unopenable* is not what phase 1 delivers.** The rule
+> above is the standing intent and does not change. What changes is the claim about *today*:
+> the repository holds **three** seals of identical construction — `CertifiedPrice`,
+> `SealedAssignment` and `corpus/world/seal.py` — each declaring the same limit, that a forger
+> who rewrites every field together is not caught, and each with a test that performs that
+> forgery and requires it to **succeed**. `contamination.py` calls itself *the one door with no
+> key* while being the same shape as the other two.
+>
+> **So: today the guarantee is detection, not unopenability.** Every uncoordinated edit is
+> refused by name — a reassigned unit, an erased one, a mis-delivered policy, a digest that no
+> longer describes its arms. A coordinated rewrite of the arms, the seed, the strata and the
+> digest agrees with itself, and the repository says so in three places rather than one.
+>
+> **Unopenability arrives in phase 3, with the read-only assignment table.** The door this rule
+> names is not a Python type: it is `gold.experiment_assignment`, written before the period
+> opens from the committed seed and then read-only, where the *storage* refuses the write that
+> the type can only notice afterwards. Until that table exists, the honest sentence is *one
+> door that reports every hand laid on it*, and the type is what makes the report trustworthy
+> rather than what makes the door shut.
+>
+> The prior wording stays per rule 4, and the delta is the finding: **a door that detects every
+> uncoordinated edit is not the same object as a door that does not open, and this repository
+> had been calling the first by the second one's name.** Nothing in the code was wrong — the
+> limit was declared in all three places from the day each was written. What was wrong was one
+> sentence in the doctrine, which is the layer with no gate behind it.
+
 ---
 
 ## Non-negotiable engineering rules
@@ -932,6 +958,25 @@ visibility — that evidence ends up in the README and the article, which are pu
 
 **Deferring is not forgetting.** Anything deliberately deferred names, in `docs/DECISIONS.md`, the
 condition that will unlock it. An item with no unlock condition is not deferred; it is forgotten.
+
+**And a condition names an event, never a session.** *Added 2026-08-30 by T008, which found nine
+open deferrals pointing at itself.*
+
+> **An unlock condition that names a session rather than an event is not a condition; it is a
+> date without a calendar.**
+
+*"The phase-1 integration session"* answers *when* and never *what has to become true*, so it
+cannot be evaluated, cannot expire, and cannot be met by anything except a session being held.
+Nine entries carrying it meant the review whose job was to **read** arrived owing eleven
+**decisions**, and every one of them had been deferred on the strength of a name rather than a
+fact. A condition names a thing that happens in the repository — a contract opening a new
+window, a table existing, a target being written, a figure being published — and an integration
+session is then the moment somebody *notices* it has happened, which is a different job.
+
+Where the honest answer really is *"a human has to weigh this"*, that is said in those words with
+a date beside it, because `make expiry` can act on a date and can never act on prose. It checks
+that an unlock condition is **present**, never that it is right — the standing limit
+`docs/DECISIONS.md` declares about itself, and the one this rule exists to keep small.
 
 `PLAN.md` is updated at the end of every session: what closed, what is open.
 
