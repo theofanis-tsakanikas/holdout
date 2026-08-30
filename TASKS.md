@@ -1077,6 +1077,15 @@ closes        Reads the whole repository against CLAUDE.md and reports conceptua
               The method is written as the .claude/skills/integration-review skill, not as ad hoc
               instructions — so the review that runs at every phase boundary is a versioned
               procedure that goes through a pull request like everything else.
+              The skill MUST ask, in these words: "what does the `main` ruleset require, and
+              does that list match the jobs ci.yml defines today?" It is the one question in
+              this review that cannot be answered by reading the repository — what the forge
+              requires is a fact about the forge, carried in no file here — and it is in the
+              skill because it was missed once. T003 moved the claim targets out of `gate` and
+              into the `claims` matrix while the ruleset went on requiring `gate`, so for two
+              days a pull request with a red claim-2 merged and oversight level 1 was false.
+              ops/claims-are-required closed it with one summary context, `claims-complete`;
+              nothing inside this tree can check that the ruleset still names it.
 out_of_scope  The three instrument findings — they are T000, and they land before the evals, not
               after. Building any product code.
 stop_at       When the drift report is written and each proposed fix is opened as its own branch

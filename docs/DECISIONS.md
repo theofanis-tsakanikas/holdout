@@ -1371,6 +1371,77 @@ specified to dispatch from `main` only; that constraint is currently a sentence 
 than a workflow condition, because those workflows do not exist.
 *Unlock condition:* phase 3, when they are written. Each gets an explicit `main`-only guard.
 
+> **Restated 2026-08-30. The sentence above was true when it was written and stopped being true
+> two days later, and the evidence was in its own quote.** *"`gate` and `secrets` both required
+> and both green"* described the ruleset accurately on 2026-08-27, when `gate` ran every claim
+> target. **T003 moved the claim targets into the `claims` matrix and the ruleset kept pointing
+> at `gate`** — so from that commit until this one, **a pull request with a red `claim-2` merged.**
+> Oversight level 1's whole sentence — *a session cannot merge something that breaks a claim,
+> because the gate is structural rather than advisory* — was false, at the level everything else
+> leans on.
+>
+> **The fingerprint was in this entry from the day it was written.** Its verification quotes
+> *"2 of 2 required status checks are expected"*. The **2** was the finding. Nobody read the
+> number, because the sentence beside it already said which two and they agreed — the defect
+> `docs/reviews/phase-1.md` §8 names, one more time: the assertion checked against the sentence
+> it came from.
+>
+> **What the ruleset requires is a fact about the forge, and nothing in this repository carries
+> it.** `ci.yml` declares which jobs *exist* and never which are *required*; `make check` cannot
+> read it; no test touches it. The phase-1 integration review read `ci.yml` line by line and
+> measured 31 of its runs without being able to see this. It was found by asking the API.
+>
+> **The fix is one summary context, never a list of names.** `claims-complete` — `needs:
+> [claims]`, `if: always()` — fails on anything that is not `success`, and the case that matters
+> is **`skipped`**: a skipped matrix reports as neutral rather than red, which is how a matrix
+> job passes silently. Enumerating `claim-1 … claim-7` in the ruleset would be a second registry
+> of which claims exist, kept by hand, in a place no session reads and no test can see, needing
+> somebody to remember it the day `claim-5` lands. `discover` already reads the targets out of
+> the Makefile; this is the one context that summarises whatever it found, so a new claim is
+> covered by nobody remembering anything.
+>
+> **Verified by attacking, not by reading** — the rule this repository applies to its own gates.
+> It took **three** attacks, and the first two proved less than they looked like proving.
+>
+> | | attack | matrix | `claims-complete` | `gate` | merge |
+> |---|---|---|---|---|---|
+> | **A** | every `claim-N:` hidden from `discover` | `skipping` | fail in 2s | *also red* | `BLOCKED` |
+> | **B** | claim 7's planted break 01, applied by hand | `failure` | fail | *also red* | `BLOCKED` |
+> | **C** | the margin cap's bound carries another rule's name | `failure` | fail | **green, 919** | `BLOCKED` |
+>
+> **The `gate` column is why C exists.** A and B are caught by the suite as well —
+> `tests/evals/test_ledger.py` parses the real Makefile, so renamed targets turn it red, and the
+> decision key has a test of its own. They show the job fires on both non-success results and
+> that the ruleset refuses; they do **not** show the context is necessary, which is this
+> repository's own standard for a gate: *a gate can only be shown to bite where it is the gate
+> that refuses.* On A the `gate` column was empty because `concurrency` had cancelled it, and
+> the empty column was the finding.
+>
+> **No committed mutation can serve as the isolated attack.** Number 16 was tried and `gate` went
+> red: `ledger.every-anchor-is-aimed-at-one-place` requires each anchor to occur exactly once,
+> and applying the mutation removes it. The repository defending itself, and the consequence is
+> that the isolated break had to be written fresh.
+>
+> **C is that break.** `cap_benchmark`'s bound is attributed to `markdown_max_depth_pct` — right
+> amount, wrong rule name, so a certificate asserts a check that never ran. `make check` **green
+> at 919**; `G10` red with **156,294 disagreements in 746,643 bounds**. It is the break `G10` was
+> written for, and now the one `claims-complete` exists for: **before this branch that exact tree
+> would have merged.** The three refusals, and the last one names a single context:
+>
+> ```
+> A   2 of 3 required status checks have not succeeded: 1 failing.   (HTTP 405)
+> B   2 of 3 required status checks are failing.                     (HTTP 405)
+> C   Required status check "claims-complete" is failing.            (HTTP 405)
+> ```
+>
+> **The standing limit, which is a real one and cannot be closed from inside.** Nothing here
+> checks the *ruleset*. Remove the required context tomorrow and `claims-complete` goes on
+> reporting green while nothing enforces it — the same hole one layer out. Anything living in
+> this tree can only be checked by something the forge has already decided to run. So it closes
+> as a **question in a procedure** rather than as a gate: *what does the ruleset require, and
+> does it match the jobs that exist today?* is in T008's `closes` for the `integration-review`
+> skill, because a rule only a conversation carries is a rule the next session never reads.
+
 **Claim 2's eval has no three-question README** · deferred 2026-08-29
 `evals/README.md`'s shape block declares `<claim>/README.md` — *what is attacked, where the
 independence is, what it does not prove* — and `evals/guardrail/` has one. `evals/uplift/` does
