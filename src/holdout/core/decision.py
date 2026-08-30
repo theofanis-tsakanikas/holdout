@@ -124,6 +124,7 @@ class DecisionKey:
     sku_id: str
     store_id: str
     occasion: int
+    customer_id: str = ""
 
     def __post_init__(self) -> None:
         if not self.sku_id or not self.store_id:
