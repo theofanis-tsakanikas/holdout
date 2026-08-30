@@ -191,6 +191,82 @@ jobs:
       - name: make ${{ matrix.target }}
         run: make ${{ matrix.target }}
 
+  # The one job the ruleset requires on behalf of every claim, and it exists because the
+  # ruleset could not require the matrix itself.
+  #
+  # **What it was found by, because it was found by nothing here.** Until T003 the claim
+  # targets ran inside `gate`, and `gate` is what the `main` ruleset requires. T003 split them
+  # into the matrix above — correctly, and for reasons that file's own comments give — and the
+  # ruleset stayed pointing at `gate`. From that commit until this one, **a pull request with a
+  # red `claim-2` merged**: oversight level 1's whole sentence, *a session cannot merge
+  # something that breaks a claim, because the gate is structural rather than advisory*, was
+  # false for two days and nothing in the repository could say so. What the ruleset requires is
+  # a fact about the forge, not about this tree: no file carries it, `make check` cannot read
+  # it, and no amount of reading `ci.yml` reveals it. It was found by asking the API.
+  #
+  # **`if: always()` with `needs: [claims]`, and it fails on anything that is not success.** A
+  # required check that only reports when it runs is not required; it is required *when
+  # convenient*. The result of a matrix job aggregates its legs, so `failure` covers a red
+  # claim — but the one that matters is `skipped`, because **skipping is how a matrix job
+  # passes silently**. `claims` is skipped whenever `discover` emits no targets or fails
+  # outright, and a skipped required check is reported as neutral rather than red. Deleting
+  # every `claim-N:` line from the Makefile would have left this repository with a green tick
+  # and no claim proved. That is refused here by name.
+  #
+  # **The ruleset requires this context and never the target names.** Enumerating
+  # `claim-1 … claim-7` there would be a second registry of which claims exist, kept by hand,
+  # in a place no session reads and no test can see — and the day `claim-5` lands somebody has
+  # to remember to add it. `discover` already reads the targets out of the Makefile, which is
+  # what CI runs; this job is the single context that summarises whatever `discover` found. A
+  # new claim is covered on the day its target is written, by nobody remembering anything.
+  #
+  # **What this does not catch:** the ruleset itself. If the required context is removed from
+  # it tomorrow, this job goes on reporting and nothing turns red — the same class of hole one
+  # layer out, and the reason *"what does the ruleset require?"* is a question the
+  # `integration-review` skill asks out loud rather than a thing a future reviewer might
+  # notice. It cannot be noticed by reading.
+  claims-complete:
+    name: claims-complete
+    needs: [claims]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: every claim target ran, and every one of them passed
+        env:
+          RESULT: ${{ needs.claims.result }}
+        run: |
+          set -euo pipefail
+          echo "claims matrix result: ${RESULT}"
+          if [ "${RESULT}" = "success" ]; then
+            echo "OK      every discovered claim target ran and passed" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### claims-complete FAILED"
+            echo ""
+            echo "The \`claims\` matrix result was \`${RESULT}\`, not \`success\`."
+            echo ""
+            case "${RESULT}" in
+              failure)
+                echo "At least one claim target is red. A claim that does not prove itself is"
+                echo "not a claim, and this pull request does not merge."
+                ;;
+              skipped)
+                echo "The matrix did not run at all. Either \`discover\` found no \`claim-N\`"
+                echo "target in the Makefile, or it failed before it could emit one. **A"
+                echo "skipped matrix is how a gate passes silently** — it is refused here"
+                echo "rather than reported as neutral."
+                ;;
+              *)
+                echo "The matrix neither succeeded nor failed cleanly. Anything that is not"
+                echo "\`success\` is refused: a required check that reports green on an"
+                echo "outcome nobody examined is worse than a missing one."
+                ;;
+            esac
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
   secrets:
     name: secrets
     runs-on: ubuntu-latest
