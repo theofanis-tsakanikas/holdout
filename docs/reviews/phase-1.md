@@ -2,38 +2,40 @@
 
 **T008 · 2026-08-30 · branch `docs/phase-1-integration`**
 
-Οversight level 3 διαβάζει ολόκληρο το repository απέναντι στο `CLAUDE.md` και αναφέρει
-εννοιολογική απόκλιση. **Δεν χτίζει τίποτα.** Κάθε προτεινόμενη διόρθωση γίνεται δικό της
-branch με review.
+Oversight level 3 reads the whole repository against `CLAUDE.md` and reports conceptual drift.
+**It builds nothing.** Each proposed fix becomes its own branch with its own review.
 
-Τι έτρεξε για να παραχθεί αυτή η αναφορά: `make check` (919 πράσινα), `make eval-guardrail`,
+What was run to produce this report: `make check` (919 green), `make eval-guardrail`,
 `make eval-assignment`, `make eval-censoring`, `make eval-oversight`, `make gate-proof`,
-`python -m ops.roster` σε δύο κλίμακες, και οι διάρκειες των 31 επιτυχημένων `claim-2` jobs
-από το GitHub Actions API.
+`python -m ops.roster` at two scales, and the durations of the 31 successful `claim-2` jobs
+from the GitHub Actions API.
 
-> **Αυτή η αναφορά υπήρχε μόνο σε τερματικό μέχρι να γραφτεί εδώ.** Αυτό είναι το ίδιο
-> ελάττωμα που καταγράφει εννιά φορές: ένας ισχυρισμός που δεν έχει θέση την οποία διαβάζει
-> κανείς εκτός από αυτόν που τον έγραψε. Η θέση της είναι το repository.
+> **This report existed only in a terminal until it was written here.** That is the same defect
+> it catalogues nine times over: an assertion with no place anybody but its author reads. Its
+> place is the repository.
 
----
-
-## 0 · Τι στέκει
-
-Δεν βρήκα claim του οποίου η απόδειξη να έχει καταρρεύσει. Τα πέντε κλειστά claims είναι
-πράσινα και οι δύο φραγμοί ανεξαρτησίας κρατάνε: κανένα module του `corpus/` δεν βλέπει το
-`holdout`, καμία mutation δεν αγγίζει `ops/` ή `corpus/`, το `ops.roster` αναπαράγει ακριβώς
-τον πίνακα που το `CLAUDE.md` restated στις 29/08 (83·16 / 66·13 / 269·53 / 222·44). Οι
-κωδικοί `at_decision` καλύπτονται 12/12. Η απόκλιση που βρήκα είναι **στο περίβλημα της
-απόδειξης, όχι στον πυρήνα της**.
+*Written in Greek in the session that produced it and translated on 2026-08-30 by
+`docs/review-in-english`, because `CLAUDE.md`'s first line is that all repository content is in
+English and only the conversation with the author is in Greek. Nothing in the content moved;
+`make language` is what stops it happening again.*
 
 ---
 
-## 1 · Στηρίζεται κάποιο claim σε απόδειξη που έγινε ταυτολογία;
+## 0 · What stands
 
-**Όχι — αλλά 21 από τα 57 checks δεν έχουν καμία mutation, και 8 από αυτά δεν έχουν ούτε
-γραπτό λόγο.**
+I found no claim whose proof has collapsed. The five closed claims are green and both
+independence barriers hold: no module under `corpus/` sees `holdout`, no mutation touches `ops/`
+or `corpus/`, and `ops.roster` reproduces exactly the table `CLAUDE.md` restated on 2026-08-29
+(83·16 / 66·13 / 269·53 / 222·44). The `at_decision` codes are covered 12/12. The drift I found
+is **in the casing around the proof, not in its core**.
 
-Το μέτρησα αντιπαραβάλλοντας τα `targets:` των 49 mutations με όλα τα check ids:
+---
+
+## 1 · Does any claim's proof rest on something that has become a tautology?
+
+**No — but 21 of the 57 checks own no mutation, and 8 of those name no reason either.**
+
+Measured by matching the `targets:` of the 49 mutations against every check id:
 
 ```
 claim 2   U1 aa-false-positive-rate      0 mutations
@@ -47,181 +49,172 @@ claim 3   A10                            0
 claim 7   O4, O6, O7, O8, O11, O12       0
 ```
 
-**Τρία από τα τέσσερα νούμερα που δημοσιεύει το claim 2 — U1, U3, U5 — δεν έχουν mutation.**
-Μόνο το U4 (coverage) έχει. Το claim που το `CLAUDE.md` λέει ότι «χωρίζει αυτό από ένα demo»
-δείχνει τα headline νούμερά του χωρίς να έχει δείξει ότι δαγκώνουν.
+**Three of the four numbers claim 2 publishes — U1, U3, U5 — have no mutation.** Only U4
+(coverage) does. The claim `CLAUDE.md` calls *the one that separates this from a demo* shows its
+headline numbers without having shown that they bite.
 
-Για τα U1·U2·U3 ο λόγος **υπάρχει** — στο docstring του `evals/uplift/machinery.py`: είναι
-rate-shaped και απουσιάζουν από το configuration που τρέχει μια mutation. Για τα A10,
-C7/C11/C12 και τα έξι O υπάρχει επίσης γραπτός λόγος. Για τα **C9, G4, G6, G7, G8, U5, U9**
-δεν υπάρχει πουθενά — και δύο από αυτά (`G8.every-refusal-code-is-reached`,
-`C9.every-censoring-shape-is-reached`) είναι ακριβώς τα coverage checks που ο κανόνας 4 του
-`evals/README.md` λέει ότι υπάρχουν για να μην ξεχνιέται ένα gate σε υποσημείωση.
+For U1·U2·U3 the reason **does exist** — in the docstring of `evals/uplift/machinery.py`: they
+are rate-shaped and are absent from the configuration a mutation runs. A10, C7/C11/C12 and the
+six O checks also have a written reason. For **C9, G4, G6, G7, G8, U5, U9** there is none
+anywhere — and two of those (`G8.every-refusal-code-is-reached`,
+`C9.every-censoring-shape-is-reached`) are precisely the coverage checks that rule 4 of
+`evals/README.md` says exist so that a gate is not forgotten in a footnote.
 
-Ο κανόνας που το απαιτεί — *«a check with no mutation names the reason it cannot have one,
-and is broken deliberately somewhere»* — γράφτηκε στις **2026-08-29 από το claim 7** και
-μπήκε στο `evals/README.md` ως μέρος του σχήματος. **Δεν εφαρμόστηκε ποτέ αναδρομικά.**
-Είναι κανόνας με ένα συμμορφούμενο δείγμα, στο αρχείο που δηλώνει ότι είναι η πηγή αλήθειας
-του σχήματος για όλα τα claims.
+The rule that requires it — *"a check with no mutation names the reason it cannot have one, and
+is broken deliberately somewhere"* — was written on **2026-08-29 by claim 7** and entered
+`evals/README.md` as part of the shape. **It was never applied backwards.** It is a rule with one
+conforming sample, in the file that declares itself the source of truth for the shape of every
+claim.
 
-**Και 7 από τους 24 κλειστούς κωδικούς δεν τους φτάνει κανένα eval.** Όλο το `at_design` —
+**And 7 of the 24 closed codes are reached by no eval.** The whole of `at_design` —
 `UNDERPOWERED_FOR_DURATION`, `UNDERPOWERED_FOR_CAPACITY`, `UNIT_GUARANTEES_INTERFERENCE`,
 `STOPPING_RULE_PERMITS_PEEKING`, `EXCLUSIONS_DEFINED_POST_HOC`, `METRIC_NOT_IN_CONTRACT`,
-`UNITS_ALREADY_COMMITTED` — υπάρχει μόνο στο `tests/core/test_refusal_codes.py`, δηλαδή σε
-περιπτώσεις που έγραψε ο συγγραφέας τους. Το `evals/design/` είναι φάση 4. Αυτό είναι σωστά
-αναβεβλημένο· **δεν είναι γραμμένο πουθενά**, και το claim 6 πρόκειται να μετρήσει N/M/K
-πάνω ακριβώς σε αυτό το λεξιλόγιο.
+`UNITS_ALREADY_COMMITTED` — exists only in `tests/core/test_refusal_codes.py`, that is, in cases
+their own author wrote. `evals/design/` is phase 4. That is correctly deferred; **it is written
+down nowhere**, and claim 6 is about to count N/M/K over exactly this vocabulary.
 
-*Branch:* `evals/unarmed-checks` — για κάθε check χωρίς mutation, είτε mutation είτε μια
-γραμμή που λέει γιατί δεν μπορεί, και μια δήλωση για το κενό του `at_design`.
+*Branch:* `evals/unarmed-checks` — for every check with no mutation, either a mutation or a line
+saying why it cannot have one, and a statement of the `at_design` gap.
 
 ---
 
-## 2 · Έχει κάποιο gate σταματήσει να δαγκώνει;
+## 2 · Has any gate stopped biting?
 
-### 2α · `make expiry` μετράει κλειστές αναβολές ως ανοιχτές
+### 2a · `make expiry` counts closed deferrals as open
 
 ```
 35 deferred item(s): 5 carry a date, 30 carry an unlock condition only
 next expiry 2026-09-30
 ```
 
-Το `ops/expiry.py` διαβάζει **headers** (`_ENTRY`, `_MARKER`). Δεν έχει καμία έννοια
-κλεισίματος. Τρεις εγγραφές κουβαλούν ρητό `> **Closed**` / `> **Half closed**` και
-μετριούνται κανονικά:
+`ops/expiry.py` reads **headers** (`_ENTRY`, `_MARKER`). It has no notion of closure. Three
+entries carry an explicit `> **Closed**` / `> **Half closed**` and are counted regardless:
 
-- *The contamination check cannot see a store erased* — έκλεισε 29/08
-- *`docs/SCENARIO.md` and `docs/DAY-ONE.md`* — μισο-έκλεισε 30/08
-- *CI's gate job runs on a temporary 25-minute timeout* — **έκλεισε 28/08**
+- *The contamination check cannot see a store erased* — closed 2026-08-29
+- *`docs/SCENARIO.md` and `docs/DAY-ONE.md`* — half closed 2026-08-30
+- *CI's gate job runs on a temporary 25-minute timeout* — **closed 2026-08-28**
 
-Και η τρίτη είναι το πρόβλημα: **το `next expiry 2026-09-30` δείχνει σε εγγραφή που έκλεισε
-πριν δύο ημέρες.** Το μοναδικό dated entry που όπλισε ποτέ το dated μισό του gate — αυτό που
-το ίδιο το registry γιορτάζει ως *«This is the first entry that arms it»* — είναι κλειστό.
-Στις 30/09 το CI θα κοκκινίσει για ένα εύρημα που έχει ήδη επιστρέψει.
+And the third is the problem: **`next expiry 2026-09-30` points at an entry that closed two days
+ago.** The only dated entry that ever armed the dated half of the gate — the one the registry
+itself celebrates as *"This is the first entry that arms it"* — is closed. On 2026-09-30 CI will
+go red for a finding that has already returned.
 
-Το βαθύτερο: **το «πόσες αναβολές είναι ανοιχτές» δεν έχει απάντηση που να τη δίνει
-εντολή.** Αυτό είναι ακριβώς το ελάττωμα που το `TASKS.md` δηλώνει στην πρώτη του σελίδα ότι
-υπάρχει για να αποτρέψει — «δύο απαντήσεις στο τι είναι ανοιχτό» — αναπαραγμένο ένα αρχείο
-παραδίπλα.
+The deeper point: **"how many deferrals are open" has no answer that any command gives.** That is
+exactly the defect `TASKS.md` declares on its first page that it exists to prevent — "two answers
+to what is still open" — reproduced one file along.
 
-*Branch:* `ops/expiry-knows-what-closed` — μαρκαδόρος κλεισίματος που ο parser διαβάζει, με
-planted entry στο `tests/ops/test_expiry.py` και για τις δύο κατευθύνσεις.
+*Branch:* `ops/expiry-knows-what-closed` — a closure marker the parser reads, with a planted entry
+in `tests/ops/test_expiry.py` in both directions.
 
-### 2β · Το world cache του CI δεν εξοικονομεί τίποτα μετρήσιμο
+### 2b · CI's world cache saves nothing measurable
 
-31 επιτυχημένα `claim-2` jobs:
+31 successful `claim-2` jobs:
 
 ```
-min 32.2   median 51.4   max 77.1 λεπτά      (2.4x εύρος)
+min 32.2   median 51.4   max 77.1 minutes      (2.4x spread)
 ```
 
-Οι **δύο ταχύτερες εκτελέσεις όλων (32.2 και 32.7) είναι cache misses.** Το run
-33253331218 έγραψε *Cache not found* και τελείωσε σε 44.8· το 33279086093 χτύπησε
-`worlds-Linux-1acc1402…` (6 MB restored) και έκανε 50.5. Ο μέσος όρος των warm runs είναι
-**πάνω** από των cold. Δεν υπάρχει μέτρηση που να στηρίζει το *«about half the harness»* —
-υπάρχουν τρεις τοποθεσίες που το ισχυρίζονται:
+**The two fastest runs of all (32.2 and 32.7) are cache misses.** Run 33253331218 logged *Cache
+not found* and finished in 44.8; run 33279086093 hit `worlds-Linux-1acc1402…` (6 MB restored) and
+took 50.5. The mean of the warm runs is **above** the mean of the cold ones. There is no
+measurement supporting *"about half the harness"* — and three places assert it:
 
-- `.github/workflows/ci.yml:143-145` — *«The steady state is much lower… skips generation
-  entirely»*
-- `docs/DECISIONS.md:1291` — *«which is about half the harness»*
-- `evals/README.md:132` — *«much lower once `.worlds/` is warm»* — και αυτή κάθεται **στην
-  παράγραφο που μόλις δήλωσε ότι κάθε νούμερο πάνω της είναι cold measurement, όχι
+- `.github/workflows/ci.yml:143-145` — *"The steady state is much lower… skips generation
+  entirely"*
+- `docs/DECISIONS.md:1291` — *"which is about half the harness"*
+- `evals/README.md:132` — *"much lower once `.worlds/` is warm"* — and this one sits **inside the
+  paragraph that has just declared every figure above it a cold measurement rather than a
   projection.**
 
-**Και το κλειδί υπερκαλύπτει.** `DEPENDS_ON = ("corpus", …)` σαρώνει όλο το `corpus/`, άρα
-περιλαμβάνει `corpus/real/__init__.py`, `fetch.py`, `reader.py` — τα αρχεία του corpus του
-claim 1 και του claim 7, που δεν παράγουν ούτε ένα byte κόσμου. Το επαλήθευσα: το digest
-μετακινήθηκε `ad6b6e27 → 1acc1402` με το merge του **T006 (claim 7)**, και όλα τα 40
-harness-scale ledgers των 540 KB ακυρώθηκαν από αλλαγή που δεν μπορούσε να αγγίξει κόσμο. Το
-docstring του `cache.py` προειδοποιεί ρητά για τον αντίστροφο τρόπο να αχρηστευθεί ένα cache
-(*«A digest over the whole repository would move on every mutation… which is the other way to
-make a cache useless»*) — και το κλειδί το έχει, έναν κατάλογο πιο μέσα.
+**And the key over-covers.** `DEPENDS_ON = ("corpus", …)` scans all of `corpus/`, so it includes
+`corpus/real/__init__.py`, `fetch.py` and `reader.py` — the files of claim 1's and claim 7's
+corpus, which produce not one byte of a world. Verified: the digest moved `ad6b6e27 → 1acc1402`
+with the merge of **T006 (claim 7)**, and all 40 harness-scale ledgers of 540 KB were invalidated
+by a change that could not touch a world. `cache.py`'s own docstring warns explicitly about the
+opposite way to make a cache useless (*"A digest over the whole repository would move on every
+mutation… which is the other way to make a cache useless"*) — and the key has it, one directory
+in.
 
-### 2γ · Το budget των 90 λεπτών
+### 2c · The 90-minute budget
 
-Μέγιστο μετρημένο **77.1 λεπτά — 86% του budget**, δύο runs πάνω από 76. Το ίδιο σχήμα που
-κόστισε δύο φορές (15→25, 45→90), με τη διαφορά ότι αυτή τη φορά ο αριθμός τέθηκε από cold
-μέτρηση και ήταν σωστός· αυτό που δεν μετρήθηκε είναι το **εύρος μεταξύ runners υπό
-συμφόρηση**, που είναι 2.4x και όχι το ~40% που το repository έχει καταγράψει.
+Maximum measured **77.1 minutes — 86% of the budget**, two runs above 76. The same shape that has
+cost twice already (15→25, 45→90), with the difference that this time the number was set from a
+cold measurement and was right; what was not measured is the **spread between runners under
+contention**, which is 2.4x rather than the ~40% this repository has recorded.
 
-Η αναβολή λέει: *«Unlock condition: the first CI run with a warm world cache, which is the
-steady state this number should be set from.»* Αυτή η συνθήκη **έχει ικανοποιηθεί 21 φορές
-από τις 29/08 01:47** και κανείς δεν το πρόσεξε. Είναι η πρώτη φορά στο μητρώο που μια unlock
-condition εκπληρώθηκε σιωπηλά — δηλαδή το δηλωμένο όριο του `make expiry` (*«checks that an
-unlock condition is present, never that it is right»*) που δαγκώνει για πρώτη φορά.
+The deferral says: *"Unlock condition: the first CI run with a warm world cache, which is the
+steady state this number should be set from."* That condition **has been satisfied 21 times since
+2026-08-29 01:47** and nobody noticed. It is the first time in the registry that an unlock
+condition was met silently — that is, the declared limit of `make expiry` (*"checks that an unlock
+condition is present, never that it is right"*) biting for the first time.
 
-*Branch:* `evals/world-cache-measured` — `DEPENDS_ON` σε `corpus/world` + τα δύο modules,
-restatement της αναβολής με τα 31 runs, budget από τη νέα μέτρηση.
+*Branch:* `evals/world-cache-measured` — `DEPENDS_ON` narrowed to `corpus/world` plus the two
+modules, a restatement of the deferral with the 31 runs, and a budget from the new measurement.
 
-### 2δ · Το ruleset απαιτούσε `gate`, και τα claims είχαν φύγει από εκεί
+### 2d · The ruleset required `gate`, and the claims had left it
 
-*Προστέθηκε 2026-08-30, από τον συγγραφέα, **μετά** τη συγχώνευση αυτής της αναφοράς. Δεν το
-βρήκε η ανασκόπηση, και η αιτία είναι το ίδιο το εύρημα.*
+*Added 2026-08-30, by the author, **after** this report was merged. The review did not find it,
+and the cause is the finding itself.*
 
-Το ruleset του `main` απαιτούσε δύο contexts: **`gate` και `secrets`**. Τα claim targets
-έτρεχαν μέσα στο `gate` μέχρι το T003, το οποίο τα μετακίνησε — σωστά — στο matrix `claims`.
-**Το ruleset έμεινε να δείχνει στο `gate`.** Από εκείνο το commit μέχρι σήμερα, **ένα PR με
-κόκκινο `claim-2` έκανε merge.**
+The `main` ruleset required two contexts: **`gate` and `secrets`**. The claim targets ran inside
+`gate` until T003, which moved them — correctly — into the `claims` matrix. **The ruleset stayed
+pointing at `gate`.** From that commit until today, **a pull request with a red `claim-2`
+merged.**
 
-Αυτό δεν είναι ένα gate που σταμάτησε να δαγκώνει. Είναι **το oversight level 1** — η γραμμή
-του `CLAUDE.md` *«a session cannot merge something that breaks a claim, because the gate is
-structural rather than advisory»* — ψευδής για δύο ημέρες, στο επίπεδο πάνω στο οποίο
-στηρίζονται όλα τα υπόλοιπα.
+This is not a gate that stopped biting. It is **oversight level 1** — `CLAUDE.md`'s line *"a
+session cannot merge something that breaks a claim, because the gate is structural rather than
+advisory"* — false for two days, at the level everything else leans on.
 
-**Γιατί το έχασε η ανασκόπηση, και γιατί καμία ανασκόπηση δεν θα το πιάσει διαβάζοντας.** Το τι
-απαιτεί το ruleset είναι **γεγονός για το forge, όχι για αυτό το δέντρο**. Κανένα αρχείο δεν το
-κουβαλάει: το `ci.yml` δηλώνει ποια jobs *υπάρχουν* και ποτέ ποια *απαιτούνται*, το `make check`
-δεν μπορεί να το δει, καμία δοκιμή δεν το αγγίζει. Η §2 αυτής της αναφοράς διάβασε το `ci.yml`
-γραμμή προς γραμμή και μέτρησε 31 εκτελέσεις του· η ερώτηση που έλειπε δεν απαντιόταν από
-τίποτα εκεί μέσα. Βρέθηκε ρωτώντας το API.
+**Why the review missed it, and why no review will catch it by reading.** What the ruleset
+requires is a **fact about the forge, not about this tree**. No file carries it: `ci.yml` declares
+which jobs *exist* and never which are *required*, `make check` cannot see it, no test touches it.
+§2 of this report read `ci.yml` line by line and measured 31 of its runs; the missing question was
+answered by nothing in there. It was found by asking the API.
 
-**Και το αποτύπωμά του καθόταν στο μητρώο από τις 27/08.** Η αναβολή *Branch protection covers
-`main` only* παραθέτει την ίδια της την επαλήθευση: *«2 of 2 required status checks are
-expected»*. Το **2** ήταν το εύρημα. Κανείς δεν διάβασε τον αριθμό, γιατί η πρόταση δίπλα του
-έλεγε ήδη ποια δύο, και συμφωνούσαν. Είναι ακριβώς το σχήμα που η §8 ονομάζει: ο ισχυρισμός
-ελέγχθηκε απέναντι στην πρόταση από την οποία παράχθηκε.
+**And its fingerprint had been sitting in the registry since 2026-08-27.** The deferral *Branch
+protection covers `main` only* quotes its own verification: *"2 of 2 required status checks are
+expected"*. The **2** was the finding. Nobody read the number, because the sentence beside it
+already said which two and they agreed. It is exactly the shape §8 names: the assertion checked
+against the sentence it came from.
 
-**Η διόρθωση, και γιατί δεν είναι απαρίθμηση ονομάτων.** Ένα job `claims-complete` με
-`needs: [claims]` και `if: always()` αποτυγχάνει σε οτιδήποτε δεν είναι `success` — και το
-σκέλος που μετράει είναι το **`skipped`**, γιατί η παράλειψη είναι ο τρόπος που ένα matrix job
-περνάει σιωπηλά: ένα skipped required check αναφέρεται ως ουδέτερο, όχι ως κόκκινο. Το ruleset
-απαιτεί **αυτό το ένα context** και ποτέ τα ονόματα των claims: μια απαρίθμηση εκεί θα ήταν ένα
-δεύτερο μητρώο του ποια claims υπάρχουν, κρατημένο στο χέρι, σε μέρος που καμία συνεδρία δεν
-διαβάζει — και την ημέρα που προσγειώνεται το `claim-5` κάποιος θα έπρεπε να το θυμηθεί. Το
-`discover` ήδη διαβάζει τα targets από το `Makefile`.
+**The fix, and why it is not a list of names.** A `claims-complete` job with `needs: [claims]` and
+`if: always()` fails on anything that is not `success` — and the case that matters is
+**`skipped`**, because skipping is how a matrix job passes silently: a skipped required check
+reports as neutral rather than red. The ruleset requires **that one context** and never the claim
+names: an enumeration there would be a second registry of which claims exist, kept by hand, in a
+place no session reads — and the day `claim-5` lands somebody would have to remember it.
+`discover` already reads the targets out of the `Makefile`.
 
-**Επαληθεύτηκε επιτιθέμενος, όχι διαβάζοντας**, όπως τα gates του claim 1 — και χρειάστηκαν
-**τρεις** επιθέσεις, γιατί οι δύο πρώτες δεν απεδείκνυαν αυτό που νόμιζαν:
+**Verified by attacking, not by reading**, the way claim 1's gates are — and it took **three**
+attacks, because the first two did not prove what they looked like proving:
 
-| | επίθεση | matrix | `claims-complete` | `gate` | merge |
+| | attack | matrix | `claims-complete` | `gate` | merge |
 |---|---|---|---|---|---|
-| **A** | κάθε `claim-N:` κρυμμένο από το `discover` | `skipping` | fail σε 2s | *κόκκινο επίσης* | `BLOCKED` |
-| **B** | `DecisionKey` που μαθαίνει ποιος αγοράζει (το φυτεμένο σπάσιμο 01 του claim 7) | `failure` | fail | *κόκκινο επίσης* | `BLOCKED` |
-| **C** | το bound του margin cap φοράει το όνομα άλλου κανόνα | `failure` | fail | **πράσινο, 919** | `BLOCKED` |
+| **A** | every `claim-N:` hidden from `discover` | `skipping` | fail in 2s | *also red* | `BLOCKED` |
+| **B** | a `DecisionKey` that learns who is buying (claim 7's planted break 01) | `failure` | fail | *also red* | `BLOCKED` |
+| **C** | the margin cap's bound carries another rule's name | `failure` | fail | **green, 919** | `BLOCKED` |
 
-**Η στήλη `gate` είναι ο λόγος που η C υπάρχει.** Οι A και B πιάνονταν ήδη από τη σουίτα — το
-`tests/evals/test_ledger.py` διαβάζει το πραγματικό `Makefile`, άρα τα μετονομασμένα targets το
-κοκκινίζουν, και το `DecisionKey` έχει δικό του test. Απέδειξαν ότι το job πυροδοτεί και στις
-δύο τιμές του `result`, και ότι το ruleset αρνείται· **δεν απέδειξαν ότι το context
-χρειάζεται**, που είναι ακριβώς ο κανόνας που το ίδιο αυτό repository εφαρμόζει στα gates του:
-*a gate can only be shown to bite where it is the gate that refuses.* Στην A το `gate` είχε
-ακυρωθεί από το `concurrency` και η στήλη ήταν κενή — το κενό ήταν το εύρημα.
+**The `gate` column is why C exists.** A and B were already caught by the suite —
+`tests/evals/test_ledger.py` parses the real `Makefile`, so renamed targets turn it red, and the
+`DecisionKey` has a test of its own. They showed the job fires on both values of `result`, and
+that the ruleset refuses; **they did not show the context is necessary**, which is exactly the
+rule this repository applies to its own gates: *a gate can only be shown to bite where it is the
+gate that refuses.* On A the `gate` column was empty because `concurrency` had cancelled it — and
+the empty column was the finding.
 
-**Και καμία φυτεμένη mutation δεν μπορεί να χρησιμεύσει ως απομονωμένη επίθεση.** Δοκιμάστηκε η
-16 και το `gate` κοκκίνισε: ο έλεγχος `ledger.every-anchor-is-aimed-at-one-place` απαιτεί το
-anchor να εμφανίζεται ακριβώς μία φορά, και η εφαρμογή της mutation το εξαφανίζει. Το
-repository αμύνεται σωστά· η συνέπεια είναι ότι η απομονωμένη επίθεση έπρεπε να γραφτεί από την
-αρχή.
+**And no committed mutation can serve as the isolated attack.** Number 16 was tried and `gate`
+went red: `ledger.every-anchor-is-aimed-at-one-place` requires each anchor to occur exactly once,
+and applying the mutation removes it. The repository defending itself correctly; the consequence
+is that the isolated attack had to be written from scratch.
 
-**Η C είναι αυτή.** Το bound του `cap_benchmark` αποδίδεται στο `markdown_max_depth_pct`: σωστό
-ποσό, λάθος όνομα κανόνα — δηλαδή ένα πιστοποιητικό που βεβαιώνει έλεγχο ο οποίος δεν έτρεξε.
-`make check` **πράσινο στα 919**· το `G10` κόκκινο στα **156.294 disagreements σε 746.643
-bounds**. Είναι το σπάσιμο για το οποίο γράφτηκε το `G10`, και τώρα και αυτό για το οποίο
-υπάρχει το `claims-complete`: **πριν από αυτό το branch, αυτό ακριβώς το δέντρο θα είχε κάνει
-merge.**
+**C is that one.** `cap_benchmark`'s bound is attributed to `markdown_max_depth_pct`: right
+amount, wrong rule name — that is, a certificate asserting a check that never ran. `make check`
+**green at 919**; `G10` red with **156,294 disagreements in 746,643 bounds**. It is the break
+`G10` was written for, and now also the one `claims-complete` exists for: **before this branch,
+that exact tree would have merged.**
 
-Η άρνηση ονομάζει τον εαυτό της, και οι τρεις διατυπώσεις είναι η ίδια η απόδειξη ότι το
-ruleset κινήθηκε — η τελευταία ονομάζει ένα και μόνο context:
+The refusal names itself, and the three wordings are themselves the evidence that the ruleset
+moved — the last one names a single context:
 
 ```
 A   2 of 3 required status checks have not succeeded: 1 failing.   (HTTP 405)
@@ -229,241 +222,229 @@ B   2 of 3 required status checks are failing.                     (HTTP 405)
 C   Required status check "claims-complete" is failing.            (HTTP 405)
 ```
 
-**Τι δεν πιάνει αυτό: το ίδιο το ruleset.** Αν το required context αφαιρεθεί αύριο, το job
-συνεχίζει να αναφέρει και τίποτα δεν κοκκινίζει — η ίδια τρύπα ένα επίπεδο πιο έξω. Δεν υπάρχει
-τρόπος να κλείσει από μέσα, γιατί ό,τι ζει σε αυτό το δέντρο μπορεί να ελεγχθεί μόνο από κάτι
-που τρέχει αφού το forge έχει ήδη αποφασίσει να το τρέξει. Άρα κλείνει ως **ερώτηση σε
-διαδικασία**: το *«τι απαιτεί το ruleset, και ταιριάζει με τα jobs που υπάρχουν σήμερα;»*
-μπαίνει ρητά στο skill `integration-review` όταν γραφτεί, και είναι στο `closes` του T008 ώστε
-να μην είναι πρόταση σε μια συνομιλία.
+**What this does not catch: the ruleset itself.** If the required context is removed tomorrow, the
+job goes on reporting and nothing turns red — the same hole one layer out. There is no way to
+close it from inside, because anything living in this tree can only be checked by something that
+runs after the forge has already decided to run it. So it closes as a **question in a procedure**:
+*"what does the ruleset require, and does it match the jobs that exist today?"* goes explicitly
+into the `integration-review` skill when it is written, and is in T008's `closes` so that it is
+not a sentence in a conversation.
 
-*Branch:* `ops/claims-are-required` — έγινε.
+*Branch:* `ops/claims-are-required` — done.
 
 ---
 
-## 3 · Λέει ακόμη ο κώδικας αυτό που λέει το CLAUDE.md;
+## 3 · Does the code still say what `CLAUDE.md` says it says?
 
-### 3α · Ο χάρτης του repository παραλείπει δύο πακέτα — και το ένα είναι αυτό ακριβώς που κόστισε στο claim 7
+### 3a · The repository map omits two packages — and one is exactly the blind spot that cost claim 7
 
-Το `Repository layout` του `CLAUDE.md` απαριθμεί `core/{guardrails,pricing,design,experiment,ladder}`
-και `adapters/`. Λείπουν:
+`CLAUDE.md`'s `Repository layout` lists `core/{guardrails,pricing,design,experiment,ladder}` and
+`adapters/`. Missing:
 
-- `src/holdout/core/demand/` — το claim 4
-- `src/holdout/contracts/` — **δεκαπέντε modules**, loader 820 γραμμών και οι compilers
+- `src/holdout/core/demand/` — claim 4
+- `src/holdout/contracts/` — **fifteen modules**, an 820-line loader and the compilers
 
-Το δεύτερο είναι η ίδια τυφλή περιοχή που παρήγαγε blocking finding στο oversight level 2 του
-T006: το `reference.CORE` σταματούσε στο `core/`, οπότε ένα `customer` parameter στο
-`compile_agent_tool` ήταν εκτός σάρωσης. Το eval διορθώθηκε (820 → 1,181 identifiers). **Ο
-χάρτης στο αρχείο που κάθε session διαβάζει πρώτο δεν διορθώθηκε.** Το `ops/` επίσης
-περιγράφεται χωρίς το `roster.py`.
+The second is the same blind spot that produced a blocking finding in T006's oversight level 2:
+`reference.CORE` stopped at `core/`'s boundary, so a `customer` parameter on `compile_agent_tool`
+was outside the scan. The eval was fixed (820 → 1,181 identifiers). **The map in the file every
+session reads first was not.** `ops/` is likewise described without `roster.py`.
 
-### 3β · Το claim 4 είναι 12/12, όχι 11/11
+### 3b · Claim 4 is 12/12, not 11/11
 
-Ο eval τυπώνει `green 12/12 checks` και `evals/censoring/README.md` απαριθμεί C1…C12. Το
-`11/11` επιβιώνει σε πέντε σημεία: `PLAN.md:42`, `PLAN.md:737`, `TASKS.md:802`,
-`TASKS.md:1422` (L9), `TASKS.md:1457`. Το `C12` ήρθε στο **ίδιο commit** που έκλεισε το claim
-(`86fe136`), άρα ο δημοσιευμένος αριθμός δεν συμφώνησε ποτέ με το eval — και πέρασε από
-oversight level 2.
+The eval prints `green 12/12 checks` and `evals/censoring/README.md` lists C1…C12. The `11/11`
+survives in five places: `PLAN.md:42`, `PLAN.md:737`, `TASKS.md:802`, `TASKS.md:1422` (L9),
+`TASKS.md:1457`. `C12` arrived in the **same commit** that closed the claim (`86fe136`), so the
+published number never agreed with the eval — and it passed oversight level 2.
 
-### 3γ · Δύο αλυσίδες restatement σταμάτησαν στο CLAUDE.md
+### 3c · Two restatement chains stopped at `CLAUDE.md`
 
-Το `CLAUDE.md` απέσυρε στις 29/08 δύο πράγματα. Καμία απόσυρση δεν έφτασε αλλού:
+`CLAUDE.md` withdrew two things on 2026-08-29. Neither withdrawal reached anywhere else:
 
-| αποσύρθηκε | ακόμη ζωντανό |
+| withdrawn | still live |
 |---|---|
-| *«1,200 leave a roster of 212» — projection, never a measurement* | `docs/DECISIONS.md:380`, `corpus/world/README.md:100` — και τα δύο ως μέτρηση |
-| *«about 36M POS lines» / «a cost decision and nothing else» / «does not get stronger with 1,200 stores»* | `docs/DECISIONS.md:14-19` — η εγγραφή Scope, **χωρίς restatement από κάτω** |
+| *"1,200 leave a roster of 212" — projection, never a measurement* | `docs/DECISIONS.md:380`, `corpus/world/README.md:100` — both as measurement |
+| *"about 36M POS lines" / "a cost decision and nothing else" / "does not get stronger with 1,200 stores"* | `docs/DECISIONS.md:14-19` — the Scope entry, **with no restatement underneath** |
 
-Το δεύτερο είναι το χειρότερο, γιατί το `docs/DECISIONS.md` ανοίγει με τη δική του πρόταση:
-*«Where a decision has been reversed, the original stays and the reversal is written
-underneath it.»* Η μοναδική αντεστραμμένη απόφαση στο αρχείο δεν έχει την αντιστροφή της από
-κάτω.
+The second is the worse one, because `docs/DECISIONS.md` opens with its own sentence: *"Where a
+decision has been reversed, the original stays and the reversal is written underneath it."* The
+one reversed decision in the file does not have its reversal underneath it.
 
-### 3δ · Η σημείωση του ίδιου του T008 για το `floor.yaml` ονομάζει λάθος συνάρτηση
+### 3d · T008's own task note names the wrong function for `floor.yaml`
 
-`TASKS.md:1069-1074` οδηγεί τη συνεδρία: *«the core's `Bound.rule_id` strings are written down
+`TASKS.md:1069-1074` instructs the session: *"the core's `Bound.rule_id` strings are written down
 a second time in `evals/guardrail/reference.py`… A rename turns G10 red on both directions at
-once; move the two in one change.»*
+once; move the two in one change."*
 
-Το `refuse_when_no_legal_price_sells` **δεν είναι ποτέ `Bound.rule_id`.** Το `envelope.py`
-παράγει έξι rule ids και δεν είναι μεταξύ τους — είναι boolean πεδίο στο `FloorRule`,
-κατηγόρημα χωρίς άκρη. Το `reference.py` δεν το μοντελοποιεί. **Η μετονομασία δεν κοκκινίζει
-το G10.** Αυτό που πραγματικά μετακινείται είναι `envelope.py`, `evals/guardrail/build.py:213`,
-`tests/core/conftest.py` ×2 και το registry `ops/personhood.py:186` — και το τελευταίο σημαίνει
-ότι το **`O2` θα κοκκινίσει**, σωστά, ως αλλαγή συστήματος που το registry δεν έχει ακόμη
-μάθει.
+`refuse_when_no_legal_price_sells` is **never a `Bound.rule_id`.** `envelope.py` attributes six
+rule ids and it is not among them — it is a boolean field on `FloorRule`, a predicate with no
+edge. `reference.py` does not model it. **The rename does not turn `G10` red.** What actually
+moves is `envelope.py`, `evals/guardrail/build.py:213`, `tests/core/conftest.py` ×2 and the
+registry at `ops/personhood.py:186` — and the last of those means **`O2` will go red**, correctly,
+as a change to the system the registry has not been told about.
 
-> **Και ο συγγραφέας το αναγνωρίζει ως δικό του λάθος, το οποίο κάνει αυτή τη γραμμή τη
-> δέκατη μορφή του κανόνα και όχι απλώς μια ανακρίβεια.** Η σημείωση γράφτηκε από τον ίδιο
-> που έγραψε το `G10` και την ανεξαρτησία που το `G10` κουβαλά, και γράφτηκε **απέναντι στο
-> επιχείρημα του `G10`** — *οι έξι συμβολοσειρές γράφονται δεύτερη φορά, άρα μια μετονομασία
-> τις χωρίζει* — αντί απέναντι στη λίστα των έξι. Είναι ακριβώς το ίδιο σχήμα με τα εννιά
-> προηγούμενα: ο ισχυρισμός ελέγχθηκε απέναντι στο artefact από το οποίο παράχθηκε, όχι
-> απέναντι στο πράγμα που θα τον διέψευδε. Οι εννιά προηγούμενες μορφές ήταν πρόταση,
-> `timeout-minutes`, αναβολή, εκτίμηση κόστους, μέτρηση που πάλιωσε, νούμερο πρακτικού,
-> υπόθεση cache, και η ίδια η διατύπωση του κανόνα. **Η δέκατη είναι μια οδηγία προς την
-> επόμενη συνεδρία** — δηλαδή η μορφή με τη μεγαλύτερη εμβέλεια από όλες, γιατί δεν
-> περιγράφει το σύστημα: κατευθύνει το χέρι που θα το αλλάξει. Δεν την βρήκε κανένα gate·
-> βρέθηκε διαβάζοντας τα έξι `rule_id=` του `envelope.py`.
+> **And the author acknowledges it as his own mistake, which makes this line the tenth form of the
+> rule rather than merely an inaccuracy.** The note was written by the same person who wrote `G10`
+> and the independence `G10` carries, and it was written **against `G10`'s argument** — *the six
+> strings are written down a second time, so a rename separates them* — rather than against the
+> list of six. It is exactly the same shape as the nine before it: the assertion checked against
+> the artefact it came from rather than against the thing that would falsify it. The nine prior
+> forms were a sentence, `timeout-minutes`, a deferral, a cost estimate, a measurement that went
+> stale, a minuted figure, a cache hypothesis, and the rule's own statement. **The tenth is an
+> instruction to the next session** — that is, the form with the longest reach of all, because it
+> does not describe the system: it aims the hand that will change it. No gate found it; it was
+> found by reading the six `rule_id=` lines in `envelope.py`.
 
-### 3ε · Μικρότερα, όλα επαληθευμένα
+### 3e · Smaller, all verified
 
-- `CLAUDE.md`, *How claim 2 is proved*: *«a deliberately slow reference implementation… while
-  the production path is SQL through dbt. Two genuinely different implementations must
-  agree.»* Το `U10` συγκρίνει **δύο Python διαδρομές μέσα στο `evals/uplift/`**. Το dbt είναι
-  φάση 2. Είναι η μόνη από τις πέντε artefacts της παραγράφου που δεν υπάρχει, σε ενεστώτα.
-- `docs/REGULATORY.md:398`: *«Every `verified_on` in this repository reads 2026-08-27.»* — 66
-  λένε 27/08 και **15 λένε 28/08**.
-- `CLAUDE.md`, πίνακας skills: παρουσιάζει τέσσερα skills «σε αυτό το repository». Υπάρχει
-  **ένα** (`claim`). Το `.claude/README.md` το λέει σωστά. Και το `contract-change` **δεν έχει
-  task id πουθενά στο `TASKS.md`** — δεν είναι αναβεβλημένο, είναι ξεχασμένο, με τα λόγια της
-  ίδιας της doctrine.
-- `TASKS.md`, *Closed — the atoms that have landed*, δηλωμένο ως «the complete registry»:
-  σταματά στο **L9 (T005)**. Λείπουν **T004 (claim 3), T006 (claim 7), T007 (SCENARIO.md)** —
-  τρεις από τις τέσσερις τελευταίες. Το διάγραμμα critical path δείχνει T004 και T006 χωρίς ✅
-  ενώ η παράγραφος από κάτω λέει «all three closed».
+- `CLAUDE.md`, *How claim 2 is proved*: *"a deliberately slow reference implementation… while the
+  production path is SQL through dbt. Two genuinely different implementations must agree."* `U10`
+  compares **two Python paths inside `evals/uplift/`**. dbt is phase 2. It is the only one of the
+  paragraph's five artefacts that does not exist, stated in the present tense.
+- `docs/REGULATORY.md:398`: *"Every `verified_on` in this repository reads 2026-08-27."* — 66 read
+  2026-08-27 and **15 read 2026-08-28**.
+- `CLAUDE.md`, the skills table: presents four skills as living "in this repository". There is
+  **one** (`claim`). `.claude/README.md` says so correctly. And `contract-change` **has no task id
+  anywhere in `TASKS.md`** — it is not deferred, it is forgotten, in the doctrine's own words.
+- `TASKS.md`, *Closed — the atoms that have landed*, declared as "the complete registry": stops at
+  **L9 (T005)**. Missing are **T004 (claim 3), T006 (claim 7), T007 (SCENARIO.md)** — three of the
+  last four. The critical-path diagram shows T004 and T006 without ✅ while the paragraph below it
+  says "all three closed".
 
-*Branches:* `docs/layout-and-restatements` (3α, 3γ, 3ε) · `docs/claim-4-counts` (3β) · η 3δ
-διορθώνεται μέσα στο branch που κάνει τη μετονομασία.
+*Branches:* `docs/layout-and-restatements` (3a, 3c, 3e) · `docs/claim-4-counts` (3b) · 3d is fixed
+inside the branch that does the rename.
 
 ---
 
-## 4 · Υπάρχει κώδικας που δεν υπηρετεί κανένα claim;
+## 4 · Is there code that serves no claim?
 
-Ένα module: **`src/holdout/core/pricing/selection.py`**. Το αγγίζουν μόνο
-`tests/core/test_pricing.py` και `tests/core/test_composition.py`. Κανένα eval δεν το εισάγει
-— το claim 1 χτίζει `ProposedPrice` κατευθείαν — και καμία από τις 49 mutations δεν το
-στοχεύει. Είναι στη δηλωμένη decision path του `CLAUDE.md` («the model returns a scenario
-table, code picks the row by arithmetic»), οπότε δεν προτείνω διαγραφή· προτείνω να
-**ονομαστεί**: είτε το claim 1 το περνά στη σάρωσή του, είτε γράφεται ότι η επιλογή σεναρίου
-αποδεικνύεται από τη σουίτα και όχι από claim.
+One module: **`src/holdout/core/pricing/selection.py`**. Only `tests/core/test_pricing.py` and
+`tests/core/test_composition.py` touch it. No eval imports it — claim 1 builds `ProposedPrice`
+directly — and none of the 49 mutations targets it. It is on `CLAUDE.md`'s declared decision path
+("the model returns a scenario table, code picks the row by arithmetic"), so I do not propose
+deleting it; I propose **naming** it: either claim 1 brings it into its sweep, or it is written
+down that scenario selection is proved by the suite and not by a claim.
 
-Το `ops/` είναι σωστά έξω από τα claims και το λέει. Το `adapters/` είναι άδειο με δηλωμένη
-ραφή.
+`ops/` is correctly outside the claims and says so. `adapters/` is empty with a declared seam.
 
 ---
 
-## 5 · Έχει μπει claim σε preview surface;
+## 5 · Has a claim landed on a preview surface?
 
-**Όχι.** Δεν υπάρχει `infra/`, δεν υπάρχει δηλωμένο inventory, το `make preview-audit`
-απουσιάζει σκόπιμα και το `Makefile` το λέει. Και τα πέντε claims αποδεικνύονται τοπικά χωρίς
-λογαριασμό — επιβεβαιώθηκε τρέχοντάς τα.
-
----
-
-## 6 · Υπάρχει ακόμη **ακριβώς μία** πόρτα χωρίς κλειδί;
-
-Το repository έχει **τρεις** σφραγίδες με πανομοιότυπη δομή και πανομοιότυπο δηλωμένο όριο:
-`CertifiedPrice`, `SealedAssignment`, `corpus/world/seal.py`. Και οι τρεις είναι
-tamper-**evident**, και οι τρεις δηλώνουν ρητά ότι μια συντονισμένη πλαστογραφία περνά, και οι
-τρεις έχουν test που απαιτεί από την πλαστογραφία να **πετύχει**. Το `contamination.py`
-ονομάζει τον εαυτό του «the one door with no key».
-
-Το ερώτημα: αν η πόρτα ανοίγει με συντονισμένη επανεγγραφή, είναι «χωρίς κλειδί» ή είναι «με
-κλειδί που φαίνεται»; Η doctrine λέει *«Having exactly one unopenable door is what keeps the
-other six honest»*. Η υλοποίηση παραδίδει *μία ανιχνεύσιμη* πόρτα, όχι μία *ανοικτή*. Η
-διαφορά δεν είναι λεκτική: το `assignment table is written before the period opens and then
-read-only` είναι υποδομή που θα υπάρξει στη φάση 3, και μέχρι τότε η μη-ανοιξιμότητα
-στηρίζεται σε έναν τύπο του οποίου το όριο είναι γραμμένο.
-
-> **Δεκτό, 2026-08-30.** Η γραμμή του δόγματος επαναδιατυπώνεται ώστε να πει ότι **σήμερα η
-> εγγύηση είναι ανίχνευση**, και ότι **η μη-ανοιξιμότητα φτάνει με τον read-only πίνακα
-> ανάθεσης στη φάση 3**. Η προηγούμενη διατύπωση μένει, κατά τον κανόνα 4 του δόγματος, και η
-> διαφορά είναι το εύρημα: μια πόρτα που ανιχνεύει κάθε ασυντόνιστη επεξεργασία δεν είναι το
-> ίδιο πράγμα με μια πόρτα που δεν ανοίγει, και το repository είχε ονομάσει το πρώτο με το
-> όνομα του δεύτερου. Η αλλαγή είναι στο `CLAUDE.md` και βρίσκεται σε αυτό το branch.
+**No.** There is no `infra/`, no declared inventory, `make preview-audit` is deliberately absent
+and the `Makefile` says so. All five claims are proved locally with no account — confirmed by
+running them.
 
 ---
 
-## 7 · Το μητρώο αναβολών έγινε ο χώρος στάθμευσης του T008
+## 6 · Is there still **exactly one** door with no key?
 
-**Εννέα από τις ανοιχτές εγγραφές δείχνουν σε αυτή τη συνεδρία** ως unlock condition: claim 3
-covariates, `floor.yaml` rule id, scenario-scale μέτρηση, ladder ceiling, regulated basket
-3-vs-63, W2 luck, W6 `IMBALANCED_PRE_PERIOD` threshold, C7/C11/C12 mutations, ESL penetration.
-Συν δύο ακόμη με «T012 ή T008».
+The repository holds **three** seals of identical construction and identical declared limit:
+`CertifiedPrice`, `SealedAssignment`, `corpus/world/seal.py`. All three are tamper-**evident**,
+all three declare explicitly that a coordinated forgery passes, and all three have a test that
+requires the forgery to **succeed**. `contamination.py` calls itself "the one door with no key".
 
-Καμία δεν είναι λάθος. Μαζί όμως σημαίνουν ότι το «phase-1 integration session» έγινε
-συνώνυμο του «αργότερα» — και η συνεδρία που είχε ως δουλειά να *διαβάσει* έχει τώρα ένδεκα
-*αποφάσεις*. Ο κανόνας που προκύπτει, και ο οποίος βρίσκεται πλέον στο `CLAUDE.md`:
+The question: if the door opens under a coordinated rewrite, is it "with no key" or "with a key
+that shows"? The doctrine says *"Having exactly one unopenable door is what keeps the other six
+honest"*. The implementation delivers *one detectable* door, not *one that does not open*. The
+difference is not verbal: `assignment table is written before the period opens and then read-only`
+is infrastructure that will exist in phase 3, and until then unopenability rests on a type whose
+limit is written down.
 
-> **Μια unlock condition που ονομάζει συνεδρία αντί για γεγονός δεν είναι συνθήκη· είναι
-> ημερομηνία χωρίς ημερολόγιο.**
-
-Οι δύο που το T008 είναι ρητά εξουσιοδοτημένο να κινήσει:
-
-- **`floor.yaml`** — η μετονομασία στέκει, με τη διόρθωση της §3δ: το gate που θα κοκκινίσει
-  είναι το `O2`, όχι το `G10`. Νέο window, το κλειστό κρατά το παλιό id.
-- **Ladder ceiling** — τα **716/26,600** επιβεβαιώθηκαν από το `make eval-guardrail`. Η
-  doctrine rule 1 είναι ελλιπής μόνο γι' αυτά, και το `G6` δημοσιεύει και τα δύο νούμερα χωρίς
-  να διευρύνει assertion. Προτείνεται restatement της doctrine rule 1, όχι ceiling στο ladder:
-  το «η ασφαλής κατάσταση μπορεί να είναι κενή, και τότε το σωστό αποτέλεσμα είναι άρνηση»
-  είναι αλήθεια για το σύστημα και ψέμα μόνο για την πρόταση.
+> **Accepted, 2026-08-30.** The doctrine line is restated to say that **today the guarantee is
+> detection**, and that **unopenability arrives with the read-only assignment table in phase 3**.
+> The prior wording stays, per doctrine rule 4, and the delta is the finding: a door that detects
+> every uncoordinated edit is not the same object as a door that does not open, and the repository
+> had been calling the first by the second one's name. The change is in `CLAUDE.md` and is on this
+> branch.
 
 ---
 
-## 8 · Ο κανόνας «a guard tested by its author» — είναι πλήρης;
+## 7 · The deferral registry became T008's parking space
 
-Εννιά φορές σε μία φάση: πρόταση, `timeout-minutes: 45`, μια αναβολή, μια εκτίμηση κόστους,
-μια μέτρηση που πάλιωσε (W5), ένα νούμερο πρακτικού (11/11), η υπόθεση του cache, η ίδια η
-διατύπωση του κανόνα (η παράγραφος κλίμακας που επέμενε στη μέτρηση κουβαλούσε τρία αμέτρητα
-νούμερα) — και τώρα, δέκατη, μια σημείωση εργασίας που ονομάζει λάθος gate (§3δ).
+**Nine of the open entries point at this session** as their unlock condition: claim 3 covariates,
+the `floor.yaml` rule id, the scenario-scale measurement, the ladder ceiling, the regulated basket
+3-vs-63, W2 luck, W6's `IMBALANCED_PRE_PERIOD` threshold, the C7/C11/C12 mutations, and ESL
+penetration. Plus two more reading "T012 or T008".
 
-**Η απάντηση: ο κανόνας δεν είναι ελλιπής. Είναι άοπλος.**
+None of them is wrong. Together, though, they mean the "phase-1 integration session" became a
+synonym for "later" — and the session whose job was to *read* now arrives owing eleven
+*decisions*. The rule that follows, and which is now in `CLAUDE.md`:
 
-Κάθε επαναδιατύπωση διεύρυνε τη **μορφή** — πρόταση → αριθμός σε configuration → αναβολή → η
-ίδια η διατύπωση → οδηγία προς την επόμενη συνεδρία. Η μορφή δεν ήταν ποτέ η μεταβλητή. Το
-αναλλοίωτο και στις δέκα περιπτώσεις είναι το ίδιο: *ο ισχυρισμός ελέγχθηκε απέναντι στο
-artefact από το οποίο παράχθηκε, όχι απέναντι στο πράγμα που θα τον διέψευδε.* Αυτό είναι
-ακριβώς η πρόταση που ήδη υπάρχει στο κουτί. Μια ενδέκατη διεύρυνση θα προσθέσει ένα ακόμη
-ουσιαστικό και δεν θα δει τη δωδέκατη περίπτωση.
+> **An unlock condition that names a session rather than an event is not a condition; it is a
+> date without a calendar.**
 
-Αυτό που λείπει είναι αλλού. **Και οι δέκα βρέθηκαν από άνθρωπο ή από εκτέλεση — καμία από
-εντολή.** Ο κανόνας είναι ο μόνος κανόνας πρώτης τάξης του repository χωρίς gate από πίσω, σε
-ένα repository του οποίου ολόκληρο το επιχείρημα είναι ότι *ένας κανόνας που είναι παράγραφος
-είναι συμβουλή και ένας κανόνας που είναι Makefile target είναι δομικός*.
+The two T008 is explicitly empowered to move:
 
-Και ο μηχανισμός που θα τον όπλιζε **υπάρχει ήδη, σε ένα αρχείο**. Ο κανόνας των τεσσάρων
-ειδών του `docs/SCENARIO.md` — `[M]` μετρημένο με την εντολή, `[D]` δηλωμένο με contract,
-`[C]` παρατιθέμενο με ημερομηνία, `[S]` σενάριο με τις λέξεις *it has never run* — απέδωσε
-μέσα στο ίδιο branch που τον έγραψε: ανάγκασε επαναεκτέλεση και τα W5 counts δεν ξαναγύρισαν
-ίδια. Είναι ο πρώτος μηχανισμός σε αυτό το repository που **έπιασε αυτό το ελάττωμα με
-κατασκευή αντί με ανάγνωση**.
-
-Γι' αυτό η μία πρόταση που θεωρείται ότι αξίζει περισσότερο από όλες τις υπόλοιπες διορθώσεις
-μαζί:
-
-> **Ο κανόνας των τεσσάρων ειδών επεκτείνεται από το `SCENARIO.md` σε κάθε δημοσιευμένο
-> νούμερο — `CLAUDE.md`, `PLAN.md`, `TASKS.md`, τα READMEs των evals, τα σχόλια των workflows
-> — και ένα `make figures` ξανατρέχει τις εντολές που φέρουν τα `[M]` και κοκκινίζει όταν δεν
-> επιστρέφουν το ίδιο.**
-
-Τουλάχιστον έξι από τα δέκα περιστατικά θα είχαν κοκκινίσει: το 11/11, τα W5 counts, η αλυσίδα
-100→109→45, το «1,200 → 212» (δεν έχει εντολή, άρα δεν είναι `[M]`, άρα δεν μπαίνει), το
-«about 36M», και η υπόθεση του cache (δεν έχει εντολή). Τα υπόλοιπα — τα timeouts και η
-σημείωση της §3δ — δεν είναι νούμερα που παράγει εντολή, και για αυτά ο κανόνας ήδη λέει τι
-να κάνεις· αυτό που λείπει είναι να το λέει σε μια θέση που ένα gate διαβάζει.
-
-*Branch:* `ops/every-number-carries-its-kind` — και είναι το ένα κομμάτι αυτής της αναφοράς
-που πρέπει να προηγηθεί των υπολοίπων, γιατί τα υπόλοιπα είναι διορθώσεις νούμερων και αυτό
-είναι το πράγμα που τα σταματά να ξανασυμβούν.
+- **`floor.yaml`** — the rename stands, with §3d's correction: the gate that will go red is `O2`,
+  not `G10`. A new window; the closed one keeps the old id.
+- **The ladder ceiling** — the **716/26,600** was confirmed by `make eval-guardrail`. Doctrine
+  rule 1 is incomplete only for those, and `G6` publishes both numbers without widening an
+  assertion. What is proposed is a restatement of doctrine rule 1, not a ceiling on the ladder:
+  "the safe state may be empty, and then the correct output is a refusal" is true of the system
+  and false only of the sentence.
 
 ---
 
-## Προτεινόμενα branches, με σειρά
+## 8 · The rule "a guard tested by its author" — is it complete?
 
-| # | branch | τι κλείνει |
+Nine times in one phase: a sentence, `timeout-minutes: 45`, a deferral, a cost estimate, a
+measurement that went stale (W5), a minuted figure (11/11), the cache hypothesis, the rule's own
+statement (the scale paragraph that insisted on measuring carried three unmeasured figures) — and
+now, tenth, a task note that names the wrong gate (§3d).
+
+**The answer: the rule is not incomplete. It is unarmed.**
+
+Every restatement widened the **form** — a sentence → a number in configuration → a deferral → the
+rule's own statement → an instruction to the next session. The form was never the variable. The
+invariant across all ten is the same: *the assertion was checked against the artefact it came from
+rather than against the thing that would falsify it.* That is precisely the sentence already in
+the box. An eleventh widening will add one more noun and will not see the twelfth case.
+
+What is missing is elsewhere. **And all ten were found by a human or by a run — none by a
+command.** The rule is the repository's only first-order rule with no gate behind it, in a
+repository whose entire argument is that *a rule that is a paragraph is advice and a rule that is
+a Makefile target is structural*.
+
+And the mechanism that would arm it **already exists, in one file**. `docs/SCENARIO.md`'s
+four-kinds rule — `[M]` measured with the command, `[D]` declared with a contract, `[C]` cited
+with a date, `[S]` scenario carrying the words *it has never run* — paid for itself inside the
+branch that wrote it: it forced a re-run and W5's counts did not come back the same. It is the
+first mechanism in this repository that **caught this defect by construction rather than by
+reading**.
+
+Hence the one proposal held to be worth more than all the other corrections together:
+
+> **The four-kinds rule extends from `SCENARIO.md` to every published number — `CLAUDE.md`,
+> `PLAN.md`, `TASKS.md`, the evals' READMEs, the workflow comments — and a `make figures` re-runs
+> the commands behind the `[M]`s and goes red when they do not return the same.**
+
+At least six of the ten incidents would have gone red: the 11/11, the W5 counts, the 100→109→45
+chain, the "1,200 → 212" (no command, so not `[M]`, so it does not go in), the "about 36M", and
+the cache hypothesis (no command). The rest — the timeouts and §3d's note — are not numbers a
+command produces, and for those the rule already says what to do; what is missing is for it to say
+so somewhere a gate reads.
+
+*Branch:* `ops/every-number-carries-its-kind` — and it is the one piece of this report that must
+precede the others, because the rest are corrections of numbers and this is the thing that stops
+them recurring.
+
+---
+
+## Proposed branches, in order
+
+| # | branch | what it closes |
 |---|---|---|
-| 1 | `ops/every-number-carries-its-kind` | §8 — ο μόνος κανόνας χωρίς gate |
-| 2 | `ops/expiry-knows-what-closed` | §2α — το gate που θα δαγκώσει λάθος στις 30/09 |
-| 3 | `evals/world-cache-measured` | §2β, §2γ — restatement + budget από μέτρηση |
-| 4 | `evals/unarmed-checks` | §1 — 21 checks, 8 χωρίς λόγο, το κενό `at_design` |
-| 5 | `docs/layout-and-restatements` | §3α, §3γ, §3ε — ο χάρτης, οι δύο αλυσίδες, τα μικρά |
-| 6 | `docs/claim-4-counts` | §3β — 11/11 → 12/12 σε πέντε σημεία |
-| 7 | `contracts/floor-rule-id` | §7 — με τη διόρθωση της §3δ μέσα |
-| 8 | `docs/doctrine-rule-1-ceiling` | §7 — restatement, όχι ceiling |
-| 9 | `skills/integration-review` | το ίδιο το T008: η μέθοδος ως skill |
+| 1 | `ops/every-number-carries-its-kind` | §8 — the only rule with no gate |
+| 2 | `ops/expiry-knows-what-closed` | §2a — the gate that will bite wrongly on 2026-09-30 |
+| 3 | `evals/world-cache-measured` | §2b, §2c — restatement + a budget from measurement |
+| 4 | `evals/unarmed-checks` | §1 — 21 checks, 8 with no reason, the `at_design` gap |
+| 5 | `docs/layout-and-restatements` | §3a, §3c, §3e — the map, the two chains, the smaller ones |
+| 6 | `docs/claim-4-counts` | §3b — 11/11 → 12/12 in five places |
+| 7 | `contracts/floor-rule-id` | §7 — with §3d's correction inside it |
+| 8 | `docs/doctrine-rule-1-ceiling` | §7 — a restatement, not a ceiling |
+| 9 | `skills/integration-review` | T008 itself: the method as a skill |
 
-Το #9 είναι το `closes` του T008 και δεν γράφτηκε εδώ σκόπιμα — ένα skill εξαγμένο από μία
-συνεδρία είναι αντίγραφο αυτής της συνεδρίας, και το ίδιο το `TASKS.md` έχει το επιχείρημα για
-το T00B. Γράφεται **αφού** τρέξουν τα 1–8, ώστε να έχει δύο πράγματα να καταγράψει: τι ρώτησε
-η ανασκόπηση, και ποια από τα ερωτήματα παρήγαγαν εύρημα.
+\#9 is T008's `closes` and was deliberately not written here — a skill extracted from one session
+is a copy of that session, and `TASKS.md` itself carries the argument for T00B. It is written
+**after** 1–8 have run, so that it has two things to record: what the review asked, and which of
+the questions produced a finding.

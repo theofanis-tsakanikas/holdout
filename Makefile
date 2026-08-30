@@ -25,7 +25,7 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        expiry claim-1 claim-2 claim-3 claim-4 claim-7 \
+        expiry language claim-1 claim-2 claim-3 claim-4 claim-7 \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
 
@@ -39,9 +39,9 @@ setup:  ## create the virtualenv and install everything
 setup-locked:  ## install exactly what uv.lock pins — what CI runs, and what refuses a drifted lock
 	$(UV) sync --locked
 
-check: lint typecheck contracts expiry test  ## the whole local gate, in the order that fails fastest
+check: lint typecheck contracts language expiry test  ## the whole local gate, in the order that fails fastest
 	@echo ""
-	@echo "OK      lint · typecheck · contracts · expiry · tests"
+	@echo "OK      lint · typecheck · contracts · language · expiry · tests"
 	@echo "        the claim targets are NOT in here — they take minutes, and CI discovers"
 	@echo "        and runs every one of them. Run 'make claim-1' before a claim's own PR."
 
@@ -64,6 +64,24 @@ contracts:  ## validate every contract and refuse a stale or hand-edited generat
 
 contracts-write:  ## recompile every consumer and write it to generated/
 	$(RUN) holdout-contracts compile
+
+# CLAUDE.md's first line: "all repository content in English. Conversation with the author
+# in Greek." It was enforced nowhere until 2026-08-30, and it had already been broken — a
+# review report landed on `main` carrying 12,803 Greek characters, in a public repository.
+#
+# Not a blanket ban. A verbatim article of a Greek instrument, the 63 published basket
+# categories and the ONS item descriptions, and the symbols alpha, beta and tau are all
+# load-bearing, and translating any of them would be the defect rather than the fix. So the
+# exceptions are two closed lists in `ops/language.py`, each entry carrying its reason.
+#
+# It refuses to report green until it has shown that it works: the detector must fire on a
+# sentinel, the walk must have reached the tree, and every declared exception must still be
+# in use. That is here because the violation was first mis-measured by `grep -P`, which BSD
+# grep does not have -- it exited 1, stderr was discarded, and "no matches" was read off a
+# command that never ran the check. The silence of a missing instrument is indistinguishable
+# from a pass, so this one is not allowed to be silent.
+language:  ## refuse Greek in repository content outside the declared exceptions
+	$(RUN) python -m ops.language
 
 # Doctrine rule 6: "Exceptions expire. On expiry the finding returns and CI goes red again."
 # This is the only target in the file that can go red on a day nobody touched the repository,

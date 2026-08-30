@@ -906,6 +906,44 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**The review was in the wrong language, and the rule that says so was enforced nowhere ·
+2026-08-30.** `docs/reviews/phase-1.md` landed on `main` carrying **12,803 Greek characters**, in
+a public repository, against `CLAUDE.md`'s first line. It is translated on `docs/review-in-english`
+with nothing in its content moved, and the rule is now `make language`, inside `make check`.
+
+**Not a blanket ban.** Three kinds of Greek are load-bearing: a verbatim article of an instrument
+(translating a statute is a paraphrase of law, which doctrine rule 3 refuses), published data
+somebody else wrote (digest-checked, so an edit is already a red build), and the symbols alpha,
+beta and tau. So the exceptions are two closed lists in `ops/language.py`, each entry with its
+reason — **five paths and eighteen tokens**, and the eighteen were measured before the list was
+written rather than guessed. A path allowlist wide enough to cover the citations in `src/`,
+`tests/`, `evals/` and four documents would have admitted Greek nearly everywhere and would not
+have caught the review.
+
+**And this gate is shaped differently from every other one, because of how the violation was first
+mis-measured.** The check was run with `grep -P`, which BSD grep on macOS does not have. It exited
+1, `2>/dev/null` hid the reason, and *no matches* and *no such option* are the same two characters
+on a terminal — a count of **zero** reported from a command that never ran the check. That is the
+twelfth instance of *a guard tested by its author* and its form is new: not a sentence, not a
+number in configuration, but **a tool that was not there**.
+
+> **The silence of a missing instrument is indistinguishable from a pass.**
+
+So `ops.language` will not report green until it has answered for itself: the detector fires on a
+sentinel built from code points, the walk read more files than a declared floor, and every declared
+exception is still in use — the last being claim 7's `O12` argument one directory along, since an
+unused exception is a pre-approval for whoever writes that token next. All three are attacked in
+`tests/ops/test_language.py` by removing the instrument, and each attack requires a red run;
+verified live as well, with the detector edited into something that cannot match. **It found one
+thing while being built:** the first draft of that test wrote its Greek fixtures as literals under
+a comment claiming they were code points, and `make language` refused it — the gate biting the test
+written to prove it bites. The suite is **928**.
+
+The generalisation — *a gate goes red when its own instrument is missing, proved by an attack that
+takes the instrument away* — lands in `ops/every-number-carries-its-kind` beside the four-kinds
+rule, as a second requirement of equal standing. It is deliberately not asserted here: this branch
+is one gate meeting the rule early, not the rule existing.
+
 ### Closed in this phase
 
 Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **All five have closed**,
