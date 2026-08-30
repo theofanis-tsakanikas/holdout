@@ -857,6 +857,55 @@ repository that has caught this defect by construction instead of by reading. Ex
 published number, with a target that re-runs the commands behind the `[M]`s, is the first of the
 nine branches the report opens and the only one that stops the rest recurring.
 
+**And the review's own §2 had missed the largest one, which the author found the next hour ·
+2026-08-30.** *Has any gate stopped biting?* had the wrong answer, and the gate was the one that
+decides whether anything merges at all. The `main` ruleset required `gate` and `secrets`. **T003
+moved the claim targets out of `gate` and into the `claims` matrix, and the ruleset kept pointing
+at `gate`** — so from that commit until `ops/claims-are-required`, **a pull request with a red
+`claim-2` merged.** Oversight level 1's sentence, *a session cannot merge something that breaks a
+claim, because the gate is structural rather than advisory*, was false at the level everything
+else leans on.
+
+**No reading finds it.** What the ruleset requires is a fact about the forge, carried in no file
+here: `ci.yml` declares which jobs *exist* and never which are *required*, `make check` cannot see
+it, no test touches it. The review read `ci.yml` line by line and measured 31 of its runs. The
+fingerprint had been in `docs/DECISIONS.md` since 2026-08-27 — the entry's own verification quotes
+*"2 of 2 required status checks are expected"*, and the **2** was the finding, unread because the
+sentence beside it said which two and they agreed.
+
+**One summary context, never a list of names.** `claims-complete` — `needs: [claims]`,
+`if: always()` — fails on anything that is not `success`, and the case that matters is
+**`skipped`**, because a skipped required check reports neutral rather than red and that is how a
+matrix job passes silently. The ruleset requires that one context, so a claim landing tomorrow is
+covered by nobody remembering anything; enumerating the targets there would be a second registry
+of which claims exist, kept by hand where no session reads it.
+
+**Verified by attacking, and it took three attacks because the first two proved less than they
+looked like proving.** Hiding every `claim-N:` from `discover` (matrix `skipping`) and applying
+claim 7's planted break 01 (matrix `failure`) both turned `claims-complete` red and both left the
+merge `BLOCKED` — but `gate` was red in both, because `tests/evals/test_ledger.py` parses the real
+Makefile and the decision key has a test of its own. That shows the job fires on both non-success
+results; it does not show the context is **necessary**, which is this repository's own standard —
+*a gate can only be shown to bite where it is the gate that refuses.* No committed mutation could
+supply the isolated case either: number 16 was tried and `gate` went red, because
+`ledger.every-anchor-is-aimed-at-one-place` requires each anchor to occur exactly once and applying
+the mutation removes it.
+
+So the third break was written fresh: **`cap_benchmark`'s bound attributed to
+`markdown_max_depth_pct`** — right amount, wrong rule name, a certificate asserting a check that
+never ran. `make check` **green at 919**, `G10` red with **156,294 disagreements in 746,643
+bounds**, `gate` green, `claim-1` red, and the refusal naming one context:
+*"Required status check `claims-complete` is failing."* **Before this branch that exact tree would
+have merged.**
+
+**What it cannot close, and the shape of the answer.** Nothing in this tree checks the ruleset
+itself; remove the required context tomorrow and the job reports on into a void. Anything living
+here can only be checked by something the forge has already agreed to run. So it closes as a
+**question in a procedure** — *what does the ruleset require, and does it match the jobs that
+exist today?* is now in T008's `closes` for the `integration-review` skill. It is the first rule
+in this repository that is deliberately a question rather than a gate, because the thing it
+guards is outside the repository.
+
 ### Closed in this phase
 
 Claims 1, 2, 3, 4 and 7 — all provable local, with no account. **All five have closed**,
