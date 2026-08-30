@@ -906,6 +906,45 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**`make expiry` learns what closure is, and the rule from the day before had not been applied to
+what already existed · 2026-08-31.** `ops/expiry-knows-what-closed` closes the report's §2a and
+turns out to be bigger than the report said.
+
+**The false alarm is gone.** The target read headers and had no notion of closure, so an entry whose
+finding had already returned stayed among the live ones and its date went on ticking. `next expiry
+2026-09-30` pointed at the CI-gate-timeout entry, **closed on 2026-08-28** — the only dated entry in
+the registry and the one it credits with arming the target at all. A `*Closed:*` marker is read like
+the other two, a closed entry cannot expire, open and closed are counted apart, and `next expiry` is
+now **2026-11-30**, which is real.
+
+**The standing limit becomes a number.** *A condition is prose and cannot be evaluated* was written
+honestly in the module's docstring from day one; what it never was is countable. The run prints
+`checked for TRUTH 4 of 33 (12%)` beside `checked for PRESENCE only 29 of 33` — `make figures`'
+question turned on the target itself. Published, not gated: a condition-only deferral is legitimate
+by the registry's own rule, and what is refused is not saying how many there are.
+
+**And the thirteenth form of the recurring defect, which is the sharpest so far.** On 2026-08-30
+`CLAUDE.md` gained *an unlock condition that names a session rather than an event is not a
+condition; it is a date without a calendar.* **The registry was not swept when the rule was
+written.** Nine open entries reached for "the phase-1 integration session" — five as the condition,
+four as a fallback — and that session had already happened without answering any of them. The twelve
+before it were rules that went stale or numbers written against a projection; **this one was correct,
+published, and simply never run against what already existed.** It is the fourth finding's shape —
+two things each right on its own with no test between them — pointed at a rule and a document.
+
+Six were given the branch that closes them and three had a real condition already and only lost a
+fallback clause. Nothing was invented. What is not enforced is stated: telling a session from an
+event means reading English, so the test asserts the state the sweep left rather than pretending to
+be a gate.
+
+**Measured here, and a different count arrived with the instruction.** 35 headers, 2 closed, 33
+open, 4 dated, 29 condition-only, 5 + 4 + 8 by how they name their unlock. The figures that came in
+were 25 / 5 / 20, and the explanation is the same rule again: that count used a regex requiring
+`· deferred` on one line, and **ten headers wrap** — the exact case `ops/expiry.py` carries a
+comment about. It saw 25 of 35 and reported as though it were all of them. Third instance of
+`make figures`' rule in three days, second from the reviewing side, and both found by re-execution
+rather than by reading. The suite is **943**.
+
 **The rule that had no gate now has one, and it turned out to be about coverage · 2026-08-30.**
 `ops/every-number-carries-its-kind` closes the report's §8. Two events were the same defect at two
 coverages and nobody had called them the same thing: `grep -P`, absent, giving **zero** from a

@@ -18,11 +18,19 @@ the failure mode a test suite is supposed to catch rather than exhibit.
 
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
-from ops.expiry import REGISTRY, RegistryError, check, parse
+from ops.expiry import (
+    REGISTRY,
+    RegistryError,
+    _header_offsets,
+    _section_body,
+    check,
+    parse,
+)
 
 TODAY = date(2026, 8, 27)
 
@@ -278,4 +286,139 @@ def test_an_entry_deleted_outright_is_not_caught_and_is_not_claimed_to_be(
     copy = _with_section(text, section[:start] + section[start:].split("\n\n", 1)[1], tmp_path)
     code, out = _run(copy, TODAY, capsys)
     assert code == 0, out
-    assert f"{before - 1} deferred item(s)" in out
+    assert f"{before - 1} entr(y/ies) in the section" in out
+
+
+# --------------------------------------------------------------- a closed deferral is not open
+#
+# Until 2026-08-31 this module had no notion of closure. An entry whose finding had already
+# returned was counted among the live ones forever and its `*Expires:*` date went on ticking:
+# `next expiry 2026-09-30` pointed at an entry closed on 2026-08-28 — the only dated entry in
+# the registry, and the one the registry credits with arming this target at all. CI was going to
+# go red for something nobody still owed.
+
+CLOSED_AND_EXPIRED = """
+**A planted deferral that was answered before its date came** · deferred 2026-01-01
+Planted by `tests/ops/test_expiry.py`. Its date has passed and it was closed first, so the
+finding it carried has already returned and there is nothing left to expire.
+*Unlock condition:* the thing that closed it.
+*Expires:* 2026-08-20
+*Closed:* 2026-08-15 — by the branch that answered it.
+"""
+
+CLOSED_BEFORE_IT_WAS_DEFERRED = """
+**A planted deferral closed before it was taken** · deferred 2026-06-01
+Planted by `tests/ops/test_expiry.py`.
+*Unlock condition:* nothing legible.
+*Closed:* 2026-01-01 — which is before the entry exists.
+"""
+
+
+def test_a_closed_deferral_does_not_expire(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The §2a finding, driven: the same entry is red without the marker and green with it."""
+    without = CLOSED_AND_EXPIRED.replace(
+        "*Closed:* 2026-08-15 — by the branch that answered it.\n", ""
+    )
+    code, out = _run(_planted(without, tmp_path), TODAY, capsys)
+    assert code == 1, "the planted entry must be red before it is marked closed"
+    assert "EXPIRED" in out
+
+    code, out = _run(_planted(CLOSED_AND_EXPIRED, tmp_path), TODAY, capsys)
+    assert code == 0, out
+    assert " closed" in out
+
+
+def test_a_closed_deferral_is_counted_apart_from_the_open_ones(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """'How many deferrals are open' must have an answer a command gives."""
+    code, out = _run(_planted(CLOSED_AND_EXPIRED, tmp_path), TODAY, capsys)
+    assert code == 0, out
+    live = len([d for d in parse(REGISTRY.read_text(encoding="utf-8")) if d.is_open])
+    assert f"{live} open, " in out
+    assert "closed" in out
+
+
+def test_a_closed_deferral_is_not_the_next_expiry(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The exact shape of the false alarm: a closed entry holding the earliest date."""
+    soon = (TODAY + timedelta(days=1)).isoformat()
+    planted = f"""
+**A planted deferral closed while holding the earliest date** · deferred 2026-01-01
+Planted by `tests/ops/test_expiry.py`.
+*Unlock condition:* the thing that closed it.
+*Expires:* {soon}
+*Closed:* 2026-08-15 — before the date it was holding.
+"""
+    code, out = _run(_planted(planted, tmp_path), TODAY, capsys)
+    assert code == 0, out
+    assert f"next expiry {soon}" not in out
+
+
+def test_a_closure_date_that_cannot_be_true_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A marker that silences a deferral has to be a date somebody could have written.
+
+    Only the absolute impossibility is checked. *Closed after today* is deliberately not — see
+    `failures`: `as_of` is an injected clock and this file pins it, so every closure recorded
+    after the pinned date would read as future-dated and the registry could only ever be
+    evaluated at dates later than its last closure.
+    """
+    code, out = _run(_planted(CLOSED_BEFORE_IT_WAS_DEFERRED, tmp_path), TODAY, capsys)
+    assert code == 1, out
+    assert "IMPOSSIBLE" in out
+
+
+# ------------------------------------------------- the share it checks for truth is a number
+
+
+def test_the_share_checked_for_truth_is_printed_not_described(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`make figures`' question, turned on this target.
+
+    The limit — a condition is prose and cannot be evaluated — was written honestly in this
+    module's docstring from the day it was written. What it never was is countable, so nobody
+    could see that the target checks a small minority of what it reports on. A gate reports on
+    what it examined; it becomes a lie when it reports what it examined as if it were what
+    exists.
+    """
+    code, out = _run(REGISTRY, TODAY, capsys)
+    assert code == 0, out
+    deferrals = parse(REGISTRY.read_text(encoding="utf-8"))
+    live = [d for d in deferrals if d.is_open]
+    dated = [d for d in live if d.is_checkable_for_truth]
+    assert f"checked for TRUTH  {len(dated)} of {len(live)}" in out
+    assert f"checked for PRESENCE only  {len(live) - len(dated)} of {len(live)}" in out
+    assert len(dated) < len(live), "if this ever stops being true, the wording above must move"
+
+
+def test_no_open_unlock_condition_names_the_integration_session() -> None:
+    """`CLAUDE.md`: an unlock condition that names a session is a date without a calendar.
+
+    Swept by hand rather than enforced, because telling a session from an event means reading
+    English. What this asserts is the state the sweep left: no **open** entry reaches for the
+    session as its condition. Closed entries keep their original wording, and every restatement
+    quotes the wording it replaced — doctrine rule 4 — so the phrase survives in the file and
+    must not be searched for blindly.
+    """
+    text = REGISTRY.read_text(encoding="utf-8")
+    body = _section_body(text)
+    offsets = _header_offsets(body)
+    bounds = [*offsets, (len(body), "")]
+    offenders: list[str] = []
+    for index, (start, title) in enumerate(offsets):
+        entry = body[start : bounds[index + 1][0]]
+        if re.search(r"\*Closed:\*", entry):
+            continue
+        unlock = re.search(r"\*Unlock condition:\*", entry, re.IGNORECASE)
+        if unlock is None:
+            continue
+        tail = entry[unlock.end() :].split("*Restated")[0]
+        if re.search(r"integration session", tail, re.IGNORECASE):
+            offenders.append(title[:70])
+    assert offenders == [], offenders
