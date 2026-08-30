@@ -25,7 +25,7 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        expiry language claim-1 claim-2 claim-3 claim-4 claim-7 \
+        expiry language figures claim-1 claim-2 claim-3 claim-4 claim-7 \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
 
@@ -39,9 +39,9 @@ setup:  ## create the virtualenv and install everything
 setup-locked:  ## install exactly what uv.lock pins — what CI runs, and what refuses a drifted lock
 	$(UV) sync --locked
 
-check: lint typecheck contracts language expiry test  ## the whole local gate, in the order that fails fastest
+check: lint typecheck contracts language expiry figures test  ## the whole local gate, in the order that fails fastest
 	@echo ""
-	@echo "OK      lint · typecheck · contracts · language · expiry · tests"
+	@echo "OK      lint · typecheck · contracts · language · expiry · figures · tests"
 	@echo "        the claim targets are NOT in here — they take minutes, and CI discovers"
 	@echo "        and runs every one of them. Run 'make claim-1' before a claim's own PR."
 
@@ -82,6 +82,21 @@ contracts-write:  ## recompile every consumer and write it to generated/
 # from a pass, so this one is not allowed to be silent.
 language:  ## refuse Greek in repository content outside the declared exceptions
 	$(RUN) python -m ops.language
+
+# A gate reports on what it examined. It becomes a lie when it reports what it examined as
+# if it were what exists. Two instances are in the record and they are the same defect at two
+# coverages: `grep -P`, absent, giving a count of zero from a check that never ran; and
+# `discover` matching `claim-[1-7]`, which could not have seen a `claim-8` -- and since
+# `claims-complete` aggregates only what `discover` emits, the required check would have been
+# silent about a claim whose gate never ran.
+#
+# So every gate declares how its population is enumerated, and this recomputes it a second time
+# and compares. Red when examined < exists. NEVER red when examined > exists: over-coverage is a
+# tool doing more than asked -- ruff formats Python inside Markdown -- and freezing either number
+# would go red on a version bump that is not a defect. Same shape as Money's roundings: a bound
+# that rounds toward what it forbids is not a bound.
+figures:  ## refuse a gate that examined less than exists, and a figure that stopped reproducing
+	$(RUN) python -m ops.figures
 
 # Doctrine rule 6: "Exceptions expire. On expiry the finding returns and CI goes red again."
 # This is the only target in the file that can go red on a day nobody touched the repository,

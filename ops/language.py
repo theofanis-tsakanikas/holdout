@@ -67,6 +67,12 @@ GREEK_RUN = re.compile(
     "[\u0370-\u03ff\u1f00-\u1fff](?:[\u0370-\u03ff\u1f00-\u1fff' .]*[\u0370-\u03ff\u1f00-\u1fff])?"
 )
 
+#: Suffixes that are not text. A gzipped corpus file is repository content in every other
+#: sense and carries no prose at all, so enumerating it and then failing to decode it would show
+#: up in `make figures` as this gate having examined less than exists — which would be true, and
+#: not a defect. Declaring it keeps the two counts honest instead of tolerating a difference.
+NOT_TEXT: frozenset[str] = frozenset({".gz", ".zip", ".png", ".jpg", ".jpeg", ".pdf", ".ico"})
+
 #: Directories and files that are not repository content: tooling caches, the virtualenv, the
 #: generated world cache, the lockfile, and `notes/`, which is gitignored and never published.
 NOT_CONTENT: frozenset[str] = frozenset(
@@ -238,6 +244,8 @@ def content_files(root: Path | None = None) -> list[Path]:
         if not path.is_file():
             continue
         if any(part in NOT_CONTENT for part in path.relative_to(base).parts):
+            continue
+        if path.suffix.lower() in NOT_TEXT:
             continue
         found.append(path)
     return found

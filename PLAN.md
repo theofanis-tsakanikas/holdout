@@ -906,6 +906,51 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**The rule that had no gate now has one, and it turned out to be about coverage · 2026-08-30.**
+`ops/every-number-carries-its-kind` closes the report's §8. Two events were the same defect at two
+coverages and nobody had called them the same thing: `grep -P`, absent, giving **zero** from a
+check that never ran; and `discover` matching `claim-[1-7]`, which could not have seen a
+`claim-8` — and `claims-complete`, the required check, aggregates only what `discover` emits, so a
+claim could have landed with its gate never running and the merge would have been green.
+
+> **A gate reports on what it examined. It becomes a lie when it reports what it examined as if it
+> were what exists.**
+
+**Every gate declares how its population is enumerated and `make figures` enumerates it a second
+time** — `evals/README.md`'s rule 5, *a boundary that has to be known is computed twice*, pointed
+at coverage instead of arithmetic. Six gates come out: `lint`, `typecheck`, `language`, `expiry`,
+`gate-proof`, `discover`.
+
+**Two deviations from how it was asked for, both deliberate and one of them measured.** The
+population is declared as a **rule, not a `[D]` value**: a frozen count is an assertion needing its
+own measurement, which is the defect this branch exists to close. And the comparison is
+**one-sided** — red when `examined < exists`, never the other way. Measured on ruff 0.16.4: 190
+files reported against an independent count of 182 `*.py`, the eight being Markdown, because ruff
+formats Python inside fenced blocks and has since a version nobody here chose. Freezing either
+number would go red on that upgrade for a reason that is not a defect. Only under-coverage is a lie
+about what exists — `Money`'s rule one layer up.
+
+**And one thing does not come out: `test`.** A suite's *examined* is what actually ran, known only
+after it runs, while `make figures` runs before it in the same `make check`; asking pytest to
+collect twice measures collection against collection. Recorded as uncovered rather than covered
+badly. **The prose half is deliberately small** — two registered figures, and `PLAN.md` and
+`TASKS.md` excluded because doctrine rule 4 keeps superseded figures here forever, so re-running
+them would go red on history that is correct as written. Which text asserts the present tense is a
+judgment, so the registry is written by hand and its size is printed on every run.
+
+**It found something on its first run against itself**: a number in its own docstring, stale by two
+before the module was committed. The fix was to **date** it rather than update it — a measurement
+of a moment supporting an argument about direction is not an assertion about today, and that
+distinction is what makes the prose half tractable.
+
+**Proved by two attacks, and the second is the one that matters.** Removing the instrument is
+`tests/ops/test_language.py`. **Narrowing** it is `tests/ops/test_figures.py` — a path outside the
+walked list, and `claim-[1-7]` against a Makefile carrying a `claim-8`, which is the exact state
+`main` was in until this branch. Narrowing is the shape no reviewer notices, because the gate still
+runs, still prints, and still says what it always said. `discover` is widened to `claim-[0-9]+` and
+gains a floor of 6 that `make figures` checks against the Makefile, so a deleted target cannot
+shrink it in silence. The suite is **937**.
+
 **The review was in the wrong language, and the rule that says so was enforced nowhere ·
 2026-08-30.** `docs/reviews/phase-1.md` landed on `main` carrying **12,803 Greek characters**, in
 a public repository, against `CLAUDE.md`'s first line. It is translated on `docs/review-in-english`

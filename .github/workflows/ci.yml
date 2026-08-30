@@ -100,8 +100,23 @@ jobs:
       - id: read
         run: |
           set -euo pipefail
-          targets="$(grep -oE '^(claim-[1-7]|gate-proof|preview-audit):' Makefile \
+          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit):' Makefile \
                      | tr -d ':' | sort -u || true)"
+          # The floor. `claim-[0-9]+` cannot miss a claim target the way `claim-[1-7]` could,
+          # but a target that is *deleted* still shrinks this list in silence, and a shrinking
+          # gate is the same lie one step along. FLOOR is what exists today; finding more is
+          # ordinary growth and finding fewer is a claim whose gate stopped running.
+          # `make figures` checks this number against the Makefile, so it cannot go stale
+          # downward without something going red.
+          FLOOR=6
+          found="$(printf '%s\n' $targets | grep -c . || true)"
+          if [ "$found" -lt "$FLOOR" ]; then
+            echo "::error::discover found $found claim target(s), below the declared floor of $FLOOR."
+            echo "A target that stops being discovered is a gate that stops running, and"
+            echo "claims-complete aggregates only what this step emits."
+            exit 1
+          fi
+
           if [ -z "$targets" ]; then
             echo "any=false" >> "$GITHUB_OUTPUT"
             echo "targets=[]" >> "$GITHUB_OUTPUT"
