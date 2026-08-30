@@ -467,6 +467,60 @@ closed costs the session. The one exception is `main_guard` on a command line it
 tokenise, where it falls back to a coarser match and refuses: an unbalanced quote is the single
 case where guessing in the safe direction costs only a retry.
 
+**The language rule becomes `make language`, and it is the first gate that has to prove it can
+see.** · 2026-08-30
+`CLAUDE.md`'s first line — *all repository content in English. Conversation with the author in
+Greek* — was enforced nowhere, and it had already been broken. `docs/reviews/phase-1.md` landed on
+`main` carrying **12,803 Greek characters**, in a public repository, written by a session that
+took "the conversation" and "the work product" to be the same thing. The report is translated on
+this branch; the gate is what stops it recurring.
+
+**Not a blanket ban, because three kinds of Greek are load-bearing and translating any of them
+would be the defect rather than the fix.** A **verbatim article** of a Greek instrument, quoted so
+that `REGULATORY.md`'s own rule holds — *a `legal_instrument` carries either a verbatim `quote` or
+a `note` accounting for it* — where a translated statute is a paraphrase of law and doctrine rule
+3 refuses exactly that. **Published data somebody else wrote**: the 63 regulated-basket categories
+and the ONS item descriptions, digest-checked in `MANIFEST.yaml`, so an edit is already a red
+build and the corpus is evidence precisely because this repository did not write it. And
+**mathematical symbols** — alpha, beta, tau.
+
+So the exceptions are **two closed lists rather than one loose one**, in `ops/language.py`, each
+entry carrying its reason. Five excepted **paths** for verbatim law and published data; eighteen
+allowed **tokens** admitted anywhere, which is what keeps the path list to five. Measured before
+the lists were written: outside those five files the whole repository uses eighteen distinct Greek
+tokens — a vocabulary rather than a habit, which is what made a closed list the right shape. A
+path allowlist wide enough to cover the citations in `src/`, `tests/`, `evals/` and four documents
+would have admitted Greek nearly everywhere and would not have caught the review.
+
+*The declared limit:* an excepted path is a path. A Greek paragraph hidden inside
+`docs/REGULATORY.md` passes, and `tests/ops/test_language.py` asserts that rather than describing
+it. The pull-request diff is what catches it — the same answer `make expiry` gives about a deferral
+deleted outright.
+
+**And the reason this gate is shaped differently from every other one: it reports the absence of
+something.** The rule was violated first and measured second, and the measurement was taken with
+`grep -P`, which BSD grep on macOS does not implement. `grep` exited 1, `2>/dev/null` swallowed the
+reason, and *no matches* and *no such option* are the same two characters on a terminal. **A count
+of zero was reported from a command that never ran the check.**
+
+That is the twelfth instance of *a guard tested by its author*, and its form is new — not a
+sentence, not a number in configuration, but **a tool that was not there**:
+
+> **The silence of a missing instrument is indistinguishable from a pass.**
+
+So `ops.language` refuses to report green until it has answered for itself: the detector must fire
+on a sentinel built from code points (so the module's own bytes carry no Greek and it needs no
+exception for itself); the walk must have read more files than a declared floor; and every declared
+exception must still be **in use**, because an unused one is a pre-approval for whoever writes that
+token next — claim 7's `O12` argument, one directory along. Each of the three is attacked in
+`tests/ops/test_language.py` by taking the instrument away, and each attack requires a red run.
+
+*What it found while being built, which is the part worth keeping.* The first draft of that test
+file wrote its Greek fixtures as literals under a comment saying they were code points. `make
+language` refused it — **the gate biting the test written to prove it bites**, before either had
+been committed. The generalisation of this to every other gate is `ops/every-number-carries-its-kind`;
+this entry is one gate meeting the rule early rather than a claim that the rule exists yet.
+
 **Doctrine rule 6 becomes `make expiry`.** · 2026-08-27
 *"Exceptions expire. On expiry the finding returns and CI goes red again"* was enforced nowhere.
 It now is: `make expiry` reads the **Deliberately deferred** section of this file and refuses an
