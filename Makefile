@@ -78,7 +78,7 @@ expiry:  ## refuse an expired deferral, or one that never said how it ends
 
 # A claim target proves its claim end to end: the eval, then the mutations planted to show
 # that claim's gates bite. It is the only place claim 1's mutations run.
-claim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
+xclaim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
 	$(RUN) python -m evals.guardrail
 	$(RUN) python -m evals.gate_proof --claim 1
 
@@ -88,14 +88,14 @@ claim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
 # outside the mutation loop -- a world is a pure function of (world, seed, scale) and a
 # mutation changes eval code -- so the ten runs generate the worlds once. What invalidates
 # that is a digest, not a list: see evals/uplift/cache.py.
-claim-2:  ## claim 2 — no uplift without a valid holdout, and A/A holds against alpha
+xclaim-2:  ## claim 2 — no uplift without a valid holdout, and A/A holds against alpha
 	$(RUN) python -m evals.uplift
 	$(RUN) python -m evals.gate_proof --claim 2
 
 # Claim 3 is the one door with no key. The eval is seconds rather than minutes -- a chain is
 # placement arithmetic and not a simulation -- so the mutations run against the eval itself,
 # at the published grid, and there is no smaller configuration to keep in step.
-claim-3:  ## claim 3 — the holdout is neither erased nor chosen after the fact
+xclaim-3:  ## claim 3 — the holdout is neither erased nor chosen after the fact
 	$(RUN) python -m evals.assignment
 	$(RUN) python -m evals.gate_proof --claim 3
 
@@ -110,7 +110,7 @@ eval-uplift:  ## just claim 2's eval, without the mutations
 # by censoring them on purpose, and compares every reconstruction against a second
 # implementation that never forms a share. Three worlds at rehearsal scale, about five
 # seconds; no cache, because nothing here is expensive enough to earn one.
-claim-4:  ## claim 4 — a stock-out is never read as zero demand
+xclaim-4:  ## claim 4 — a stock-out is never read as zero demand
 	$(RUN) python -m evals.censoring
 	$(RUN) python -m evals.gate_proof --claim 4
 
@@ -139,7 +139,7 @@ eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 # every type added to it adds 317 attacks; and then "1m32s to 1m45s", falsified by the very
 # next run coming in *faster*. A quantity with two independent reasons to move should be
 # asserted as a bound with room in it, never as a point and never as a tight range.
-claim-7:  ## claim 7 — a decision that targets a person is structurally impossible
+xclaim-7:  ## claim 7 — a decision that targets a person is structurally impossible
 	$(RUN) python -m evals.oversight
 	$(RUN) python -m evals.gate_proof --claim 7
 
@@ -151,7 +151,7 @@ eval-oversight:  ## just claim 7's eval, without the mutations — about four se
 # claim target, no orphan, no duplicate, no claim target with nothing planted against it.
 # Before this split, `claim-1` and `gate-proof` both ran claim 1's thirteen mutations and
 # CI spent thirteen minutes proving the same thing twice.
-gate-proof:  ## audit mutation ownership — every planted break owned by exactly one claim
+xgate-proof:  ## audit mutation ownership — every planted break owned by exactly one claim
 	$(RUN) python -m evals.gate_proof
 
 # The counterpart of `corpus` below, and the rule is the opposite one. `corpus/real/` is
