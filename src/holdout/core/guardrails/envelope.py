@@ -640,7 +640,7 @@ def evaluate(proposal: ProposedPrice, envelope: Envelope) -> Assessment:
                         Decimal(cost.cents) + cost.pct(proposal.benchmark_markup_on_cost.pct)
                     ),
                     guardrail=GuardrailId.REGULATED_BASKET,
-                    rule_id="cap_benchmark",
+                    rule_id="markdown_max_depth_pct",
                     code=RefusalCode.MARGIN_CAP_EXCEEDED,
                     why=(
                         f"cost {cost} plus a benchmark mark-up of "
