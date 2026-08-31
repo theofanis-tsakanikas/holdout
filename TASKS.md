@@ -1136,6 +1136,23 @@ declared inputs and nothing says whether it ran. The ruleset question is one kno
 class nobody has enumerated. Section order is not evidence of working order, so what the skill
 requires is that a report **name its inputs**, not a sequence.
 
+**And oversight level 2 found the file committing the defect it spends its §4 on.** The table of
+the review's questions said *six come from `CLAUDE.md`'s level-3 list* and listed **five**: §6,
+*is there still exactly one door with no key*, was missing, and it is one of the two rows that
+changed the doctrine — the three seals of identical construction, and *today the guarantee is
+detection rather than unopenability*. **A count asserted against a list nobody counted**, which is
+§3a's one-directional coverage question and §4's second failure, in the file that names both. A
+session following the draft would have asked seven of eight and not noticed, because the text said
+six. The row is added and the arithmetic is now written out — nine rows, eight questions, §0 a
+measurement rather than a question — so the count can be checked against the list it claims.
+
+*Found by the session that ran the six branches, under a rule it stated before it could be
+constrained by it: name the file and the line, or it is memory and does not go in.* It is worth
+recording which findings that rule admitted. Its four checks on §4 were of its own writing at one
+remove, and it said so and discounted them. **This one was a count against a list in two files it
+did not write**, which is the only kind of finding a reviewer of its own record can offer without
+the agreement being worth nothing — and `concurred` is not `closed` for exactly that reason.
+
 **It found one thing while being written, which is filed rather than fixed.** `CLAUDE.md` says level
 3 runs *at every phase boundary, without exception*; this file has `T016` and `T024` and nothing
 after phase 4, which agrees with `PLAN.md`'s *before the next phase opens* and disagrees with

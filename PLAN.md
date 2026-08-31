@@ -955,6 +955,23 @@ which document moves decides whether the phase that closes the project is ever r
 and that is the author's call, not a session's. **Level 3's own subject arrived while level 3's
 skill was being extracted**, which is what the phase boundary is for.
 
+**What the review cost, and it was the file's own subject.** The table of the review's eight
+questions announced *six come from `CLAUDE.md`'s level-3 list* and listed five. The missing one is
+**§6 — *is there still exactly one door with no key***, which is not a minor row: it is one of the
+two findings that changed the doctrine, the three seals of identical construction and the accepted
+restatement that **today the guarantee is detection** rather than unopenability. A session
+following the draft would have asked seven of eight and never known, because the sentence above the
+table said six.
+
+**That is §3a's defect committed by the file that names it** — a coverage claim asserted in one
+direction, a count never checked against the list it counts — and it is `CLAUDE.md`'s own note that
+the rule does not stop applying to whoever has just finished quoting it. The row is in and the
+arithmetic is written out rather than asserted: nine rows, eight questions, §0 a measurement and
+not a question. **Found by the session that ran the six branches**, under the rule it declared
+before the review began — *name the file and the line, or it is memory and does not go in* — and it
+is the one finding of its four that was not its own writing read back at one remove, which is what
+makes it worth more than agreement.
+
 **And the branch could not be committed until the guard it exposed had been fixed.**
 `.claude/hooks/main_guard.py` refused it twice, and the two refusals are one sentence: the guard was
 judged against something other than the command it refuses. First the wrong **directory** — it read

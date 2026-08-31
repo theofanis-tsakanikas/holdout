@@ -42,8 +42,8 @@ builds nothing. Each proposed fix becomes its own branch with its own review.* `
 carries `review: n/a — this task IS the review` and `out_of_scope: building any product code`.
 
 **One declared exception, with its reason.** Two changes landed on the review's own branch rather
-than in a later one: doctrine rule 7's restatement, and the rule that an unlock condition must name
-an event rather than a session. `PLAN.md` gives the reason — *both because they are sentences in the
+than in a later one: doctrine rule 7's restatement, which is §6's finding in the table below, and
+the rule that an unlock condition must name an event rather than a session, which is §7's. `PLAN.md` gives the reason — *both because they are sentences in the
 file that governs every other branch.* That is the exception's whole extent: sentences in
 `CLAUDE.md`, not a fix to any module the review found something in.
 
@@ -86,8 +86,12 @@ inheriting the silence.*
 
 ## 2 · The eight questions, and which of them produced a finding
 
-Six come from `CLAUDE.md`'s level-3 list. The phase-1 review added two more, and they produced its
-two most consequential outputs.
+Six come from `CLAUDE.md`'s level-3 list and are §1 to §6 below. The phase-1 review added two
+more, §7 and §8, and they produced its two most consequential outputs. **§0 is not a question**: it
+is the standing measurement the other eight are read against, and it is in the table because a
+report with no §0 has no grounds for saying where the drift is *not*. Nine rows, eight questions,
+and the arithmetic is written out because a count that disagrees with its own list is what this
+table is for.
 
 | § | the question | phase 1 |
 |---|---|---|
@@ -95,8 +99,9 @@ two most consequential outputs.
 | 1 | does any claim's proof rest on something that has become a tautology? | **finding.** No — but **21 of 57 checks owned no mutation and 8 named no reason**, three of them numbers claim 2 publishes. Plus: seven of the eight `at_design` codes reached by no eval |
 | 2 | has any gate stopped biting — and for what reason? | **finding, three of them** — `make expiry` counting closed deferrals as open, an unmeasured cache assertion carried in three files, a budget whose unlock condition had been met unnoticed. **And it missed the largest one entirely: see §3 below** |
 | 3 | does the code still say what `CLAUDE.md` says it says? | **finding, the largest section.** The repository map, claim 4's 11/11, two restatement chains that stopped at `CLAUDE.md`, a `verified_on` claim that did not count, a skills table listing four skills where one existed, a closed registry calling itself complete at L9 — **and T008's own task note naming the wrong gate** |
-| 4 | is there code that serves no claim? | **finding.** `src/holdout/core/pricing/selection.py` — no eval reaches it, no mutation targets it. **And the review then lost its own finding**: see §6 |
+| 4 | is there code that serves no claim? | **finding.** `src/holdout/core/pricing/selection.py` — no eval reaches it, no mutation targets it. **And the review then lost its own finding**: see §6 of this file |
 | 5 | has a claim landed on a preview surface? | **no finding.** No `infra/`, no declared inventory, `make preview-audit` deliberately absent and the `Makefile` says so |
+| 6 | is there still **exactly one** door with no key — not zero, not three? | **finding, and one of the two that changed the doctrine.** The repository holds **three** seals of identical construction — `CertifiedPrice`, `SealedAssignment`, `corpus/world/seal.py` — each declaring that a coordinated forgery is not caught and each with a test requiring that forgery to **succeed**, while `contamination.py` calls itself *the one door with no key*. Accepted: **today the guarantee is detection**, and unopenability arrives in phase 3 with the read-only assignment table |
 | 7 | *(added)* what has the deferral registry become? | **finding.** Nine open deferrals named this very session as their unlock condition |
 | 8 | *(added)* is the recurring rule complete? | **finding, and the one held to be worth more than all the corrections together** — the rule was not incomplete, it was **unarmed** |
 
