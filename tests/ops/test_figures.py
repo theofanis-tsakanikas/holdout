@@ -108,6 +108,53 @@ def test_a_check_source_outside_the_walk_is_refused(monkeypatch: pytest.MonkeyPa
     assert "armed-or-says-why" in output
 
 
+def test_a_package_the_layout_does_not_name_is_refused(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`core/demand/` is taken back out of the map — the exact omission the review found.
+
+    Narrowing again, not removing: `CLAUDE.md` still has a layout section, it still reads as a
+    map of the repository, and it is still wrong in the one direction that matters. Only the
+    second enumeration can say so, because the section looks exactly as authoritative with the
+    line missing as with it there.
+    """
+    claude = (figures.REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    line = "  demand/              the censoring correction — claim 4's reader and its curve\n"
+    assert line in claude, "the layout no longer names core/demand/ in the shape this test edits"
+
+    narrowed = tmp_path / "CLAUDE.md"
+    narrowed.write_text(claude.replace(line, ""), encoding="utf-8")
+    monkeypatch.setattr(figures, "REPO_ROOT", figures.REPO_ROOT)
+
+    def named_from_the_narrowed_map() -> int:
+        body = figures.LAYOUT_BLOCK.search(narrowed.read_text(encoding="utf-8"))
+        assert body is not None
+        text = body.group("body")
+        return sum(
+            1
+            for d in figures._layout_population()
+            if f"{d.relative_to(figures.REPO_ROOT).as_posix()}/" in text
+            or re.search(rf"^\s+{re.escape(d.name)}/", text, re.MULTILINE)
+        )
+
+    patched = tuple(
+        figures.Coverage(
+            gate=entry.gate,
+            population=entry.population,
+            enumerate_=entry.enumerate_,
+            examine=named_from_the_narrowed_map if entry.gate == "layout" else entry.examine,
+            note=entry.note,
+        )
+        for entry in figures.COVERAGE
+    )
+    monkeypatch.setattr(figures, "COVERAGE", patched)
+
+    code, output = _run()
+    assert code == 1
+    assert "examined less than exists" in output
+    assert "layout" in output
+
+
 def test_a_target_outside_the_regex_is_refused(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

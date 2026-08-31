@@ -258,9 +258,14 @@ harness opens **only after** the readout has been written.
 
 **An independent measurement of truth.** The generator injects behaviour ("three more units per
 store"), so the true effect *on the metric* must be computed — by a deliberately slow, separately
-written reference implementation that loops over every event in Python, while the production path
-is SQL through dbt. Two genuinely different implementations must agree. **That reference
-implementation doubles as a fourth, independent check of claim 5.**
+written reference implementation that loops over every event in Python. **Today both
+implementations are Python**, inside `evals/uplift/`, and `U10` is what compares them: two
+genuinely different implementations that must agree, sharing only the metric definition. The
+production path becomes SQL through dbt **in phase 2**, at which point the comparison crosses a
+language boundary as well as an implementation one. Stated in two tenses because it is one artefact
+of five in this paragraph that does not exist yet, and a paragraph that reads as five present-tense
+facts when four are true is the defect this repository catalogues. **That reference implementation
+doubles as a fourth, independent check of claim 5.**
 
 **What is published** — numbers, not a green tick: the false-positive rate on A/A against the
 declared α; per-world correctness; the false-refusal rate on W6; estimator bias; and **CI
@@ -280,7 +285,32 @@ rigged" is that validity comes from the lottery, not from the simulator.**
 1. **The safe state is asymmetric, and declared per decision path.** For an expiring product,
    silence is not safe — the product is thrown away — so the safe state is the **deterministic
    markdown ladder**. For a price increase, silence *is* safe, so the safe state is no action.
-   No path may inherit the other's answer.
+   No path may inherit the other's answer. **A declared safe state may still be empty, and then
+   the correct output is a refusal.** A safe state is where a path falls when the model cannot
+   answer; it is not a promise that something legal always exists to fall to.
+
+   > **Restated 2026-08-31 by `docs/the-documents-agree-with-the-code`, and the sentence was
+   > false of the system rather than the system being wrong.** As written, this rule said the
+   > ladder *is* the safe state for an expiring product, full stop — which reads as a guarantee
+   > that the ladder always produces something the envelope will certify. It does not.
+   > `ladder.quote()` takes a `floor` and clamps to it; it takes no ceiling and
+   > `ladder_policy@v1` declares none. So wherever the margin cap binds below the base price,
+   > the shallow rungs of the declared safe state produce prices the envelope refuses —
+   > **716 of 26,600 ladder quotes** in claim 1's eval, published by `G6` on every run.
+   >
+   > **Nothing in the code is wrong and nothing is widened to fit.** The guardrails refused, by
+   > name, for a true reason, which is what they are for; the ladder answered within the bounds
+   > it models. What was incomplete was this sentence, and only for the 716. `G6` therefore
+   > asserts the three bounds the ladder is built to satisfy and **publishes the two counts
+   > beside it as numbers** — 716 refused by a ceiling, and 6,650 by
+   > `MARGIN_CAP_BASIS_UNEVALUABLE`, a rule with no edge that no ceiling would move — rather
+   > than widening an assertion until the finding fits inside it.
+   >
+   > The prior wording stays per rule 4, and the delta is the finding: **a rule that names where
+   > a path falls, without saying what happens when there is nowhere to fall, is a rule with a
+   > silent case.** The ladder taking a ceiling is a contract change with a restatement chain
+   > and is deferred on its own terms; the sentence was not, and was the half that could be
+   > corrected by being made true.
 2. **A fallback is visible all the way to the end.** A price produced by the ladder carries that
    marker to the label, the P&L and the experiment. A fallback that looks like a model decision
    is worse than an outage, because it is silent and it teaches someone to trust it.
@@ -693,6 +723,10 @@ definition exists — it must be provable that everyone is using it, now.
 
 ## Repository layout
 
+**What exists today.** `make figures` enumerates the directories and compares, so this half cannot
+go stale again in the direction that matters — a package that exists and is not named here is
+under-coverage and turns the gate red.
+
 ```
 src/holdout/core/      pure functions — no SDK, no engine
   guardrails/          the envelope and the certificate type
@@ -700,8 +734,12 @@ src/holdout/core/      pure functions — no SDK, no engine
   design/              the nine-field form, feasibility, refusal
   experiment/          assignment, the four validity checks, the estimator
   ladder/              the deterministic fallback
+  demand/              the censoring correction — claim 4's reader and its curve
+src/holdout/contracts/ the loader and the compilers: `contracts/` read into typed objects,
+  compilers/           and compiled out to every consumer. `make contracts` is its entry point
 src/holdout/adapters/  thin cloud callers
 contracts/             the source of truth (above)
+generated/             what the compilers emit, byte-compared on every run — never hand-edited
 corpus/world/          the six adversarial worlds — NO import path to core/
 corpus/real/           what somebody else published, digest-checked — claim 1's prices, and
                        claim 7's two vocabularies of the names a person is known by
@@ -709,16 +747,27 @@ evals/                 one directory per claim · report.py is the shared shape
   gate_proof/          the planted mutations: green first, named target, STALE on a moved one
 ops/                   the rules the product code is measured by — the corpus barrier and
                        the decision key's closed field set (one implementation, two callers
-                       each: a test and an eval) and the deferral registry
+                       each: a test and an eval), the deferral registry, the findings
+                       register, the coverage gate and `roster.py`
+tests/                 the suite the gates run
+notes/                 working notes, not repository content
+docs/
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
+```
+
+**Declared and not yet built — phase 2 and later.** These are named because the layering is a
+decision already taken, and marked because a directory that does not exist may not be described in
+the present tense beside directories that do. That is the same defect as a paragraph asserting a
+production path through dbt while the only two implementations are Python.
+
+```
 pipelines/ingest/      Zerobus driver · Lakeflow Connect · the S3 bulk load
 pipelines/silver/      Spark Declarative Pipelines
 pipelines/gold/        dbt
 pipelines/ml/          training, evaluation, promotion
 infra/                 bootstrap · foundation · sources · lakehouse · pipelines · ml · serving
 experiments/           one YAML per experiment, in git, with its full history
-docs/
 ```
 
 ---
@@ -1008,12 +1057,20 @@ what each does not catch.
 > **Does it shape the code in this repository → it lives in this repository.**
 > **Does it produce something outside the repository → it lives at user level.**
 
-| in `.claude/skills/` here | at `~/.claude/skills/` |
-|---|---|
-| `claim` — build a claim's eval, its `gate-proof`, its `make claim-N` | `banner`, `social-preview` |
-| `contract-change` — restatement? new window? which consumers? which past results? | `readme-standard` |
-| `integration-review` — bugs in the process, not the code | `linkedin-debut`, `linkedin-article`, `post-ideas` |
-| `defect-to-rule` — root cause, then the rule that stops the class recurring | `promo-guide`, `storyboard`, `aws-mask` |
+| in `.claude/skills/` here | status | at `~/.claude/skills/` |
+|---|---|---|
+| `claim` — build a claim's eval, its `gate-proof`, its `make claim-N` | **exists** | `banner`, `social-preview` |
+| `integration-review` — bugs in the process, not the code | T008 | `readme-standard` |
+| `contract-change` — restatement? new window? which consumers? which past results? | **no task** | `linkedin-debut`, `linkedin-article`, `post-ideas` |
+| `defect-to-rule` — root cause, then the rule that stops the class recurring | **no task** | `promo-guide`, `storyboard`, `aws-mask` |
+
+**The status column exists because this table listed four skills as living here and one does.**
+`.claude/README.md` said so correctly the whole time; this table did not, which is the same defect
+as the layout section two headings down — a map, in the file every session reads first, describing
+a repository that is not this one. `integration-review` is T008's own `closes` and is written after
+the branches it records. **`contract-change` and `defect-to-rule` have no task id anywhere in
+`TASKS.md`**: by this file's own rule they are not deferred, they are forgotten, and naming that in
+the table is cheaper than a deferral nobody would read.
 
 The right-hand column produces artefacts that live outside any repository. The left-hand column
 writes code and rules inside this one.

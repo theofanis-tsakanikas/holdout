@@ -39,7 +39,7 @@ The phase that decides whether the project is worth building.
   symptom of getting this wrong. *Landed 2026-08-28, replacing a re-randomisation screen that
   could not reach the declared α — see the progress note below.*
 - `evals/assignment/`, `evals/guardrail/`, `evals/censoring/` and their `gate-proof` mutations.
-  *`evals/censoring/` landed 2026-08-29: claim 4 green at 11/11 with nine mutations, the correction
+  *`evals/censoring/` landed 2026-08-29: claim 4 green at 12/12 with nine mutations, the correction
   graded on a held-out segment of full-availability store-days against receipt totals the corpus
   emitted rather than anything the generator knows — see the progress note below.*
 - `evals/oversight/` — the decision key carries no customer dimension, and the test goes red if
@@ -748,7 +748,7 @@ about the censoring, because there is nothing to reach for. The correction fits 
 curve on days the shelf held and expands a censored day by the share of itself that was on sale,
 and it answers with **no number** in the two cases where there is no evidence to expand: the shelf
 was bare before the first sale, or it sold nothing before it emptied. Neither is a threshold
-somebody chose. `make claim-4` is green at 11/11 checks with 9/9 mutations biting, in about a
+somebody chose. `make claim-4` is green at 12/12 checks with 9/9 mutations biting, in about a
 minute.
 
 *Where the independence is, which is the whole of claim 4's trap.* The curve is fitted on
@@ -919,6 +919,62 @@ here can only be checked by something the forge has already agreed to run. So it
 exist today?* is now in T008's `closes` for the `integration-review` skill. It is the first rule
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
+
+**The documents are made to agree with the code · 2026-08-31.**
+`docs/the-documents-agree-with-the-code` closes the review's **§3a, §3b, §3c, §3e and §7's second
+half** — proposed as three branches and done as one. They could never have run concurrently,
+because all three rewrite the same paragraphs in `CLAUDE.md`, `PLAN.md` and `TASKS.md`; work that
+can never be parallelised is one piece written down as three because the review found it in three
+sections. Four sequential matrices became two, with nothing changed about CI.
+
+**The layout section was wrong in both directions, and only one was reported.** It omitted
+`core/demand/` and the whole of `src/holdout/contracts/` — fifteen modules — plus `generated/`,
+`tests/` and `notes/`. It also listed `pipelines/`, `infra/` and `experiments/`, **none of which
+exist**, in the same present-tense block. Those are now marked as declared-not-built, which is the
+same defect as a paragraph asserting a production path through dbt while both implementations are
+Python — corrected in the same branch, a few hundred lines apart.
+
+**And the section now has a gate, so it cannot go stale again in the direction that matters.**
+`make figures` gains a **`layout`** row: **20 = 20**, the population being every top-level content
+directory plus every package under `src/holdout/`. Taking `core/demand/` back out — the review's own
+omission — turns it red at 19 of 20, and `tests/ops/test_figures.py` does exactly that. Naming a
+directory that does not exist is over-coverage and not a lie about what exists, which is why the
+phase-2 block does not turn it red.
+
+**Claim 4 was 11/11 in five places and the eval has never printed anything but 12/12.** `C12`
+arrived in the same commit that closed the claim, so the number was never right — not once, with no
+moment of agreement to drift from. It passed oversight level 2 on that branch. Measured before
+correcting rather than taking the review's word: `make claim-4` → **12/12 checks, 9/9 mutations
+biting**.
+
+**Two restatement chains that stopped at `CLAUDE.md` now reach the end.** *"1,200 stores left a
+roster of 212"* is withdrawn in both places that carried it as a measurement — `--scale` admits four
+names and the largest is **320 stores**, so no declared scale reaches 1,200. And the `Scope` entry
+in `docs/DECISIONS.md` finally has its reversal underneath it, which is that file's own opening
+rule and the one reversed decision in it was the one without one.
+
+**Doctrine rule 1 admits an empty safe state.** It said the ladder *is* the safe state for an
+expiring product, which reads as a guarantee that something legal always exists to fall to.
+`ladder.quote()` takes a floor and no ceiling, so where the margin cap binds below the base price
+the declared safe state produces prices the envelope refuses — **716 of 26,600**, published by `G6`
+on every run. Nothing in the code was wrong and no assertion was widened; the sentence had a silent
+case. The ladder taking a ceiling stays deferred on its own limb: it is a contract change.
+
+**Smaller, all measured rather than copied.** `docs/REGULATORY.md` claimed every `verified_on` reads
+2026-08-27; counted, it is **69 · 15 · 1**. The skills table listed four skills as living here and
+one does — it now carries a status column, and names `contract-change` and `defect-to-rule` as
+having **no task id anywhere**, which by this file's own rule is forgotten rather than deferred. The
+closed registry called itself complete and stopped at L9 while **nine** atoms had closed after it;
+L10–L18 are added and the gap is filed, because a hand-maintained copy of `git log main` with no
+second enumeration is the coverage rule in a document.
+
+**And a test was identifying findings by a key that is not unique.**
+`test_the_two_founding_findings_were_entered_before_their_fixes` selected `by_date[1]`, which named
+the orphan finding only for as long as nothing shared its date. A finding filed on 2026-08-30 by the
+same review broke it. That is `every-anchor-is-aimed-at-one-place` inside the test that guards the
+register, and it now selects by title.
+
+The suite is **979**.
 
 **A rule id named for what it measures, and a window read in its own vocabulary · 2026-08-31.**
 `contracts/floor-rule-id` closes the review's §7 half that T008 was empowered to move, with §3d's

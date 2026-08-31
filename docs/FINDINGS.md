@@ -131,6 +131,61 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**The closed registry calls itself complete and has no gate** · found 2026-08-31 · by
+`docs/the-documents-agree-with-the-code`, while acting on the review's count of three
+`TASKS.md`'s *Closed — the atoms that have landed* opens with *"kept so this file is the complete
+registry, not just the open half"* and stopped at **L9**. `docs/reviews/phase-1.md` §3e found three
+atoms missing on 2026-08-30. Acting on it on 2026-08-31 found **nine** — claim 2, claim 3, claim 7,
+`SCENARIO.md`, the review itself, and four of the branches the review proposed. The section kept
+asserting completeness while the work went on, so the gap grew between the finding and its fix.
+
+*Why it is not simply a stale list.* It is a hand-maintained second copy of `git log main`: every
+closed atom is a squash commit there. What it adds is what each atom **settled**, which the log does
+not carry, and that is why it exists rather than being deleted. What it lacks is the thing every
+other population in this repository now has — a second enumeration. It reports on what it examined
+as though that were what exists, which is the coverage rule exactly, in a document rather than a
+tool.
+
+*Why it is filed rather than gated in the branch that found it.* Comparing entries to squash commits
+needs a rule for what counts as an atom. Not every merged PR is one — `docs/phase-1-review` and the
+ruleset fix were two commits closing one piece of work, and this branch closes three review findings
+at once. A gate that counted commits would go red on correct history, which is the failure mode the
+suite-count finding names. The rule is the work.
+
+*Site:* `TASKS.md` :: `Kept so this file is the complete registry, not just the open half.`
+*Disposition:* `ops/the-registry-is-enumerated-twice` — with the suite-count finding, since both are
+*a present-tense claim in a document nothing re-runs* and a single rule may cover them
+*Status:* open
+
+**A published number never agreed with the eval that produced it, and level 2 passed it** · found
+2026-08-30 · by oversight level 3 · *closed the same branch it was filed in*
+`make claim-4` prints `green 12/12 checks` and `evals/censoring/README.md` lists C1…C12. **11/11**
+survived in five places — `PLAN.md` twice, `TASKS.md` three times — because `C12` arrived in the
+**same commit** that closed the claim, `86fe136`. So the number was never right, not once: there is
+no moment at which the documents and the eval agreed and then drifted apart.
+
+*What makes it worth an entry rather than a typo.* It passed oversight level 2 on the branch that
+introduced it. A reviewer reading that diff would have seen a claim declared closed at 11/11 and an
+eval printing 12/12 in the same change, and the two never sat on the same screen. It is the minuted
+figure from `CLAUDE.md`'s catalogue of ten — an assertion checked against the artefact it came from
+rather than against the thing that would falsify it, which here was one command.
+
+*Measured before correcting, rather than taking the review's word:* `make claim-4` →
+**12/12 checks, 9/9 mutations biting**. The review said 12/12 and was right, and it was still
+checked, because a correction sourced from another document is the defect repeating itself.
+
+*Corrected once and recorded once.* Five terse mentions do not each get a restatement block —
+the delta lives here and in `PLAN.md`'s session entry, which is where doctrine rule 4's
+requirement that the prior value and the reason stay recoverable is actually met.
+
+*Site:* `PLAN.md` :: `make claim-4` is green at 11/11 checks with 9/9 mutations biting`
+*Site:* `TASKS.md` :: `claim 4 green at 11/11 with 9/9`
+*Disposition:* `docs/the-documents-agree-with-the-code`
+*Closed:* 2026-08-31 — all five corrected, the number measured rather than copied from the review
+*Now:* `PLAN.md` :: `somebody chose. `make claim-4` is green at 12/12 checks with 9/9 mutations biting, in about a`
+*Now:* `TASKS.md` :: `L9  src/holdout/core/demand/, evals/censoring/, make claim-4 — claim 4 green at 12/12 with 9/9`
+*Status:* closed
+
 **A guardrail rule id does two jobs, and a rename breaks the second one** · found 2026-08-31 · by
 oversight level 2 on `contracts/floor-rule-id`, and the check that produced it was proposed rather
 than assumed

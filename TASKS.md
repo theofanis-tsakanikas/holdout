@@ -799,7 +799,7 @@ status        closed
 ```
 
 **What it landed.** `src/holdout/core/demand/censoring.py` — the reading, the availability curve and
-the correction — plus `evals/censoring/`, nine mutations and `make claim-4`. Green at **11/11 checks
+the correction — plus `evals/censoring/`, nine mutations and `make claim-4`. Green at **12/12 checks
 and 9/9 mutations biting**, about 58 s end to end on a fourteen-core laptop; the eval alone is 5 s,
 so it needs no world cache and does not have one.
 
@@ -1428,12 +1428,52 @@ L8  .claude/skills/claim/ — the method for building a claim end to end, extrac
     that have closed rather than from one. CLAUDE.md's rule about a sentence widened to any
     assertion, a number in configuration included.
                                           branch ops/claim-skill                 status closed
-L9  src/holdout/core/demand/, evals/censoring/, make claim-4 — claim 4 green at 11/11 with 9/9
+L9  src/holdout/core/demand/, evals/censoring/, make claim-4 — claim 4 green at 12/12 with 9/9
     mutations biting. A stock-out reads as a type with no units attribute; the correction is
     fitted on days the shelf held and graded on a held-out segment of them, against receipt
     totals the corpus emitted rather than anything the generator knows.
                                           branch evals/censoring                 status closed
+L10 evals/uplift/, make claim-2 — claim 2 green: the A/A harness at K = 200 over four world
+    seeds, the six adversarial worlds, and the four published numbers. Phase 1's hardest claim.
+                                          branch evals/aa-harness                 status closed
+L11 evals/assignment/, make claim-3 — the committed seed, the seal, and the contamination
+    check that reports every uncoordinated edit by name.
+                                          branch evals/assignment                 status closed
+L12 evals/oversight/, make claim-7 — the closed field set refusing 17,752 of 17,752 where the
+    hand-written word list catches 35 of 317.
+                                          branch evals/oversight                  status closed
+L13 docs/SCENARIO.md — the shop, and the four kinds a number in it may be: [M] measured with
+    its command, [D] declared, [C] cited, [S] scenario.
+                                          branch docs/scenario                    status closed
+L14 The phase-1 integration review (oversight level 3) — docs/reviews/phase-1.md, the nine
+    proposed branches, and the tenth form of the rule. The ruleset required `gate` and the
+    claims had left it; the review itself was rewritten in English with make language behind
+    it.                                    branch docs/phase-1-review              status closed
+L15 make figures — a gate reports on what it examined, and this is what checks the difference.
+    make expiry learns what closure is. docs/FINDINGS.md, the register an open finding falls
+    out of.                                branch ops/coverage-expiry-findings     status closed
+L16 corpus/real/ — the legal claims restated: real prices, real law, derived cost, wherever
+    the corpus is described as a whole.    branch corpus/legal-claims-restated     status closed
+L17 evals/gate_proof/ — a check is armed by a mutation, declared un-armable with its reason, or
+    unarmed and printed. make figures gains armed-or-says-why.
+                                          branch evals/unarmed-checks             status closed
+L18 contracts/guardrails/floor.yaml — a rule id named for what it measures, and RENAMED_RULES
+    reading each window in its own vocabulary, with a time bound so a retired name cannot come
+    back in a window opened after it.      branch contracts/floor-rule-id          status closed
 ```
+
+**L10 to L18 were added on 2026-08-31, and the gap is the finding.** This section calls itself
+*the complete registry* and stopped at **L9** while nine atoms had closed after it — claim 2, claim
+3, claim 7, `SCENARIO.md`, the review itself, and four of the branches the review proposed.
+`docs/reviews/phase-1.md` §3e found three of them missing; by the time it was acted on there were
+nine, because the section kept claiming completeness while the work went on.
+
+**It is a hand-maintained second copy of `git log main`, and nothing compares them.** Every closed
+atom is a squash commit on `main`; this section adds what each one *settled*, which the log does
+not, and that is why it exists rather than being deleted. What it does not have is a gate, so it
+goes stale in exactly the direction the coverage rule names: it reports on what it examined as
+though that were what exists. Filed in `docs/FINDINGS.md` rather than gated here, because matching
+an entry to a squash commit needs a rule for what counts as an atom, and that is a judgment.
 
 ---
 
@@ -1463,7 +1503,7 @@ ticked. What still stands between here and the phase-1 integration session is cl
 each of which needs nothing that T003 did not already build — and `docs/SCENARIO.md`.
 
 **T005 has closed since**, so it is claims 3 and 7 and `docs/SCENARIO.md`. Claim 4 is green at
-11/11 with 9/9 mutations biting, and it was the first claim built by following
+12/12 with 9/9 mutations biting, and it was the first claim built by following
 `.claude/skills/claim/` rather than by reading the two closed evals — which is what T00B was
 extracted for. The skill held: every step produced something, and the two findings it surfaced both
 came from steps 8 and 9, the mutations and *write down what came out*.

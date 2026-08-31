@@ -99,6 +99,23 @@ Measured before the change: 100 stores gave 109 neighbour pairs, 55 exclusions a
 the readout's balance check. And it got worse rather than better with scale, because the towns
 did not grow: **1,200 stores left a roster of 212**. The usable estate saturated.
 
+> **Restated 2026-08-31 by `docs/layout-and-restatements`, completing a chain that stopped at
+> `CLAUDE.md` on 2026-08-29.** `1,200 stores left a roster of 212` is written above as a
+> measurement and it is not one. `--scale` admits exactly four names — `smoke`, `rehearsal`,
+> `harness`, `scenario` — and the largest is **320 stores**. No declared scale reaches 1,200, so
+> that figure was a projection appearing in a paragraph whose argument is that the load-bearing
+> number is the surviving roster rather than the store count. It is **withdrawn rather than
+> corrected**: 1,200 stores is the scenario the system is written for, not a scale this
+> repository has ever run.
+>
+> The 100-store chain above it is also stale — it was measured before **T00E** moved the
+> placement rule. `python -m ops.roster` is the one place the number lives, and `CLAUDE.md`
+> carries the table it now prints.
+>
+> **What survives is the argument, untouched**: the number a claim rests on is the roster a
+> lottery is drawn over. What did not survive is the figure that asserted it, which is the rule
+> about a rule not being exempt from itself, for the second time on the same paragraph.
+
 Two numbers are declared now, and neither is a constant somebody needed:
 
 | | what it fixes | value |

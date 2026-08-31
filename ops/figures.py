@@ -344,6 +344,68 @@ def check_ids_the_ledger_declares() -> int:
     return len(ledger.declared_checks())
 
 
+#: The layout block in `CLAUDE.md`. Read as text rather than parsed into a tree, because what is
+#: being checked is whether a reader of that section would find a package named — not whether the
+#: indentation is well formed.
+LAYOUT_BLOCK = re.compile(r"^## Repository layout$(?P<body>.*?)^---$", re.MULTILINE | re.DOTALL)
+
+
+def layout_packages() -> int:
+    """Every directory `CLAUDE.md`'s layout section must name, enumerated from the tree.
+
+    **The population, stated as a rule.** Every top-level directory that holds repository
+    content, plus every package under `src/holdout/`. Not every directory at any depth: the
+    section names `evals/` and `evals/gate_proof/` but not `evals/guardrail/`, and demanding
+    the rest would be inventing a requirement nobody stated. What it does demand is that a
+    package a reader would go looking for is findable in the map they were told to read first.
+
+    Excluded by name and not by accident: dot-directories other than `.claude`, which is the
+    only one that is repository content; `__pycache__`; and anything git does not track.
+    """
+    return len(_layout_population())
+
+
+def layout_packages_named() -> int:
+    """How many of them the section actually names."""
+    match = LAYOUT_BLOCK.search((REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8"))
+    if match is None:
+        raise InstrumentMissingError(
+            "CLAUDE.md has no `## Repository layout` section in the shape this module reads "
+            "it, so what the map names cannot be computed. Nothing is reported rather than a "
+            "zero."
+        )
+    body = match.group("body")
+    named = 0
+    for directory in _layout_population():
+        relative = directory.relative_to(REPO_ROOT).as_posix()
+        if f"{relative}/" in body or re.search(
+            rf"^\s+{re.escape(directory.name)}/", body, re.MULTILINE
+        ):
+            named += 1
+    return named
+
+
+def _ignored(path: Path) -> bool:
+    return path.name in {".venv", "venv", ".git"} or (path / ".git").exists()
+
+
+def _layout_population() -> list[Path]:
+    roots = [
+        d
+        for d in sorted(REPO_ROOT.iterdir())
+        if d.is_dir()
+        and (not d.name.startswith(".") or d.name == ".claude")
+        and d.name not in {"__pycache__", "node_modules"}
+        and not _ignored(d)
+    ]
+    packages = [
+        d
+        for d in sorted((REPO_ROOT / "src" / "holdout").rglob("*"))
+        if d.is_dir() and d.name != "__pycache__"
+    ]
+    return roots + packages
+
+
 def claim_targets_that_exist() -> int:
     return len(ANY_CLAIM_TARGET.findall(_makefile()))
 
@@ -432,6 +494,16 @@ COVERAGE: tuple[Coverage, ...] = (
         "the newest gate sorts a population into armed, un-armable and unarmed — and a "
         "population it enumerates itself. Narrow CHECK_SOURCES and the three counts still "
         "print, still sum, and describe fewer checks than exist.",
+    ),
+    Coverage(
+        "layout",
+        "every top-level content directory, plus every package under src/holdout/",
+        layout_packages,
+        layout_packages_named,
+        "the map in the file every session reads first. It omitted core/demand/ and the whole "
+        "of src/holdout/contracts/ — fifteen modules — and nothing could say so. Naming a "
+        "directory that does not exist yet is over-coverage and not a lie about what exists; "
+        "the layout marks those separately in prose.",
     ),
     Coverage(
         "discover",
