@@ -948,6 +948,47 @@ than for a case anybody had in hand, and then a case arrived.
 *Disposition:* none — to be scoped by whoever picks it up, with the module in front of them
 *Status:* open
 
+**`CLAUDE.md` and `TASKS.md` disagree about whether phase 4 gets an integration review** · found
+2026-08-31 · by `skills/integration-review`, while writing the skill that runs one
+
+`CLAUDE.md`'s oversight table says level 3 runs *at every phase boundary, without exception*, and
+the emphasis is deliberate — the argument beside it is that a review which is remembered rather
+than scheduled is the one that stops happening. `TASKS.md` carries **T016** for phase 2 and
+**T024** for phase 3 and nothing after phase 4: `T026` closes the phase and closes the project,
+and the registry ends there.
+
+**Neither document is wrong on its own, which is why nothing found it.** `PLAN.md` phrases each
+one as *before the next phase opens*, three times, and after phase 4 there is no next phase — so
+the absence agrees with `PLAN.md` and disagrees with `CLAUDE.md`, and a reader of any one file
+sees nothing. It is the shape T00D and T00E already have in this repository and that
+`docs/reviews/phase-1.md` §3c has one layer up: two files each correct alone, with nothing
+computing the product.
+
+**What is at stake is not tidiness.** Phase 4 is where claim 6 lands — the one `CLAUDE.md` calls
+*the one nobody builds* — and where the agent surface arrives. If level 3 does not run after it,
+the last conceptual-drift read of this repository happens **before** its most novel claim exists,
+and the phase that closes the project is the one phase no integration session has read. The
+opposite reading is equally defensible and belongs in the same breath: an integration session
+exists to protect the phase that comes next, and after phase 4 nothing does — on which reading
+`T028`'s publication work is what inherits the job, and it is not a drift read.
+
+**Which document moves is a judgment and not an inference**, which is why this is filed rather
+than fixed. Either `CLAUDE.md` says the review runs before every phase boundary rather than at
+every one, or `TASKS.md` gains a phase-4 task that `T028` waits on. The first is an edit to
+`CLAUDE.md`, which is the author's; the second changes what closes the project.
+
+*And it was found by writing the procedure rather than by running it*, which is the one thing here
+worth generalising and is deliberately not generalised: one instance. Level 3's own subject arrived
+while its skill was being extracted, from reading two documents against each other because the
+skill had to state which task ids invoke it.
+
+*Site:* `CLAUDE.md` :: `It is scheduled, not remembered: at the end of every phase, without exception.`
+*Site:* `TASKS.md` :: `id            T026          <- closes Phase 4, closes the project`
+*Disposition:* none — the reconciliation is an edit to `CLAUDE.md` or to `TASKS.md`'s phase-4 block,
+and which of the two moves is the author's call rather than a session's, so it is filed adrift
+instead of being given a branch it would be the wrong session to open
+*Status:* open
+
 ---
 
 ## Closed

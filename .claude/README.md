@@ -21,12 +21,22 @@ A skill lives **here** rather than at user level when it shapes the code in this
 at `~/.claude/skills/` when it produces something outside it — CLAUDE.md's criterion, and the
 reason `banner` and `readme-standard` are not here while these are.
 
+**And the two here were extracted under opposite rules, which is not a style difference.**
+`skills/claim/` was written from two closed claims **by the sessions that closed them**,
+because what a procedure needs to tell a rule from a variation is samples.
+`skills/integration-review/` was written from the record **by a session that was not there**,
+because a method written from memory by whoever executed it is a copy of them rather than a
+method — and nothing afterwards can measure which one it is. The second has one sample and
+says so in its opening paragraph.
+
 | | is invoked for |
 |---|---|
 | `skills/claim/` | building one of the seven claims end to end: the eval, its `gate-proof` mutations, its `make claim-N`, and the statement of where the independence is and what is not proved |
+| `skills/integration-review/` | running oversight level 3 at a phase boundary: the eight questions and which of them produced a finding, the one question no reading of this tree can answer, and where the report and each of its findings have to end up |
 
-Three more are declared in `CLAUDE.md` and not yet written: `defect-to-rule` (T00C),
-`contract-change`, and `integration-review` (T008).
+Two more are declared in `CLAUDE.md` and not yet written: `defect-to-rule` (T00C) and
+`contract-change`, which has no task id anywhere in `TASKS.md` and is therefore forgotten
+rather than deferred, in the doctrine's own words.
 
 **A skill committed here is not a copy of a shared one. It is the record of the method that built
 *this* project**, and it is not supposed to match the next repository — it is supposed to be

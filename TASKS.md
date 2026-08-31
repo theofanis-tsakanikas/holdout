@@ -1102,8 +1102,77 @@ out_of_scope  The three instrument findings — they are T000, and they land bef
 stop_at       When the drift report is written and each proposed fix is opened as its own branch
               with its own review.
 review        n/a — this task IS the review.
-status        open
+status        closed
 ```
+
+**What it landed.** The review itself, `docs/reviews/phase-1.md`, and the eight branches it
+proposed — all eight merged, in six commits, since rows 5, 6 and 8 turned out to be one piece
+written down as three. Then this skill, `.claude/skills/integration-review/`, which is the atom's
+`closes` and the reason it could not be written on the review's own branch.
+
+**Written from the record rather than from memory, and that is the whole of why it is a separate
+session.** The two sessions that conducted the review are disqualified from writing the method
+down for exactly the reason they are best placed to: a procedure extracted from memory by the
+people who executed it is a copy of them and not a method, and nothing afterwards can measure the
+difference. So the skill was written by a session told where to look and nothing else — the report,
+`PLAN.md`'s landing notes, `docs/FINDINGS.md`, `TASKS.md`, `docs/DECISIONS.md` and the log of
+`main` — under one rule: **an instruction that cannot be pointed at does not go in, however
+obviously a review ought to do it.**
+
+**Its load-bearing section is the one where the method failed.** Not the eight questions, which any
+reader could copy off `CLAUDE.md` and the report's headings, but the three places the phase-1 report
+was wrong **in its own report**: §2b reaching its conclusion by naming the one cold run of eleven
+that sat below the warm mean, §3a asking *is everything real listed* and never *is everything listed
+real*, and §2d missed outright and found by the author an hour after the report had merged. Three
+different failures, no two of them variations on each other. A procedure extracted from a run that
+only succeeded would teach the shape of success.
+
+**And seven holes are named rather than filled**, which is the output the brief asked for and the
+more useful half until `T016` gives a second sample. There is **no measurement of what a level-3
+session costs** anywhere in the record — every claim task's landing note carries what it cost and
+T008's does not — so the skill sets no budget and says why, which is `CLAUDE.md`'s own rule about a
+number in configuration applied to its own absence. `eval-uplift` is missing from the report's
+declared inputs and nothing says whether it ran. The ruleset question is one known instance of a
+class nobody has enumerated. Section order is not evidence of working order, so what the skill
+requires is that a report **name its inputs**, not a sequence.
+
+**And oversight level 2 found the file committing the defect it spends its §4 on.** The table of
+the review's questions said *six come from `CLAUDE.md`'s level-3 list* and listed **five**: §6,
+*is there still exactly one door with no key*, was missing, and it is one of the two rows that
+changed the doctrine — the three seals of identical construction, and *today the guarantee is
+detection rather than unopenability*. **A count asserted against a list nobody counted**, which is
+§3a's one-directional coverage question and §4's second failure, in the file that names both. A
+session following the draft would have asked seven of eight and not noticed, because the text said
+six. The row is added and the arithmetic is now written out — nine rows, eight questions, §0 a
+measurement rather than a question — so the count can be checked against the list it claims.
+
+*Found by the session that ran the six branches, under a rule it stated before it could be
+constrained by it: name the file and the line, or it is memory and does not go in.* It is worth
+recording which findings that rule admitted. Its four checks on §4 were of its own writing at one
+remove, and it said so and discounted them. **This one was a count against a list in two files it
+did not write**, which is the only kind of finding a reviewer of its own record can offer without
+the agreement being worth nothing — and `concurred` is not `closed` for exactly that reason.
+
+**It found one thing while being written, which is filed rather than fixed.** `CLAUDE.md` says level
+3 runs *at every phase boundary, without exception*; this file has `T016` and `T024` and nothing
+after phase 4, which agrees with `PLAN.md`'s *before the next phase opens* and disagrees with
+`CLAUDE.md`. Two documents, each defensible alone, nothing computing the product — level 3's own
+subject arriving while level 3's skill was being extracted. It is in `docs/FINDINGS.md`, adrift by
+declaration, because which of the two documents moves is the author's call.
+
+**And the commit was refused by `.claude/hooks/main_guard.py`, twice, for two different reasons.**
+It reads the *session's* working directory, which is the shared checkout on `main`, so it judged a
+worktree demonstrably on `skills/integration-review` against the wrong repository. Then it refused a
+command that runs no git at all, because the file being written **quotes** a git command: an
+apostrophe in the prose unbalances the lexer, the coarse fallback takes over, and that fallback
+matches a separator followed by `git` wherever it appears — including inside the text. Its own
+comment names that failure and claims to have closed it. Both are the same shape as the instance
+`CLAUDE.md` already records in that one file, and neither its docstring nor `.claude/README.md`'s
+*what each does not catch* mentioned a worktree or a quoted command. Handed on rather than worked
+around — a guarantee routed around is not one — and recorded by `#34`, then repaired by `#35`, which
+found two further spellings of the same defect while repairing it. **Both were found by trying to do
+this work and not by looking for it**, which is §2d's lesson arriving on the branch of the skill
+that records it.
 
 The integration-review skill is extracted **after** T000, not before: a review skill extracted while
 the measuring instrument still has its blind spot would encode that blind spot into a reusable
@@ -1475,6 +1544,10 @@ L17 evals/gate_proof/ — a check is armed by a mutation, declared un-armable wi
 L18 contracts/guardrails/floor.yaml — a rule id named for what it measures, and RENAMED_RULES
     reading each window in its own vocabulary, with a time bound so a retired name cannot come
     back in a window opened after it.      branch contracts/floor-rule-id          status closed
+L19 .claude/skills/integration-review/ — oversight level 3 as a versioned procedure: the eight
+    questions and which of them produced a finding, the ruleset question no reading of this tree
+    can answer, the three places the phase-1 report was wrong in its own report, and seven holes
+    the record cannot fill.                branch skills/integration-review        status closed
 ```
 
 **Two of those entries named branches that never existed, and `evals/world-cache-measured` found

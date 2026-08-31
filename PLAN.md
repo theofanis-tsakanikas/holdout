@@ -920,6 +920,107 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**The method leaves the conversation, and it is written by the session that was not there ·
+2026-08-31.** `skills/integration-review` closes `T008`. Oversight level 3 is now
+`.claude/skills/integration-review/` — a versioned procedure that goes through a pull request like
+everything else, rather than the ad hoc instructions the phase-1 review actually ran on.
+
+**The extraction rule is the opposite of the `claim` skill's, and deliberately.** `skills/claim/`
+was written from two closed claims by the sessions that closed them, because what it needed was
+samples. This needed the other thing: **a session with no memory of the run.** The two sessions
+that conducted the review are the worst placed to write down what it was, for the reason they are
+the best placed — a method written from memory by whoever executed it is a copy of them, and
+nothing afterwards can measure the difference between the two. So the session was opened cold,
+told where to look and nothing else, and asked not to enquire further; **whatever the record could
+not support was reported as a hole instead of supplied.** Seven of them are, and the largest is
+that no measurement of what a level-3 session costs exists anywhere, so the skill sets no budget
+and says so — `CLAUDE.md`'s rule about a number in configuration, applied to a number that is
+missing rather than wrong.
+
+**And the limits section is the experiment's result rather than a courtesy, because it is the one
+thing here that was measured.** The brief the writing session was given **deliberately withheld**
+this repository's *state what it does not prove* convention. It was cut in a second round of
+leak-checking, on the argument that handing it over would make the draft's limits section
+unreadable as evidence: it would come back with one, and we would have taught it. **Either outcome
+was information** — a draft with *no* limits section, in a repository where every artefact has one,
+would have been a real finding about the record.
+
+It came back with one, unprompted, and the writing session named where it learned it:
+`evals/README.md`'s rule 6, every eval printing its own silence, `docs/FINDINGS.md`'s standing
+limit, `ops/figures.py` declaring what it does not cover. **So the convention is legible from the
+files alone.** That is a finding about the repository and not about the skill, and it is the only
+part of `#9` that was measured rather than reconstructed — because it is the one convention that
+was removed on purpose. Everything else in the file could have arrived from the writer being a
+competent session; this could not.
+
+**What it does not establish, and the first clause is narrower than it was first written.** The
+session was cold about the **method**, which is what the check was selecting for, and it was not
+cold about the **repository** — it read eight files before writing a line. So the result is *the
+record conveyed the convention to a session that had read the record*, which is exactly what was
+tested and is weaker than *to a session that knew nothing*. Beyond that: one convention, one
+session, one run. It says the record carries that convention, not that the method is
+reconstructible and not that the skill is right. `tests/skills/test_skills.py` checks wiring, and
+nothing checks whether a skill is followed. The second sample is `T016`.
+
+**It is recorded here rather than in the skill, and the argument decided it rather than the
+preference.** A skill claiming its own extraction was validated is the artefact certifying itself,
+which is doctrine rule 5 in miniature and the shape both sessions spent the day refusing.
+`PLAN.md` is a record of what happened; a skill is an instruction. The claim belongs in the
+first.
+
+**What the file is actually for is §4, and that is the part no participant would have written.**
+The eight questions are recoverable from `CLAUDE.md` and the report's own headings. What is not is
+the three places the phase-1 report was **wrong in its own report**: §2b concluding that the cache
+saved nothing by citing the one cold run of eleven that fell below the warm mean, §3a asking *is
+everything real listed* and never *is everything listed real*, and §2d — the ruleset — missed
+outright and found by the author an hour after it merged. Three failures, no two alike. **A
+procedure extracted from a run that only succeeded teaches the shape of success**, and a level-3
+session is the one activity in this repository with no gate behind it at all.
+
+**And the skill's own writing produced a finding, which is the argument for the phase boundary in
+one line.** `CLAUDE.md` says level 3 runs *at every phase boundary, without exception*; `TASKS.md`
+has `T016` and `T024` and nothing after phase 4. `PLAN.md` phrases each as *before the next phase
+opens*, so the absence agrees with this file and disagrees with `CLAUDE.md`, and no reader of any
+one of the three sees a defect. It is filed in `docs/FINDINGS.md`, adrift by declaration, because
+which document moves decides whether the phase that closes the project is ever read for drift —
+and that is the author's call, not a session's. **Level 3's own subject arrived while level 3's
+skill was being extracted**, which is what the phase boundary is for.
+
+**What the review cost, and it was the file's own subject.** The table of the review's eight
+questions announced *six come from `CLAUDE.md`'s level-3 list* and listed five. The missing one is
+**§6 — *is there still exactly one door with no key***, which is not a minor row: it is one of the
+two findings that changed the doctrine, the three seals of identical construction and the accepted
+restatement that **today the guarantee is detection** rather than unopenability. A session
+following the draft would have asked seven of eight and never known, because the sentence above the
+table said six.
+
+**That is §3a's defect committed by the file that names it** — a coverage claim asserted in one
+direction, a count never checked against the list it counts — and it is `CLAUDE.md`'s own note that
+the rule does not stop applying to whoever has just finished quoting it. The row is in and the
+arithmetic is written out rather than asserted: nine rows, eight questions, §0 a measurement and
+not a question. **Found by the session that ran the six branches**, under the rule it declared
+before the review began — *name the file and the line, or it is memory and does not go in* — and it
+is the one finding of its four that was not its own writing read back at one remove, which is what
+makes it worth more than agreement.
+
+**And the branch could not be committed until the guard it exposed had been fixed.**
+`.claude/hooks/main_guard.py` refused it twice, and the two refusals are one sentence: the guard was
+judged against something other than the command it refuses. First the wrong **directory** — it read
+the *session's* working directory, so a worktree provably on `skills/integration-review` was judged
+against the shared checkout's `main`. Then the wrong **text** — it refused a command running no git
+at all, because the file being written **quoted** a git command: an apostrophe unbalanced the lexer,
+the coarse fallback took over, and that fallback found a separator followed by `git` inside the
+prose. Its own comment named the second failure and said it was closed.
+
+**Both were found by trying to do this work rather than by looking for it**, which is the level-3
+property arriving on the branch of level 3's own skill. The drift was found by *using* the
+repository and not by reading it — the same shape as §2d, the largest thing the review missed, which
+no reading of `ci.yml` could have produced and which took asking the forge. Neither was worked
+around and neither was fixed here: they are recorded in `docs/FINDINGS.md` by `#34` and repaired by
+`#35`, which found two further spellings of the same defect while repairing it, and this branch
+waited rather than routing around a guarantee. **The first thing this repository's newest guard did
+was refuse the session that found its defect**, and the correct response to that was to wait.
+
 **The guard was judged against something other than the command it refuses · 2026-08-31.**
 `ops/main-guard-judges-the-command` fixes two defects in `.claude/hooks/main_guard.py`, found by a
 cold session and oversight level 2 and **authorised by the author** — a hook is registered in
