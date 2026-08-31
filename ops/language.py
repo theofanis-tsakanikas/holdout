@@ -21,8 +21,12 @@ places and translating any of them would be a defect rather than a fix:
 So the exceptions are two closed lists rather than one loose one, and every entry carries the
 reason it exists. `EXCEPTED_PATHS` is for files that quote law or carry published data;
 `ALLOWED` is a closed vocabulary of tokens admitted **anywhere**, which is what keeps the paths
-list short. Measured when this was written: outside the five excepted paths the whole repository
-uses **eighteen** distinct Greek tokens, which is a vocabulary rather than a habit.
+list short: outside the five excepted paths the whole repository uses **nineteen** distinct Greek
+tokens, which is a vocabulary rather than a habit. That number is live rather than dated — it is
+registered in `ops/figures.py`'s prose table and `make figures` goes red when the sentence and the
+list stop agreeing, which is how the nineteenth arrived: `docs/FINDINGS.md` needed a term the
+vocabulary did not have, `make language` refused the file, and `make figures` then refused this
+paragraph.
 
 The instrument may not be silently absent
 -----------------------------------------
@@ -206,6 +210,14 @@ ALLOWED: tuple[Allowance, ...] = (
         "Μέσο Κόστος Πωληθέντων",
         "quoted_term",
         "average cost of goods sold — the other term of that same definition.",
+    ),
+    Allowance(
+        "Περίοδος Αναφοράς",
+        "quoted_term",
+        "reference period — what \u03ac\u03c1\u03b8\u03c1\u03bf 4 \u03c0\u03b1\u03c1. 5 actually "
+        "defines, as against what a finding in docs/FINDINGS.md says it defines. The whole point of "
+        "that entry is which term the article names, so naming it in translation would erase the "
+        "finding while appearing to record it.",
     ),
     Allowance(
         "φτιάξε το",

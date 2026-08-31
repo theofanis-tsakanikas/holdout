@@ -906,6 +906,44 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**An open finding gets a home, because it was the one thing that had none · 2026-08-31.**
+`docs/FINDINGS.md` and `make findings`. Every mechanism here was aimed at a claim, a gate or a
+deferral; an open review finding is none of the three, and two fell out. The legal half of oversight
+level 2's third blocking finding against claim 1 — recorded 2026-08-27, closed never, deferred
+never, absent four days later. And `docs/reviews/phase-1.md` §4, dropped by that review's own
+closing table, the one that assigns every other section to a branch.
+
+**A finding anchors to a line that already exists** and goes red when that line stops saying what
+the finding says it says — `ledger.every-anchor-is-aimed-at-one-place` over a new population. No
+site, no disposition, or a `*Closed:*` with no transition: refused. A disposition of `none —
+<reason>`: reported as **adrift**, because a finding nobody has scoped is a real state and refusing
+it teaches people not to file.
+
+**`concurred` is not `closed`.** Closure is a transition — the anchored line changes, a branch lands
+and the gate goes red-to-green, or a named human says so. Agreement between the reviewing and
+building sessions is a fourth state, carried as open and counted apart. It exists because it nearly
+happened: the reviewing session removed §4 from the author's list because the two sessions
+concurred, and that is the mechanism by which the legal finding was lost — *not a decision to drop
+it, but two parties who held it agreeing it was handled.*
+
+**Both entries went in open, before either fix branch**, which is `gate-proof`'s first rule and not
+a preference: an entry filed with the answer already known is a mutation planted against something
+already broken.
+
+**And the two fail differently, which is what tested the design.** The legal one had two sides that
+drifted, caught by the anchor check by construction. §4 never had a second side at all, so a
+two-sided comparison would find nothing to compare — it is caught only by *adrift*, specified for
+completeness rather than for a case anybody had. A mechanism meeting a case its author did not have
+in mind **before it shipped** is what this phase has repeatedly failed to arrange, and it arrived
+free.
+
+*What it cost while being built, and both were gates working.* The registry needed a Greek term the
+vocabulary did not have, `make language` refused the file until it was declared with a reason, that
+made the vocabulary nineteen, and `make figures` then refused `ops/language.py` for still saying
+eighteen — after which correcting the sentence rewrapped it out of reach of its own pattern, which
+is the reviewing session's wrapped-header failure reproduced within the hour by the mechanism
+written to catch it. Every prose pattern now spans whitespace. The suite is **959**.
+
 **`make expiry` learns what closure is, and the rule from the day before had not been applied to
 what already existed · 2026-08-31.** `ops/expiry-knows-what-closed` closes the report's §2a and
 turns out to be bigger than the report said.
