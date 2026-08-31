@@ -228,6 +228,14 @@ repairing.
 worktrees or heredocs — **a known miss with nowhere written down is how the first one survived long
 enough to become three**, and both places take both new cases when the fix lands.
 
+*And this entry's own disposition is a live instance of the state that gate was designed for.* It
+names `ops/main-guard-judges-the-command`, which does not exist. Under the branch-state gate
+designed and then refused earlier the same day, that would print **`nowhere`** — and printing it
+would be **correct**: a branch proposed and not started is an honest absence, nothing anywhere
+claims it landed, and the line beside it says why. The register is carrying a truthful `nowhere` on
+the day the gate that would have reported it was filed, which is the argument for *printed, not
+refused* arriving as an example rather than as a rule.
+
 *Site:* `.claude/hooks/main_guard.py` :: `    branch = current_branch(Path(cwd) if isinstance(cwd, str) else Path.cwd())`
 *Disposition:* `ops/main-guard-judges-the-command` — **awaiting the author's word**, because the
 hook enforces his rule and changing it changes what a session is permitted to do
