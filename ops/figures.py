@@ -426,6 +426,64 @@ def _layout_population() -> list[Path]:
     return [REPO_ROOT / r for r in roots] + [REPO_ROOT / p for p in packages]
 
 
+#: The row shape of `CLAUDE.md`'s skills table: a backticked name, then a status cell.
+_SKILL_ROW = re.compile(
+    r"^\|\s*`(?P<name>[a-z][a-z-]*)`[^|]*\|\s*(?P<status>[^|]+?)\s*\|", re.MULTILINE
+)
+
+
+def skills_that_exist() -> int:
+    """Every directory under `.claude/skills/`."""
+    root = REPO_ROOT / ".claude" / "skills"
+    if not root.is_dir():
+        raise InstrumentMissingError(
+            ".claude/skills/ is not where this module looks for it, so the skills the table "
+            "claims cannot be checked against the skills that are there."
+        )
+    return sum(1 for d in root.iterdir() if d.is_dir() and d.name != "__pycache__")
+
+
+def skills_the_table_marks_as_existing() -> int:
+    """How many rows say **exists**.
+
+    The **examined** side. `CLAUDE.md`'s skills table gained a status column on 2026-08-31
+    because it had listed four skills as living here when one did — and **nothing enumerated the
+    column against the directory.** A third status going stale would have looked exactly like the
+    two that did not, which is the same defect the column was added to fix, one layer up.
+    """
+    table = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    return sum(1 for m in _SKILL_ROW.finditer(table) if m.group("status").strip("* ") == "exists")
+
+
+def skills_claimed_that_are_not_there() -> tuple[list[str], list[str]]:
+    """The other direction: a row saying **exists** for a skill that does not.
+
+    The coverage comparison is one-sided by design, and this question is not — the same pair as
+    the repository layout, where omitting a package and inventing one are different failures and
+    only the first is under-coverage. A table naming a skill that is not there sends its reader
+    looking for it.
+    """
+    root = REPO_ROOT / ".claude" / "skills"
+    if not root.is_dir():
+        return [], [".claude/skills/ is not there, so the table's claims cannot be checked"]
+    present = {d.name for d in root.iterdir() if d.is_dir()}
+    table = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    invented = [
+        m.group("name")
+        for m in _SKILL_ROW.finditer(table)
+        if m.group("status").strip("* ") == "exists" and m.group("name") not in present
+    ]
+    if not invented:
+        return [], []
+    return (
+        [
+            f"the skills table says {name!r} exists and .claude/skills/{name}/ is not there"
+            for name in sorted(set(invented))
+        ],
+        [],
+    )
+
+
 def claim_targets_that_exist() -> int:
     return len(ANY_CLAIM_TARGET.findall(_makefile()))
 
@@ -524,6 +582,15 @@ COVERAGE: tuple[Coverage, ...] = (
         "of src/holdout/contracts/ — fifteen modules — and nothing could say so. Naming a "
         "directory that does not exist yet is over-coverage and not a lie about what exists; "
         "the layout marks those separately in prose.",
+    ),
+    Coverage(
+        "skills",
+        "every directory under .claude/skills/",
+        skills_that_exist,
+        skills_the_table_marks_as_existing,
+        "the status column was added because the table listed four skills and one existed. "
+        "Nothing enumerated the column against the directory, so a third status going stale "
+        "would have looked exactly like the two that did not.",
     ),
     Coverage(
         "discover",
@@ -758,8 +825,9 @@ def rows() -> tuple[list[Row], list[str]]:
 def report(found: list[Row], missing: list[str], out: TextIO) -> int:
     floors, floor_missing = floor_failures()
     fabricated, fabricated_missing = layout_fabrications()
+    invented, invented_missing = skills_claimed_that_are_not_there()
     prose, prose_missing = prose_failures()
-    missing = [*missing, *floor_missing, *fabricated_missing, *prose_missing]
+    missing = [*missing, *floor_missing, *fabricated_missing, *invented_missing, *prose_missing]
     print("figures  a gate reports on what it examined; this is the difference", file=out)
     print("", file=out)
     print(f"  {'gate':<18} {'exists':>7} {'examined':>9}   population", file=out)
@@ -780,6 +848,13 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
     if floors:
         print("FAIL    a declared floor does not match what exists", file=out)
         for line in floors:
+            print(f"        {line}", file=out)
+        print("", file=out)
+    if invented:
+        print(
+            f"FAIL    the skills table claims {len(invented)} skill(s) that are not there", file=out
+        )
+        for line in invented:
             print(f"        {line}", file=out)
         print("", file=out)
     if fabricated:
@@ -818,7 +893,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         )
         print("        as if it were what exists.", file=out)
         return 1
-    if missing or floors or fabricated or prose:
+    if missing or floors or fabricated or invented or prose:
         return 1
 
     print(f"  {len(PROSE)} figure(s) in prose re-run and unchanged", file=out)

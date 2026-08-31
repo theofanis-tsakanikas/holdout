@@ -1065,17 +1065,24 @@ what each does not catch.
 | in `.claude/skills/` here | status | at `~/.claude/skills/` |
 |---|---|---|
 | `claim` — build a claim's eval, its `gate-proof`, its `make claim-N` | **exists** | `banner`, `social-preview` |
-| `integration-review` — bugs in the process, not the code | T008 | `readme-standard` |
+| `integration-review` — bugs in the process, not the code | **exists** | `readme-standard` |
 | `contract-change` — restatement? new window? which consumers? which past results? | **no task** | `linkedin-debut`, `linkedin-article`, `post-ideas` |
 | `defect-to-rule` — root cause, then the rule that stops the class recurring | **no task** | `promo-guide`, `storyboard`, `aws-mask` |
 
 **The status column exists because this table listed four skills as living here and one does.**
 `.claude/README.md` said so correctly the whole time; this table did not, which is the same defect
 as the layout section two headings down — a map, in the file every session reads first, describing
-a repository that is not this one. `integration-review` is T008's own `closes` and is written after
-the branches it records. **`contract-change` and `defect-to-rule` have no task id anywhere in
-`TASKS.md`**: by this file's own rule they are not deferred, they are forgotten, and naming that in
-the table is cheaper than a deferral nobody would read.
+a repository that is not this one. **`contract-change` and `defect-to-rule` have no task id anywhere
+in `TASKS.md`**: by this file's own rule they are not deferred, they are forgotten, and naming that
+in the table is cheaper than a deferral nobody would read.
+
+> **`integration-review` moved from `T008` to `exists` on 2026-09-01**, when it landed. The row read
+> `T008` for a day and would have gone **false at the moment of the merge** — which is the shape
+> this column was added to stop, arriving on the column's own first occupant. It is here rather
+> than in the branch that landed the skill because a skill announcing its own arrival in the table
+> that vouches for it is the artefact certifying itself, and `.claude/README.md`'s status is what
+> `make figures` has no row for: **nothing enumerates this table against `.claude/skills/`, and a
+> third status going stale would look exactly like the two that did not.**
 
 The right-hand column produces artefacts that live outside any repository. The left-hand column
 writes code and rules inside this one.

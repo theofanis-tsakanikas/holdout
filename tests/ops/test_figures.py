@@ -227,6 +227,88 @@ def test_the_layout_population_holds_nothing_git_ignores() -> None:
     )
 
 
+def test_a_skill_the_table_does_not_mark_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A skill exists and the table still says it is future work.
+
+    The status column was added on 2026-08-31 because the table listed four skills where one
+    existed. **Nothing enumerated the column against the directory** — so a third status going
+    stale would have looked exactly like the two that did not, which is the defect the column
+    was added to fix, one layer up.
+    """
+    claude = (figures.REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    marked = "| `integration-review` — bugs in the process, not the code | **exists** |"
+    assert marked in claude, "the skills table no longer marks integration-review as existing"
+
+    # `COVERAGE` captured the callable at import, so patching the module attribute would not
+    # reach it — the row has to be rebuilt. The same shape as the layout narrowing test above.
+    def stale() -> int:
+        return _marked_in(claude.replace(marked, marked.replace("**exists**", "T008")))
+
+    monkeypatch.setattr(
+        figures,
+        "COVERAGE",
+        tuple(
+            figures.Coverage(
+                gate=entry.gate,
+                population=entry.population,
+                enumerate_=entry.enumerate_,
+                examine=stale if entry.gate == "skills" else entry.examine,
+                note=entry.note,
+            )
+            for entry in figures.COVERAGE
+        ),
+    )
+    code, output = _run()
+    assert code == 1
+    assert "examined less than exists" in output
+    assert "skills" in output
+
+
+def test_a_skill_the_table_invents_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The other direction, which the coverage row structurally cannot see.
+
+    A row claiming a skill that is not there is never counted on either side — the same shape as
+    the repository layout, where omitting a package and inventing one are different failures and
+    only the first is under-coverage. A table naming a skill that is not there sends its reader
+    looking for it.
+    """
+    claude = (figures.REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    absent = "| `contract-change` — restatement? new window? which consumers? which past results? | **no task** |"
+    assert absent in claude, "the skills table no longer lists contract-change as having no task"
+
+    monkeypatch.setattr(
+        figures,
+        "skills_claimed_that_are_not_there",
+        lambda: _invented_in(claude.replace(absent, absent.replace("**no task**", "**exists**"))),
+    )
+    code, output = _run()
+    assert code == 1
+    assert "not there" in output
+    assert "contract-change" in output
+
+
+def _marked_in(text: str) -> int:
+    return sum(
+        1 for m in figures._SKILL_ROW.finditer(text) if m.group("status").strip("* ") == "exists"
+    )
+
+
+def _invented_in(text: str) -> tuple[list[str], list[str]]:
+    present = {d.name for d in (figures.REPO_ROOT / ".claude" / "skills").iterdir() if d.is_dir()}
+    invented = [
+        m.group("name")
+        for m in figures._SKILL_ROW.finditer(text)
+        if m.group("status").strip("* ") == "exists" and m.group("name") not in present
+    ]
+    return (
+        [
+            f"the skills table says {n!r} exists and .claude/skills/{n}/ is not there"
+            for n in sorted(set(invented))
+        ],
+        [],
+    )
+
+
 def test_a_target_outside_the_regex_is_refused(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
