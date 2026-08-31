@@ -303,6 +303,47 @@ the failure that teaches people to delete markers rather than to write them. **A
 needs the migration to be enforced by the same gate, or it decays into exactly the noise it was
 built to remove.**
 
+*A second candidate, and it is the one that removes the migration rather than paying it.* The
+marker has to migrate only because the present-tense figure lives in a file that cannot be
+overwritten — every session must demote the last one precisely because `PLAN.md` keeps it forever.
+Give the current count a home that **can** be overwritten and there is nothing to migrate: `figures`
+covers that one place and re-runs it every time, and this file's numbers become history by
+construction rather than by anybody remembering to demote them. `PLAN.md` then stays outside `PROSE`
+legitimately rather than by judgment — not *we cannot tell which occurrence is present tense*, but
+**nothing here is present tense, because present-tense figures are not written here.** One
+enforceable sentence: an append-only file records what a number was; a current number lives where it
+can be replaced.
+
+**What it costs.** A home has to be chosen and created, which is a judgment about where a reader
+would look — and the measurement says there is no candidate today: the count exists in `PLAN.md`
+ten times and `TASKS.md` once, both append-only, and **nowhere in the tree is there an
+always-current home for it.** No README line, no gated file.
+
+**And the phrasing half is not free, which is the check that decides between the two candidates.**
+The reading that *The suite is 828* inside a dated entry already reads as history does not survive
+being measured. Of the ten occurrences, **exactly one sits directly under a dated header.** The
+other nine sit under an intra-entry bold sub-heading — `**The denominator is in the type.**`, `**And
+`C7` carried the same defect as `G7`, in the same commit.**` — which carries no date; the session's
+date is twenty to sixty lines above. The suite figure is always the last line of an entry and
+always the furthest from the only thing that marks it as past. Skimmed or quoted, it reads as
+present tense, which is precisely how it is read.
+
+*(The entry headers also use three different date separators, so any gate that tries to find the
+newest entry by parsing them meets the wrap-and-pattern family from the other direction.)*
+
+**So the nine would need rewording, which is the objection this candidate was raised to avoid.** It
+is not a doctrine rule 4 violation — *the suite was 828 at this session* changes no stated value and
+leaves the value, the reason and the delta recoverable — but it is editing text rule 4 protects, and
+that is the thing to say out loud rather than discover in the branch.
+
+**Which leaves the two candidates separated by one property, and it is not the one either of them
+was argued on.** The marker's cost is **recurring**: one edit at every session boundary, forever,
+and forgetting it turns correct history red. The new home's cost is **one-off**: nine lines reworded
+once, plus a home that has to be chosen. A recurring cost that decays into deleted markers is worse
+than a one-off cost that is simply work, so the second candidate is the stronger of the two — but
+both are recorded with their prices, because whoever opens that branch should be choosing rather
+than implementing.
+
 *Site:* `ops/figures.py` :: `#: **Deliberately small, and the reason is doctrine rule 4.** `PLAN.md` and `TASKS.md` are the`
 *Disposition:* `ops/the-newest-figure-is-present-tense` — small, and it belongs where the count is
 published rather than in the branch that found it
