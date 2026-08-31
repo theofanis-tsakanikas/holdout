@@ -14,6 +14,30 @@ refuses the commit, at the only moment at which refusing it is free.
 Scope is exactly `git commit`. `git push` is left alone: the ruleset already refuses it by
 name, and CLAUDE.md's rule about the money-spending workflows dispatching from `main` only is
 a workflow condition rather than a local one.
+
+The defect this file keeps having
+---------------------------------
+**Three times, and each time as a spelling the file already knew about somewhere else.**
+
+* `-C <path>` sat in `_TAKES_A_VALUE` so the subcommand hunt would step over it. The path was
+  parsed and thrown away, and the branch was read from the session's directory instead — which
+  refused a safe commit into a worktree and, worse, **allowed** `git -C <the checkout on main>
+  commit` from a session on a branch;
+* `GIT_DIR=` was known to `_COARSE`, whose prefix exists for environment assignments, and to
+  `_is_git_commit`, which skips them — and absent from the enumeration of ways to name a
+  repository. Found by review **of the fix for the first one**;
+* `--git-dir <path>`, space-separated, sat in `_TAKES_A_VALUE` **three lines above** the
+  enumeration that omitted it. Found by review of the fix for the second.
+
+So the pattern, which is what the fourth will need, because it will look different again:
+
+    A flag or a variable this file already handles for one purpose is a flag or a variable it
+    can be asked about for another — and the second question is asked by a different function,
+    written later, by somebody reading the first list and not the file.
+
+`_NAMES_A_REPOSITORY` is therefore a **subset of `_TAKES_A_VALUE`, asserted at import** rather
+than a second list kept in step by memory. Two lists of flags in one file, each missing a member
+of the other, is how this reached three.
 """
 
 from __future__ import annotations
@@ -179,37 +203,49 @@ def _is_git_commit(segment: list[str]) -> bool:
     return False
 
 
-#: Every way a command can name a repository other than the one the session sits in. **An
-#: enumeration, and it is not a proof of completeness** — it is four spellings that are known,
-#: not four that are all there are. `GIT_DIR` and `GIT_WORK_TREE` were missed by the first
-#: version of this function and found by review: the flags were enumerated and the environment
-#: was not, which is defect 1 surviving its own fix in a different spelling.
+#: The subset of `_TAKES_A_VALUE` whose value **is a repository**. Written as a subset rather
+#: than as a second list, and checked as one below: two lists of flags in one file, each missing
+#: a member of the other, is precisely how this defect reached its third instance.
 #:
-#: **A spelling not on this list falls back to the session's directory**, which is where the
-#: original defect lived. So a fifth spelling is a hole of exactly the shape this fixed, and
-#: whoever finds one should add it here rather than concluding the design is wrong.
-#:
-#: **And one case is not a spelling and cannot be added here at all.** A target named *outside*
-#: the command — `export GIT_DIR=…` in an earlier call, or a variable inherited from the
-#: environment the session started in — leaves nothing in the command string to read. The hook
-#: is handed a command and a directory and never an environment, so the information required to
-#: detect it is not present in what it is given. **That is a limit rather than a defect**, and it
-#: is written here so that somebody meeting it tries to understand it rather than trying to add
-#: a row and concluding the design is broken when they cannot.
-_NAMES_A_REPOSITORY = ("--git-dir=", "--work-tree=", "GIT_DIR=", "GIT_WORK_TREE=")
+#: `-c`, `--namespace` and `--exec-path` also take values and name no repository, which is why
+#: this is a marked subset and not the whole set.
+_NAMES_A_REPOSITORY = frozenset({"-C", "--git-dir", "--work-tree"})
+
+#: The same repositories, named through the environment rather than through a flag.
+_ENVIRONMENT_NAMES_A_REPOSITORY = ("GIT_DIR=", "GIT_WORK_TREE=")
+
+#: Kept honest here rather than by memory. A flag that names a repository must be a flag that
+#: takes a value, or `_is_git_commit` would step over it wrongly while `_target_of` read it.
+assert _NAMES_A_REPOSITORY <= _TAKES_A_VALUE
+
+
+def _repository(value: str) -> str:
+    """`GIT_DIR` and `--git-dir` name the `.git` directory; the branch is read from beside it."""
+    path = Path(value)
+    return str(path.parent if path.name == ".git" else path)
 
 
 def _target_of(segment: list[str]) -> str | None:
-    """The repository this segment commits into, or None for the session's directory."""
+    """The repository this segment commits into, or None for the session's directory.
+
+    **Three spellings of the same thing, and the file knew all three before this function did.**
+    `git -C <path>`, `git --git-dir <path>` — space-separated, which is why `--git-dir` sits in
+    `_TAKES_A_VALUE` without an `=` — and `git --git-dir=<path>`. The environment is a fourth.
+
+    Each was missed in turn: `-C` was parsed only to skip its value, `GIT_DIR=` was known to the
+    lexer and absent from the enumeration, and `--git-dir <path>` sat three lines above the
+    enumeration in the set that records which flags carry values. **The same defect, three
+    times, each time as a spelling the file already knew about somewhere else.**
+    """
     for index, token in enumerate(segment):
-        if token == "-C" and index + 1 < len(segment):
-            return segment[index + 1]
-        for prefix in _NAMES_A_REPOSITORY:
-            if token.startswith(prefix):
-                path = Path(token.split("=", 1)[1])
-                # `GIT_DIR` and `--git-dir` name the `.git` directory; the branch is read from
-                # the work tree beside it.
-                return str(path.parent if path.name == ".git" else path)
+        if token in _NAMES_A_REPOSITORY and index + 1 < len(segment):
+            return _repository(segment[index + 1])
+        for flag in _NAMES_A_REPOSITORY:
+            if flag.startswith("--") and token.startswith(f"{flag}="):
+                return _repository(token.split("=", 1)[1])
+        for name in _ENVIRONMENT_NAMES_A_REPOSITORY:
+            if token.startswith(name):
+                return _repository(token.split("=", 1)[1])
     return None
 
 

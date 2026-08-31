@@ -22,6 +22,20 @@ import pytest
 HOOK = "main_guard.py"
 
 
+def _module() -> Any:
+    """The hook imported as a module, for the two facts that are about its shape rather than
+    its behaviour. Everything else here runs it as a subprocess, because that is how the
+    harness runs it and a hook tested any other way is tested in a shape it never meets."""
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[2] / ".claude" / "hooks" / HOOK
+    spec = importlib.util.spec_from_file_location("main_guard_under_test", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _repo(path: Path, branch: str) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     subprocess.run(["git", "init", "-b", branch, "-q"], cwd=path, check=True)
@@ -224,6 +238,44 @@ def test_the_environment_names_a_repository_too(
         ).code
         == 2
     )
+
+
+def test_every_spelling_that_names_a_repository_is_read(
+    on_main: Path, tmp_path: Path, fire: Callable[..., Any]
+) -> None:
+    """Three flag spellings and an environment one, each missed in turn.
+
+    **The same defect, three times, each as a spelling the file already knew about somewhere
+    else.** `-C` was parsed only to skip its value. `GIT_DIR=` was known to `_COARSE` and to
+    `_is_git_commit` and absent from the enumeration. And `--git-dir <path>` — space-separated —
+    sat in `_TAKES_A_VALUE` three lines above the enumeration that omitted it.
+
+    `_NAMES_A_REPOSITORY` is now a subset of `_TAKES_A_VALUE` and asserted to be one, because
+    two lists of flags in one file, each missing a member of the other, is how this reached a
+    third instance.
+    """
+    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    tree = _worktree(on_main, tmp_path / "wt", "ops/spellings")
+    for command in (
+        f"git -C {on_main} commit -m 'x'",
+        f"git --git-dir {on_main}/.git commit -m 'x'",
+        f"git --git-dir={on_main}/.git commit -m 'x'",
+        f"git --work-tree {on_main} --git-dir {on_main}/.git commit -m 'x'",
+        f"GIT_DIR={on_main}/.git git commit -m 'x'",
+    ):
+        assert fire(HOOK, _bash(command, tree)).code == 2, command
+
+
+def test_the_flags_that_name_a_repository_all_take_a_value() -> None:
+    """The two sets cannot drift apart, and this is what says so.
+
+    A flag naming a repository must be one that takes a value, or `_is_git_commit` would step
+    over it wrongly while `_target_of` read it. The module asserts it at import; this asserts
+    that the assertion is the real relationship rather than a comment.
+    """
+    guard = _module()
+    assert guard._NAMES_A_REPOSITORY <= guard._TAKES_A_VALUE
+    assert guard._NAMES_A_REPOSITORY < guard._TAKES_A_VALUE, "a proper subset, not the whole set"
 
 
 def test_the_environment_can_also_name_a_safe_repository(

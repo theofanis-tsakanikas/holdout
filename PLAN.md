@@ -936,10 +936,24 @@ guard permitting exactly what it exists to prevent, in the arrangement `CLAUDE.m
 requires when two sessions share a checkout. Never exploited: no direct commit to `main` has landed
 since the hook arrived, verified commit by commit against the API.
 
-**And the first fix left the defect alive in a fourth spelling.** It enumerated `-C`,
-`--git-dir=` and `--work-tree=` and forgot the **environment** — `GIT_DIR=` and `GIT_WORK_TREE=`
-were still allowed. Two places in the same file already handle environment assignments, and the
-third did not. `_NAMES_A_REPOSITORY` now says in as many words that it is **an enumeration and not
+**And the fix left the defect alive twice more, each time as a spelling the file already knew.**
+The first repair enumerated `-C`, `--git-dir=` and `--work-tree=` and forgot the **environment** —
+`GIT_DIR=` and `GIT_WORK_TREE=` were still allowed, though `_COARSE`'s prefix and
+`_is_git_commit`'s skip both exist to handle environment assignments. The second forgot
+`--git-dir <path>` **space-separated**, which sat in `_TAKES_A_VALUE` three lines above the
+enumeration that omitted it. Each was found by reviewing the fix for the one before.
+
+**So the finding is the pattern rather than the rows.** The same defect, three times, in one file:
+
+> A flag or a variable this file already handles **for one purpose** is one it can be asked about
+> **for another** — and the second question is asked by a different function, written later, by
+> somebody reading the first list and not the file.
+
+`_NAMES_A_REPOSITORY` is now a **subset of `_TAKES_A_VALUE`, asserted at import**, rather than a
+second list kept in step by memory. Two lists of flags in one file, each missing a member of the
+other, is how it reached three. And the comment above it — *an enumeration, not a proof of
+completeness* — turned out to be right in a way its author did not intend: **a further spelling
+was already in the file, within one commit of that sentence being written.** `_NAMES_A_REPOSITORY` now says in as many words that it is **an enumeration and not
 a proof**, that an unrecognised spelling falls back to the session's directory *which is where the
 original defect lived*, and — separately — that a target named **outside** the command by an
 exported variable is a **limit rather than a defect**, because the hook is handed a command and
@@ -973,7 +987,7 @@ caught by reading the table rather than the total.
 `.claude/README.md` carried *"the safe direction, and a case that does not arise here"* about this
 exact behaviour. Both halves were false, and the restatement stays beside them.
 
-The suite is **992**.
+The suite is **994**.
 
 **The cache was never measured, and the branch that would have measured it never existed ·
 2026-08-31.** `evals/world-cache-measured` closes the review's §2b and §2c — the last of the eight,

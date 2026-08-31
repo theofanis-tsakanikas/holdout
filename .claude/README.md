@@ -108,6 +108,13 @@ a step toward guessing, so each is taken only when the one above has failed.
   arrangement `CLAUDE.md`'s git rule requires. The hook now resolves the branch of the
   repository the **command targets**: `-C`, `--git-dir=`, `--work-tree=`, `GIT_DIR=`,
   `GIT_WORK_TREE=`, else the session's directory.
+- **The same defect appeared three times in this one file**, each as a spelling the file already
+  knew about elsewhere: `-C` parsed only to skip its value; `GIT_DIR=` known to `_COARSE` and to
+  `_is_git_commit` and missing from the enumeration; `--git-dir <path>` sitting in
+  `_TAKES_A_VALUE` three lines above the enumeration that omitted it. The second and third were
+  each found by reviewing the fix for the one before. `_NAMES_A_REPOSITORY` is now a **subset of
+  `_TAKES_A_VALUE`, asserted at import**, because two lists of flags in one file — each missing a
+  member of the other — is how it got to three.
 - That list is **an enumeration, not a proof**. A spelling not on it falls back to the session's
   directory, which is where the original defect lived — so a sixth is a hole of the same shape
   and belongs on the list. **And one case is not a spelling at all**: a target named outside the
