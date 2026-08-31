@@ -131,6 +131,79 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**A branch name in the record is a checkable assertion, and nothing offline can check it** · found
+2026-08-31 · by `evals/world-cache-measured`, which built the gate and measured it wrong
+`docs/reviews/phase-1.md` named nine branches on 2026-08-30. One — **`evals/world-cache-measured`,
+this one** — was never opened, and two sessions spent a day filing measurements into it: the
+determinism result, three within-commit pairs, the budget argument. Nothing went red, because
+nothing in the tree was wrong. The claim lived in a table and in conversation.
+
+*It is the only form of the defect that has never lived in a file.* The other ten instances
+`CLAUDE.md` catalogues were a sentence, a number in configuration, a deferral, a task note. This one
+existed **only as shared narrative between two agents**, repeated until it stopped being checked.
+`docs/reviews/phase-1.md` caught the one-author version of that in its own opening line — *"this
+report existed only in a terminal until it was written here"* — and the two-agent version is one
+step along.
+
+*And two mechanisms were blind to the same absence.* `docs/DECISIONS.md` carried
+*"the change `evals/world-cache-measured` makes"* as an unlock condition pointing at a branch that
+did not exist, and `make expiry` could not see it because it checks a condition is **present** and
+never that it is **reachable**. One instance is a mistake; two mechanisms blind to one missing thing
+is a gap.
+
+*The gate was built and then measured, and it is refused on its own numbers.* Branch names appear in
+four positions that declare them as such — `TASKS.md`'s `branch`, `*Disposition:*`,
+`*Unlock condition:*`, and a review table's `branch` column — which yields **49 names with no
+judgment about which are branches**. That part works. Classifying each as merged, open or nowhere
+does not: **12 of the 49 came out wrong**, including six merged branches reported as `nowhere` and
+this branch reported as `merged` because its own name appears in a commit message.
+
+*The reason is structural rather than a bug to fix.* A squash-merged branch **leaves no ref**, so
+offline git cannot distinguish *merged and deleted* from *never existed* — the two states the gate
+exists to tell apart. The authoritative source is `gh pr list`, and `make figures` runs inside
+`make check`, which `CLAUDE.md` requires to work **local, with no account and no credentials**. A
+gate that needs the network is a gate that is red on a plane.
+
+*So it is filed rather than shipped, and the enumeration is the half worth keeping.* Reading four
+declared positions gives the population for free and needs no judgment; only the git question is
+unanswerable offline.
+
+**Three options, priced, because the third was proposed after the first two and needed checking.**
+
+**(a) A network check outside `make check`.** Authoritative — `gh pr list` answers exactly the
+question. Cost: it cannot live in `make check`, which `CLAUDE.md` requires to run local with no
+account. Red on a plane.
+
+**(b) A weaker offline check** reporting *has a ref* / *has no ref*, saying plainly that it cannot
+see a merged branch. Cost: it does not answer the question the gate exists for, since
+*merged-and-deleted* and *never-existed* both report no ref — which is the pair that lost a branch.
+
+**(c) Record the landing in the tree**, the way `docs/FINDINGS.md` records a closure, so a branch is
+**open** (has a ref), **merged** (has a landing record) or **nowhere** (neither). Fully offline, and
+its failure mode is the good one: forget to record a landing and the gate prints `nowhere` for a
+branch that landed — one wrong line, no red run, and the wrongness prompts the recording. **A
+recording step that decays announces its own decay.**
+
+*Checked before believing it, and it does not work today.* `TASKS.md`'s closed registry already has
+the shape — `branch <name> status closed`. Measured: of the 20 named branches the API says are
+merged, **14 carry a landing record and 6 do not**, and **four records name a branch that never
+existed**. Two of those four were written into this repository on 2026-08-31 — `docs/phase-1-review`
+and `ops/coverage-expiry-findings` — because **the registry's shape assumed one branch per atom** and
+an atom that spanned three got a name somebody invented to fill the column. They are corrected in
+`TASKS.md` to name the three real branches each. Two older ones are not recoverable from the log and
+are left, because inventing a second name to replace the first is the same act again.
+
+So (c) is the best shape and needs the recording step repaired first, which is most of its cost.
+Whoever takes this chooses with all three priced rather than discovering the third.
+
+*Measured:* 49 names enumerated, 12 misclassified, by
+`gh pr list --state all --json headRefName,state` compared against the offline classifier.
+
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* CI's world-cache budget being set from measurement — the change`
+*Disposition:* `ops/the-record-names-a-place-that-exists` — after phase 1, with the CI work, since
+both turn on what may run inside `make check`
+*Status:* open
+
 **The layout's fabrication check assumes the declared-future block sits last** · found
 2026-08-31 · by oversight level 2 on `docs/the-documents-agree-with-the-code`
 `layout_fabrications` isolates the present-tense half as `body[: future.start()]`. That is

@@ -920,6 +920,70 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**The cache was never measured, and the branch that would have measured it never existed ·
+2026-08-31.** `evals/world-cache-measured` closes the review's §2b and §2c — the last of the eight,
+and the one nobody opened.
+
+**It was proposed on 2026-08-30 and never became a branch.** For a day, two sessions filed
+measurements into it by name — the determinism result, three within-commit pairs, the budget
+argument — and nothing could say so, because a branch name is a representation like any other and
+this one named nothing. `docs/DECISIONS.md` carried *"the change `evals/world-cache-measured`
+makes"* as an unlock condition pointing at a place that did not exist, and `make expiry` could not
+see it: **it checks that a condition is present and never that it is reachable.** Found by a session
+that measured the nine-branch plan against `git log` instead of believing either of us.
+
+**§2b's conclusion reverses, and so does ours.** It said the cache *saves nothing measurable*, from
+31 jobs; we restated that to *the benefit is unmeasurable*. Re-pulled from the Actions API —
+**71 successful `claim-2` jobs**, min 32.2, median 53.8, max **78.3**, sd 10.0 — and split by
+whether the job logged a world-cache hit:
+
+```
+warm  n=60  median 50.8  mean 49.8  sd  7.0
+cold  n=11  median 70.0  mean 68.2  sd 10.2
+cold - warm = +18.4 min · 95% CI +13.5 to +23.2 · t = 7.43
+```
+
+**All 71 jobs carry one digest over the sources that can change a world**, so the cold arm computed
+exactly what the warm arm did and the difference is the cache alone. The confound — that cold runs
+are cold *because* the work changed — is dead by measurement rather than by argument.
+
+**Which means all eleven cold runs were spurious**, and the over-coverage bug has a price:
+`DEPENDS_ON = ("corpus", …)` covers `corpus/real/`, which cannot produce a byte of a world.
+**202 minutes — 3.4 hours — already spent** on caches thrown away for changes that could not alter
+what they held. `corpus/legal-claims-restated`, merged today, is one of the four commits that did
+it.
+
+**And §2b reached its conclusion by citing the one counterexample.** It named a cold run finishing
+in 44.8 minutes: of the eleven cold runs, that is **the only one below the warm mean**. The section
+was right that `ci.yml`'s assertion had no measurement behind it, and wrong in the conclusion it
+drew instead — which are different failures, and ours was a third turn of the same one.
+
+**The 90-minute budget stays, and its unlock condition had been met sixty times.** *The first CI run
+with a warm world cache* has happened sixty times while the entry stayed open — the mirror of the
+dead pointer, and `make expiry` is blind to both for one reason. The ceiling is not lowered to the
+warm steady state: the slowest draw observed is a **cold** 78.3, and a budget set from the warm mean
+fails every time the key moves.
+
+**A gate was built for the missing branch, measured, and refused on its own numbers.** Four declared
+positions enumerate 49 branch names with no judgment — that half works. Classifying them merged,
+open or nowhere does not: **12 of 49 wrong**, including six merged branches called `nowhere` and
+this branch called `merged` because its own name appears in a commit message. The cause is
+structural — a squash-merged branch leaves no ref, so offline git cannot tell *merged and deleted*
+from *never existed*, which is the pair the gate exists for. Three options are filed with their
+costs.
+
+**And checking the best of them found something I wrote this morning.** `TASKS.md`'s registry could
+serve as the landing record — it already has the shape — but four of its entries name branches that
+never existed, and **two are mine, from `#32`, four hours old.** The column reads `branch <name>`,
+singular; an atom that spanned three branches had no way to say so; leaving it empty was not
+offered. **I invented a branch name to satisfy a schema.** That is a new form and `CLAUDE.md` now
+names it: the assertion was not unchecked, it was *manufactured by the shape of the form*, and it is
+the more dangerous kind because the artefact looks more complete afterwards. The generalisation was
+run over every required field — one instance, fixed; the rest are prose, repeatable, or single by
+nature.
+
+The suite is **981**.
+
 **The documents are made to agree with the code · 2026-08-31.**
 `docs/the-documents-agree-with-the-code` closes the review's **§3a, §3b, §3c, §3e and §7's second
 half** — proposed as three branches and done as one. They could never have run concurrently,

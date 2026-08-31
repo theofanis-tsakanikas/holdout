@@ -1066,12 +1066,23 @@ branch        skills/integration-review
 depends_on    T000, T003, T004, T005, T006
 closes        Reads the whole repository against CLAUDE.md and reports conceptual drift — it builds
               no product code. Two deferred items it is expressly empowered to act on:
-              (1) floor.yaml's rule id refuse_when_no_legal_price_sells still carries the overreach
-                  the refusal code shed; the session may propose the restatement. NOTE: the core's
-                  Bound.rule_id strings are written down a second time in
-                  evals/guardrail/reference.py, which is what lets G10 disagree rather than agree
-                  with itself. A rename turns G10 red on both directions at once; move the two in
-                  one change.
+              (1) DONE 2026-08-31 by contracts/floor-rule-id (#31). The rename landed and this
+                  instruction is kept, corrected, per doctrine rule 4.
+                  IT NAMED THE WRONG GATE. It read: "the core's Bound.rule_id strings are
+                  written down a second time in evals/guardrail/reference.py, which is what
+                  lets G10 disagree rather than agree with itself. A rename turns G10 red on
+                  both directions at once; move the two in one change."
+                  refuse_when_no_legal_price_sells appears ZERO times in reference.py and is
+                  never a Bound.rule_id, so the rename cannot turn G10 red in either direction.
+                  What goes red is O2 — the id is a field name in ops/personhood.py's closed
+                  field set — confirmed by putting the registry back and running the eval:
+                  FAIL O2 · 55/56 types agree.
+                  It is the tenth form of the rule and the form with the longest reach: an
+                  instruction to the next session, which does not describe the system but aims
+                  the hand that changes it. Corrected here on 2026-08-31 by
+                  evals/world-cache-measured — #31 fixed the PR body, PLAN.md and the deferral
+                  and LEFT THIS LINE, which is a correction that stopped at one document inside
+                  the branch that was correcting two of those.
               (2) the ladder-ceiling gap (doctrine rule 1 is incomplete — the declared safe state
                   produces prices the envelope refuses); the session may propose a restatement.
               The method is written as the .claude/skills/integration-review skill, not as ad hoc
@@ -1448,10 +1459,14 @@ L13 docs/SCENARIO.md — the shop, and the four kinds a number in it may be: [M]
 L14 The phase-1 integration review (oversight level 3) — docs/reviews/phase-1.md, the nine
     proposed branches, and the tenth form of the rule. The ruleset required `gate` and the
     claims had left it; the review itself was rewritten in English with make language behind
-    it.                                    branch docs/phase-1-review              status closed
+    it.                                    branches docs/phase-1-integration ·
+                                           ops/claims-are-required ·
+                                           docs/review-in-english          status closed
 L15 make figures — a gate reports on what it examined, and this is what checks the difference.
     make expiry learns what closure is. docs/FINDINGS.md, the register an open finding falls
-    out of.                                branch ops/coverage-expiry-findings     status closed
+    out of.                                branches ops/every-number-carries-its-kind ·
+                                           ops/expiry-knows-what-closed ·
+                                           ops/findings-register           status closed
 L16 corpus/real/ — the legal claims restated: real prices, real law, derived cost, wherever
     the corpus is described as a whole.    branch corpus/legal-claims-restated     status closed
 L17 evals/gate_proof/ — a check is armed by a mutation, declared un-armable with its reason, or
@@ -1461,6 +1476,18 @@ L18 contracts/guardrails/floor.yaml — a rule id named for what it measures, an
     reading each window in its own vocabulary, with a time bound so a retired name cannot come
     back in a window opened after it.      branch contracts/floor-rule-id          status closed
 ```
+
+**Two of those entries named branches that never existed, and `evals/world-cache-measured` found
+it by asking git.** `docs/phase-1-review` and `ops/coverage-expiry-findings` were written here on
+2026-08-31 and are inventions: the first was three branches — `docs/phase-1-integration`,
+`ops/claims-are-required`, `docs/review-in-english` — and the second was another three. **The
+registry's shape assumed one branch per atom**, and an atom that spanned three got a name somebody
+made up to fill the column. Written in the branch whose subject was documents disagreeing with the
+code, which is where it belongs on the record rather than quietly corrected.
+
+Two older entries have the same defect — `contracts/schemas` and `core/guardrails-pricing-ladder`
+name no branch that exists — and are left as they are, because what they were is not recoverable
+from the log and inventing a second name to replace the first would be the same act again.
 
 **L10 to L18 were added on 2026-08-31, and the gap is the finding.** This section calls itself
 *the complete registry* and stopped at **L9** while nine atoms had closed after it — claim 2, claim
