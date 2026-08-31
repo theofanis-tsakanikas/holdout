@@ -76,7 +76,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
 
-from ops import expiry, language
+from ops import expiry, findings, language
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -236,6 +236,16 @@ def deferrals_parsed() -> int:
     return len(expiry.parse((REPO_ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")))
 
 
+def finding_markers() -> int:
+    """The `· found` markers in the registry — the second count, as `expiry` does it."""
+    text = (REPO_ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")
+    return len(findings._MARKER.findall(findings._body(text)))
+
+
+def findings_parsed() -> int:
+    return len(findings.parse((REPO_ROOT / "docs" / "FINDINGS.md").read_text(encoding="utf-8")))
+
+
 def mutation_files() -> int:
     root = REPO_ROOT / "evals" / "gate_proof" / "mutations"
     if not root.is_dir():
@@ -306,6 +316,14 @@ COVERAGE: tuple[Coverage, ...] = (
         "correct and would show here as under-coverage if it ever happened.",
     ),
     Coverage(
+        "findings",
+        "the `· found` markers in docs/FINDINGS.md",
+        finding_markers,
+        findings_parsed,
+        "a finding header that stopped parsing is a finding nobody is holding, which is the "
+        "state the registry was built for.",
+    ),
+    Coverage(
         "expiry",
         "the `· deferred` markers in the Deliberately deferred section",
         deferrals_declared,
@@ -367,7 +385,17 @@ WORDS: dict[str, int] = {
 
 @dataclass(frozen=True, slots=True)
 class Figure:
-    """A number asserted in prose, and the thing that produces it now."""
+    """A number asserted in prose, and the thing that produces it now.
+
+    **Every pattern here spans whitespace with `\\s+` rather than a literal space**, and that is
+    not tidiness. These files wrap at 100 columns, so a sentence that fits on one line today is
+    two lines after the next edit — and a pattern that then matched nothing would report *the
+    figure is not there* rather than *the figure disagrees*. That is the failure the reviewing
+    session hit on 2026-08-31: a regex requiring `\u00b7 deferred` on a single line missed ten of
+    thirty-five wrapped headers in `docs/DECISIONS.md` and reported as though it had read them
+    all. It happened here within the hour, when this very sentence's own figure moved from
+    eighteen to nineteen and the rewrap took it out of reach of its own pattern.
+    """
 
     path: str
     pattern: str
@@ -394,13 +422,13 @@ def _as_int(written: str) -> int | None:
 PROSE: tuple[Figure, ...] = (
     Figure(
         "ops/language.py",
-        r"uses \*\*(?P<n>[a-z]+)\*\* distinct Greek tokens",
+        r"uses\s+\*\*(?P<n>[a-z]+)\*\*\s+distinct\s+Greek\s+tokens",
         lambda: len(language.ALLOWED),
         "how many Greek tokens the allowed vocabulary holds",
     ),
     Figure(
         "ops/language.py",
-        r"outside the (?P<n>[a-z]+) excepted paths",
+        r"outside\s+the\s+(?P<n>[a-z]+)\s+excepted\s+paths",
         lambda: len(language.EXCEPTED_PATHS),
         "how many excepted paths there are",
     ),

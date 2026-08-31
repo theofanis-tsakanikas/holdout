@@ -467,6 +467,90 @@ closed costs the session. The one exception is `main_guard` on a command line it
 tokenise, where it falls back to a coarser match and refuses: an unbalanced quote is the single
 case where guessing in the safe direction costs only a retry.
 
+**An open finding gets a home, because it was the one thing that had none.** · 2026-08-31
+`docs/FINDINGS.md`, and `make findings` behind it. Every mechanism this repository had was aimed at
+a **claim**, a **gate** or a **deferral**, and an open review finding is none of the three. Two of
+them fell out as a result.
+
+**The legal half of oversight level 2's third blocking finding against claim 1**, recorded
+2026-08-27, closed never, deferred never. Absent four days later. `make expiry` had nothing to read
+because it was not a deferral; the phase-1 integration session had nothing to check against because
+`CLAUDE.md` does not say findings are tracked. **And `docs/reviews/phase-1.md` §4** —
+`pricing/selection.py` — dropped by that review's own closing table, the one that assigns every
+other section to a branch. One day, in a nine-row table written for exactly that purpose, and found
+by its author in his own document.
+
+**A finding anchors to a line that already exists**, and the gate goes red when that line stops
+saying what the finding says it says. It is `ledger.every-anchor-is-aimed-at-one-place` over a new
+population, and the borrowing is earned rather than decorative: that check is what refused a
+hand-applied mutation 16 during `ops/claims-are-required`.
+
+*Refused:* a finding with no site — one whose consequence is recorded nowhere, which is exactly what
+the legal one was; a site whose fragment does not occur **exactly once** in the file it names, since
+zero means the line moved and nobody said which and two means the anchor proves nothing about which
+line was meant; a finding with no disposition line at all; a `*Closed:*` with no transition after
+the date.
+
+*Reported and not refused:* **adrift** — a disposition of `none — <reason>`. A finding nobody has
+scoped yet is a real state, and refusing it would teach people not to file, which is the state that
+lost the first one.
+
+**Closure restates a site rather than releasing it**, and the first draft did not. It let a closed
+entry stop being checked, and the reviewing session found the hole before the file landed: *a
+finding that stops being examined the moment somebody accounts for it is a claim about the past
+that reads as a claim about the present.* A fix reverted in November would leave the register
+saying `closed` forever — which is the legal finding's own story one layer along, since what hid
+its third part was precisely that nothing re-examines a thing already accounted for. So every site
+gets a `*Now:*` carrying the text that replaced the defect, held to the same exactly-once rule for
+as long as the entry exists, or `gone — <reason>` where nothing replaced it. The price is naming
+the replacement text, which is what the `[M]` rule already charges everywhere else.
+
+**`concurred` is not `closed`, and that is the entry that matters.** Closure is a transition: the
+anchored line changes, a branch lands and the gate goes red-to-green, or a named human says so.
+Agreement between the reviewing session and the building session is a **fourth state**, carried as
+open and counted separately.
+
+It is there because it nearly happened. On 2026-08-31 the reviewing session removed §4 from the
+author's list on the grounds that the two sessions concurred, and the building session refused —
+*that is the precise mechanism by which the legal finding left the record: not a decision to drop
+it, but two parties who held it agreeing it was handled and nobody holding them to that.* The pair
+of sentences the two arrived at is in the registry and both halves are load-bearing: *it was my
+finding, and that is exactly why I should not be the one deciding it needs no oversight* — and *it
+was not my finding, and that is exactly why my agreement is worth less than it feels.*
+
+If the two heaviest users of a register could retire an entry by agreeing, it would measure their
+agreement rather than the repository.
+
+**Both entries went in open, before either fix branch**, and that is `gate-proof`'s first rule
+rather than a preference: *green first — a mutation whose target was already red proves nothing.* A
+register entry filed with the answer already known is a mutation planted against something already
+broken, and would prove nothing about whether the register would have caught it.
+
+**The two findings fail differently, and that is what tested the design.** The legal one had two
+sides that drifted apart, which the anchor check catches by construction. §4 **never had a second
+side** — recorded once, never picked up — so a comparison between two sides would find nothing to
+compare and report nothing. It is caught only by *adrift*, which had been specified for
+completeness rather than for a case anybody had in hand. A mechanism meeting a case its author did
+not have in mind, **before it shipped**, is the thing this project has spent a phase failing to
+arrange, and here it arrived free.
+
+*The standing limit, declared rather than closed.* An anchor proves a line exists and still reads as
+expected. It cannot prove it is the **right** line. A true but irrelevant anchor is a green that
+means nothing, and nothing here can catch that — the same limit as a mutation planted against the
+detector, which this repository answered by putting the detector out of reach rather than by
+testing the choice. And the registry is itself a representation: it reports on the entries somebody
+wrote down, never on the findings somebody had. Its first paragraph says so, without an example,
+because the only example available argued the other way.
+
+*What it cost while being built, and both were the gates working.* `docs/FINDINGS.md` needed
+**Περίοδος Αναφοράς** — the term άρθρο 4 παρ. 5 actually defines, as against what the finding says
+it defines — and `make language` refused the file until the term was declared with its reason. That
+made the allowed vocabulary nineteen, and `make figures` then refused `ops/language.py` for still
+saying eighteen. Correcting the sentence rewrapped it, and the rewrap took it out of reach of its
+own pattern — **the reviewing session's wrapped-header failure, reproduced inside an hour by the
+mechanism written to catch it.** Every prose pattern in `ops/figures.py` now spans whitespace with
+`\s+`, and the docstring says why.
+
 **`make expiry` learns what closure is, and prints how much of itself it can check.** · 2026-08-31
 Three things, and the first is the one `docs/reviews/phase-1.md` §2a found.
 

@@ -25,7 +25,7 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        expiry language figures claim-1 claim-2 claim-3 claim-4 claim-7 \
+        expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
 
@@ -39,9 +39,9 @@ setup:  ## create the virtualenv and install everything
 setup-locked:  ## install exactly what uv.lock pins — what CI runs, and what refuses a drifted lock
 	$(UV) sync --locked
 
-check: lint typecheck contracts language expiry figures test  ## the whole local gate, in the order that fails fastest
+check: lint typecheck contracts language findings expiry figures test  ## the whole local gate, in the order that fails fastest
 	@echo ""
-	@echo "OK      lint · typecheck · contracts · language · expiry · figures · tests"
+	@echo "OK      lint · typecheck · contracts · language · findings · expiry · figures · tests"
 	@echo "        the claim targets are NOT in here — they take minutes, and CI discovers"
 	@echo "        and runs every one of them. Run 'make claim-1' before a claim's own PR."
 
@@ -97,6 +97,22 @@ language:  ## refuse Greek in repository content outside the declared exceptions
 # that rounds toward what it forbids is not a bound.
 figures:  ## refuse a gate that examined less than exists, and a figure that stopped reproducing
 	$(RUN) python -m ops.figures
+
+# Every mechanism here was aimed at a claim, a gate or a deferral. An open review finding is
+# none of the three, so it had nowhere to fall out of -- and two of them fell: the legal half of
+# oversight level 2's third finding against claim 1, absent four days later, and the phase-1
+# review's own §4, dropped by the table that assigns every other section to a branch.
+#
+# So a finding anchors to a line that already exists and goes red when that line stops saying
+# what the finding says it says -- `ledger.every-anchor-is-aimed-at-one-place` over a new
+# population. A finding with no site is refused; one with no disposition is refused; `none --
+# <reason>` is a disposition and is reported as adrift rather than refused, because a finding
+# nobody has scoped yet is a real state and refusing it teaches people not to file.
+#
+# And `concurred` is not `closed`. Two agents agreeing is two representations agreeing, which
+# is how one of these findings nearly left the record twice.
+findings:  ## refuse an open finding that no longer anchors to what it named
+	$(RUN) python -m ops.findings
 
 # Doctrine rule 6: "Exceptions expire. On expiry the finding returns and CI goes red again."
 # This is the only target in the file that can go red on a day nobody touched the repository,
