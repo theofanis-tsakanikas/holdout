@@ -168,7 +168,15 @@ jobs:
     #     cold - warm = +18.4 min, 95% CI +13.5 to +23.2, t = 7.43
     #
     # All 71 jobs share one digest over the sources that can change a world, so the cold arm
-    # computed exactly what the warm arm computed and the difference is the cache alone.
+    # computed exactly what the warm arm computed.
+    #
+    # WHAT THAT NUMBER IS, AND WHAT IT IS NOT. Every cold run in the sample was a SPURIOUS
+    # invalidation — the key moved for a change that could not alter a world. So 18.4 is what a
+    # spurious invalidation COSTS, not what the cache SAVES. They share a number here only
+    # because no run in this sample ever needed to regenerate. Where the world sources genuinely
+    # change, regeneration is necessary work no cache can save, and the 18.4 becomes a cost that
+    # must be paid. The sample lies inside one world-source epoch and says nothing about the
+    # other case, because there are no runs of it to compare.
     #
     # The steady state is therefore around 50 minutes rather than 68, and this budget is not
     # lowered to it: 90 is a ceiling against the slowest draw, and the slowest draw observed is

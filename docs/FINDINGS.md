@@ -131,6 +131,40 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**A limit was stated in review and did not reach the branch** · found 2026-08-31 · by oversight
+level 2 on `evals/world-cache-measured`, by grepping for a word rather than reading for a claim
+The measurement's own limit — *the sample lies inside one world-source epoch, so it says nothing
+about a run where the worlds genuinely changed* — was written in review, correctly, an hour before
+the branch was committed. **It appears nowhere in the branch.** The word `epoch` was absent from
+every file; the artefact said *the difference is the cache alone* and *the cache saves about
+eighteen minutes a job*, which is the wider claim the review had already identified as unsupported.
+
+*It is the fourth restatement chain in one day to stop at the terminal, and the first where the
+missing half was the **caveat** rather than the correction.* The other three lost a fix; this one
+lost the sentence saying what the fix does not cover — which is the half nobody misses, because the
+document reads as more confident without it.
+
+*And the overstatement was not only a missing caveat.* Every cold run in the sample was a
+**spurious** invalidation, so the measured 18.4 is **what a spurious invalidation costs**, not what
+the cache **saves**. They share a number here only because no run in the sample ever needed to
+regenerate. Where the world sources genuinely change, regeneration is necessary work no cache can
+save. The branch's own over-coverage finding says that, and its summary sentence undid it three
+files away.
+
+*Corrected in all four places* — `ci.yml`, `docs/DECISIONS.md`, `PLAN.md`, `evals/README.md` — and
+the correction **strengthens** the over-coverage entry rather than weakening it: the whole measured
+effect is the price of the bug.
+
+*How it was found is the reusable part.* Not by reading the branch for correctness, but by taking a
+claim made in conversation and **grepping the artefact for it**. That is mechanical, it takes
+seconds, and it is available for every limit either session states aloud. Nobody has to remember to
+be careful; the check is *did the thing I said reach the file*.
+
+*Site:* `PLAN.md` :: `review and **did not reach the branch until oversight level 2 grepped for it and found it absent**`
+*Disposition:* none — the instance is closed; whether the grep-for-the-claim check becomes a
+practice is a judgment about how the two sessions work, not about this repository
+*Status:* open
+
 **A branch name in the record is a checkable assertion, and nothing offline can check it** · found
 2026-08-31 · by `evals/world-cache-measured`, which built the gate and measured it wrong
 `docs/reviews/phase-1.md` named nine branches on 2026-08-30. One — **`evals/world-cache-measured`,

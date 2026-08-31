@@ -944,8 +944,17 @@ cold - warm = +18.4 min · 95% CI +13.5 to +23.2 · t = 7.43
 ```
 
 **All 71 jobs carry one digest over the sources that can change a world**, so the cold arm computed
-exactly what the warm arm did and the difference is the cache alone. The confound — that cold runs
-are cold *because* the work changed — is dead by measurement rather than by argument.
+exactly what the warm arm did. The confound — that cold runs are cold *because* the work changed —
+is dead by measurement rather than by argument.
+
+**And the figure is narrower than *what the cache saves*, which is what this entry first called it.**
+Every cold run in the sample was a **spurious** invalidation, so 18.4 is what a spurious
+invalidation **costs**. The two quantities share a number here only because no run in this sample
+ever needed to regenerate; where the world sources genuinely change, regeneration is necessary work
+no cache can save. The sample lies inside **one world-source epoch**. That limit was stated in
+review and **did not reach the branch until oversight level 2 grepped for it and found it absent** —
+the fourth restatement chain today to stop at the terminal, and the first where the missing half was
+the caveat rather than the correction.
 
 **Which means all eleven cold runs were spurious**, and the over-coverage bug has a price:
 `DEPENDS_ON = ("corpus", …)` covers `corpus/real/`, which cannot produce a byte of a world.

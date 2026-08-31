@@ -152,7 +152,9 @@ Every figure above is a **cold measurement on a fourteen-core laptop**, not a pr
 `CLAUDE.md`: *a timeout, a K, a tolerance, a threshold or a budget is an assertion wearing a
 number instead of a verb.* Claim 2's is dominated by generating six worlds and is much lower
 once `.worlds/` is warm — **measured 2026-08-31 at 18.4 minutes a job, 95% CI +13.5 to
-+23.2 over 71 jobs**, warm mean 49.8 against cold 68.2, rather than the projection this
++23.2 over 71 jobs**, warm mean 49.8 against cold 68.2 — which is what a **spurious**
+invalidation costs rather than what the cache saves, every cold run in that sample being
+one — rather than the projection this
 sentence carried; claim 3 has nothing to cache, because a chain is placement arithmetic
 rather than a simulation.
 
