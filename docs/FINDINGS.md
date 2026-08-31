@@ -171,6 +171,21 @@ the human-readable name within a window. Then a rename changes a spelling and no
 map is ever needed. This is the real fix and it is a change to the **contract model**, so it may
 not ride on a branch about one rule.
 
+*And the rule is enforced in one direction only, which whoever costs the third shape should have in
+front of them.* `accepted = (rule_id, *retired) if window.effective_from < renaming.since else
+(rule_id,)` — so a window opened **before** `since` accepts the canonical name as well as the
+retired ones. A 2025 window carrying `refuse_when_no_price_satisfies_every_guardrail`, a name that
+did not exist in 2025, resolves silently. That is F1's mirror: F1 was an old name accepted in a new
+window; this is a new name accepted in an old one, and the stated principle — *a window is read in
+the vocabulary of its own time* — covers both.
+
+**Deliberately not fixed on `contracts/floor-rule-id`.** The consequence is an anachronism in a
+contract document rather than a wrong value; the fix would cost a fourth full matrix on a branch
+that has had three; and the whole question disappears under the third shape, where a window's
+spellings are its own and there is no cross-window name to admit. It is recorded here rather than
+deferred separately because it is the same finding: one field doing two jobs, now visible from both
+sides.
+
 *What is not in question.* The refusal of a window carrying both spellings is right under all three
 shapes and stays wherever the resolution ends up living.
 
@@ -240,20 +255,26 @@ proposes it meets the refusal before the argument.
 apply all of them and push the result. That captures most of a merge queue's benefit with no
 engineering.
 
-*Revisit trigger, so this is a decision and not a deferral with no teeth:* **if any of phase 1's six
-remaining branches causes more than two full-matrix runs through incomplete work, the arithmetic
-changes and this reopens.**
+*The revisit trigger was written, restated and then retired inside a day, and the retirement is
+the measurement.* It read first *"more than two pushes"*, then *"more than two full-matrix runs
+through incomplete work"* — the second because a rebase forced by somebody else's merge is a push
+and is not waste, and counting it would penalise the discipline rather than the waste.
 
-*Restated the same day, before it was ever evaluated, because the first wording counted the wrong
-thing.* It read *"needs more than two pushes"*. A rebase forced by somebody else's merge is a
-second push and is not waste: the branch was pushed once, complete and green, which is what the
-practice asks, and counting it would penalise the discipline rather than the waste. What the trigger
-is actually about is a matrix run caused by work that was not finished.
+**`contracts/floor-rule-id` then ran the full matrix three times and every one was legitimate.**
+The first push complete and green; the second forced by `bec0e7f` landing on `main`; the third by a
+review finding that had to be fixed. **Not one was work pushed before it was finished** — which is
+precisely what the trigger counted — and roughly three hours of compute happened anyway.
 
-*And the case that produced the restatement is itself a measurement for the fixes above.* `bec0e7f`
-landing on `main` forced a rebase and a second full-matrix run of `contracts/floor-rule-id` — an
-hour, unavoidable **only because there is no merge queue**, since a queue rebases and runs once at
-the end. So it is not a trigger hit; it is another priced argument for the second fix.
+*So the trigger is withdrawn rather than restated a third time.* A condition that cannot fire on
+three hours of real waste is not a safety valve; it is a number that makes its author feel measured.
+What replaces it is not another trigger but the evidence it failed to capture: **one branch, three
+justified matrices, and a merge queue would have made it one.** That is a stronger argument for the
+second fix than the trigger ever was, and it came from the trigger failing rather than firing.
+
+The prior wordings stay per doctrine rule 4, and the delta is the finding: **a trigger is an
+assertion about what the system does, wearing a number instead of a verb** — and this one was
+written against the failure its author imagined rather than against the runs that actually
+happened.
 
 *Site:* `.github/workflows/ci.yml` :: `timeout-minutes: 90`
 *Disposition:* its own branch, before the first Terraform layer — phase 2 is where the push rate
