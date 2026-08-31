@@ -212,6 +212,17 @@ def _is_git_commit(segment: list[str]) -> bool:
 _NAMES_A_REPOSITORY = frozenset({"-C", "--git-dir", "--work-tree"})
 
 #: The same repositories, named through the environment rather than through a flag.
+#:
+#: **Three more were considered and tested, and none of them belongs here.** `GIT_COMMON_DIR`,
+#: `GIT_OBJECT_DIRECTORY` and `GIT_CEILING_DIRECTORIES` were each set alone, pointing at a second
+#: repository on `main`, with `git commit --allow-empty` run from a repository on a branch:
+#: **not one of them made the commit land in the other repository.** `GIT_COMMON_DIR` was the
+#: strongest candidate, because it exists *for worktrees* and worktrees are this function's
+#: subject; measured, it can break local ref resolution but it does not redirect the commit.
+#:
+#: The negative is written down because the next person will reach the same list — `GIT_COMMON_DIR`
+#: is the obvious fourth guess — and re-derive the same answer. A checked negative recorded is
+#: worth what a positive is; the cost of not recording it is that somebody runs it again.
 _ENVIRONMENT_NAMES_A_REPOSITORY = ("GIT_DIR=", "GIT_WORK_TREE=")
 
 #: Kept honest here rather than by memory. A flag that names a repository must be a flag that

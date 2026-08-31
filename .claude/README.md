@@ -115,6 +115,12 @@ a step toward guessing, so each is taken only when the one above has failed.
   each found by reviewing the fix for the one before. `_NAMES_A_REPOSITORY` is now a **subset of
   `_TAKES_A_VALUE`, asserted at import**, because two lists of flags in one file — each missing a
   member of the other — is how it got to three.
+- **`GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY` and `GIT_CEILING_DIRECTORIES` were tested and are
+  not on the list.** Set alone, pointing at a second repository on `main`, with a commit run from
+  a repository on a branch, **none of them made the commit land in the other repository.**
+  `GIT_COMMON_DIR` was the obvious candidate because it exists for worktrees; it can break local
+  ref resolution and it does not redirect. The negative is recorded so the next person does not
+  re-derive it.
 - That list is **an enumeration, not a proof**. A spelling not on it falls back to the session's
   directory, which is where the original defect lived — so a sixth is a hole of the same shape
   and belongs on the list. **And one case is not a spelling at all**: a target named outside the
