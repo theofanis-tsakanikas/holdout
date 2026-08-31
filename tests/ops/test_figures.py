@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import io
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -199,6 +200,31 @@ def _fabrications_of(text: str) -> tuple[list[str], list[str]]:
         if not (figures.REPO_ROOT / candidate).is_dir():
             fabricated.append(candidate)
     return ([f"the layout names {n!r} and no such directory exists" for n in fabricated], [])
+
+
+def test_the_layout_population_holds_nothing_git_ignores() -> None:
+    """The population is what git tracks, so it is the same on every machine.
+
+    The first version walked the working directory with a hand-written exclusion list and
+    counted 20 on the author's laptop against 19 on a clean checkout: `notes/` is gitignored
+    scratch, and it had been added to `CLAUDE.md`'s map as though it were repository content.
+    `make check` was green and CI was red — which is `CLAUDE.md`'s fourth form of the rule,
+    *where the number will be met on hardware that is not the author's, the measurement is taken
+    there*, inside the module written to enforce exactly that.
+    """
+    population = figures._layout_population()
+    assert population, "the population is empty, which means git could not be asked"
+
+    relative = [d.relative_to(figures.REPO_ROOT).as_posix() for d in population]
+    ignored = subprocess.run(
+        ["git", "check-ignore", *relative],
+        capture_output=True,
+        text=True,
+        cwd=figures.REPO_ROOT,
+    )
+    assert not ignored.stdout.strip(), (
+        f"the layout population holds paths git ignores: {ignored.stdout.strip()}"
+    )
 
 
 def test_a_target_outside_the_regex_is_refused(

@@ -353,14 +353,14 @@ LAYOUT_BLOCK = re.compile(r"^## Repository layout$(?P<body>.*?)^---$", re.MULTIL
 def layout_packages() -> int:
     """Every directory `CLAUDE.md`'s layout section must name, enumerated from the tree.
 
-    **The population, stated as a rule.** Every top-level directory that holds repository
-    content, plus every package under `src/holdout/`. Not every directory at any depth: the
-    section names `evals/` and `evals/gate_proof/` but not `evals/guardrail/`, and demanding
-    the rest would be inventing a requirement nobody stated. What it does demand is that a
-    package a reader would go looking for is findable in the map they were told to read first.
+    **The population, stated as a rule.** Every top-level directory **git tracks**, plus every
+    package under `src/holdout/`. Not every directory at any depth: the section names `evals/`
+    and `evals/gate_proof/` but not `evals/guardrail/`, and demanding the rest would be
+    inventing a requirement nobody stated. What it does demand is that a package a reader would
+    go looking for is findable in the map they were told to read first.
 
-    Excluded by name and not by accident: dot-directories other than `.claude`, which is the
-    only one that is repository content; `__pycache__`; and anything git does not track.
+    Nothing is excluded by name. `_layout_population` asks git, which is why `.github/` is in
+    the population and gitignored scratch is not — see the defect recorded there.
     """
     return len(_layout_population())
 
@@ -385,25 +385,45 @@ def layout_packages_named() -> int:
     return named
 
 
-def _ignored(path: Path) -> bool:
-    return path.name in {".venv", "venv", ".git"} or (path / ".git").exists()
+def _tracked_paths() -> list[str]:
+    """What git tracks, which is the only defensible answer to *what is repository content*."""
+    listing = _tool_output(["git", "ls-files"])
+    tracked = [line for line in listing.splitlines() if line.strip()]
+    if not tracked:
+        raise InstrumentMissingError(
+            "git ls-files returned nothing, so repository content cannot be enumerated. That is "
+            "an instrument that could not answer, not a repository with no files in it."
+        )
+    return tracked
 
 
 def _layout_population() -> list[Path]:
-    roots = [
-        d
-        for d in sorted(REPO_ROOT.iterdir())
-        if d.is_dir()
-        and (not d.name.startswith(".") or d.name == ".claude")
-        and d.name not in {"__pycache__", "node_modules"}
-        and not _ignored(d)
-    ]
-    packages = [
-        d
-        for d in sorted((REPO_ROOT / "src" / "holdout").rglob("*"))
-        if d.is_dir() and d.name != "__pycache__"
-    ]
-    return roots + packages
+    """Every top-level directory git tracks, plus every package under `src/holdout/`.
+
+    **Read from git rather than from the working directory, and that was a defect before it was
+    a rule.** The first version walked `REPO_ROOT.iterdir()` with a hand-written exclusion list
+    — `.venv`, `.git`, dot-directories other than `.claude`. It counted **20** on the author's
+    laptop and **19** on a clean checkout, because `notes/` is gitignored scratch that exists
+    on one machine and not the other, and it was added to `CLAUDE.md`'s map as though it were
+    repository content. CI caught it; `make check` could not, because the machine running it was
+    the machine the population was measured on.
+
+    That is `CLAUDE.md`'s fourth form of the rule — *where the number will be met on hardware
+    that is not the author's, the measurement is taken there* — inside the module written to
+    enforce it. Asking git removes the exclusion list and the judgment with it: `.github/` is
+    repository content by the same test as `.claude/`, and neither is in it because somebody
+    decided so.
+    """
+    tracked = _tracked_paths()
+    roots = sorted({part.split("/", 1)[0] for part in tracked if "/" in part})
+    packages = sorted(
+        {
+            str(Path(part).parent)
+            for part in tracked
+            if part.startswith("src/holdout/") and "/" in part
+        }
+    )
+    return [REPO_ROOT / r for r in roots] + [REPO_ROOT / p for p in packages]
 
 
 def claim_targets_that_exist() -> int:
@@ -497,7 +517,7 @@ COVERAGE: tuple[Coverage, ...] = (
     ),
     Coverage(
         "layout",
-        "every top-level content directory, plus every package under src/holdout/",
+        "every top-level directory git tracks, plus every package under src/holdout/",
         layout_packages,
         layout_packages_named,
         "the map in the file every session reads first. It omitted core/demand/ and the whole "

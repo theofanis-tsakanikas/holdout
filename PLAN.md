@@ -962,7 +962,25 @@ omission — turns it red at 19 of 20, and `tests/ops/test_figures.py` does exac
 >
 > **And the review made the same one-directional mistake.** §3a asked *is everything real listed*
 > and never asked *is everything listed real*, which is why a review about that section reported
-> five omissions and none of the three fabrications sitting beside them.
+> five omissions and none of the three fabrications sitting beside them. Three instances are now
+> recorded in `CLAUDE.md` **with no rule over them**, and the argument for waiting is written
+> beside them: a rule generalised at three would be scoped to the forms these three wear, which is
+> the mistake it would be about.
+
+**And then CI refused the gate, on the one defect `make check` structurally could not find.**
+`_layout_population` walked the working directory with a hand-written exclusion list, so it counted
+**20** on this laptop and **19** on the runner: `notes/` is gitignored scratch, and it had been
+added to the map as though it were repository content. Green locally, red on CI, and the local run
+could not have known — **the population was being enumerated on the machine the measurement was
+taken on.**
+
+That is `CLAUDE.md`'s fourth form of the rule — *where the number will be met on hardware that is
+not the author's, the measurement is taken there* — occurring **inside `ops/figures.py`**, the
+module that exists to enforce it. The exclusion list is gone: `_layout_population` asks **git**,
+which removes the judgment with it. `.github/` is repository content by the same test as `.claude/`
+and is now in both the population and the map, and neither is there because somebody decided so.
+A test pins the property — nothing git ignores may appear in the population — so the next version
+cannot drift back to the working directory.
 
 **Claim 4 was 11/11 in five places and the eval has never printed anything but 12/12.** `C12`
 arrived in the same commit that closed the claim, so the number was never right — not once, with no
@@ -997,7 +1015,7 @@ the orphan finding only for as long as nothing shared its date. A finding filed 
 same review broke it. That is `every-anchor-is-aimed-at-one-place` inside the test that guards the
 register, and it now selects by title.
 
-The suite is **980**.
+The suite is **981**.
 
 **A rule id named for what it measures, and a window read in its own vocabulary · 2026-08-31.**
 `contracts/floor-rule-id` closes the review's §7 half that T008 was empowered to move, with §3d's

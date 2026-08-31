@@ -131,6 +131,32 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**The layout's fabrication check assumes the declared-future block sits last** · found
+2026-08-31 · by oversight level 2 on `docs/the-documents-agree-with-the-code`
+`layout_fabrications` isolates the present-tense half as `body[: future.start()]`. That is
+everything **before** the declared-future heading, not everything **outside** the block. Move the
+block into the middle of the section — a reorganisation, not an accident — and every entry below it
+silently stops being checked for fabrication. The instrument examines less than it claims and
+nothing reports the shrinkage, which is the coverage rule against the coverage module.
+
+*Latent rather than live, and that is why it is filed rather than blocking.* It needs a deliberate
+reorganisation of the section. `#31`'s `F1` needed only somebody copying an older window, which is
+how contract windows actually get written — the difference between *somebody would have to decide
+to do this* and *this is how the thing is normally done* is the whole reason one blocked a merge and
+this does not.
+
+*The fix is one line:* take everything outside the block rather than everything before it.
+
+*Not moved by the cost of CI, in either direction.* At five-minute CI it would still be filed — a
+fourth round on a green branch for a latent one-liner is disproportionate at any speed — and the
+reviewing session applied that test before asking rather than after, which is the check against
+finding a good reason for the decision you already wanted.
+
+*Site:* `ops/figures.py` :: `present = body[: future.start()] if future else body`
+*Disposition:* the branch that next touches `layout_fabrications`, or `#9` if nothing else does
+first — one line, and it should not wait for a reason to exist
+*Status:* open
+
 **The closed registry calls itself complete and has no gate** · found 2026-08-31 · by
 `docs/the-documents-agree-with-the-code`, while acting on the review's count of three
 `TASKS.md`'s *Closed — the atoms that have landed* opens with *"kept so this file is the complete

@@ -750,11 +750,16 @@ ops/                   the rules the product code is measured by — the corpus 
                        each: a test and an eval), the deferral registry, the findings
                        register, the coverage gate and `roster.py`
 tests/                 the suite the gates run
-notes/                 working notes, not repository content
 docs/
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
+.github/               the five workflows — ci on every push, and the four that dispatch
 ```
+
+`notes/` is **not** in this map and is not repository content: it is gitignored scratch that
+exists on one machine and not on a clean checkout. It was listed here for about an hour, and CI
+is what said so — `make check` could not, because the population was being enumerated from the
+author's working directory rather than from what git tracks.
 
 **Declared and not yet built — phase 2 and later.** These are named because the layering is a
 decision already taken, and marked because a directory that does not exist may not be described in
@@ -1141,6 +1146,32 @@ detector. **Nothing catches it for hooks, barriers or tests**, and that is where
 > outside the net, which is what `make gate-proof`'s "no claim target with nothing planted against
 > it" makes structural at the target level and cannot make structural per check. Hooks, barriers and
 > tests remain uncovered, and the prior wording stays per doctrine rule 4.
+
+### Three one-directional checks, recorded without a rule over them — deliberately
+
+**A check that asks its question in one direction passes while the opposite defect sits in front
+of it.** Three instances, all on 2026-08-31:
+
+| | the check | what it could not see |
+|---|---|---|
+| `RENAMED_RULES` | an old spelling is valid *for this rule* | nothing scoped it to *when*, so a retired name resolved in a window opened after the rename — the branch's own purpose undone |
+| the `layout` coverage row | every directory that exists is named | a name matching **no** directory is never iterated over, so three fabricated entries sat in the map and the row read 20 = 20 |
+| `docs/reviews/phase-1.md` §3a | *is everything real listed* | *is everything listed real* — a review of that section reported five omissions and none of the three fabrications beside them |
+
+The third is the one worth reading twice: **it is the instrument that finds this class, failing in
+this class, on the section it was examining.**
+
+> **And there is deliberately no rule here, which is itself the decision.** Both sessions felt the
+> pull to write one — three instances plus the review failing on its own subject reads like
+> enough. It is not, and this repository's own history is the argument: *a guard tested by its
+> author* took **nine** instances before it stopped being restated, and **every early version was
+> scoped to whatever form the known cases happened to wear** — a sentence, then a number in
+> configuration, then a deferral. A rule written at three would be scoped to maps, contracts and
+> reviews, which is precisely the shape of the mistake it is about.
+>
+> So the instances stay recorded and unnamed. **The fourth, in a form none of these wears, is the
+> moment** — and this paragraph exists because the next session will feel the same pull, and the
+> argument for waiting is not visible from the three instances alone.
 
 ### And a fifth time, in a tool that was not installed — coverage is the variable
 
