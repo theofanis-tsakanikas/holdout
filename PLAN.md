@@ -1040,8 +1040,16 @@ lesson one layer down. Nulling the global config alone did **not** reproduce the
 falls back to an OS-derived name, and this machine has one. Forcing the name empty did reproduce
 it, and then went too far the other way: an *empty* `GIT_AUTHOR_NAME` overrides `-c user.name=…`,
 which the runner's *unset* variable does not, so it broke a pre-existing test that is fine on CI.
-That test now takes its identity through the environment too, and **the whole file passes a
-simulation strictly harsher than the runner.**
+That test now takes its identity through the environment too, and the whole file passes it.
+
+**And that claim is narrower than it first read, which is worth stating rather than trimming
+quietly.** *Strictly harsher than the runner* is true along **one axis — configuration**: global
+and system config nulled and the author name forced empty, all of which are stronger than the
+runner's unset variables. It is **not** established along the others. The runner has a different
+git version, a different platform and a different filesystem, and nulling config simulates none
+of them — which is precisely where `init.defaultBranch` and `templateDir` defaults have differed
+between git versions. **Strictly harsher in configuration; untested in version and platform, and
+the CI run is what settles those.**
 
 The suite is **994**.
 
