@@ -920,6 +920,59 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**The method leaves the conversation, and it is written by the session that was not there ·
+2026-08-31.** `skills/integration-review` closes `T008`. Oversight level 3 is now
+`.claude/skills/integration-review/` — a versioned procedure that goes through a pull request like
+everything else, rather than the ad hoc instructions the phase-1 review actually ran on.
+
+**The extraction rule is the opposite of the `claim` skill's, and deliberately.** `skills/claim/`
+was written from two closed claims by the sessions that closed them, because what it needed was
+samples. This needed the other thing: **a session with no memory of the run.** The two sessions
+that conducted the review are the worst placed to write down what it was, for the reason they are
+the best placed — a method written from memory by whoever executed it is a copy of them, and
+nothing afterwards can measure the difference between the two. So the session was opened cold,
+told where to look and nothing else, and asked not to enquire further; **whatever the record could
+not support was reported as a hole instead of supplied.** Seven of them are, and the largest is
+that no measurement of what a level-3 session costs exists anywhere, so the skill sets no budget
+and says so — `CLAUDE.md`'s rule about a number in configuration, applied to a number that is
+missing rather than wrong.
+
+**What the file is actually for is §4, and that is the part no participant would have written.**
+The eight questions are recoverable from `CLAUDE.md` and the report's own headings. What is not is
+the three places the phase-1 report was **wrong in its own report**: §2b concluding that the cache
+saved nothing by citing the one cold run of eleven that fell below the warm mean, §3a asking *is
+everything real listed* and never *is everything listed real*, and §2d — the ruleset — missed
+outright and found by the author an hour after it merged. Three failures, no two alike. **A
+procedure extracted from a run that only succeeded teaches the shape of success**, and a level-3
+session is the one activity in this repository with no gate behind it at all.
+
+**And the skill's own writing produced a finding, which is the argument for the phase boundary in
+one line.** `CLAUDE.md` says level 3 runs *at every phase boundary, without exception*; `TASKS.md`
+has `T016` and `T024` and nothing after phase 4. `PLAN.md` phrases each as *before the next phase
+opens*, so the absence agrees with this file and disagrees with `CLAUDE.md`, and no reader of any
+one of the three sees a defect. It is filed in `docs/FINDINGS.md`, adrift by declaration, because
+which document moves decides whether the phase that closes the project is ever read for drift —
+and that is the author's call, not a session's. **Level 3's own subject arrived while level 3's
+skill was being extracted**, which is what the phase boundary is for.
+
+**And the branch could not be committed until the guard it exposed had been fixed.**
+`.claude/hooks/main_guard.py` refused it twice, and the two refusals are one sentence: the guard was
+judged against something other than the command it refuses. First the wrong **directory** — it read
+the *session's* working directory, so a worktree provably on `skills/integration-review` was judged
+against the shared checkout's `main`. Then the wrong **text** — it refused a command running no git
+at all, because the file being written **quoted** a git command: an apostrophe unbalanced the lexer,
+the coarse fallback took over, and that fallback found a separator followed by `git` inside the
+prose. Its own comment named the second failure and said it was closed.
+
+**Both were found by trying to do this work rather than by looking for it**, which is the level-3
+property arriving on the branch of level 3's own skill. The drift was found by *using* the
+repository and not by reading it — the same shape as §2d, the largest thing the review missed, which
+no reading of `ci.yml` could have produced and which took asking the forge. Neither was worked
+around and neither was fixed here: they are recorded in `docs/FINDINGS.md` by `#34` and repaired by
+`#35`, which found two further spellings of the same defect while repairing it, and this branch
+waited rather than routing around a guarantee. **The first thing this repository's newest guard did
+was refuse the session that found its defect**, and the correct response to that was to wait.
+
 **The guard was judged against something other than the command it refuses · 2026-08-31.**
 `ops/main-guard-judges-the-command` fixes two defects in `.claude/hooks/main_guard.py`, found by a
 cold session and oversight level 2 and **authorised by the author** — a hook is registered in
