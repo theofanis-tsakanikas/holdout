@@ -920,6 +920,35 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**And the author settled the half that was never ours: real inputs, derived cost · 2026-08-31.**
+The prose sites were defects and got fixed. What was left was a judgment about the product — a
+corpus presented as real whose concrete benchmark is a construct the regulation does not use, either
+an acceptable declared limit or a claim the corpus should stop making. The decision: **wherever the
+corpus is described as a whole, the wording names all three parts** — real prices, real law, derived
+cost — and *real* does not stand alone with the derivation in a footnote.
+
+Six sites carry it. `docs/SCENARIO.md` and `CLAUDE.md` were checked and left: neither ever claimed
+the cost was observed, and the sweep is over places that overclaimed rather than over the word.
+
+*Why the wording and not the data.* No public source carries a retailer's cost and none will. There
+is no version of this corpus, rebuildable from published sources, in which the cost is observed — so
+the choice was never *fix it* or *leave it*, but **say what it is every time, or say it once and let
+the rest read as though everything were sourced.** The second is what was there: the README named
+three real things and omitted the cost, and the manifest header said every price, category and
+margin came from somebody else, which is true and silent about the number the envelope turns on.
+
+**And the founding finding closed through the mechanism** — `*Closed:*` with the transition, a
+`*Now:*` for each of its three sites, and the closing text held to the same exactly-once rule for as
+long as the entry exists. `1 open, 2 closed · closed and still held 4 line(s)`. The one still open
+is §4, adrift by design until somebody scopes it with the module in front of them.
+
+*And a test froze a status for the third time today.* `legal.is_open` was true when written and the
+finding legitimately closed. First `len(findings) == 2`, then a status — both true when written,
+both holding a **state that is supposed to move** rather than the property that must not. What must
+not move is that the two entries were filed open before any branch touched them, so their `found`
+dates are asserted and nothing else is. `make findings` prints open, closed, adrift and concurred;
+nothing asserts them, because every one of those numbers is supposed to change. The suite is **965**.
+
 **The legal claims restated, and the second half of the scope turned out to exist already ·
 2026-08-31.** `corpus/legal-claims-restated` closes the older of the register's two founding
 entries in part and the newer one whole.

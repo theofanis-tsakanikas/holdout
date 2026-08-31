@@ -5,6 +5,19 @@
 # and every margin below was published by somebody who has never seen this repository, and
 # `corpus/real/` imports nothing from `src/holdout/` — a test enforces that.
 #
+# **Real inputs, derived cost, and the second half is stated wherever the first is.** Everything
+# committed here is somebody else's published data. The unit cost claim 1's margins, floors and
+# caps are all measured against is **not** — no public source carries a retailer's cost, so it is
+# derived from a sector median under `derived:` below, with the arithmetic, the direction it errs
+# in and what it is not written out. So the accurate description of what claim 1 is driven by is
+# **real prices, real law, derived cost**, and this file uses those words rather than letting
+# *real* stand alone with the derivation in a footnote.
+#
+# *Restated 2026-08-31.* This header said every price, category and margin was published by
+# somebody else, which is true, and said nothing about the cost, which is the number the whole
+# envelope turns on. A provenance record that names only what it can source reads as though it
+# sourced everything.
+#
 # **Restated 2026-08-29 (T006).** This directory now holds two corpora, not one. The second
 # answers claim 7's trap, which is the same trap in different clothes: *a list of
 # person-shaped words written by whoever also wrote the field names is one function agreeing

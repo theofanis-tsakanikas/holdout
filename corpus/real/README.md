@@ -5,6 +5,21 @@ agreeing with itself*. This directory is the answer to it: real retail prices, a
 regulated-goods list and a real industry margin, all published by people who have never seen
 this repository.
 
+> **Real inputs, derived cost — and the second half is not a footnote.** Everything committed
+> here was published by somebody else and is digest-checked. **The unit cost is not.** No public
+> source carries a retailer's cost, so `evals/guardrail/build.py` derives one —
+> `unit_cost = price × (1 − m)`, with `m` a sector median — and every margin, every floor and
+> every cap in claim 1 rests on it. So the accurate description of what claim 1 is driven by is
+> **real prices, real law, derived cost**, and this file uses those words rather than *real*
+> alone wherever the corpus as a whole is described. Prices, price endings, dispersion,
+> markdowns, the regulated list and the margin statistic are real. The cost is a construct, and
+> naming it every time is cheaper than one reader taking the wrong half on trust.
+>
+> *Restated 2026-08-31.* The paragraph above named three real things and did not mention the
+> cost at all, so a reader could take the whole directory as observed. That is the same defect
+> `docs/FINDINGS.md`'s first entry records at four other sites — the corpus claiming, in the
+> place it claims realism, more than it has.
+
 **Two corpora since 2026-08-29, not one.** Claim 7's trap is the same trap in different
 clothes — *a list of person-shaped words written by whoever also wrote the field names is one
 function agreeing with itself* — so the words are not ours either. Two published vocabularies

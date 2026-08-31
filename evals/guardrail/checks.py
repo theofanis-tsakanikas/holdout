@@ -1,4 +1,14 @@
-"""The attack. Real prices in, and one question: does a price ever escape the envelope?
+"""The attack. Real prices in, derived cost with them, and one question: does a price ever
+escape the envelope?
+
+**Real inputs, derived cost**, said here because this is the file that turns one into the other.
+The prices, the price endings, the dispersion across 811 outlets, the markdowns and the regulated
+list are all published by people who have never seen this repository. The unit cost every margin
+here is measured against is **not observed** — no public source carries a retailer's cost, so
+`build.py` derives one from a sector median and `corpus/real/MANIFEST.yaml` argues which way it
+errs. What claim 1 proves is that the machinery honours whatever envelope it is handed; it does
+not prove the envelope's numbers are the right numbers, and the derived cost is the largest of
+the numbers it does not prove.
 
 Seven checks. Each is a sentence that would be false if the check failed, each carries a
 number whether it passes or not, and each has an id that `make gate-proof` names.

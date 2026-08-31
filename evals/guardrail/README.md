@@ -16,6 +16,12 @@ make eval-guardrail   the eval alone, about ten seconds
 
 ## 1 · What is attacked
 
+**Real prices, real law, derived cost.** The quotes, the price endings, the dispersion, the
+markdowns and the regulated list are published by people who have never seen this repository; the
+unit cost the margins are measured against is derived from a sector median because no public source
+carries a retailer's cost. Both halves are stated wherever the corpus is described, rather than
+*real* standing alone with the cost in a footnote.
+
 Every quote in `corpus/real/` is turned into a decision this system would have had to take,
 and driven through `certify` against eight envelopes. Then one question, asked ten ways:
 **does a price ever escape?**

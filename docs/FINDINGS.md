@@ -167,11 +167,24 @@ one entry covering both meant one anchor answering for two defects.
 reproducing the decision's full text on 2026-08-31 and reports both articles verbatim. Not the
 gazette, not opened here, and nothing above depends on it.
 
+*How the scenario half was settled, which was not ours to settle.* The prose sites are defects and
+were fixed. What was left is a judgment about the product: a corpus presented as real, whose
+concrete benchmark is a construct the regulation does not use, is either an acceptable declared
+limit or a claim the corpus should stop making. The author decided: **real inputs, derived cost** —
+the wording becomes precise everywhere the corpus is described, and *real* does not stand alone with
+the derivation in a footnote. Six sites carry it now: this directory's README and `__init__`, the
+manifest header, the attack's own docstring in `evals/guardrail/checks.py`, the eval's README, and
+`docs/SCENARIO.md`. The prices, endings, dispersion, markdowns, regulated list and margin statistic
+are real; the unit cost is a construct, and it is named as one every time.
+
 *Site:* `corpus/real/README.md` :: `That alignment is not a`
 *Site:* `corpus/real/MANIFEST.yaml` :: `Eurostat's ratio is gross margin on goods for resale over turnover,`
 *Site:* `evals/guardrail/build.py` :: `The published 2025 gross margin`
 *Disposition:* branch `corpus/legal-claims-restated`
-*Status:* open
+*Closed:* 2026-08-31 — `corpus/legal-claims-restated` landed. The four sites are restated with their prior wording kept beside them per doctrine rule 4; the corpus's benchmark is named `sector_wide_benchmark()` at every call site rather than reshaped, because the per-code shape was already in the core; and the author decided the scenario half — *real inputs, derived cost*, stated wherever the corpus is described rather than *real* alone with the derivation in a footnote. Claim 1's output is bit-identical to `b7ab2ae` over 232,373 decisions, sha256 `22a6daea…`.
+*Now:* `corpus/real/README.md` :: `So the accurate description of what claim 1 is driven by is`
+*Now:* `corpus/real/MANIFEST.yaml` :: `It is a corpus device for deriving a plausible`
+*Now:* `evals/guardrail/build.py` :: `A sector median over 2008-2020, standing in for a quantity no public dataset contains.`
 
 **The finding miscites the article it rests on** · found 2026-08-31 · by the reviewing session
 Split out of the entry above on 2026-08-31. `PLAN.md`'s record of oversight level 2's third

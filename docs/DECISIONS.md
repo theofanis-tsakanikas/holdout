@@ -467,6 +467,36 @@ closed costs the session. The one exception is `main_guard` on a command line it
 tokenise, where it falls back to a coarser match and refuses: an unbalanced quote is the single
 case where guessing in the safe direction costs only a retry.
 
+**Real inputs, derived cost — the corpus stops saying *real* on its own.** · 2026-08-31
+The author's decision on the half that was never ours: a corpus presented as real, whose concrete
+benchmark is a construct the regulation does not use, is not left as a declared limit in a footnote.
+**Wherever the corpus is described as a whole, the wording names all three parts** — real prices,
+real law, derived cost — and *real* does not stand alone.
+
+Six sites carry it: `corpus/real/README.md` and its `__init__`, the `MANIFEST.yaml` header,
+`evals/guardrail/checks.py`'s own docstring (the file that turns real inputs into derived cost),
+`evals/guardrail/README.md`, and `docs/SCENARIO.md`.
+
+*Why the wording rather than the data.* No public source carries a retailer's cost and none ever
+will — it is what a buyer negotiates. So there is no version of this corpus that anybody can rebuild
+from published sources in which the cost is observed. The choice was never *fix the cost* or *leave
+it*; it was **say what it is every time, or say it once and let the rest of the file read as
+though everything were sourced.** The second is what was there: `README.md` named three real things
+and omitted the cost, and `MANIFEST.yaml`'s header said every price, category and margin came from
+somebody else — true, and silent about the number the whole envelope turns on. A provenance record
+that names only what it can source reads as though it sourced everything.
+
+*What did not change:* `docs/SCENARIO.md` already said *"from which the corpus derives a unit cost.
+A retailer's cost is not public"*, and `CLAUDE.md`'s two mentions say *price lists* and *claim 1's
+prices* — none of the three ever claimed the cost was observed, so none was edited. The sweep is
+over places that overclaimed, not over the word.
+
+*And the finding closed through the mechanism.* `docs/FINDINGS.md`'s founding entry carries
+`*Closed:* 2026-08-31` with the transition, and a `*Now:*` for each of its three sites — so the text
+that closed it is held to the same exactly-once rule for as long as the entry exists. A revert turns
+the register red on the entry that already knows about the defect. `1 open, 2 closed · closed and
+still held 4 line(s)`.
+
 **The corpus's benchmark is named rather than reshaped, because the shape was already there.**
 · 2026-08-31
 `corpus/legal-claims-restated` was scoped as *fix the prose, and give the eval's benchmark the shape

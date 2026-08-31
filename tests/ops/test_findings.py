@@ -265,10 +265,22 @@ def test_the_two_founding_findings_were_entered_before_their_fixes() -> None:
     legal, orphan = by_date[0], by_date[1]
     assert legal.found == date(2026, 8, 27), "the legal finding predates the register"
     assert orphan.found == date(2026, 8, 30), "§4 predates it too"
-    assert legal.is_open, "the corpus claims are open until the benchmark half lands"
     assert len(legal.sites) >= 3, "it names every site it is acted on"
-    assert not legal.is_adrift, "it has a branch"
+    assert not legal.is_adrift, "it had a branch from the day it was filed"
     assert orphan.is_adrift, "§4 has no branch, and that is the state it is here to hold"
+
+
+# Nothing above asserts a *status*, and that is deliberate.
+#
+# This test has now been rewritten twice by legitimate changes to the registry it watches. First
+# it froze `len(findings) == 2` and a split turned it red. Then it asserted `legal.is_open` and
+# the finding closed. Both were true when written and both were the same mistake: a test holding
+# a **state that is supposed to move** instead of the property that must not.
+#
+# What must not move is that these two entries were filed open, before any branch touched them —
+# `gate-proof`'s green-first rule, which is why their `found` dates are asserted and their
+# statuses are not. `make findings` prints open, closed, adrift and concurred; nothing asserts
+# them, because every one of those numbers is supposed to change.
 
 
 def test_every_closed_finding_restates_each_of_its_sites() -> None:
