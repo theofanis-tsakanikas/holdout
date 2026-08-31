@@ -951,7 +951,25 @@ was an instruction to the next session, and this is the next session declining t
 the six worlds is the large safe win, a merge queue is second, and **path filtering is refused by
 name** — it buys back a claim that silently does not run. Its own branch, before the first Terraform
 layer. The practice adopted today at no cost: finish locally, run the gates, **push once**. The
-suite is **975**, measured after the rebase rather than added up across two branches.
+suite is **978**. It was written as 975 and then as 976, each a real measurement that my own next
+edit made stale — which is the *measurement that went stale* form of the rule rather than the
+projection form, and the second time in one session that this entry's own subject bit its author.
+
+**And oversight level 2 found the mechanism had no time bound.** As first written, `RENAMED_RULES`
+was keyed by guardrail and canonical id alone. Nothing scoped an old spelling to *when* it was
+valid, so a window opened in **2027** carrying the retired id resolved without complaint — the
+retired name alive and in force in a window written months after the branch that retired it, which
+is this branch's whole purpose undone. Nothing else catches it: `ops/personhood.py` reads dataclass
+fields rather than the YAML, and the both-spellings guard does not fire when only one is present.
+It reproduced before it was fixed. `Renaming` now carries `since`, and both halves are tested —
+the refusal, and the historical window still resolving, so the fix is a time bound and not a ban.
+
+**And the fix tripped two of this repository's own gates on the way through, which is the part
+worth keeping.** `make findings` reported `MOVED` because the anchored line was rewritten; the
+finding was not fixed — the map got *more* elaborate — so the anchor was re-aimed and the reason
+written down. Then the new `Renaming` type was refused by the closed field set until it was written
+into `ops/personhood.py`, which is claim 7's guard doing exactly what it says on a type that
+appeared an hour ago.
 **A check is armed, or it says why it cannot be · 2026-08-31.** `evals/unarmed-checks` closes the
 review's §1. `ledger.every-claim-target-owns-a-gate` asked the question at target level, which one
 mutation satisfies for a claim with twelve checks — leaving **21 of 57 checks with no mutation and 8

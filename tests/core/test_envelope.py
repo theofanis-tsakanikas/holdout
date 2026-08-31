@@ -767,3 +767,58 @@ def test_a_window_carrying_neither_spelling_is_refused(contracts: ContractSet) -
 
     with pytest.raises(EnvelopeError, match="no rule"):
         envelope_as_of(_floor_with(contracts, stripped), on=DECIDED_ON, path=DecisionPath.MARKDOWN)
+
+
+def test_a_window_opened_after_the_rename_may_not_carry_the_old_id(
+    contracts: ContractSet,
+) -> None:
+    """The retired name is readable in the windows that were open when it was the name.
+
+    Found by oversight level 2 on this branch, and it reproduced before it was fixed: the map
+    was keyed by guardrail and canonical id alone, with nothing scoping it to *when* the old
+    spelling was valid. A window written in 2027 — by copying an older one, which is how
+    contract windows actually get written — carrying the retired id resolved without complaint,
+    which undoes the rename the mechanism exists to serve.
+
+    Nothing else catches it. `ops/personhood.py` reads dataclass fields rather than the YAML,
+    and the both-spellings guard does not fire when only one spelling is present.
+    """
+    floor = next(g for g in contracts.guardrails if g.id == "floor")
+    live = next(w for w in floor.windows if w.effective_to is None)
+    canonical = live.rule("refuse_when_no_price_satisfies_every_guardrail")
+    assert canonical is not None
+
+    future = dataclasses.replace(
+        live,
+        effective_from=date(2027, 1, 1),
+        rules=tuple(
+            dataclasses.replace(r, id="refuse_when_no_legal_price_sells") if r is canonical else r
+            for r in live.rules
+        ),
+    )
+    patched = dataclasses.replace(
+        floor,
+        windows=(
+            *(
+                dataclasses.replace(w, effective_to=date(2027, 1, 1)) if w is live else w
+                for w in floor.windows
+            ),
+            future,
+        ),
+    )
+    guardrails = [patched if g.id == "floor" else g for g in contracts.guardrails]
+
+    with pytest.raises(EnvelopeError, match="was retired on"):
+        envelope_as_of(guardrails, on=date(2027, 6, 1), path=DecisionPath.MARKDOWN)
+
+
+def test_the_window_that_was_open_when_it_was_the_name_still_resolves(
+    contracts: ContractSet,
+) -> None:
+    """The other half, so the fix is a time bound rather than a ban.
+
+    Without this the previous test passes on a mechanism that simply refuses the old spelling
+    everywhere — which would break every historical decision on the corpus.
+    """
+    closed = envelope_as_of(contracts.guardrails, on=date(2026, 4, 1), path=DecisionPath.MARKDOWN)
+    assert closed.floor.refuse_when_no_price_satisfies_every_guardrail

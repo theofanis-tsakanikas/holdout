@@ -96,6 +96,7 @@ from holdout.core.guardrails.envelope import (
     MaxDeltaRule,
     PriceBounds,
     PriorPriceRule,
+    Renaming,
 )
 from holdout.core.ladder import LadderQuote
 from holdout.core.money import Money
@@ -221,6 +222,12 @@ FIELDS_ON_THE_DECISION_PATH: dict[type[Any], frozenset[str]] = {
     RightCensored: frozenset({"at_least", "stocked_out_from_hour"}),
     AvailabilityCurve: frozenset({"window", "units_by_hour", "days"}),
     DemandEstimate: frozenset({"at_least", "units", "censored", "observed_share"}),
+    # Not on the decision path: `Renaming` is contract bookkeeping — what a guardrail rule
+    # used to be called and from when — and it never reaches a price, a proposal or a key.
+    # Listed anyway, for the reason this file's docstring gives. It arrived on
+    # `contracts/floor-rule-id` and this registry is what refused it until it was written
+    # down, which is the guard doing exactly what claim 7 says it does.
+    Renaming: frozenset({"since", "previously"}),
     # ------------------------------------------------------- the design engine
     #
     # Not on the decision path: an experiment design is about *which* units get *which

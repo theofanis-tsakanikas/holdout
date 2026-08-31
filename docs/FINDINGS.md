@@ -174,7 +174,23 @@ not ride on a branch about one rule.
 *What is not in question.* The refusal of a window carrying both spellings is right under all three
 shapes and stays wherever the resolution ends up living.
 
-*Site:* `src/holdout/core/guardrails/envelope.py` :: `RENAMED_RULES: dict[tuple[GuardrailId, str], tuple[str, ...]] = {`
+*The map got a time bound before it shipped, and the review is what found it missing.* As first
+written, `RENAMED_RULES` was keyed by guardrail and canonical id alone, with nothing scoping an old
+spelling to *when* it was valid — so a window opened in 2027 carrying the retired id resolved
+without complaint, undoing the rename the mechanism exists to serve. It reproduced before it was
+fixed. `Renaming` now carries `since`, an old spelling is readable only in a window that opened
+before it, and `tests/core/test_envelope.py` holds both halves — the refusal, and the historical
+window still resolving, so the fix is a time bound rather than a ban. **The mechanism being a
+symptom is unchanged by that, and is the finding.**
+
+*Anchor re-aimed 2026-08-31, and the gate is what asked.* `make findings` reported `MOVED` when
+`RENAMED_RULES` changed type from `tuple[str, ...]` to `Renaming` under this branch's own F1 fix.
+The register says an anchor vanishing means the site was **rewritten** rather than restated, and
+that only a person can say whether the finding was fixed. It was not: the map still exists, an id
+still does two jobs, and the fix made the map *more* elaborate rather than less. So the anchor moves
+to the line that carries it now.
+
+*Site:* `src/holdout/core/guardrails/envelope.py` :: `RENAMED_RULES: dict[tuple[GuardrailId, str], Renaming] = {`
 *Disposition:* its own branch, unlocked when **the contracts move in phase 2** — the event
 `docs/DECISIONS.md` already declares for *"the generated SQL has never been executed"*: `phase 2,
 when gold is built. If gold does not match, the contracts move`. That is the moment the contract
