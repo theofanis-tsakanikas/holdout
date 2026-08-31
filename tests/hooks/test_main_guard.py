@@ -12,6 +12,7 @@ only git can answer and stubbing it would test the stub.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -38,7 +39,12 @@ def _module() -> Any:
 
 def _repo(path: Path, branch: str) -> Path:
     path.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "init", "-b", branch, "-q"], cwd=path, check=True)
+    subprocess.run(
+        ["git", "init", "-b", branch, "-q"],
+        cwd=path,
+        check=True,
+        env={**os.environ, **_ISOLATED},
+    )
     return path
 
 
@@ -133,26 +139,24 @@ def test_a_command_it_cannot_tokenise_is_refused_rather_than_waved_through(
 def test_a_detached_head_is_not_on_main(fire: Callable[..., Any], tmp_path: Path) -> None:
     """Detached is not `main`, so there is nothing to refuse — and saying so is the honest answer."""
     repo = _repo(tmp_path / "detached", "main")
+    # `-c user.name=…` was the previous shape here and an **empty** `GIT_AUTHOR_NAME` in the
+    # environment overrides config, so the identity goes through the environment instead —
+    # the one place it cannot be overridden from outside.
+    _root_commit(repo)
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, **_ISOLATED},
+    ).stdout.strip()
     subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.email=t@e.st",
-            "-c",
-            "user.name=t",
-            "commit",
-            "-q",
-            "--allow-empty",
-            "-m",
-            "root",
-        ],
+        ["git", "checkout", "-q", head],
         cwd=repo,
         check=True,
+        env={**os.environ, **_ISOLATED},
     )
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
-    ).stdout.strip()
-    subprocess.run(["git", "checkout", "-q", head], cwd=repo, check=True)
     fired = fire(HOOK, _bash("git commit -m 'x'", repo), cwd=repo)
     assert fired.code == 0, fired.stderr
 
@@ -187,8 +191,48 @@ def test_it_fails_open_on_input_it_cannot_read(fire: Callable[..., Any], on_main
 # requires and the one nothing had ever been run against.
 
 
+#: Everything these repositories need, supplied rather than inherited — **including the absence
+#: of everything else.**
+#:
+#: The identity is the symptom: the runner has no global `user.name`, so `git commit` exits 128
+#: there and passes on any machine whose author happens to be set. That is `CLAUDE.md`'s fourth
+#: form of the rule — *the measurement is taken on the hardware that will run it* — in tests
+#: written to close two other instances of it, and it made a red that looked like the fix being
+#: wrong when the fix was right.
+#:
+#: `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` pointed at `/dev/null` are the rest of it, and
+#: they are the actual repair: the identity alone fixes the one symptom that fired, while these
+#: make the fixture independent of the machine's git configuration entirely. `init.templateDir`,
+#: `core.hooksPath` and `init.defaultBranch` could each change what `git init` produces, and
+#: `-b` already pins the branch — but pinning one of three and inheriting two is how the first
+#: version of this passed here and failed there.
+_ISOLATED = {
+    "GIT_AUTHOR_NAME": "t",
+    "GIT_AUTHOR_EMAIL": "t@example.invalid",
+    "GIT_COMMITTER_NAME": "t",
+    "GIT_COMMITTER_EMAIL": "t@example.invalid",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_SYSTEM": os.devnull,
+}
+
+
+def _root_commit(repo: Path) -> None:
+    """A repository needs a commit before a worktree can be added to it."""
+    subprocess.run(
+        ["git", "commit", "-q", "--allow-empty", "-m", "root"],
+        cwd=repo,
+        check=True,
+        env={**os.environ, **_ISOLATED},
+    )
+
+
 def _worktree(of: Path, at: Path, branch: str) -> Path:
-    subprocess.run(["git", "worktree", "add", "-q", str(at), "-b", branch], cwd=of, check=True)
+    subprocess.run(
+        ["git", "worktree", "add", "-q", str(at), "-b", branch],
+        cwd=of,
+        check=True,
+        env={**os.environ, **_ISOLATED},
+    )
     return at
 
 
@@ -201,7 +245,7 @@ def test_a_commit_into_a_worktree_on_a_branch_is_allowed(
     The old version read `event["cwd"]`, found `main`, and refused — blocking exactly the
     workflow two sessions sharing a repository are required to use.
     """
-    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    _root_commit(on_main)
     tree = _worktree(on_main, tmp_path / "wt", "ops/somewhere")
     assert fire(HOOK, _bash(f"git -C {tree} commit -m 'x'", on_main)).code == 0
 
@@ -215,7 +259,7 @@ def test_a_commit_into_the_checkout_on_main_is_refused_from_a_branch(
     version judged the session's directory, found a branch, and let it through — the guard
     permitting exactly what it exists to prevent.
     """
-    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    _root_commit(on_main)
     tree = _worktree(on_main, tmp_path / "wt", "ops/elsewhere")
     assert fire(HOOK, _bash(f"git -C {on_main} commit -m 'x'", tree)).code == 2
 
@@ -229,7 +273,7 @@ def test_the_environment_names_a_repository_too(
     `_is_git_commit`'s skip — and the third forgot they exist. Found by review of the fix, which
     is the original defect surviving its own repair in a different spelling.
     """
-    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    _root_commit(on_main)
     tree = _worktree(on_main, tmp_path / "wt", "ops/env")
     assert fire(HOOK, _bash(f"GIT_DIR={on_main}/.git git commit -m 'x'", tree)).code == 2
     assert (
@@ -254,7 +298,7 @@ def test_every_spelling_that_names_a_repository_is_read(
     two lists of flags in one file, each missing a member of the other, is how this reached a
     third instance.
     """
-    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    _root_commit(on_main)
     tree = _worktree(on_main, tmp_path / "wt", "ops/spellings")
     for command in (
         f"git -C {on_main} commit -m 'x'",
@@ -282,7 +326,7 @@ def test_the_environment_can_also_name_a_safe_repository(
     on_main: Path, tmp_path: Path, fire: Callable[..., Any]
 ) -> None:
     """The mirror, so the fix refuses the **right** repository rather than merely more of them."""
-    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    _root_commit(on_main)
     tree = _worktree(on_main, tmp_path / "wt", "ops/mirror")
     assert fire(HOOK, _bash(f"GIT_DIR={tree}/.git git commit -m 'x'", on_main)).code == 0
 

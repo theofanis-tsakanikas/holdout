@@ -1016,6 +1016,33 @@ run is the only thing the fix depends on: the second repository's commit count n
 Not filed as a finding: it is a question about git's behaviour with no bearing on this repository,
 and the register would be carrying something it cannot close.
 
+**And CI refused the branch on a defect in the tests rather than in the fix — the third instance
+of that family today, and the pointed one.** `tests/hooks/test_main_guard.py` creates real
+repositories and commits into them, and **the runner has no global git identity**, so `git commit`
+exits 128 there. They passed here because this machine has one.
+
+    _layout_population   counted `notes/`, which exists on this disk and on no clean checkout
+    the probe harness    assumed its cwd was on `main`, which had stopped being true
+    these tests          assumed a git identity, which is a property of the machine
+
+**The third is the sharpest: the tests proving the guard works could not run where the guard's CI
+runs.** A guard verified only on its author's machine is most of the way back to where the branch
+started.
+
+**The repair is isolation rather than the symptom.** Supplying the identity fixes the one thing
+that fired; `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` pointed at `/dev/null` make the fixture
+independent of the machine's git configuration entirely — `init.templateDir`, `core.hooksPath` and
+`init.defaultBranch` could each change what `git init` produces, and **pinning one of three while
+inheriting two is how the first version passed here and failed there.**
+
+**And the simulation of the runner was wrong twice before it was right**, which is the same
+lesson one layer down. Nulling the global config alone did **not** reproduce the failure — git
+falls back to an OS-derived name, and this machine has one. Forcing the name empty did reproduce
+it, and then went too far the other way: an *empty* `GIT_AUTHOR_NAME` overrides `-c user.name=…`,
+which the runner's *unset* variable does not, so it broke a pre-existing test that is fine on CI.
+That test now takes its identity through the environment too, and **the whole file passes a
+simulation strictly harsher than the runner.**
+
 The suite is **994**.
 
 **The cache was never measured, and the branch that would have measured it never existed ·
