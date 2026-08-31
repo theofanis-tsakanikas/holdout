@@ -648,6 +648,71 @@ def floor_failures() -> tuple[list[str], list[str]]:
     return [], []
 
 
+#: The sub-block of the layout section that names directories on purpose before they exist.
+#: Isolated by its own declared heading rather than by guessing which names are aspirational —
+#: `make language` excludes paths the same way, by a written reason rather than by a rule that
+#: has to be inferred.
+LAYOUT_DECLARED_FUTURE = re.compile(
+    r"^\*\*Declared and not yet built.*?$(?P<body>.*)", re.MULTILINE | re.DOTALL
+)
+
+#: A `name/` at the start of a line in the layout block, or indented under a parent.
+LAYOUT_ENTRY = re.compile(r"^(?P<indent>\s*)(?P<name>[A-Za-z_.][\w./-]*)/", re.MULTILINE)
+
+
+def layout_fabrications() -> tuple[list[str], list[str]]:
+    """Every directory the layout names must exist, outside the declared-future block.
+
+    **The other direction, and the review missed it for the same reason a one-sided gate
+    would.** `docs/reviews/phase-1.md` §3a asked *is everything real listed* and never asked
+    *is everything listed real* — so a section whose defects were five omissions and three
+    fabrications was reported as five omissions. The coverage row above catches the first kind;
+    nothing catches the second, because a name matching no directory is never iterated over and
+    contributes to neither side of the comparison.
+
+    **Over-coverage in a map is not over-coverage.** The one-sided rule is about a *tool*
+    examining more than exists, which is a tool doing more than it was asked. A map naming a
+    directory that does not exist sends its reader looking for something that is not there,
+    which is worse than an omission rather than harmless.
+    """
+    text = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    block = LAYOUT_BLOCK.search(text)
+    if block is None:
+        return [], [
+            "layout: CLAUDE.md has no `## Repository layout` section in the shape this module "
+            "reads it, so what the map names cannot be checked."
+        ]
+    body = block.group("body")
+    future = LAYOUT_DECLARED_FUTURE.search(body)
+    present = body[: future.start()] if future else body
+
+    fabricated: list[str] = []
+    parent = ""
+    for entry in LAYOUT_ENTRY.finditer(present):
+        name = entry.group("name")
+        # An indented line names a child of the last unindented one — `evals/` then
+        # `gate_proof/` means `evals/gate_proof`. Resolved against that parent rather than by
+        # leaf name anywhere in the tree, which would accept a real directory in the wrong place.
+        if entry.group("indent"):
+            candidate = f"{parent.rstrip('/')}/{name}" if parent else name
+        else:
+            candidate = name
+            parent = name
+        if not (REPO_ROOT / candidate).is_dir():
+            fabricated.append(candidate)
+    if not fabricated:
+        return [], []
+    return (
+        [
+            f"the layout names {name!r} and no such directory exists. Either build it, or move "
+            "it under 'Declared and not yet built' where a name without a directory is the "
+            "point rather than a mistake."
+            for name in sorted(set(fabricated))
+        ],
+        [],
+    )
+
+
 def rows() -> tuple[list[Row], list[str]]:
     found: list[Row] = []
     missing: list[str] = []
@@ -672,8 +737,9 @@ def rows() -> tuple[list[Row], list[str]]:
 
 def report(found: list[Row], missing: list[str], out: TextIO) -> int:
     floors, floor_missing = floor_failures()
+    fabricated, fabricated_missing = layout_fabrications()
     prose, prose_missing = prose_failures()
-    missing = [*missing, *floor_missing, *prose_missing]
+    missing = [*missing, *floor_missing, *fabricated_missing, *prose_missing]
     print("figures  a gate reports on what it examined; this is the difference", file=out)
     print("", file=out)
     print(f"  {'gate':<18} {'exists':>7} {'examined':>9}   population", file=out)
@@ -695,6 +761,19 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         print("FAIL    a declared floor does not match what exists", file=out)
         for line in floors:
             print(f"        {line}", file=out)
+        print("", file=out)
+    if fabricated:
+        print(
+            f"FAIL    the layout names {len(fabricated)} directory(ies) that do not exist", file=out
+        )
+        for line in fabricated:
+            print(f"        {line}", file=out)
+        print(
+            "        A map is wrong in two directions. Omitting what exists makes a reader "
+            "miss something;",
+            file=out,
+        )
+        print("        naming what does not sends them looking for it.", file=out)
         print("", file=out)
     if missing:
         print("FAIL    an instrument could not answer, which is not a count of zero", file=out)
@@ -719,7 +798,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         )
         print("        as if it were what exists.", file=out)
         return 1
-    if missing or floors or prose:
+    if missing or floors or fabricated or prose:
         return 1
 
     print(f"  {len(PROSE)} figure(s) in prose re-run and unchanged", file=out)

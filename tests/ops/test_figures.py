@@ -155,6 +155,52 @@ def test_a_package_the_layout_does_not_name_is_refused(
     assert "layout" in output
 
 
+def test_a_directory_the_layout_invents_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The other direction, which the coverage row structurally cannot see.
+
+    `layout_packages_named` iterates the directories that exist and counts how many the section
+    names. A name matching no directory is never iterated over, so it contributes to neither
+    side and the row stays green — which is how `pipelines/`, `infra/` and `experiments/` sat in
+    the present-tense block while a review about that very section reported only omissions.
+    """
+    claude = (figures.REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    real = "tests/                 the suite the gates run\n"
+    assert real in claude, "the layout no longer names tests/ in the shape this test edits"
+    invented = real + "infra/                 bootstrap · foundation · sources · lakehouse\n"
+
+    monkeypatch.setattr(
+        figures,
+        "layout_fabrications",
+        lambda: _fabrications_of(claude.replace(real, invented)),
+    )
+
+    code, output = _run()
+    assert code == 1
+    assert "do not exist" in output
+    assert "infra" in output
+
+
+def _fabrications_of(text: str) -> tuple[list[str], list[str]]:
+    """`layout_fabrications` against supplied text rather than the file on disk."""
+    block = figures.LAYOUT_BLOCK.search(text)
+    assert block is not None
+    body = block.group("body")
+    future = figures.LAYOUT_DECLARED_FUTURE.search(body)
+    present = body[: future.start()] if future else body
+    fabricated: list[str] = []
+    parent = ""
+    for entry in figures.LAYOUT_ENTRY.finditer(present):
+        name = entry.group("name")
+        if entry.group("indent"):
+            candidate = f"{parent.rstrip('/')}/{name}" if parent else name
+        else:
+            candidate = name
+            parent = name
+        if not (figures.REPO_ROOT / candidate).is_dir():
+            fabricated.append(candidate)
+    return ([f"the layout names {n!r} and no such directory exists" for n in fabricated], [])
+
+
 def test_a_target_outside_the_regex_is_refused(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

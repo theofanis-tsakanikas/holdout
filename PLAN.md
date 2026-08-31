@@ -934,12 +934,35 @@ exist**, in the same present-tense block. Those are now marked as declared-not-b
 same defect as a paragraph asserting a production path through dbt while both implementations are
 Python — corrected in the same branch, a few hundred lines apart.
 
-**And the section now has a gate, so it cannot go stale again in the direction that matters.**
+**And the section now has a gate — in both directions, which took two attempts.**
 `make figures` gains a **`layout`** row: **20 = 20**, the population being every top-level content
 directory plus every package under `src/holdout/`. Taking `core/demand/` back out — the review's own
-omission — turns it red at 19 of 20, and `tests/ops/test_figures.py` does exactly that. Naming a
-directory that does not exist is over-coverage and not a lie about what exists, which is why the
-phase-2 block does not turn it red.
+omission — turns it red at 19 of 20, and `tests/ops/test_figures.py` does exactly that.
+
+> **The first version of this paragraph said naming a directory that does not exist is
+> over-coverage and therefore not a lie, and that was wrong.** Oversight level 2 refused it while
+> CI was still running. The one-sided rule is about a **tool** examining more than exists, which is
+> a tool doing more than it was asked. **A map is not a tool.** A map naming a directory that does
+> not exist sends its reader looking for something that is not there, which is worse than an
+> omission rather than harmless — and it was half of what §3a actually got wrong.
+>
+> **The gate as first written could not see it at all.** `layout_packages_named` iterates the
+> directories that exist and counts how many are named; a name matching no directory is never
+> iterated over and contributes to neither side. `pipelines/`, `infra/` and `experiments/` could
+> have gone back tomorrow and the row would still read 20 = 20. That is **#31's F1 one file
+> along** — a guard permitting exactly the thing its branch exists to end — for the second time in
+> two branches, and this time inside the branch whose subject is documents disagreeing with code.
+>
+> So there is a second check rather than a second row, because the coverage comparison is
+> one-sided by design and this question is not: **every `name/` outside the declared-future block
+> must resolve to a real directory.** The phase-2 block is excluded **by declaration** — isolated
+> by its own heading, the way `make language` excludes paths by a written reason rather than by a
+> rule somebody has to infer. Putting `infra/` back into the present-tense block turns it red by
+> name.
+>
+> **And the review made the same one-directional mistake.** §3a asked *is everything real listed*
+> and never asked *is everything listed real*, which is why a review about that section reported
+> five omissions and none of the three fabrications sitting beside them.
 
 **Claim 4 was 11/11 in five places and the eval has never printed anything but 12/12.** `C12`
 arrived in the same commit that closed the claim, so the number was never right — not once, with no
@@ -974,7 +997,7 @@ the orphan finding only for as long as nothing shared its date. A finding filed 
 same review broke it. That is `every-anchor-is-aimed-at-one-place` inside the test that guards the
 register, and it now selects by title.
 
-The suite is **979**.
+The suite is **980**.
 
 **A rule id named for what it measures, and a window read in its own vocabulary · 2026-08-31.**
 `contracts/floor-rule-id` closes the review's §7 half that T008 was empowered to move, with §3d's
