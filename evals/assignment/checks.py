@@ -986,9 +986,9 @@ def check_the_second_implementation_is_a_blake2b() -> Check:
     return Check(
         id="A10.the-second-implementation-is-a-blake2b",
         unarmed_because=(
-            "it measures the eval's own BLAKE2b against RFC 7693's published vector. Nothing in ` "
-            "src/holdout/` can move it; a break would be in `evals/assignment/blake2b.py`, which  "
-            "is the instrument. See `evals/assignment/README.md` §6."
+            "it measures the eval's own BLAKE2b against RFC 7693's published vector. Nothing in "
+            "`src/holdout/` can move it; a break would be in `evals/assignment/blake2b.py`, "
+            "which is the instrument. See `evals/assignment/README.md` §6."
         ),
         question=(
             "Does the eval's own BLAKE2b reproduce the digest RFC 7693 publishes, and agree "

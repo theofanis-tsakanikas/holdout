@@ -92,9 +92,9 @@ def false_refusal_rate(records: Sequence[DrawRecord], *, maximum_pct: Fraction) 
     return Check(
         id="U3.w6-false-refusal-rate",
         unarmed_because=(
-            "it is rate-shaped and is deliberately absent from `evals.uplift.machinery`, the only "
-            " entry point a mutation names — computing a rate on three draws would make it a diff "
-            "erent check wearing the same id. See that module's docstring."
+            "it is rate-shaped and is deliberately absent from `evals.uplift.machinery`, the "
+            "only entry point a mutation names — computing a rate on three draws would make "
+            "it a different check wearing the same id. See that module's docstring."
         ),
         question=(
             "In the world where everything works and a real effect is present, does the "

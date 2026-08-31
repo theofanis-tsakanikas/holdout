@@ -207,7 +207,7 @@ repository. That is the argument for this file rather than a footnote to it.
 *Closed:* 2026-08-31 — restated in `PLAN.md` by `corpus/legal-claims-restated`, with the prior wording kept beside it per doctrine rule 4
 *Now:* `PLAN.md` :: `benchmark to the trader's **own** 2025 rather than to a sector figure.`
 
-**Half of `G7` cannot fail** · found 2026-08-31 · by oversight level 3, while arming it
+**Half of `G7` cannot fail, and half of `C7` cannot either** · found 2026-08-31 · by oversight level 3, while arming it
 `G7.closed-vocabulary-only` asks two questions and one of them is a dead branch. *Is every reason's
 code one the vocabulary declares* is checked as `reason.code.value not in declared` — and
 `reason.code` **is** a `RefusalCode`, so the condition can never be true. The type already closed
@@ -230,8 +230,54 @@ unarmed checks. Rewriting one of them while arming it would mean the mutation wa
 check nobody had reviewed in its new shape — and `evals/README.md`'s rule 5 is that a boundary is
 computed twice, not that a check is edited by whoever is proving it bites.
 
+*And the same fact a second time, in `C7`.* Found by oversight level 2 reading this branch, and
+recorded here rather than as its own entry because it is not a second finding: it is the same
+question with a different type answering it. `C7.the-graded-days-are-not-the-days-the-curve-was-
+fitted-on` asks whether the held-out segment is disjoint from the fitting segment, and `overlap`
+is drawn from two complementary predicates over one business date — so that half cannot be
+non-empty either. Its other half, *is neither segment empty*, is real and is a property of the
+corpus. Two entries for one fact would be the mirror of what this register caught in its first
+hour, when one entry was answering for two defects and had to be split.
+
+*What this branch did change.* `C7` carried the tautology as its stated reason for being
+un-armable. That reason is now the half that can actually go red, because the sufficient reason
+was always the corpus one — leaving an assertion of a dead branch sitting in prose, in the branch
+whose whole subject is that such assertions get filed rather than mentioned. The `if` itself is
+untouched in both checks, for the reason above.
+
 *Site:* `evals/guardrail/checks.py` :: `if reason.code.value not in declared:`
+*Site:* `evals/censoring/checks.py` :: `overlap = [origin for m in worlds for origin in m.keys_in_both_segments]`
 *Disposition:* none — a judgment about whether a check should re-assert what a type guarantees
+*Status:* open
+
+**A mutation may name a check that does not exist, and the cheap target cannot tell** · found
+2026-08-31 · by oversight level 2, on `evals/unarmed-checks`
+A mutation declares `targets:` — the checks it expects to refuse it. Nothing in `make gate-proof`
+asks whether those names correspond to a check that exists. `engine.py` does ask, at
+`unknown = [target for target in mutation.targets if target not in baseline]`, but only with the
+eval loaded, which means only inside `make claim-N`. The ledger's own docstring gives as its reason
+for existing that a mutation which has come unmoored is caught by the cheap target as well as by
+the expensive one, and this is the one way of coming unmoored it does not catch.
+
+*It is the sibling of `every-anchor-is-aimed-at-one-place`*, which asks exactly this question one
+level down — does a mutation's anchor still occur in the source it names — and the implementation
+is the same shape. What made it newly cheap is this branch: `declared_checks()` enumerates every
+check id in the tree in milliseconds, so the comparison is now a set difference.
+
+*This branch does not create the hole; it adds a quieter place for it to land.* Before, a renamed
+check left its mutation failing at run time in `engine.py`. After, the same rename lands that check
+in **unarmed** — printed, counted, and deliberately not refused. The mutation still fails when
+`claim-N` runs, so nothing is unproven; what changes is that the cheap target now has a state that
+looks like an honest backlog and can be reached by a typo.
+
+*Measured today, so that tomorrow's non-zero is legible:* 37 distinct mutation targets, 67 declared
+check ids, **0 naming nothing**. By
+`python -c "from evals.gate_proof.ledger import load_mutations, declared_checks;
+print(sorted({t for m in load_mutations() for t in m.targets} - {d.id for d in declared_checks()}))"`.
+
+*Site:* `evals/gate_proof/ledger.py` :: `armed = sorted(i for i in by_id if i in targeted)`
+*Disposition:* `evals/mutations-point-at-checks-that-exist` — a different assertion from this
+branch's, so a different closed piece of work
 *Status:* open
 
 **`pricing/selection.py` serves no claim, and the review that said so assigned it nowhere** · found

@@ -87,9 +87,9 @@ def false_positive_rate(
     return Check(
         id="U1.aa-false-positive-rate",
         unarmed_because=(
-            "it is rate-shaped and is deliberately absent from `evals.uplift.machinery`, the only "
-            " entry point a mutation names — computing a rate on three draws would make it a diff "
-            "erent check wearing the same id. See that module's docstring."
+            "it is rate-shaped and is deliberately absent from `evals.uplift.machinery`, the "
+            "only entry point a mutation names — computing a rate on three draws would make "
+            "it a different check wearing the same id. See that module's docstring."
         ),
         question=(
             "On an A/A split, where both arms run the same policy and there is nothing to "
@@ -141,9 +141,10 @@ def p_values_are_not_piled_at_one_end(records: Sequence[DrawRecord]) -> Check:
         return Check(
             id="U2.aa-p-values-are-uniform",
             unarmed_because=(
-                "it is rate-shaped and is deliberately absent from `evals.uplift.machinery`, the only "
-                " entry point a mutation names — computing a rate on three draws would make it a diff "
-                "erent check wearing the same id. See that module's docstring."
+                "it is rate-shaped and is deliberately absent from `evals.uplift.machinery`, "
+                "the only entry point a mutation names — computing a rate on three draws "
+                "would make it a different check wearing the same id. See that module's "
+                "docstring."
             ),
             question=(
                 "Under the null, are the p-values the system produces spread like a uniform "

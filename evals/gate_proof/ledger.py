@@ -150,9 +150,9 @@ def check_every_mutation_is_owned_once(
     return Check(
         id="ledger.every-mutation-is-owned-once",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question=(
             "Is every planted mutation executed by exactly one Makefile target — no orphan "
@@ -181,9 +181,9 @@ def check_every_claim_target_owns_a_gate(
     return Check(
         id="ledger.every-claim-target-owns-a-gate",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question=(
             "Does every `claim-N` target have at least one planted mutation — so that no "
@@ -214,9 +214,9 @@ def check_the_ledger_executes_nothing(all_targets: Sequence[Target]) -> Check:
     return Check(
         id="ledger.the-ledger-executes-nothing",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question="Does `make gate-proof` audit the arrangement rather than re-run it?",
         passed=not offenders,
@@ -236,9 +236,9 @@ def check_mutation_ids_are_unique(mutations: Sequence[Mutation]) -> Check:
     return Check(
         id="ledger.mutation-ids-are-unique",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question="Is every mutation id unique, so a verdict names exactly one planted break?",
         passed=not clashes,
@@ -262,9 +262,9 @@ def check_mutation_lives_under_the_claim_it_declares(mutations: Sequence[Mutatio
     return Check(
         id="ledger.mutation-lives-under-the-claim-it-declares",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question="Does every mutation's directory agree with the claim its own file declares?",
         passed=not wrong,
@@ -295,9 +295,9 @@ def check_every_anchor_is_aimed_at_one_place(mutations: Sequence[Mutation]) -> C
     return Check(
         id="ledger.every-anchor-is-aimed-at-one-place",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question=(
             "Does every mutation's anchor still occur exactly once in the source it names — "
@@ -326,9 +326,9 @@ def check_no_mutation_edits_the_detector(mutations: Sequence[Mutation]) -> Check
     return Check(
         id="ledger.no-mutation-edits-the-detector",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question=(
             "Does every planted break edit the system rather than the thing that detects it — "
@@ -407,6 +407,12 @@ def declared_checks() -> tuple[DeclaredCheck, ...]:
     # a passing shape and a failing one — and counting them twice would make every figure here
     # disagree with the eval that prints them. The reason survives from whichever branch carries
     # it, because a reason written once is written.
+    #
+    # Unreachable today, and named here because this is where somebody will meet it: if a check
+    # is ever declared in two branches where one carries a reason and a mutation arms the other,
+    # this merge keeps the reason, `check_every_check_is_armed_or_says_why` sees armed *and*
+    # excused, and the ledger goes red on a contradiction nobody wrote. The fix then is to move
+    # the reason onto the branch that cannot be armed, not to soften the refusal.
     merged: dict[str, DeclaredCheck] = {}
     for entry in found:
         seen = merged.get(entry.id)
@@ -446,9 +452,9 @@ def check_every_check_is_armed_or_says_why(
     return Check(
         id="ledger.every-check-is-armed-or-says-why",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question=(
             "Is every check either named by a mutation, or carrying the reason no mutation can "
@@ -484,9 +490,9 @@ def check_the_mutation_tree_is_all_yaml() -> Check:
     return Check(
         id="ledger.the-mutation-tree-holds-only-loadable-mutations",
         unarmed_because=(
-            "this is `gate-proof`. A mutation that could break it would be a mutation editing the "
-            " detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is arme "
-            "d instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
         ),
         question=(
             "Is every file under `mutations/` a YAML inside a `claim-N` directory — so that "
@@ -552,15 +558,15 @@ def audit() -> Report:
         checks=checks,
         numbers=tuple(numbers),
         notes=(
-            "that the vocabulary is covered. Twelve `at_decision` codes are reached by "
-            "`G8` and all four `at_readout` codes by claims 2 and 3, but **seven of the eight "
-            "`at_design` codes are reached by no eval at all** — they exist only in "
+            "that any gate bites — this target runs nothing. `make claim-N` plants that "
+            "claim's mutations and demands a refusal from the check each one names",
+            "that the vocabulary is covered. Twelve `at_decision` codes are reached by `G8` "
+            "and all four `at_readout` codes by claims 2 and 3, but seven of the eight "
+            "`at_design` codes are reached by no eval at all — they exist only in "
             "`tests/core/test_refusal_codes.py`, which is cases their own author wrote. "
             "`evals/design/` is claim 6 and phase 4, and claim 6's headline counts N proposed "
             "and M refused over exactly that vocabulary. Printed here rather than left to be "
             "rediscovered.",
-            "that any gate bites — this target runs nothing. `make claim-N` plants that "
-            "claim's mutations and demands a refusal from the check each one names",
             "that the mutation set is complete; it is the set of breaks we thought of, and "
             "a curated set is not mutation testing",
         ),

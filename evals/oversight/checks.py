@@ -233,9 +233,10 @@ def check_no_field_is_a_person_name(names: tuple[ExternalName, ...]) -> Check:
     return Check(
         id="O4.no-field-is-a-name-a-person-is-known-by",
         unarmed_because=(
-            "breaking it means editing the two pinned vocabularies in `corpus/real/` or the token "
-            "iser in `ops/personhood.py` — the detector, never the system. Armed by `tests/evals/ "
-            "test_oversight_instrument.py` on a vocabulary whose words are ours after all."
+            "breaking it means editing the two pinned vocabularies in `corpus/real/` or the "
+            "tokeniser in `ops/personhood.py` — the detector, never the system. Armed by "
+            "`tests/evals/test_oversight_instrument.py` on a vocabulary whose words are ours "
+            "after all."
         ),
         question=(
             f"Of the {len(fields)} fields every type in the core carries, does any one of "
@@ -309,9 +310,9 @@ def check_every_planted_person_is_refused(planted: list[tuple[Any, bool, bool]])
     return Check(
         id="O6.every-planted-person-is-refused",
         unarmed_because=(
-            "the attack grid is built from `corpus/real/` and the registry in `ops/personhood.py` "
-            "; a planted field is refused by the closed field set whatever `src/holdout/` does. A "
-            "rmed by `tests/evals/test_oversight_instrument.py`."
+            "the attack grid is built from `corpus/real/` and the registry in "
+            "`ops/personhood.py`; a planted field is refused by the closed field set whatever "
+            "`src/holdout/` does. Armed by `tests/evals/test_oversight_instrument.py`."
         ),
         question=(
             f"Planting each of the published person-names as a field on each of the "
@@ -340,8 +341,8 @@ def check_the_word_list_never_refuses_alone(planted: list[tuple[Any, bool, bool]
     return Check(
         id="O7.the-word-list-never-refuses-alone",
         unarmed_because=(
-            "it compares two detectors with each other. Any break lives in `ops/personhood.py`, w "
-            "hich no mutation may edit."
+            "it compares two detectors with each other. Any break lives in "
+            "`ops/personhood.py`, which no mutation may edit."
         ),
         question=(
             "Is every attack the hand-written word list catches also caught by the closed "
@@ -390,8 +391,8 @@ def check_the_scan_reaches_what_is_not_a_dataclass() -> Check:
     return Check(
         id="O8.the-scan-reaches-the-types-that-are-not-dataclasses",
         unarmed_because=(
-            "it asserts a property of the scanner in `ops/personhood.py`. Armed by a scan that lo "
-            "st `__slots__`, in `tests/evals/test_oversight_instrument.py`."
+            "it asserts a property of the scanner in `ops/personhood.py`. Armed by a scan that "
+            "lost `__slots__`, in `tests/evals/test_oversight_instrument.py`."
         ),
         question=(
             "Do the types whose constructors refuse — the ones that are deliberately not "
@@ -599,8 +600,8 @@ def check_the_source_and_the_objects_agree() -> Check:
     return Check(
         id="O11.the-source-text-and-the-live-objects-agree",
         unarmed_because=(
-            "it compares the eval's own two readings of the same tree — imported against parsed.  "
-            "Breaking it means editing one of the readers."
+            "it compares the eval's own two readings of the same tree — imported against "
+            "parsed. Breaking it means editing one of the readers."
         ),
         question=(
             "Does a second reading of every type — parsed out of the source text, never "
@@ -644,8 +645,8 @@ def check_every_explanation_still_explains_something(names: tuple[ExternalName, 
     return Check(
         id="O12.every-explanation-still-explains-something",
         unarmed_because=(
-            "the explanations are the eval's own reviewed list. A mutation that made one unused w "
-            "ould be editing the detector's data."
+            "the explanations are the eval's own reviewed list. A mutation that made one "
+            "unused would be editing the detector's data."
         ),
         question=(
             "Does every entry on the reviewed list of innocent collisions still match a name "

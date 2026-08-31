@@ -257,12 +257,17 @@ def test_a_check_that_is_both_armed_and_excused_is_refused() -> None:
     assert result.counterexamples
 
 
-def test_the_real_tree_declares_more_checks_than_the_claims_print() -> None:
-    """The scan reaches the detector's own checks too, and they are the ones that must carry a
-    reason rather than a mutation. If this ever stops being true the scan has narrowed."""
-    declared = declared_checks()
-    ledger_own = [d for d in declared if d.id.startswith("ledger.")]
-    assert len(ledger_own) >= 9
-    assert all(d.unarmed_because for d in ledger_own), [
-        d.id for d in ledger_own if not d.unarmed_because
-    ]
+def test_every_check_the_detector_declares_about_itself_carries_a_reason() -> None:
+    """The scan reaches the detector's own checks, and those are the ones that must carry a
+    reason rather than a mutation — `no-mutation-edits-the-detector` refuses the alternative.
+
+    Stated as a property and not as a count. `assert len(...) >= 9` was the first shape of this
+    test, and it was the thing `CLAUDE.md` names in the same breath as the rule it serves: *a
+    rule, never a frozen count*. It also selected on the `ledger.` prefix, which is a naming
+    convention the author of the checks chose — the `_VisitContext` lesson one file along. The
+    population here is *where the check is written*, which no rename can move, and `make figures`
+    enumerates that same population from PYTHON_DIRS as a second reading.
+    """
+    inside = [d for d in declared_checks() if d.where.startswith("evals/gate_proof/")]
+    assert inside, "the scan no longer reaches the detector's own tree"
+    assert all(d.unarmed_because for d in inside), [d.id for d in inside if not d.unarmed_because]
