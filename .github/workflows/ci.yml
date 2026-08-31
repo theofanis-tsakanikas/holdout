@@ -154,11 +154,34 @@ jobs:
     # was first set at 45 on a projection, and the runner cancelled the harness before it
     # finished, which is what a projection is worth against four cores.
     #
-    # 90 is the cold number with the headroom the ~40% spread between runners already measured
-    # in this repository demands. **The steady state is much lower**: the step below carries
-    # `.worlds/` across runs on the digest the cache already computes, so every run whose
-    # corpus is unchanged skips generation entirely. That is what the next measurement should
-    # bring this down to, and the deferral in `docs/DECISIONS.md` says so with a date on it.
+    # 90 is the cold number with the headroom the spread between runners demands. Measured
+    # 2026-08-31 over **71 successful claim-2 jobs** pulled from the Actions API rather than
+    # from any paragraph: min 32.2, median 53.8, max 78.3, sd 10.0, spread 2.43x. The maximum
+    # has moved once since the previous summary said 77.1, which is why it is re-pulled rather
+    # than quoted.
+    #
+    # **The cache is worth what it claimed to be worth, and it was the measurement that was
+    # missing.** Split by whether the job logged a world-cache hit:
+    #
+    #     warm  n=60  median 50.8  mean 49.8  sd  7.0
+    #     cold  n=11  median 70.0  mean 68.2  sd 10.2
+    #     cold - warm = +18.4 min, 95% CI +13.5 to +23.2, t = 7.43
+    #
+    # All 71 jobs share one digest over the sources that can change a world, so the cold arm
+    # computed exactly what the warm arm computed.
+    #
+    # WHAT THAT NUMBER IS, AND WHAT IT IS NOT. Every cold run in the sample was a SPURIOUS
+    # invalidation — the key moved for a change that could not alter a world. So 18.4 is what a
+    # spurious invalidation COSTS, not what the cache SAVES. They share a number here only
+    # because no run in this sample ever needed to regenerate. Where the world sources genuinely
+    # change, regeneration is necessary work no cache can save, and the 18.4 becomes a cost that
+    # must be paid. The sample lies inside one world-source epoch and says nothing about the
+    # other case, because there are no runs of it to compare.
+    #
+    # The steady state is therefore around 50 minutes rather than 68, and this budget is not
+    # lowered to it: 90 is a ceiling against the slowest draw, and the slowest draw observed is
+    # a **cold** 78.3. A budget set from the warm steady state is a budget that fails whenever
+    # the key moves, which it has done eleven times in this sample.
     #
     # It is this job's timeout and not the `gate` one: `TASKS.md`'s instruction was that the
     # gate does not go up a third time, and it came back down to 15 in the same change that

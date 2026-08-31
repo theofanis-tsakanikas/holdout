@@ -1819,13 +1819,50 @@ which machine it drew.
 across runs with `actions/cache`, keyed on **the digest `evals/uplift/cache.py` computes** rather
 than on a hand-written file list — the same guarantee one layer out, so a changed corpus is a miss
 here for exactly the reason it is a miss inside a run. Every run whose corpus is unchanged skips
-generation entirely, which is about half the harness. What is left after that is the counts in
+generation entirely — **measured on 2026-08-31 at 18.4 minutes a job, 95% CI +13.5 to +23.2 over
+71 jobs**, not the *about half the harness* this sentence projected and not the *nothing
+measurable* that `docs/reviews/phase-1.md` §2b concluded from 31. What is left after that is the counts in
 `contracts/design/aa_harness.yaml`, which are budgets and say so — though K = 200 on W1 and W6 is
 the claim itself and is not among them.
 *Unlock condition:* the first CI run with a **warm** world cache, which is the steady state this
 number should be set from rather than the cold one it is set from now.
 *Expires:* 2026-11-30 — a temporary budget with no date is a permanent one, which is what the entry
 above was written to stop happening twice.
+
+> **Restated 2026-08-31 by `evals/world-cache-measured`, and the first thing to say is that this
+> condition was met long ago and nobody noticed.** *The first CI run with a warm world cache* has
+> happened **sixty times**. The condition was satisfied, the entry stayed open, and `make expiry`
+> could not tell because it checks that a condition is **present** and never whether it is
+> **true** — the standing limit it declares about itself, meeting the case it was written for.
+>
+> **And the figure this entry rests on was wrong in both directions.** *About half the harness* was
+> a projection; `docs/reviews/phase-1.md` §2b then measured 31 jobs and concluded the cache *saves
+> nothing measurable*; a later restatement of ours softened that to *the benefit is unmeasurable*.
+> Measured over **71 jobs** split by whether the job logged a world-cache hit:
+>
+>     warm  n=60  median 50.8  mean 49.8  sd  7.0
+>     cold  n=11  median 70.0  mean 68.2  sd 10.2
+>     cold - warm = +18.4 min · 95% CI +13.5 to +23.2 · t = 7.43
+>
+> All 71 jobs carry one digest over the sources that can change a world, so the cold arm computed
+> exactly what the warm arm computed.
+>
+> **What that figure is, and what it is not.** Every cold run in the sample was a **spurious**
+> invalidation, so 18.4 is what a spurious invalidation **costs** — not what the cache **saves**.
+> The two share a number here only because no run in this sample ever needed to regenerate. Where
+> the world sources genuinely change, regeneration is necessary work no cache can save. The sample
+> lies inside **one world-source epoch** and says nothing about that case, because there is nothing
+> in it to compare. *Whether 18.4 is half the harness* is a further claim about a sub-part of the
+> job that has not been isolated, and it is not made either.
+>
+> **The budget is not lowered.** 90 is a ceiling against the slowest draw, and the slowest draw
+> observed is a **cold** 78.3. Setting it from the warm steady state would produce a budget that
+> fails every time the key moves, which is eleven times in this sample.
+>
+> *The condition is therefore replaced rather than closed:* the number comes down when the **key**
+> stops moving spuriously, not when a warm run happens — because it is the cold draws the ceiling
+> exists for. That is `evals/uplift/cache.py`'s `DEPENDS_ON`, and the finding is in
+> `docs/FINDINGS.md` with its price.
 
 **W2's refusal is luck, and at a lower spillover the system would report a contaminated number**
 · deferred 2026-08-28

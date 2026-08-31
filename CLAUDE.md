@@ -1147,6 +1147,39 @@ detector. **Nothing catches it for hooks, barriers or tests**, and that is where
 > it" makes structural at the target level and cannot make structural per check. Hooks, barriers and
 > tests remain uncovered, and the prior wording stays per doctrine rule 4.
 
+### And a form that is not an unchecked assertion at all — one the schema manufactured
+
+Every instance above is an assertion **checked against the wrong thing**: a grep result against a
+fact, a header shape against headers, a literal against its value, a summary against three files.
+**On 2026-08-31 a different kind appeared.** `TASKS.md`'s closed registry has a column reading
+`branch <name>`, singular. An atom that spanned three branches had no way to say so, leaving the
+column empty was not offered, and a name came into existence that names nothing —
+`ops/coverage-expiry-findings`, which was three real branches, written while correcting the same
+file's other defects.
+
+> **The assertion was not unchecked. It was manufactured by the shape of the form**, and there was
+> nothing to check it against because the field created it rather than receiving it.
+
+**And it is the more dangerous shape, because the artefact looks *more* complete afterwards.** A
+missing entry announces itself. A fabricated one satisfies the schema and reads as diligence — which
+is why it survived a review of that very file, by its own author, in the same hour.
+
+**The generalisation was run rather than assumed: which other required fields take one value where
+reality can be plural?**
+
+| field | arity | verdict |
+|---|---|---|
+| `TASKS.md` :: `branch <name>` | one | **the instance.** Widened to `branches … ·` |
+| `docs/FINDINGS.md` :: `*Disposition:*` | free prose | safe — already carries *"or `#9` if nothing else does first"* |
+| `docs/FINDINGS.md` :: `*Site:*` / `*Now:*` | repeatable | safe — one entry carries two of each today |
+| `docs/DECISIONS.md` :: `*Unlock condition:*` | free prose | safe |
+| `docs/DECISIONS.md` :: `*Expires:*` | one date | safe — a deferral cannot expire twice |
+| `Mutation.targets` | a list | safe. `Mutation.claim` is single **by refusal**, not by omission — `ledger.mutation-lives-under-the-claim-it-declares` |
+| contract `id` · `version` · `effective_from` | one | safe — single by nature |
+
+One field, fixed. The check is recorded because it was run: **a field that cannot express what
+happened will be filled with something that did not.**
+
 ### Three one-directional checks, recorded without a rule over them — deliberately
 
 **A check that asks its question in one direction passes while the opposite defect sits in front

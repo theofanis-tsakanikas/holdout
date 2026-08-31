@@ -131,6 +131,198 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**`test_the_truth_is_not_lying_in_the_file_in_plain_sight` fails about 1 run in 254** · found
+2026-08-31 · by `evals/world-cache-measured`, from one red in a suite run
+**The failure a reader will meet:** `AssertionError: 248` at
+`tests/corpus/test_world_seal.py:136`, `assert phrase not in raw, phrase`. It passes on retry. This
+entry exists so that a search for that text lands here in one step, because at 1 in 254 it will fire
+on somebody who knows none of this.
+
+*Determinism is not implicated, and that was established before the cause.* The seal was generated
+three times at the same seed and scale and compared field by field: `payload`, `nonce`,
+`commitment_sha256`, `openings`, `world`, `seed` and `scale` are **byte-identical**. **One field
+varies — `sealed_at`** — which is correct for a thing recording when it was sealed. Nothing the
+seeded exact-arithmetic machinery produces is non-deterministic, so the cross-runner sha256 result
+stands unqualified.
+
+*The cause.* The test asserts five phrases from the truth do not appear in the sealed bytes. Four
+are 62, 113, 23 and 6 characters. The fifth is `str(truth.totals["acks_failed"])` = **`'248'`**, and
+it is tested against a string containing `2026-08-31T10:15:55.965333+00:00`. It fails whenever those
+three digits land in the timestamp.
+
+*The rate, measured over 200,000 simulated sealing moments:* `"248"` appears in the timestamp in
+**785/200000 = 0.39%**, about **1 run in 254**. It is corpus-dependent — another world or scale
+gives another `acks_failed`, and a two-digit value would fail far more often.
+
+**And the finding above the bug is that the docstring is right.** It says the phrases are taken
+*"from the truth itself… not from a list somebody wrote while thinking about what to hide. A
+hand-written list would test the author's imagination; this tests the file."* That reasoning is
+sound and it is the better design — **and it is why the defect exists.** Taking phrases from the
+truth means taking whatever type they happen to be, and one of them is a small integer.
+
+This is **not** *a guard tested by its author*. It is a guard that **removed** the author's judgment
+and inherited the data's shape instead — usually right, and wrong when the data contains something
+too small to be evidence. It is the first instance recorded here where **doing the correct thing
+caused the defect**.
+
+*Three fixes, none obviously best.*
+
+**(a) Skip phrases below a length.** Reintroduces a threshold somebody chose, which is what the
+docstring's design exists to avoid.
+
+**(b) Search the `payload` rather than the whole file.** Also a narrowing, and in the direction
+refused all day: the test currently covers every field, and narrowing means a leak into some other
+field stops being caught. *Those fields cannot contain secrets* is an assertion that would need
+demonstrating.
+
+**(c) Exclude `sealed_at` by name, with a written reason.** It is the only field that varies —
+established by measurement — and a timestamp is not secret. Removes exactly the source of the false
+positives and keeps coverage of everything else. The same shape as `make language`'s excepted paths
+and `unarmed_because`: **a named exemption carrying its justification, rather than a narrowed scope
+carrying none.**
+
+*And the ordering that solved it is the reusable part, not the fix.* The first question asked was
+not *what makes it flaky* but **which side of the determinism line it falls on** — answerable in one
+command, before anything about the cause was known, and if it had come out the other way it would
+have been the most serious thing found that day rather than a footnote.
+
+> **When an observation contradicts a measured property, establish whether it is inside that
+> property's scope before investigating the cause.** The cause can take an hour; the scope question
+> took one command.
+
+*Site:* `tests/corpus/test_world_seal.py` :: `        str(truth.totals["acks_failed"]),`
+*Disposition:* its own branch — a claim-adjacent test, and the choice among three fixes is a
+judgment that should not ride on a branch about CI measurement
+*Status:* open
+
+**A limit was stated in review and did not reach the branch** · found 2026-08-31 · by oversight
+level 2 on `evals/world-cache-measured`, by grepping for a word rather than reading for a claim
+The measurement's own limit — *the sample lies inside one world-source epoch, so it says nothing
+about a run where the worlds genuinely changed* — was written in review, correctly, an hour before
+the branch was committed. **It appears nowhere in the branch.** The word `epoch` was absent from
+every file; the artefact said *the difference is the cache alone* and *the cache saves about
+eighteen minutes a job*, which is the wider claim the review had already identified as unsupported.
+
+*It is the fourth restatement chain in one day to stop at the terminal, and the first where the
+missing half was the **caveat** rather than the correction.* The other three lost a fix; this one
+lost the sentence saying what the fix does not cover — which is the half nobody misses, because the
+document reads as more confident without it.
+
+*And the overstatement was not only a missing caveat.* Every cold run in the sample was a
+**spurious** invalidation, so the measured 18.4 is **what a spurious invalidation costs**, not what
+the cache **saves**. They share a number here only because no run in the sample ever needed to
+regenerate. Where the world sources genuinely change, regeneration is necessary work no cache can
+save. The branch's own over-coverage finding says that, and its summary sentence undid it three
+files away.
+
+*Corrected in all four places* — `ci.yml`, `docs/DECISIONS.md`, `PLAN.md`, `evals/README.md` — and
+the correction **strengthens** the over-coverage entry rather than weakening it: the whole measured
+effect is the price of the bug.
+
+*How it was found is the reusable part.* Not by reading the branch for correctness, but by taking a
+claim made in conversation and **grepping the artefact for it**. That is mechanical, it takes
+seconds, and it is available for every limit either session states aloud. Nobody has to remember to
+be careful; the check is *did the thing I said reach the file*.
+
+*Site:* `PLAN.md` :: `review and **did not reach the branch until oversight level 2 grepped for it and found it absent**`
+*Adopted, in two halves, because the first has the reviewer's memory in it.* What worked here was
+one session happening to recall a striking sentence from an hour earlier — **which is not a
+mechanism, it is the faculty that produced `42`.** Scaled to a week it catches whatever the reader
+happens to remember. So the burden moves to the writer, at the moment they know it best:
+
+> **A limit stated in conversation names the file it will land in.** *"That is a narrower claim
+> than the cache saves 18 minutes — it goes in `ci.yml`'s comment."*
+
+Then the check is `grep` against a **named file** rather than against recall. It costs four words
+where the claim is made, and it is the same move as *carry the command*: the discipline lands on the
+person asserting, while they assert, instead of on somebody later trying to remember. The reader's
+grep still catches what it catches; this removes the need for it to.
+
+*And the limit, stated rather than left to be discovered:* **neither half is a mechanism.** Both are
+habits, and habits are what this repository exists to distrust — nothing goes red if either is
+forgotten, and the failure is silent in the way every failure at this site has been.
+
+*Disposition:* adopted as a working practice between the two sessions, in both halves, with the
+limit above
+*Closed:* 2026-08-31 — the instance corrected in four files, and the practice recorded rather than
+left open with nobody able to close it
+*Now:* `PLAN.md` :: `Every cold run in the sample was a **spurious** invalidation, so 18.4 is what a spurious`
+*Now:* `evals/README.md` :: `**That last clause was a projection until 2026-08-31, and the number that replaced it is from a`
+*Status:* closed
+
+**A branch name in the record is a checkable assertion, and nothing offline can check it** · found
+2026-08-31 · by `evals/world-cache-measured`, which built the gate and measured it wrong
+`docs/reviews/phase-1.md` named nine branches on 2026-08-30. One — **`evals/world-cache-measured`,
+this one** — was never opened, and two sessions spent a day filing measurements into it: the
+determinism result, three within-commit pairs, the budget argument. Nothing went red, because
+nothing in the tree was wrong. The claim lived in a table and in conversation.
+
+*It is the only form of the defect that has never lived in a file.* The other ten instances
+`CLAUDE.md` catalogues were a sentence, a number in configuration, a deferral, a task note. This one
+existed **only as shared narrative between two agents**, repeated until it stopped being checked.
+`docs/reviews/phase-1.md` caught the one-author version of that in its own opening line — *"this
+report existed only in a terminal until it was written here"* — and the two-agent version is one
+step along.
+
+*And two mechanisms were blind to the same absence.* `docs/DECISIONS.md` carried
+*"the change `evals/world-cache-measured` makes"* as an unlock condition pointing at a branch that
+did not exist, and `make expiry` could not see it because it checks a condition is **present** and
+never that it is **reachable**. One instance is a mistake; two mechanisms blind to one missing thing
+is a gap.
+
+*The gate was built and then measured, and it is refused on its own numbers.* Branch names appear in
+four positions that declare them as such — `TASKS.md`'s `branch`, `*Disposition:*`,
+`*Unlock condition:*`, and a review table's `branch` column — which yields **49 names with no
+judgment about which are branches**. That part works. Classifying each as merged, open or nowhere
+does not: **12 of the 49 came out wrong**, including six merged branches reported as `nowhere` and
+this branch reported as `merged` because its own name appears in a commit message.
+
+*The reason is structural rather than a bug to fix.* A squash-merged branch **leaves no ref**, so
+offline git cannot distinguish *merged and deleted* from *never existed* — the two states the gate
+exists to tell apart. The authoritative source is `gh pr list`, and `make figures` runs inside
+`make check`, which `CLAUDE.md` requires to work **local, with no account and no credentials**. A
+gate that needs the network is a gate that is red on a plane.
+
+*So it is filed rather than shipped, and the enumeration is the half worth keeping.* Reading four
+declared positions gives the population for free and needs no judgment; only the git question is
+unanswerable offline.
+
+**Three options, priced, because the third was proposed after the first two and needed checking.**
+
+**(a) A network check outside `make check`.** Authoritative — `gh pr list` answers exactly the
+question. Cost: it cannot live in `make check`, which `CLAUDE.md` requires to run local with no
+account. Red on a plane.
+
+**(b) A weaker offline check** reporting *has a ref* / *has no ref*, saying plainly that it cannot
+see a merged branch. Cost: it does not answer the question the gate exists for, since
+*merged-and-deleted* and *never-existed* both report no ref — which is the pair that lost a branch.
+
+**(c) Record the landing in the tree**, the way `docs/FINDINGS.md` records a closure, so a branch is
+**open** (has a ref), **merged** (has a landing record) or **nowhere** (neither). Fully offline, and
+its failure mode is the good one: forget to record a landing and the gate prints `nowhere` for a
+branch that landed — one wrong line, no red run, and the wrongness prompts the recording. **A
+recording step that decays announces its own decay.**
+
+*Checked before believing it, and it does not work today.* `TASKS.md`'s closed registry already has
+the shape — `branch <name> status closed`. Measured: of the 20 named branches the API says are
+merged, **14 carry a landing record and 6 do not**, and **four records name a branch that never
+existed**. Two of those four were written into this repository on 2026-08-31 — `docs/phase-1-review`
+and `ops/coverage-expiry-findings` — because **the registry's shape assumed one branch per atom** and
+an atom that spanned three got a name somebody invented to fill the column. They are corrected in
+`TASKS.md` to name the three real branches each. Two older ones are not recoverable from the log and
+are left, because inventing a second name to replace the first is the same act again.
+
+So (c) is the best shape and needs the recording step repaired first, which is most of its cost.
+Whoever takes this chooses with all three priced rather than discovering the third.
+
+*Measured:* 49 names enumerated, 12 misclassified, by
+`gh pr list --state all --json headRefName,state` compared against the offline classifier.
+
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* CI's world-cache budget being set from measurement — the change`
+*Disposition:* `ops/the-record-names-a-place-that-exists` — after phase 1, with the CI work, since
+both turn on what may run inside `make check`
+*Status:* open
+
 **The layout's fabrication check assumes the declared-future block sits last** · found
 2026-08-31 · by oversight level 2 on `docs/the-documents-agree-with-the-code`
 `layout_fabrications` isolates the present-tense half as `body[: future.start()]`. That is
