@@ -467,6 +467,54 @@ closed costs the session. The one exception is `main_guard` on a command line it
 tokenise, where it falls back to a coarser match and refuses: an unbalanced quote is the single
 case where guessing in the safe direction costs only a retry.
 
+**The corpus's benchmark is named rather than reshaped, because the shape was already there.**
+· 2026-08-31
+`corpus/legal-claims-restated` was scoped as *fix the prose, and give the eval's benchmark the shape
+the law uses — keyed by product code rather than a scalar.* Measured before writing any of it, the
+second half was **already true**:
+
+* `ProposedPrice.benchmark_markup_on_cost` is a field on each proposal and `envelope.py` bounds
+  every decision against its own, so the core already takes a benchmark per product code;
+* `regulated_basket.yaml` carries `value: average_gross_margin_2025` — a name sourced to the
+  instrument, never a level;
+* the only thing that flattens it is the **corpus**, at four call sites in `evals/guardrail/build.py`
+  passing one zero-argument function for all 232,373 decisions.
+
+So there is no core change, no contract change and no restatement chain in this branch. **The scope
+asked for a shape that exists**, and building it would have been a day spent reproducing what was
+already there — which is the same defect the branch exists to fix, one layer out: an assertion about
+the code made from something other than the code.
+
+**And what remained had two disguises, either of which would have looked like the fix.** Computing a
+per-code margin from the corpus's own derived cost returns `m` exactly for every code, because
+`cost = price × (1 − m)` is that identity — per-code numbers that are the flat number in costume.
+A per-item signature returning one constant everywhere is the same disguise reversed: per-code
+*structure* around a single number. Both would read as fidelity and contain none.
+
+**So the flatness is carried by a name.** `benchmark_markup_on_cost()` became
+`sector_wide_benchmark()`, and a reader of the four call sites meets the word *sector* before
+anything else — which is the inference the 2026-08-27 finding was made possible by, refused at the
+place it was made. No argument that is ignored, no structure implying what is not there. If a real
+per-item benchmark ever arrives it arrives as a real change, against a name that never lied.
+`tests/evals/test_guardrail_instrument.py` holds both halves: the level is one for every item and
+deliberately so, and no call site supplies it under a name without *sector* in it.
+
+**Measured, against the baseline this branch actually diverges from.** The scope named `f0a9994`;
+`main` was `b7ab2ae` by the time the work started, and a branch is compared with what it diverges
+from rather than with what was `main` when somebody wrote the instruction. The two were verified
+byte-identical for claim 1 first — `#28` touched nothing under `evals/guardrail/`, `corpus/real/` or
+`core/` — so the choice changed no number, and the rule stands anyway because it was measured rather
+than assumed.
+
+```
+232,373 decisions · 10 checks
+baseline b7ab2ae   sha256 22a6daea80950e9c7458feb6dbf34bc6a52343f001147d5f9ebeb7a5ed47d469
+after the branch   sha256 22a6daea80950e9c7458feb6dbf34bc6a52343f001147d5f9ebeb7a5ed47d469
+```
+
+Stated as a number rather than as *no change*: a refactor that provably moves nothing is a stronger
+result than one nobody checked, and it is only stronger if the check is stated.
+
 **An open finding gets a home, because it was the one thing that had none.** · 2026-08-31
 `docs/FINDINGS.md`, and `make findings` behind it. Every mechanism this repository had was aimed at
 a **claim**, a **gate** or a **deferral**, and an open review finding is none of the three. Two of

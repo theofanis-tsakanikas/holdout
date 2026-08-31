@@ -338,9 +338,21 @@ derived:
     formula: unit_cost = price × (1 − m), where m = 0.1681
     m_is: >-
       the median of `gross_margin_pct_of_turnover` over the thirteen published years,
-      2008-2020 — 16.81%. Eurostat's ratio is gross margin on goods for resale over turnover,
-      which is the same quantity άρθρο 4 παρ. 4 of ΥΑ 21330/2026 calls ΠΜΚ: a margin over the
-      selling price.
+      2008-2020 — 16.81%. Eurostat's ratio is gross margin on goods for resale over turnover.
+      That and the ΠΜΚ of ΥΑ 21330/2026 άρθρο 4 παρ. 4 are both margins over a selling-side
+      denominator, which is why one can stand in for the other in a synthetic corpus. They are
+      NOT the same quantity: Eurostat divides by an industry's turnover, the article by the
+      selling price of one product code. Nor is the level the instrument's — άρθρο 4 παρ. 5
+      fixes the reference period as the trader's own last closed financial year of 2025, and
+      this is a sector median over 2008-2020. It is a corpus device for deriving a plausible
+      cost, not the benchmark the regulation names.
+    m_restated_on: 2026-08-31
+    m_was: >-
+      "Eurostat's ratio is gross margin on goods for resale over turnover, which is the same
+      quantity άρθρο 4 παρ. 4 of ΥΑ 21330/2026 calls ΠΜΚ: a margin over the selling price."
+      The equivalence is not in the article; it was read in. Recorded per doctrine rule 4, and
+      because this manifest is the copy a reader trusts most — a provenance record asserting an
+      equivalence its own source does not state is worse than the same sentence in prose.
     what_this_is_not: >-
       **This is not an observed cost, and the eval says so wherever it reports a number that
       depends on it.** It is one industry-wide ratio applied to every item, so it carries no

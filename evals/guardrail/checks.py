@@ -466,7 +466,7 @@ def check_ladder_certifies_on_real_base_prices(policy: Policy) -> LadderRun:
                     changes_dispatched_today=0,
                     unit_cost=cost,
                     cost_known_at=decided_at,
-                    benchmark_markup_on_cost=build.benchmark_markup_on_cost(),
+                    benchmark_markup_on_cost=build.sector_wide_benchmark(),
                 )
                 result = certify(proposal, envelope)
                 if not isinstance(result, Refusal):

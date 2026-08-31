@@ -6,7 +6,11 @@ A gross margin can be written two ways and both are called "the margin":
 
 * **over the selling price** — `(price - cost) / price`. This is the denominator
   ΥΑ 21330/2026 άρθρο 4 παρ. 4 defines the capped margin in, and the denominator every
-  published retail figure this project cites is in;
+  published retail figure this project cites is in. Verified 2026-08-31 against the article's
+  own words, which `docs/REGULATORY.md` quotes in full — verbatim law lives there and not here,
+  which is why that file is one of `ops/language.py`'s declared exceptions and this one is not.
+  **The article settles the denominator and nothing else.** It does not say the corpus's
+  Eurostat median is the quantity it defines, and `corpus/real/` no longer says so either;
 * **over the cost** — `(price - cost) / cost`, a mark-up. This is the denominator the
   envelope's arithmetic is in, because it bounds the price at `cost + cost x pct`.
 

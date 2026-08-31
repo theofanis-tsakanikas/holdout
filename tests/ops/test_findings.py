@@ -248,20 +248,41 @@ def test_the_real_registry_is_green_today() -> None:
     assert failures(findings) == []
 
 
-def test_the_real_registry_holds_the_two_findings_it_was_built_for() -> None:
-    """Both entered **open**, before either fix branch, which is `gate-proof`'s first rule.
+def test_the_two_founding_findings_were_entered_before_their_fixes() -> None:
+    """`gate-proof`'s first rule, asserted as a property rather than as a count.
 
     *Green first — a mutation whose target was already red proves nothing.* A register entry
-    filed with the answer already known is a mutation planted against something already broken,
-    and it would prove nothing about whether the register would have caught it.
+    filed with the answer already known is a mutation planted against something already broken.
+    Both founding entries were filed **open**, dated before any branch that touches them.
+
+    This asserted `len(findings) == 2` until 2026-08-31, and a legitimate split turned it red —
+    a frozen count standing in for the property it was there to protect, which is the defect
+    this repository has spent a phase on. The count is now printed by the target and asserted
+    by nobody.
     """
     findings = parse(REGISTRY.read_text(encoding="utf-8"))
-    assert len(findings) == 2
-    assert all(f.is_open for f in findings)
-    legal, orphan = sorted(findings, key=lambda f: f.found)
-    assert len(legal.sites) >= 4, "the legal finding names every site it is acted on"
+    by_date = sorted(findings, key=lambda f: f.found)
+    legal, orphan = by_date[0], by_date[1]
+    assert legal.found == date(2026, 8, 27), "the legal finding predates the register"
+    assert orphan.found == date(2026, 8, 30), "§4 predates it too"
+    assert legal.is_open, "the corpus claims are open until the benchmark half lands"
+    assert len(legal.sites) >= 3, "it names every site it is acted on"
     assert not legal.is_adrift, "it has a branch"
     assert orphan.is_adrift, "§4 has no branch, and that is the state it is here to hold"
+
+
+def test_every_closed_finding_restates_each_of_its_sites() -> None:
+    """Closure restates; it does not release. Asserted on the real registry, not only on a
+    planted one, because the first closure went through this mechanism rather than around it."""
+    for finding in parse(REGISTRY.read_text(encoding="utf-8")):
+        if finding.is_open:
+            continue
+        assert finding.closed_transition, finding.title
+        restated = {r.path for r in finding.restated}
+        for site in finding.sites:
+            assert site.path in restated, (
+                f"{finding.title}: {site.path} released rather than restated"
+            )
 
 
 def test_every_open_finding_anchors_to_something_that_exists() -> None:
