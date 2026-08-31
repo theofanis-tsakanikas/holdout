@@ -131,6 +131,116 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**`main_guard` is judged against something other than the command it refuses — twice** · found
+2026-08-31 · by `holdout-e0` and oversight level 2, measured by both
+**The hook is not changed here.** It enforces a rule its author reserved to himself, the harness
+applies it whether a session consents or not, and editing it changes the guard before any review
+sees it. This entry records the defects, the measurements and the design, so that none of it lives
+only in a conversation — which is the failure that cost a branch earlier the same day.
+
+*One sentence covers both:* **the guard is judged against something other than the command it is
+refusing** — the wrong **directory** in the first, the wrong **text** in the second.
+
+**Defect 1 — the directory.** `main()` reads `event["cwd"]`, the *session's* directory, and resolves
+the branch there. `-C` is in `_TAKES_A_VALUE` and is used only to skip past its value when finding
+the subcommand: the path is parsed and thrown away. Measured by feeding the hook crafted events:
+
+    cwd on main, committing INTO a worktree on a branch     exit=2  REFUSED   (should allow)
+    cwd on a branch, committing INTO the checkout on main   exit=0  ALLOWED   (should refuse)
+
+The second is **the guard permitting exactly what it exists to prevent**, and the arrangement that
+reaches it — a session in a worktree running `git -C` against the shared checkout — is the one
+`CLAUDE.md`'s git rule requires when two sessions share a repository.
+
+*Never exploited.* `main_guard` landed 2026-08-27 11:17 in `#7`. Seven commits on `main` carry no
+`(#N)`: four predate the hook, and `a47c2a8`, `32f475e` and `d105334` went through PRs #15, #14 and
+#1, verified against the API. **No direct commit to `main` has landed since the guard existed.**
+
+*Interim discipline, closing the exposure by convention while the code is unchanged:* **no session
+runs `git -C <the shared checkout>` from a worktree.** That is the only combination that reaches the
+open direction.
+
+**Defect 2 — the text, and it is two defects wearing one description.** Both refuse a command that
+writes a file quoting a git command. They arrive by different routes:
+
+    REFUSED  cat > note.md <<'EOF' … prose with an apostrophe AND a `&&` in the quoted text
+    allowed  the same prose with no apostrophe
+    allowed  prose quoting the command with no separator in it
+
+The first needs **both** an apostrophe — to unbalance `shlex` and fall through to `_COARSE` — and a
+shell operator inside the quoted text for `_COARSE` to match after. The docstring's own example,
+*Don't run `git commit` here*, is the half-case that works, which is why its author believed it
+closed.
+
+The second route never touches `_COARSE`:
+
+    REFUSED  bash <<'EOF'             … body is RUN      correct
+    REFUSED  cat > runbook.md <<'EOF' … body is WRITTEN  wrong
+
+Identical bodies. `_segments` splits on lines, the body line tokenises cleanly, `_is_git_commit`
+returns true. **The two commands differ only in the consumer before `<<`** — so nothing about the
+body can separate them, and the written-versus-executed distinction is not one option among several
+but the only thing that carries it.
+
+**The design, since it is the part that took the longest to reach.** Excise the heredoc body **only**
+when the consumer is `cat` or `tee`, with no pipe onward, writing to a file or a redirect. Everything
+else keeps its body matched. That is a **whitelist of two rather than a classification of all
+consumers**: not *is this executed?*, which requires understanding the command, but *is this one of
+the two forms that provably cannot execute?*, which is a string comparison. `cat <<'EOF' | bash`
+fails closed because the pipe disqualifies it, without needing a downstream rule.
+
+**And the accounting that the docstring must carry, because getting it wrong is how the hole opens.**
+Two refusals happened today. **One was a false positive** — `cat > note.md <<'EOF'`, which the
+whitelist fixes. **The other was a correct refusal that felt like one**: `python - <<'PYEOF'`, run
+while measuring the first. Its body executes and can reach git through `os.system` or `subprocess`
+with no line beginning with `git`, so refusing it is the guarantee holding.
+
+> **A refusal recorded as a false positive is a refusal somebody later removes.** The next session
+> meets `python <<EOF` refused, finds it listed as a known false positive, and widens the whitelist
+> to include `python` — which opens exactly the hole the whitelist exists to leave closed. The
+> complaint becomes a fix becomes the defect.
+
+So `python`, `bash`, `sh` and anything not `cat` or `tee` are refused **deliberately**, and **the
+workaround is the editor tool, not a wider list.** That sentence is the one that stops the next
+repair — the same move as *never narrow this walk to match*: name the repair somebody will reach
+for, and refuse it in advance.
+
+**Five attacks, all blocking, with today's baseline measured so a rewrite has a starting point
+rather than an assumption:**
+
+| attack | required | today |
+|---|---|---|
+| `git -C <worktree on a branch> commit` | allow | REFUSED |
+| `git -C <checkout on main> commit` from a branch session | refuse | **ALLOWED** |
+| heredoc writing prose that quotes the command | allow | REFUSED |
+| `cat > f <<'EOF'` whose body line begins with `git` | allow | REFUSED |
+| `bash <<'EOF'` whose body commits | refuse | REFUSED |
+| the two-line `git add -A` / `git commit` — a recorded miss | refuse | REFUSED |
+
+*And the stop rule:* if the written case cannot be allowed while the executed case is refused,
+**ship the directory fix alone and file the text half.** The directory fix is mechanical and has no
+residual; the text half grew twice under examination. Half a fix to a guard is better than a whole
+one that opens it, and this file records three instances today of a repair reintroducing what it was
+repairing.
+
+*It is the third instance in this one hook.* `CLAUDE.md` already records it biting the one-line
+`&&` form and missing the two-line one. Neither the docstring nor `.claude/README.md` mentions
+worktrees or heredocs — **a known miss with nowhere written down is how the first one survived long
+enough to become three**, and both places take both new cases when the fix lands.
+
+*And this entry's own disposition is a live instance of the state that gate was designed for.* It
+names `ops/main-guard-judges-the-command`, which does not exist. Under the branch-state gate
+designed and then refused earlier the same day, that would print **`nowhere`** — and printing it
+would be **correct**: a branch proposed and not started is an honest absence, nothing anywhere
+claims it landed, and the line beside it says why. The register is carrying a truthful `nowhere` on
+the day the gate that would have reported it was filed, which is the argument for *printed, not
+refused* arriving as an example rather than as a rule.
+
+*Site:* `.claude/hooks/main_guard.py` :: `    branch = current_branch(Path(cwd) if isinstance(cwd, str) else Path.cwd())`
+*Disposition:* `ops/main-guard-judges-the-command` — **awaiting the author's word**, because the
+hook enforces his rule and changing it changes what a session is permitted to do
+*Status:* open
+
 **`test_the_truth_is_not_lying_in_the_file_in_plain_sight` fails about 1 run in 254** · found
 2026-08-31 · by `evals/world-cache-measured`, from one red in a suite run
 **The failure a reader will meet:** `AssertionError: 248` at
