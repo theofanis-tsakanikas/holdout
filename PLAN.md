@@ -937,6 +937,37 @@ that no measurement of what a level-3 session costs exists anywhere, so the skil
 and says so — `CLAUDE.md`'s rule about a number in configuration, applied to a number that is
 missing rather than wrong.
 
+**And the limits section is the experiment's result rather than a courtesy, because it is the one
+thing here that was measured.** The brief the writing session was given **deliberately withheld**
+this repository's *state what it does not prove* convention. It was cut in a second round of
+leak-checking, on the argument that handing it over would make the draft's limits section
+unreadable as evidence: it would come back with one, and we would have taught it. **Either outcome
+was information** — a draft with *no* limits section, in a repository where every artefact has one,
+would have been a real finding about the record.
+
+It came back with one, unprompted, and the writing session named where it learned it:
+`evals/README.md`'s rule 6, every eval printing its own silence, `docs/FINDINGS.md`'s standing
+limit, `ops/figures.py` declaring what it does not cover. **So the convention is legible from the
+files alone.** That is a finding about the repository and not about the skill, and it is the only
+part of `#9` that was measured rather than reconstructed — because it is the one convention that
+was removed on purpose. Everything else in the file could have arrived from the writer being a
+competent session; this could not.
+
+**What it does not establish, and the first clause is narrower than it was first written.** The
+session was cold about the **method**, which is what the check was selecting for, and it was not
+cold about the **repository** — it read eight files before writing a line. So the result is *the
+record conveyed the convention to a session that had read the record*, which is exactly what was
+tested and is weaker than *to a session that knew nothing*. Beyond that: one convention, one
+session, one run. It says the record carries that convention, not that the method is
+reconstructible and not that the skill is right. `tests/skills/test_skills.py` checks wiring, and
+nothing checks whether a skill is followed. The second sample is `T016`.
+
+**It is recorded here rather than in the skill, and the argument decided it rather than the
+preference.** A skill claiming its own extraction was validated is the artefact certifying itself,
+which is doctrine rule 5 in miniature and the shape both sessions spent the day refusing.
+`PLAN.md` is a record of what happened; a skill is an instruction. The claim belongs in the
+first.
+
 **What the file is actually for is §4, and that is the part no participant would have written.**
 The eight questions are recoverable from `CLAUDE.md` and the report's own headings. What is not is
 the three places the phase-1 report was **wrong in its own report**: §2b concluding that the cache
