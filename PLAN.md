@@ -920,6 +920,139 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**The guard was judged against something other than the command it refuses · 2026-08-31.**
+`ops/main-guard-judges-the-command` fixes two defects in `.claude/hooks/main_guard.py`, found by a
+cold session and oversight level 2 and **authorised by the author** — a hook is registered in
+`settings.json`, the harness applies it whether a session consents or not, and it is the mechanism
+that constrains what a session may do, so a peer's instruction was not enough.
+
+**One sentence covers both:** the guard is judged against something other than the command it is
+refusing — the wrong **directory** in the first, the wrong **text** in the second.
+
+**The directory.** `main()` read `event["cwd"]`, the *session's* directory; `-C` was parsed only to
+skip its value. So committing into a worktree on a branch was **refused**, and — the direction that
+matters — `git -C <the checkout on main> commit` from a session on a branch was **allowed.** The
+guard permitting exactly what it exists to prevent, in the arrangement `CLAUDE.md`'s git rule
+requires when two sessions share a checkout. Never exploited: no direct commit to `main` has landed
+since the hook arrived, verified commit by commit against the API.
+
+**And the fix left the defect alive twice more, each time as a spelling the file already knew.**
+The first repair enumerated `-C`, `--git-dir=` and `--work-tree=` and forgot the **environment** —
+`GIT_DIR=` and `GIT_WORK_TREE=` were still allowed, though `_COARSE`'s prefix and
+`_is_git_commit`'s skip both exist to handle environment assignments. The second forgot
+`--git-dir <path>` **space-separated**, which sat in `_TAKES_A_VALUE` three lines above the
+enumeration that omitted it. Each was found by reviewing the fix for the one before.
+
+**So the finding is the pattern rather than the rows.** The same defect, three times, in one file:
+
+> A flag or a variable this file already handles **for one purpose** is one it can be asked about
+> **for another** — and the second question is asked by a different function, written later, by
+> somebody reading the first list and not the file.
+
+`_NAMES_A_REPOSITORY` is now a **subset of `_TAKES_A_VALUE`, asserted at import**, rather than a
+second list kept in step by memory. Two lists of flags in one file, each missing a member of the
+other, is how it reached three. And the comment above it — *an enumeration, not a proof of
+completeness* — turned out to be right in a way its author did not intend: **a further spelling
+was already in the file, within one commit of that sentence being written.** `_NAMES_A_REPOSITORY` now says in as many words that it is **an enumeration and not
+a proof**, that an unrecognised spelling falls back to the session's directory *which is where the
+original defect lived*, and — separately — that a target named **outside** the command by an
+exported variable is a **limit rather than a defect**, because the hook is handed a command and
+never an environment and no row can be added for it.
+
+**The text, which is two defects wearing one description.** One needs **both** an apostrophe, to
+unbalance `shlex` into `_COARSE`, and a shell operator inside the quoted text; the hook's own
+docstring names *Don't run `git commit` here* as the case it closed, and that is the half-case that
+works. The other never reaches `_COARSE`: `bash <<EOF` and `cat > f <<EOF` with **identical bodies**
+get identical verdicts, and the second is wrong. **The two commands differ only in the consumer**, so
+nothing about the body can separate them — the written-versus-executed distinction is not one option
+among several but the only thing that carries it.
+
+The body is excised for `cat` and `tee` with no `|`, `$(` or backtick — **a whitelist of two rather
+than a classification of every consumer**, so the question is not *is this executed?* but *is this
+one of the two forms that cannot be?*, which is a string comparison.
+
+**And the accounting is what stops the next repair.** Two refusals happened. One was a false
+positive; the other — a `python` heredoc, run while measuring the first — was a **correct refusal
+that felt like one**. Its body executes and can reach git with no line beginning with `git`. **A
+refusal recorded as a false positive is a refusal somebody later removes**, so the docstring and
+`.claude/README.md` both say `python` is refused deliberately and the workaround is the editor tool,
+not a wider list.
+
+**Fifteen attacks, with the previous hook wrong on seven, and six tests that fail against it and
+pass against this one.** The harness itself was wrong twice first — everything allowed because the
+session had moved off `main`, then two heredoc cases still pointed at a branch and would have passed
+with the heredoc logic deleted. **A vacuous green on exactly the two cases the fix exists for**,
+caught by reading the table rather than the total.
+
+`.claude/README.md` carried *"the safe direction, and a case that does not arise here"* about this
+exact behaviour. Both halves were false, and the restatement stays beside them.
+
+**A fourth candidate was tested and came back negative, and that is worth as much as the three
+that did not.** `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY` and `GIT_CEILING_DIRECTORIES` were each
+set alone against a second repository on `main`: **none makes a commit land there.**
+`GIT_COMMON_DIR` was the right one to doubt, since it exists *for worktrees* and worktrees are the
+fix's whole subject. The negative is recorded in the hook and in `.claude/README.md` with its
+reason — the next person reaches the same list and would otherwise re-derive the same answer.
+
+> **A method that only ever produces hits is indistinguishable from one that is finding what it
+> went looking for.** *Ask rather than assert* changed the outcome three times today — the `python`
+> heredoc, the `GIT_DIR` spelling, and this one. The first two were real. **This one is not, and
+> recording it as a refuted candidate with its measurement is what makes the other two findings
+> rather than confirmations.** A register of confirmed suspicions with no refuted ones would be a
+> register worth distrusting.
+
+**And one result in that measurement is unexplained, which is said here rather than smoothed
+over.** Two probe forms disagreed on a *local* effect of `GIT_COMMON_DIR` — one commit succeeded
+into its own repository, the other left that repository's `HEAD` unresolvable. The first
+explanation reached for was invalid fixtures; re-running with verified repositories reproduced the
+disagreement, so that explanation was wrong. **It is still unexplained.** What held across every
+run is the only thing the fix depends on: the second repository's commit count never moved.
+
+> **An unexplained result sitting beside a solid one, in the same measurement, at the end of a long
+> branch, is where a clean story gets manufactured.** The honest shape is *I cannot account for
+> this, and here is the invariant that never moved* — two statements, kept apart, rather than one
+> reason stretched to cover both.
+
+Not filed as a finding: it is a question about git's behaviour with no bearing on this repository,
+and the register would be carrying something it cannot close.
+
+**And CI refused the branch on a defect in the tests rather than in the fix — the third instance
+of that family today, and the pointed one.** `tests/hooks/test_main_guard.py` creates real
+repositories and commits into them, and **the runner has no global git identity**, so `git commit`
+exits 128 there. They passed here because this machine has one.
+
+    _layout_population   counted `notes/`, which exists on this disk and on no clean checkout
+    the probe harness    assumed its cwd was on `main`, which had stopped being true
+    these tests          assumed a git identity, which is a property of the machine
+
+**The third is the sharpest: the tests proving the guard works could not run where the guard's CI
+runs.** A guard verified only on its author's machine is most of the way back to where the branch
+started.
+
+**The repair is isolation rather than the symptom.** Supplying the identity fixes the one thing
+that fired; `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` pointed at `/dev/null` make the fixture
+independent of the machine's git configuration entirely — `init.templateDir`, `core.hooksPath` and
+`init.defaultBranch` could each change what `git init` produces, and **pinning one of three while
+inheriting two is how the first version passed here and failed there.**
+
+**And the simulation of the runner was wrong twice before it was right**, which is the same
+lesson one layer down. Nulling the global config alone did **not** reproduce the failure — git
+falls back to an OS-derived name, and this machine has one. Forcing the name empty did reproduce
+it, and then went too far the other way: an *empty* `GIT_AUTHOR_NAME` overrides `-c user.name=…`,
+which the runner's *unset* variable does not, so it broke a pre-existing test that is fine on CI.
+That test now takes its identity through the environment too, and the whole file passes it.
+
+**And that claim is narrower than it first read, which is worth stating rather than trimming
+quietly.** *Strictly harsher than the runner* is true along **one axis — configuration**: global
+and system config nulled and the author name forced empty, all of which are stronger than the
+runner's unset variables. It is **not** established along the others. The runner has a different
+git version, a different platform and a different filesystem, and nulling config simulates none
+of them — which is precisely where `init.defaultBranch` and `templateDir` defaults have differed
+between git versions. **Strictly harsher in configuration; untested in version and platform, and
+the CI run is what settles those.**
+
+The suite is **994**.
+
 **The cache was never measured, and the branch that would have measured it never existed ·
 2026-08-31.** `evals/world-cache-measured` closes the review's §2b and §2c — the last of the eight,
 and the one nobody opened.
