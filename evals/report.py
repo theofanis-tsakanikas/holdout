@@ -53,6 +53,23 @@ class Check:
     detail: str = ""
     counterexamples: tuple[str, ...] = ()
 
+    unarmed_because: str = ""
+    """Why no `gate-proof` mutation can be planted against this check.
+
+    **Empty means one could be**, not that one exists. `make gate-proof` sorts every check into
+    three states and prints the counts: armed by a mutation, declared un-armable with this
+    sentence, or **unarmed** — a gate nobody has shown to bite yet. The third is reported rather
+    than refused, for the reason `docs/FINDINGS.md` reports `adrift` rather than refusing it: a
+    gate nobody has armed yet is a real state, and refusing it teaches people to write a sentence
+    instead of a mutation.
+
+    So this field is for *cannot*, never for *have not*. The honest reasons are narrow and the
+    repository already knows all of them: the break would have to edit the **detector** rather
+    than the system (`ops/`, `corpus/`, the eval itself), the check asserts a property of the
+    **inputs** that no change to `src/holdout/` can move, or the check is **absent from the
+    configuration a mutation runs at** and computing it there would make it a different check.
+    Anything else is a mutation somebody has not written."""
+
 
 @dataclass(frozen=True, slots=True)
 class Report:

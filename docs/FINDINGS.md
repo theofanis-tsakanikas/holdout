@@ -207,6 +207,33 @@ repository. That is the argument for this file rather than a footnote to it.
 *Closed:* 2026-08-31 — restated in `PLAN.md` by `corpus/legal-claims-restated`, with the prior wording kept beside it per doctrine rule 4
 *Now:* `PLAN.md` :: `benchmark to the trader's **own** 2025 rather than to a sector figure.`
 
+**Half of `G7` cannot fail** · found 2026-08-31 · by oversight level 3, while arming it
+`G7.closed-vocabulary-only` asks two questions and one of them is a dead branch. *Is every reason's
+code one the vocabulary declares* is checked as `reason.code.value not in declared` — and
+`reason.code` **is** a `RefusalCode`, so the condition can never be true. The type already closed
+the vocabulary; the check re-asks a question the type had answered.
+
+*What is not wrong.* `G7`'s second question is real and load-bearing: **every refusal carries a
+detail**. Claim 1's evidence is *which* guardrail refused, and a code with no detail says a price
+was refused without saying what about it was wrong. That half is now armed —
+`17-a-refusal-arrives-without-its-detail` blanks the detail, moves no bound, certifies no price and
+changes no code, and `G7` is the only check in the eval that falls.
+
+*So the check is not removed and the figure is not touched.* `12 distinct codes over 365,591
+reasons` is a real published number; what is dead is one `if`. Deleting it would lose the statement
+that the vocabulary is closed, which is true and worth asserting somewhere — the question is whether
+a check is the right somewhere when a type already guarantees it, and that is a judgment about where
+a guarantee should live rather than a defect to patch.
+
+*Why it is here rather than fixed in the branch that found it.* The branch's subject is arming
+unarmed checks. Rewriting one of them while arming it would mean the mutation was written against a
+check nobody had reviewed in its new shape — and `evals/README.md`'s rule 5 is that a boundary is
+computed twice, not that a check is edited by whoever is proving it bites.
+
+*Site:* `evals/guardrail/checks.py` :: `if reason.code.value not in declared:`
+*Disposition:* none — a judgment about whether a check should re-assert what a type guarantees
+*Status:* open
+
 **`pricing/selection.py` serves no claim, and the review that said so assigned it nowhere** · found
 2026-08-30 · by oversight level 3
 `src/holdout/core/pricing/selection.py` is reached by no eval and targeted by no mutation. Only

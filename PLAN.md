@@ -920,6 +920,35 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**A check is armed, or it says why it cannot be · 2026-08-31.** `evals/unarmed-checks` closes the
+review's §1. `ledger.every-claim-target-owns-a-gate` asked the question at target level, which one
+mutation satisfies for a claim with twelve checks — leaving **21 of 57 checks with no mutation and 8
+of those with no reason**, three of them numbers claim 2 publishes.
+
+`Check` gains `unarmed_because` and `make gate-proof` prints three states:
+**37 armed · 23 declared un-armable · 7 unarmed**. The third is reported and not refused, for the
+reason the findings register reports `adrift`: refusing it buys a sentence where a mutation belongs.
+What is refused is a check both armed and excused, because one of the two is then untrue.
+
+The reasons turn out to be exactly three — the break would edit the **detector**, the check asserts
+a property of the **inputs**, or the check is **absent from the configuration a mutation runs at**.
+The ledger's own ten are among them, armed by `tests/evals/test_ledger.py`, which is the arrangement
+that already existed and had never been part of the written shape. Checks are found by **parsing**
+`evals/` rather than importing it, because importing an eval means being able to run it.
+
+**One of the eight was armed rather than excused**, and it bit alone:
+`17-a-refusal-arrives-without-its-detail` blanks a refusal's detail — no bound moves, no price is
+certified, no code changes — and `G7` is the only check that falls. Claim 1 is **17/17**.
+
+**Arming it found that G7's other half cannot fail**: `reason.code.value not in declared` is a dead
+branch, because `reason.code` is a `RefusalCode`. Filed in `docs/FINDINGS.md` rather than patched,
+since rewriting a check while proving it bites means the mutation was written against a shape nobody
+reviewed. The register is now **4 findings, 2 open, 2 closed**.
+
+And the uncovered half is published on every run: **seven of the eight `at_design` codes are reached
+by no eval**, living only in cases their own author wrote, over exactly the vocabulary claim 6 will
+count N and M against. The suite is **970**.
+
 **And the author settled the half that was never ours: real inputs, derived cost · 2026-08-31.**
 The prose sites were defects and got fixed. What was left was a judgment about the product — a
 corpus presented as real whose concrete benchmark is a construct the regulation does not use, either

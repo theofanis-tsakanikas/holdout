@@ -18,6 +18,11 @@ from pathlib import Path
 import pytest
 from evals.gate_proof import ledger
 from evals.gate_proof.engine import Mutation
+from evals.gate_proof.ledger import (
+    DeclaredCheck,
+    check_every_check_is_armed_or_says_why,
+    declared_checks,
+)
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -29,6 +34,7 @@ def _mutation(
     directory: str | None = None,
     file: str = "src/holdout/core/money.py",
     anchor: str = "class MoneyError(TypeError):\n",
+    targets: tuple[str, ...] = ("G2.certified-price-inside-exact-bounds",),
 ) -> Mutation:
     parent = directory if directory is not None else f"claim-{claim}"
     return Mutation(
@@ -36,7 +42,7 @@ def _mutation(
         id=identity,
         claim=claim,
         eval_module="evals.guardrail",
-        targets=("G2.certified-price-inside-exact-bounds",),
+        targets=targets,
         breaks="something",
         file=file,
         anchor=anchor,
@@ -204,3 +210,59 @@ def test_every_committed_mutation_is_owned_by_its_own_claim_target() -> None:
     all_targets = ledger.targets()
     for mutation in ledger.load_mutations():
         assert ledger.owners_of(mutation, all_targets) == (f"claim-{mutation.claim}",)
+
+
+# ------------------------------------------------- a check is armed, or it says why it cannot be
+#
+# The ledger cannot have a gate-proof mutation — breaking it means editing the detector — so its
+# newest question is armed here, on deliberately broken arrangements, exactly as the other eight
+# are. `docs/reviews/phase-1.md` §1 is why it exists: 21 of 57 checks owned no mutation and 8 of
+# those named no reason, and `every-claim-target-owns-a-gate` could not see it because one
+# mutation satisfies a claim with twelve checks.
+
+
+def _declared(identifier: str, reason: str = "") -> DeclaredCheck:
+    return DeclaredCheck(id=identifier, unarmed_because=reason, where="planted")
+
+
+def test_a_check_named_by_a_mutation_is_armed() -> None:
+    result = check_every_check_is_armed_or_says_why(
+        [_mutation(targets=("X1.planted",))], [_declared("X1.planted")]
+    )
+    assert result.passed
+    assert "1 armed" in result.figure
+
+
+def test_a_check_with_a_reason_is_declared_un_armable() -> None:
+    result = check_every_check_is_armed_or_says_why([], [_declared("X1.planted", "the detector")])
+    assert result.passed
+    assert "1 declared un-armable" in result.figure
+
+
+def test_a_check_with_neither_is_counted_unarmed_and_does_not_go_red() -> None:
+    """Reported, never refused. A gate nobody has armed yet is a real state, and refusing it
+    buys a sentence where a mutation belongs — the same reason `docs/FINDINGS.md` reports
+    `adrift` rather than refusing it."""
+    result = check_every_check_is_armed_or_says_why([], [_declared("X1.planted")])
+    assert result.passed, "unarmed must not turn the ledger red"
+    assert "1 unarmed" in result.figure
+
+
+def test_a_check_that_is_both_armed_and_excused_is_refused() -> None:
+    """One of the two is untrue and nobody would notice which."""
+    result = check_every_check_is_armed_or_says_why(
+        [_mutation(targets=("X1.planted",))], [_declared("X1.planted", "cannot be armed")]
+    )
+    assert not result.passed
+    assert result.counterexamples
+
+
+def test_the_real_tree_declares_more_checks_than_the_claims_print() -> None:
+    """The scan reaches the detector's own checks too, and they are the ones that must carry a
+    reason rather than a mutation. If this ever stops being true the scan has narrowed."""
+    declared = declared_checks()
+    ledger_own = [d for d in declared if d.id.startswith("ledger.")]
+    assert len(ledger_own) >= 9
+    assert all(d.unarmed_because for d in ledger_own), [
+        d.id for d in ledger_own if not d.unarmed_because
+    ]

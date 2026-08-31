@@ -677,6 +677,11 @@ def _c7(worlds: Sequence[Measured]) -> Check:
     dates = " · ".join(f"{m.world} from {m.split_date}" for m in worlds)
     return Check(
         id="C7.the-graded-days-are-not-the-days-the-curve-was-fitted-on",
+        unarmed_because=(
+            "its disjointness half is a tautology — the two segments are complementary predicates "
+            " over one business date — and only its non-emptiness half can go red, which is a pro "
+            "perty of the corpus rather than of the system."
+        ),
         question=(
             "is the held-out segment disjoint from the fitting segment, and is neither of "
             "them empty?"
@@ -778,6 +783,10 @@ def _c11(worlds: Sequence[Measured]) -> Check:
     grid_points = sum(len(m.grid) for m in worlds)
     return Check(
         id="C11.the-naive-reading-is-wrong-here-and-the-corpus-says-so",
+        unarmed_because=(
+            "it asserts how much of the **corpus** is censored. No break planted in `src/holdout/ "
+            "` can move a figure about the inputs."
+        ),
         question=(
             "is there enough censoring in these worlds for the checks above to mean anything, "
             "and does reading a truncated day as its demand understate at every censor hour "
@@ -808,6 +817,10 @@ def _c12(worlds: Sequence[Measured]) -> Check:
     drift = (movement - recorded) / recorded if recorded else 0.0
     return Check(
         id="C12.no-sale-falls-after-the-hour-the-shelf-is-recorded-as-empty",
+        unarmed_because=(
+            "likewise a property of the corpus: no store-day sells after its recorded stock-out,  "
+            "whatever the correction does with it."
+        ),
         question=(
             "does any censored store-day sell something after the hour its shelf is recorded "
             "as empty from — which would put units in the numerator the share's window "
