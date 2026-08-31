@@ -288,6 +288,19 @@ def check_ids_that_exist() -> int:
     Distinct **ids**, not constructions: three checks are built in two branches of one function
     and the ledger merges them by id, so counting constructions would report a permanent
     four-check shortfall that is not one.
+
+    **The two populations are deliberately asymmetric, and this one is the broader.** The ledger
+    walks `CHECK_SOURCES`, which is `evals/`; this walks all six directories `PYTHON_DIRS` names.
+    So a `Check(...)` constructed anywhere outside `evals/` is counted here and not there, and
+    this gate goes red at 68 against 67.
+
+    That is the intended behaviour rather than an edge to smooth over — a check the ledger cannot
+    see is precisely the narrowing this exists to catch, and it makes no difference whether the
+    narrowing was done to `CHECK_SOURCES` or to where somebody put the check. But it will also
+    fire the first time a `Check` is written outside `evals/` on purpose, and at that moment the
+    red reads as a bug here rather than as a question about scope. It is the second: the answer is
+    either to move the check or to widen `CHECK_SOURCES`, and which one is a judgment about where
+    checks live. Never to narrow this walk to match, which would delete the comparison.
     """
     found: set[str] = set()
     for directory in python_dirs():

@@ -250,6 +250,34 @@ untouched in both checks, for the reason above.
 *Disposition:* none — a judgment about whether a check should re-assert what a type guarantees
 *Status:* open
 
+**The suite count is published where no gate can read it** · found 2026-08-31 · by oversight
+level 2, after writing a wrong one
+Every session entry in `PLAN.md` ends with `The suite is **N**`, and nothing recomputes it. `PROSE`
+in `ops/figures.py` is the mechanism that would, and it excludes `PLAN.md` deliberately: the file
+keeps superseded figures forever per doctrine rule 4 — 965, 965, 959, 943, 937, 928 are all in it
+and all correct as written — so re-running a number there would go red on history.
+
+*The argument is sound for the history and silent about the newest entry.* Only the last one is
+present tense. It is the only figure in the file that is a claim about now, it is the one a reader
+takes as current, and it is outside every gate in the repository.
+
+*Found by writing one.* `The suite is **976**` went into `PLAN.md` as a projection — one test added,
+one replaced, arithmetic — in the same change whose subject is that an assertion wearing a number is
+set from a measurement of the thing that runs. It is **972**. Nothing caught it; an agent
+reconsidering caught it, about ninety seconds later. That is not a mechanism and it does not survive
+a tired session, which is the whole argument of `docs/reviews/phase-1.md` §2 and the reason this is
+filed rather than shrugged at.
+
+*What the fix is not.* Registering `PLAN.md` in `PROSE` as it stands would go red on six historical
+figures immediately. What is needed is a rule for *which* occurrence is present tense — the last, or
+one carrying a marker — and that is a judgment about the document, which is why it is a finding and
+not a patch.
+
+*Site:* `ops/figures.py` :: `#: **Deliberately small, and the reason is doctrine rule 4.** `PLAN.md` and `TASKS.md` are the`
+*Disposition:* `ops/the-newest-figure-is-present-tense` — small, and it belongs where the count is
+published rather than in the branch that found it
+*Status:* open
+
 **A mutation may name a check that does not exist, and the cheap target cannot tell** · found
 2026-08-31 · by oversight level 2, on `evals/unarmed-checks`
 A mutation declares `targets:` — the checks it expects to refuse it. Nothing in `make gate-proof`

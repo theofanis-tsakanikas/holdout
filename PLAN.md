@@ -943,7 +943,7 @@ certified, no code changes — and `G7` is the only check that falls. Claim 1 is
 **Arming it found that G7's other half cannot fail**: `reason.code.value not in declared` is a dead
 branch, because `reason.code` is a `RefusalCode`. Filed in `docs/FINDINGS.md` rather than patched,
 since rewriting a check while proving it bites means the mutation was written against a shape nobody
-reviewed. The register is now **5 findings, 3 open, 2 closed**.
+reviewed. The register is now **6 findings, 4 open, 2 closed**.
 
 And the uncovered half is published on every run: **seven of the eight `at_design` codes are reached
 by no eval**, living only in cases their own author wrote, over exactly the vocabulary claim 6 will
@@ -984,7 +984,11 @@ rather than a new one: one fact gets one entry, which is what this register had 
 first hour when one entry was answering for two defects.
 
 The fourth is filed and not fixed: **a mutation may name a check that does not exist**, caught only
-by the expensive target. Measured at **0 of 37 targets naming nothing** today. The suite is **972**.
+by the expensive target. Measured at **0 of 37 targets naming nothing** today. The suite is **972** — a figure that went in as **976** first, projected from "one test
+added, one replaced" instead of measured, inside the change whose subject is that a number is set
+from a measurement. Which is how the fifth finding was found: **that count is published where no
+gate can read it**, because `PROSE` excludes `PLAN.md` so history stays green. Sound for the six
+superseded figures above it, silent about the one that is present tense.
 
 **And the author settled the half that was never ours: real inputs, derived cost · 2026-08-31.**
 The prose sites were defects and got fixed. What was left was a judgment about the product — a
