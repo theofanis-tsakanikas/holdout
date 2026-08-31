@@ -1,0 +1,34 @@
+# The only half of G7 that can fail, and until now nothing had shown it does.
+#
+# G7 asks two questions. The first — is every reason's code one the vocabulary declares — cannot
+# be false: `reason.code` is a `RefusalCode`, so `code.value not in declared` is a dead branch.
+# That is recorded as a finding rather than fixed here; see docs/FINDINGS.md.
+#
+# The second question is real and is what claim 1's evidence rests on. `at_decision` names WHICH
+# guardrail refused, and the count is the claim — but a code with no detail is a refusal nobody
+# can act on: it says a price was refused and not what about the price was wrong. Blanking the
+# detail moves no bound, certifies no price and changes no code, so G2, G3, G4, G6 and G10 all
+# stay green. G7 is the only check in the eval that falls.
+
+id:          a-refusal-arrives-without-its-detail
+claim:       1
+eval_module: evals.guardrail
+targets:
+  - G7.closed-vocabulary-only
+
+breaks: >-
+  a guardrail refuses without saying what was wrong. Every code is still declared, every bound is
+  still in place and every arithmetic check still passes; what is gone is the sentence a person
+  would read to find out why this price was refused rather than that one. Claim 1's evidence is a
+  count of named refusals, and a count of reasons nobody can read is a count of nothing.
+
+file: src/holdout/core/guardrails/envelope.py
+
+anchor: |
+            GuardrailRefusal(
+                code=code, guardrail=guardrail, rule_id=rule_id, detail=detail, safe_state=safe
+            )
+replacement: |
+            GuardrailRefusal(
+                code=code, guardrail=guardrail, rule_id=rule_id, detail="", safe_state=safe
+            )

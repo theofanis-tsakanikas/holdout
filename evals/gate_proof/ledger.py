@@ -36,6 +36,7 @@ unmoored is caught by the cheap target as well as by the expensive one.
 
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -148,6 +149,11 @@ def check_every_mutation_is_owned_once(
     failures = orphans + duplicates
     return Check(
         id="ledger.every-mutation-is-owned-once",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
         question=(
             "Is every planted mutation executed by exactly one Makefile target — no orphan "
             "that nothing runs, no duplicate that two targets both run?"
@@ -174,6 +180,11 @@ def check_every_claim_target_owns_a_gate(
     claim_targets = [t for t in all_targets if t.claim is not None]
     return Check(
         id="ledger.every-claim-target-owns-a-gate",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
         question=(
             "Does every `claim-N` target have at least one planted mutation — so that no "
             "claim is declared proved by a gate nobody has tried to break?"
@@ -202,6 +213,11 @@ def check_the_ledger_executes_nothing(all_targets: Sequence[Target]) -> Check:
     ]
     return Check(
         id="ledger.the-ledger-executes-nothing",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
         question="Does `make gate-proof` audit the arrangement rather than re-run it?",
         passed=not offenders,
         figure="executes nothing" if not offenders else f"{len(offenders)} recipe(s) execute",
@@ -219,6 +235,11 @@ def check_mutation_ids_are_unique(mutations: Sequence[Mutation]) -> Check:
     ]
     return Check(
         id="ledger.mutation-ids-are-unique",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
         question="Is every mutation id unique, so a verdict names exactly one planted break?",
         passed=not clashes,
         figure=f"{len(seen)} distinct ids over {len(mutations)} mutations",
@@ -240,6 +261,11 @@ def check_mutation_lives_under_the_claim_it_declares(mutations: Sequence[Mutatio
     ]
     return Check(
         id="ledger.mutation-lives-under-the-claim-it-declares",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
         question="Does every mutation's directory agree with the claim its own file declares?",
         passed=not wrong,
         figure=f"{len(mutations) - len(wrong)}/{len(mutations)} agree",
@@ -268,6 +294,11 @@ def check_every_anchor_is_aimed_at_one_place(mutations: Sequence[Mutation]) -> C
             )
     return Check(
         id="ledger.every-anchor-is-aimed-at-one-place",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
         question=(
             "Does every mutation's anchor still occur exactly once in the source it names — "
             "so that no planted break is aimed at code that has moved?"
@@ -294,6 +325,11 @@ def check_no_mutation_edits_the_detector(mutations: Sequence[Mutation]) -> Check
     ]
     return Check(
         id="ledger.no-mutation-edits-the-detector",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
         question=(
             "Does every planted break edit the system rather than the thing that detects it — "
             f"nothing under {' or '.join(DETECTOR)}?"
@@ -305,6 +341,136 @@ def check_no_mutation_edits_the_detector(mutations: Sequence[Mutation]) -> Check
             "appear to bite, which is the separation engine.py says carries its argument"
         ),
         counterexamples=tuple(offences),
+    )
+
+
+#: Where the evals declare their checks. Parsed rather than imported, for the reason claim 7's
+#: `reference.py` parses `src/holdout/`: importing an eval means being able to run it, and
+#: `evals/uplift/` costs half an hour. The cost of parsing is that a `Check` built dynamically is
+#: invisible here — a declared limit, the same one `O11` declares, and today every one of the 57
+#: is a literal.
+CHECK_SOURCES = ("evals",)
+
+
+@dataclass(frozen=True, slots=True)
+class DeclaredCheck:
+    """A `Check(...)` found in an eval's source, with its id and its un-armable reason."""
+
+    id: str
+    unarmed_because: str
+    where: str
+
+
+def declared_checks() -> tuple[DeclaredCheck, ...]:
+    """Every `Check(...)` constructed anywhere under `evals/`, read off the syntax tree."""
+    found: list[DeclaredCheck] = []
+    for root in CHECK_SOURCES:
+        for path in sorted((REPO_ROOT / root).rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+            except SyntaxError:  # pragma: no cover - the suite would be red first
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                name = (
+                    node.func.id
+                    if isinstance(node.func, ast.Name)
+                    else getattr(node.func, "attr", "")
+                )
+                if name != "Check":
+                    continue
+                words = {k.arg: k.value for k in node.keywords if k.arg}
+                identifier = words.get("id")
+                if not isinstance(identifier, ast.Constant) or not isinstance(
+                    identifier.value, str
+                ):
+                    continue
+                reason = words.get("unarmed_because")
+                text = (
+                    reason.value
+                    if isinstance(reason, ast.Constant) and isinstance(reason.value, str)
+                    else ""
+                )
+                if isinstance(reason, ast.JoinedStr | ast.BinOp):  # a wrapped literal
+                    text = ast.unparse(reason)
+                found.append(
+                    DeclaredCheck(
+                        id=identifier.value,
+                        unarmed_because=text.strip(),
+                        where=str(path.relative_to(REPO_ROOT)),
+                    )
+                )
+    # One entry per id. Three checks are constructed in two branches of the same function —
+    # a passing shape and a failing one — and counting them twice would make every figure here
+    # disagree with the eval that prints them. The reason survives from whichever branch carries
+    # it, because a reason written once is written.
+    #
+    # Unreachable today, and named here because this is where somebody will meet it: if a check
+    # is ever declared in two branches where one carries a reason and a mutation arms the other,
+    # this merge keeps the reason, `check_every_check_is_armed_or_says_why` sees armed *and*
+    # excused, and the ledger goes red on a contradiction nobody wrote. The fix then is to move
+    # the reason onto the branch that cannot be armed, not to soften the refusal.
+    merged: dict[str, DeclaredCheck] = {}
+    for entry in found:
+        seen = merged.get(entry.id)
+        if seen is None or (not seen.unarmed_because and entry.unarmed_because):
+            merged[entry.id] = entry
+    return tuple(merged[i] for i in sorted(merged))
+
+
+def check_every_check_is_armed_or_says_why(
+    mutations: Sequence[Mutation], declared: Sequence[DeclaredCheck]
+) -> Check:
+    """Three states, and only one of them is a failure.
+
+    `check_every_claim_target_owns_a_gate` asks the question at **target** level: does every
+    `claim-N` have something planted against it. That was CLAUDE.md's checklist question made
+    structural, and it is satisfied by one mutation per claim — so a claim with twelve checks and
+    one mutation passes it, and eleven gates go unproven with nothing saying so. `docs/reviews/
+    phase-1.md` §1 measured that: **21 of 57 checks owned no mutation and 8 of those named no
+    reason.**
+
+    So the same question, per check. A check is **armed** when a mutation names it, **declared
+    un-armable** when it carries `unarmed_because`, or **unarmed** — nobody has shown it bites
+    yet. The third is counted and printed and does not turn this red, for the reason
+    `docs/FINDINGS.md` reports `adrift` rather than refusing it: refusing it would buy a sentence
+    where a mutation belongs.
+
+    What *is* refused is a check that is both armed and declared un-armable, because one of the
+    two is then untrue, and nobody would notice which.
+    """
+    targeted = {t for m in mutations for t in m.targets}
+    by_id: dict[str, DeclaredCheck] = {d.id: d for d in declared}
+    armed = sorted(i for i in by_id if i in targeted)
+    excused = sorted(i for i, d in by_id.items() if d.unarmed_because and i not in targeted)
+    unarmed = sorted(i for i, d in by_id.items() if not d.unarmed_because and i not in targeted)
+    contradictory = sorted(i for i, d in by_id.items() if d.unarmed_because and i in targeted)
+
+    return Check(
+        id="ledger.every-check-is-armed-or-says-why",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
+        question=(
+            "Is every check either named by a mutation, or carrying the reason no mutation can "
+            "be planted against it — and never both?"
+        ),
+        passed=not contradictory,
+        figure=(
+            f"{len(armed)} armed · {len(excused)} declared un-armable · {len(unarmed)} unarmed"
+        ),
+        detail=(
+            "unarmed is printed, not refused: a gate nobody has armed yet is a real state, and "
+            "refusing it buys a sentence where a mutation belongs"
+        ),
+        counterexamples=tuple(
+            f"{i} both names a mutation and claims none can be planted" for i in contradictory
+        ),
     )
 
 
@@ -323,6 +489,11 @@ def check_the_mutation_tree_is_all_yaml() -> Check:
     ]
     return Check(
         id="ledger.the-mutation-tree-holds-only-loadable-mutations",
+        unarmed_because=(
+            "this is `gate-proof`. A mutation that could break it would be a mutation editing "
+            "the detector, which `ledger.no-mutation-edits-the-detector` refuses by name. It is "
+            "armed instead by `tests/evals/test_ledger.py`, on a deliberately broken arrangement."
+        ),
         question=(
             "Is every file under `mutations/` a YAML inside a `claim-N` directory — so that "
             "nothing is planted where the loader will not find it?"
@@ -340,6 +511,7 @@ def check_the_mutation_tree_is_all_yaml() -> Check:
 def audit() -> Report:
     mutations = load_mutations()
     all_targets = targets()
+    declared = declared_checks()
 
     checks = (
         check_every_mutation_is_owned_once(mutations, all_targets),
@@ -349,6 +521,7 @@ def audit() -> Report:
         check_mutation_lives_under_the_claim_it_declares(mutations),
         check_every_anchor_is_aimed_at_one_place(mutations),
         check_no_mutation_edits_the_detector(mutations),
+        check_every_check_is_armed_or_says_why(mutations, declared),
         check_the_mutation_tree_is_all_yaml(),
     )
 
@@ -356,7 +529,20 @@ def audit() -> Report:
     for mutation in mutations:
         by_claim[mutation.claim] = by_claim.get(mutation.claim, 0) + 1
 
-    numbers: list[tuple[str, str]] = [("mutations planted", str(len(mutations)))]
+    targeted = {t for m in mutations for t in m.targets}
+    numbers: list[tuple[str, str]] = [
+        ("mutations planted", str(len(mutations))),
+        ("checks declared", str(len(declared))),
+        ("  armed by a mutation", str(sum(1 for d in declared if d.id in targeted))),
+        (
+            "  declared un-armable",
+            str(sum(1 for d in declared if d.unarmed_because and d.id not in targeted)),
+        ),
+        (
+            "  unarmed",
+            str(sum(1 for d in declared if not d.unarmed_because and d.id not in targeted)),
+        ),
+    ]
     for claim in sorted(by_claim):
         owners = {name for m in mutations if m.claim == claim for name in owners_of(m, all_targets)}
         numbers.append(
@@ -374,6 +560,13 @@ def audit() -> Report:
         notes=(
             "that any gate bites — this target runs nothing. `make claim-N` plants that "
             "claim's mutations and demands a refusal from the check each one names",
+            "that the vocabulary is covered. Twelve `at_decision` codes are reached by `G8` "
+            "and all four `at_readout` codes by claims 2 and 3, but seven of the eight "
+            "`at_design` codes are reached by no eval at all — they exist only in "
+            "`tests/core/test_refusal_codes.py`, which is cases their own author wrote. "
+            "`evals/design/` is claim 6 and phase 4, and claim 6's headline counts N proposed "
+            "and M refused over exactly that vocabulary. Printed here rather than left to be "
+            "rediscovered.",
             "that the mutation set is complete; it is the set of breaks we thought of, and "
             "a curated set is not mutation testing",
         ),

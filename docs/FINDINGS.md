@@ -207,6 +207,178 @@ repository. That is the argument for this file rather than a footnote to it.
 *Closed:* 2026-08-31 — restated in `PLAN.md` by `corpus/legal-claims-restated`, with the prior wording kept beside it per doctrine rule 4
 *Now:* `PLAN.md` :: `benchmark to the trader's **own** 2025 rather than to a sector figure.`
 
+**Half of `G7` cannot fail, and half of `C7` cannot either** · found 2026-08-31 · by oversight level 3, while arming it
+`G7.closed-vocabulary-only` asks two questions and one of them is a dead branch. *Is every reason's
+code one the vocabulary declares* is checked as `reason.code.value not in declared` — and
+`reason.code` **is** a `RefusalCode`, so the condition can never be true. The type already closed
+the vocabulary; the check re-asks a question the type had answered.
+
+*What is not wrong.* `G7`'s second question is real and load-bearing: **every refusal carries a
+detail**. Claim 1's evidence is *which* guardrail refused, and a code with no detail says a price
+was refused without saying what about it was wrong. That half is now armed —
+`17-a-refusal-arrives-without-its-detail` blanks the detail, moves no bound, certifies no price and
+changes no code, and `G7` is the only check in the eval that falls.
+
+*So the check is not removed and the figure is not touched.* `12 distinct codes over 365,591
+reasons` is a real published number; what is dead is one `if`. Deleting it would lose the statement
+that the vocabulary is closed, which is true and worth asserting somewhere — the question is whether
+a check is the right somewhere when a type already guarantees it, and that is a judgment about where
+a guarantee should live rather than a defect to patch.
+
+*Why it is here rather than fixed in the branch that found it.* The branch's subject is arming
+unarmed checks. Rewriting one of them while arming it would mean the mutation was written against a
+check nobody had reviewed in its new shape — and `evals/README.md`'s rule 5 is that a boundary is
+computed twice, not that a check is edited by whoever is proving it bites.
+
+*And the same fact a second time, in `C7`.* Found by oversight level 2 reading this branch, and
+recorded here rather than as its own entry because it is not a second finding: it is the same
+question with a different type answering it. `C7.the-graded-days-are-not-the-days-the-curve-was-
+fitted-on` asks whether the held-out segment is disjoint from the fitting segment, and `overlap`
+is drawn from two complementary predicates over one business date — so that half cannot be
+non-empty either. Its other half, *is neither segment empty*, is real and is a property of the
+corpus. Two entries for one fact would be the mirror of what this register caught in its first
+hour, when one entry was answering for two defects and had to be split.
+
+*What this branch did change.* `C7` carried the tautology as its stated reason for being
+un-armable. That reason is now the half that can actually go red, because the sufficient reason
+was always the corpus one — leaving an assertion of a dead branch sitting in prose, in the branch
+whose whole subject is that such assertions get filed rather than mentioned. The `if` itself is
+untouched in both checks, for the reason above.
+
+*Site:* `evals/guardrail/checks.py` :: `if reason.code.value not in declared:`
+*Site:* `evals/censoring/checks.py` :: `overlap = [origin for m in worlds for origin in m.keys_in_both_segments]`
+*Disposition:* none — a judgment about whether a check should re-assert what a type guarantees
+*Status:* open
+
+**The suite count is published where no gate can read it** · found 2026-08-31 · by oversight
+level 2, after writing a wrong one
+Every session entry in `PLAN.md` ends with `The suite is **N**`, and nothing recomputes it. `PROSE`
+in `ops/figures.py` is the mechanism that would, and it excludes `PLAN.md` deliberately: the file
+keeps superseded figures forever per doctrine rule 4 — 965, 965, 959, 943, 937, 928 are all in it
+and all correct as written — so re-running a number there would go red on history.
+
+*The argument is sound for the history and silent about the newest entry.* Only the last one is
+present tense. It is the only figure in the file that is a claim about now, it is the one a reader
+takes as current, and it is outside every gate in the repository.
+
+*Found by writing one.* `The suite is **976**` went into `PLAN.md` as a projection — one test added,
+one replaced, arithmetic — in the same change whose subject is that an assertion wearing a number is
+set from a measurement of the thing that runs. It is **972**. Nothing caught it; an agent
+reconsidering caught it, about ninety seconds later. That is not a mechanism and it does not survive
+a tired session, which is the whole argument of `docs/reviews/phase-1.md` §2 and the reason this is
+filed rather than shrugged at.
+
+*What the fix is not.* Registering `PLAN.md` in `PROSE` as it stands would go red on six historical
+figures immediately. What is needed is a rule for *which* occurrence is present tense — the last, or
+one carrying a marker — and that is a judgment about the document, which is why it is a finding and
+not a patch.
+
+*A candidate, offered with its two checks already run, to be tested by whoever takes the branch
+rather than adopted from here.* The four-kinds rule marks a published number `[M]` measured, `[D]`
+declared, `[C]` cited, `[S]` scenario. If figures carried their kind, *present tense* would stop
+being a judgment about position and become a property the text carries — a superseded figure is no
+longer a measurement of anything, it is the record of one — and `PROSE` could register `PLAN.md`
+and re-run exactly the marked ones. It is the same move as selecting on `where` rather than on a
+name prefix, one file along.
+
+**Check one fails as stated, and that is the important half.** `PLAN.md` contains eight marker
+occurrences and every one of them is prose *about* the four-kinds rule, in the session entry that
+introduced it. **No figure in the file carries a kind, and no suite line carries one.** The
+repository has the vocabulary and applies it in `docs/SCENARIO.md`, where `**320 stores [M]**` and
+`**[M]** python -m ops.roster --scale <name>` sit beside their commands. So the distinction is not
+already here waiting to be read; it exists elsewhere and has never been applied to this file.
+
+**Check two passes, and more cheaply than it was feared to.** Precisely *because* no figure here is
+marked, adopting this rewrites none of the six historical lines — they are already unmarked, which
+is the state the rule wants history to be in. Nothing doctrine rule 4 protects gets edited, and the
+change is forward-only.
+
+**What neither check found, and what the branch will actually have to answer.** The marker has to
+*migrate*. If `figures` re-runs every marked figure, then the session after next must take the
+marker off this entry's `972` or that number goes red the moment the suite grows — so every session
+boundary carries a small edit to the previous session's line. Removing a marker does not change a
+stated value, so it is not a rule 4 violation, but it is routine editing of superseded text, and it
+is the kind of step that gets forgotten. A forgotten marker is a red on correct history, which is
+the failure that teaches people to delete markers rather than to write them. **Any version of this
+needs the migration to be enforced by the same gate, or it decays into exactly the noise it was
+built to remove.**
+
+*A second candidate, and it is the one that removes the migration rather than paying it.* The
+marker has to migrate only because the present-tense figure lives in a file that cannot be
+overwritten — every session must demote the last one precisely because `PLAN.md` keeps it forever.
+Give the current count a home that **can** be overwritten and there is nothing to migrate: `figures`
+covers that one place and re-runs it every time, and this file's numbers become history by
+construction rather than by anybody remembering to demote them. `PLAN.md` then stays outside `PROSE`
+legitimately rather than by judgment — not *we cannot tell which occurrence is present tense*, but
+**nothing here is present tense, because present-tense figures are not written here.** One
+enforceable sentence: an append-only file records what a number was; a current number lives where it
+can be replaced.
+
+**What it costs.** A home has to be chosen and created, which is a judgment about where a reader
+would look — and the measurement says there is no candidate today: the count exists in `PLAN.md`
+ten times and `TASKS.md` once, both append-only, and **nowhere in the tree is there an
+always-current home for it.** No README line, no gated file.
+
+**And the phrasing half is not free, which is the check that decides between the two candidates.**
+The reading that *The suite is 828* inside a dated entry already reads as history does not survive
+being measured. Of the ten occurrences, **exactly one sits directly under a dated header.** The
+other nine sit under an intra-entry bold sub-heading — `**The denominator is in the type.**`, `**And
+`C7` carried the same defect as `G7`, in the same commit.**` — which carries no date; the session's
+date is twenty to sixty lines above. The suite figure is always the last line of an entry and
+always the furthest from the only thing that marks it as past. Skimmed or quoted, it reads as
+present tense, which is precisely how it is read.
+
+*(The entry headers also use three different date separators, so any gate that tries to find the
+newest entry by parsing them meets the wrap-and-pattern family from the other direction.)*
+
+**So the nine would need rewording, which is the objection this candidate was raised to avoid.** It
+is not a doctrine rule 4 violation — *the suite was 828 at this session* changes no stated value and
+leaves the value, the reason and the delta recoverable — but it is editing text rule 4 protects, and
+that is the thing to say out loud rather than discover in the branch.
+
+**Which leaves the two candidates separated by one property, and it is not the one either of them
+was argued on.** The marker's cost is **recurring**: one edit at every session boundary, forever,
+and forgetting it turns correct history red. The new home's cost is **one-off**: nine lines reworded
+once, plus a home that has to be chosen. A recurring cost that decays into deleted markers is worse
+than a one-off cost that is simply work, so the second candidate is the stronger of the two — but
+both are recorded with their prices, because whoever opens that branch should be choosing rather
+than implementing.
+
+*Site:* `ops/figures.py` :: `#: **Deliberately small, and the reason is doctrine rule 4.** `PLAN.md` and `TASKS.md` are the`
+*Disposition:* `ops/the-newest-figure-is-present-tense` — small, and it belongs where the count is
+published rather than in the branch that found it
+*Status:* open
+
+**A mutation may name a check that does not exist, and the cheap target cannot tell** · found
+2026-08-31 · by oversight level 2, on `evals/unarmed-checks`
+A mutation declares `targets:` — the checks it expects to refuse it. Nothing in `make gate-proof`
+asks whether those names correspond to a check that exists. `engine.py` does ask, at
+`unknown = [target for target in mutation.targets if target not in baseline]`, but only with the
+eval loaded, which means only inside `make claim-N`. The ledger's own docstring gives as its reason
+for existing that a mutation which has come unmoored is caught by the cheap target as well as by
+the expensive one, and this is the one way of coming unmoored it does not catch.
+
+*It is the sibling of `every-anchor-is-aimed-at-one-place`*, which asks exactly this question one
+level down — does a mutation's anchor still occur in the source it names — and the implementation
+is the same shape. What made it newly cheap is this branch: `declared_checks()` enumerates every
+check id in the tree in milliseconds, so the comparison is now a set difference.
+
+*This branch does not create the hole; it adds a quieter place for it to land.* Before, a renamed
+check left its mutation failing at run time in `engine.py`. After, the same rename lands that check
+in **unarmed** — printed, counted, and deliberately not refused. The mutation still fails when
+`claim-N` runs, so nothing is unproven; what changes is that the cheap target now has a state that
+looks like an honest backlog and can be reached by a typo.
+
+*Measured today, so that tomorrow's non-zero is legible:* 37 distinct mutation targets, 67 declared
+check ids, **0 naming nothing**. By
+`python -c "from evals.gate_proof.ledger import load_mutations, declared_checks;
+print(sorted({t for m in load_mutations() for t in m.targets} - {d.id for d in declared_checks()}))"`.
+
+*Site:* `evals/gate_proof/ledger.py` :: `armed = sorted(i for i in by_id if i in targeted)`
+*Disposition:* `evals/mutations-point-at-checks-that-exist` — a different assertion from this
+branch's, so a different closed piece of work
+*Status:* open
+
 **`pricing/selection.py` serves no claim, and the review that said so assigned it nowhere** · found
 2026-08-30 · by oversight level 3
 `src/holdout/core/pricing/selection.py` is reached by no eval and targeted by no mutation. Only

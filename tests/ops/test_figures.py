@@ -90,6 +90,24 @@ def test_a_path_outside_the_list_is_refused(monkeypatch: pytest.MonkeyPatch) -> 
     assert "language" in output
 
 
+def test_a_check_source_outside_the_walk_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`CHECK_SOURCES` is narrowed to one eval, and the ledger keeps printing three tidy counts.
+
+    This is the shape no reviewer notices: `make gate-proof` still runs, still says
+    `N armed · M declared un-armable · K unarmed`, and every one of those numbers is now about a
+    fraction of the checks that exist. Only the second enumeration can tell, because the gate's
+    own output looks exactly as right as it did before.
+    """
+    from evals.gate_proof import ledger
+
+    monkeypatch.setattr(ledger, "CHECK_SOURCES", ("evals/guardrail",))
+
+    code, output = _run()
+    assert code == 1
+    assert "examined less than exists" in output
+    assert "armed-or-says-why" in output
+
+
 def test_a_target_outside_the_regex_is_refused(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

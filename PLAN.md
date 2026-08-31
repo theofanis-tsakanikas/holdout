@@ -920,6 +920,76 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**A check is armed, or it says why it cannot be · 2026-08-31.** `evals/unarmed-checks` closes the
+review's §1. `ledger.every-claim-target-owns-a-gate` asked the question at target level, which one
+mutation satisfies for a claim with twelve checks — leaving **21 of 57 checks with no mutation and 8
+of those with no reason**, three of them numbers claim 2 publishes.
+
+`Check` gains `unarmed_because` and `make gate-proof` prints three states:
+**37 armed · 23 declared un-armable · 7 unarmed**. The third is reported and not refused, for the
+reason the findings register reports `adrift`: refusing it buys a sentence where a mutation belongs.
+What is refused is a check both armed and excused, because one of the two is then untrue.
+
+The reasons turn out to be exactly three — the break would edit the **detector**, the check asserts
+a property of the **inputs**, or the check is **absent from the configuration a mutation runs at**.
+The ledger's own ten are among them, armed by `tests/evals/test_ledger.py`, which is the arrangement
+that already existed and had never been part of the written shape. Checks are found by **parsing**
+`evals/` rather than importing it, because importing an eval means being able to run it.
+
+**One of the eight was armed rather than excused**, and it bit alone:
+`17-a-refusal-arrives-without-its-detail` blanks a refusal's detail — no bound moves, no price is
+certified, no code changes — and `G7` is the only check that falls. Claim 1 is **17/17**.
+
+**Arming it found that G7's other half cannot fail**: `reason.code.value not in declared` is a dead
+branch, because `reason.code` is a `RefusalCode`. Filed in `docs/FINDINGS.md` rather than patched,
+since rewriting a check while proving it bites means the mutation was written against a shape nobody
+reviewed. The register is now **6 findings, 4 open, 2 closed**.
+
+And the uncovered half is published on every run: **seven of the eight `at_design` codes are reached
+by no eval**, living only in cases their own author wrote, over exactly the vocabulary claim 6 will
+count N and M against.
+
+**Then oversight level 2 read the branch cold and found four things, three of which went in.**
+The reviewing session was the same session that wrote the branch, resumed with an empty context —
+which is the whole property level 2 needs and is available exactly once, before the author
+re-derives their own reasoning.
+
+**The wrap corrupts what is not prose, and this is the third instance.** Sixteen of the twenty-three
+new reasons were reflowed on character boundaries: `It is arme d instead by`, `a pro perty`, `a diff
+erent check`, and one code span broken open as `` ` src/holdout/` ``. Put beside the deferral regex
+that required `· deferred DATE` on one line and missed ten wrapped headers, and `ops/figures.py`
+breaking its own pattern by rewrapping the sentence that corrected it, the family is specific:
+**these files are wrapped to a column and the wrap is applied to things that are not prose** — a
+regex's target, a pattern, a string literal. The first two are a pattern failing because text
+wrapped; this one is text corrupted by wrapping, and it is the second kind, which must not be
+wrapped at all. Nothing catches it: `make language` matches a character range and ruff will not
+rejoin a literal.
+
+**The branch created a population and did not have it enumerated twice.** `CLAUDE.md` says every
+gate declares how its population is enumerated and `make figures` enumerates it a second time — and
+this branch shipped a gate over sixty-seven checks with no second reading. `make figures` gains an
+**`armed-or-says-why`** row: **67 = 67**, walked from `PYTHON_DIRS` rather than `CHECK_SOURCES` and
+resolving whatever name `Check` was imported under, so two different starting points and two
+different matchers. Narrowed to one eval it reads **10**, and `tests/ops/test_figures.py` narrows it
+on purpose. The branch's own mitigation was `assert len(...) >= 9` — a frozen count selecting on a
+naming convention, which is the shape `CLAUDE.md` forbids in the same breath as the rule it served.
+It is now the property: **every check written inside `evals/gate_proof/` carries a reason**, a
+population no rename can move.
+
+**And `C7` carried the same defect as `G7`, in the same commit.** `C7`'s stated reason for being
+un-armable was that half of it is a tautology — an assertion of a dead branch sitting in prose, in
+the branch whose subject is that such assertions get filed. Its sufficient reason was always the
+corpus one, and that is what it now says. Recorded as a **second site on the existing `G7` entry**
+rather than a new one: one fact gets one entry, which is what this register had to learn in its
+first hour when one entry was answering for two defects.
+
+The fourth is filed and not fixed: **a mutation may name a check that does not exist**, caught only
+by the expensive target. Measured at **0 of 37 targets naming nothing** today. The suite is **972** — a figure that went in as **976** first, projected from "one test
+added, one replaced" instead of measured, inside the change whose subject is that a number is set
+from a measurement. Which is how the fifth finding was found: **that count is published where no
+gate can read it**, because `PROSE` excludes `PLAN.md` so history stays green. Sound for the six
+superseded figures above it, silent about the one that is present tense.
+
 **And the author settled the half that was never ours: real inputs, derived cost · 2026-08-31.**
 The prose sites were defects and got fixed. What was left was a judgment about the product — a
 corpus presented as real whose concrete benchmark is a construct the regulation does not use, either

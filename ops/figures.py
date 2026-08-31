@@ -68,6 +68,7 @@ Only text that asserts the present tense can be checked this way.
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import subprocess
 import sys
@@ -259,6 +260,90 @@ def mutations_loaded() -> int:
     return len(ledger.load_mutations())
 
 
+#: How `evals/report.py`'s `Check` is bound in a module that constructs one. Resolved per file
+#: rather than assumed to be the word `Check`, because `ledger.declared_checks` matches that word
+#: and a second reading that made the same assumption would agree with it for free.
+def _check_is_bound_to(tree: ast.AST) -> set[str]:
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module and node.module.endswith("report"):
+            names |= {a.asname or a.name for a in node.names if a.name == "Check"}
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.endswith("report"):
+                    names.add(f"{alias.asname or alias.name}.Check")
+    return names
+
+
+def check_ids_that_exist() -> int:
+    """Every distinct `Check(...)` id in the tree, walked from PYTHON_DIRS.
+
+    The **population** side of the newest gate. `ledger.declared_checks` walks `CHECK_SOURCES`
+    and matches the literal word `Check`; this walks the six directories the Makefile already
+    lints and resolves whatever name `Check` was imported under in each file. Two different
+    starting points and two different matchers, so narrowing `CHECK_SOURCES` to a subtree, or
+    importing `Check` under an alias, shows up here as under-coverage instead of quietly
+    shrinking the count the ledger prints.
+
+    Distinct **ids**, not constructions: three checks are built in two branches of one function
+    and the ledger merges them by id, so counting constructions would report a permanent
+    four-check shortfall that is not one.
+
+    **The two populations are deliberately asymmetric, and this one is the broader.** The ledger
+    walks `CHECK_SOURCES`, which is `evals/`; this walks all six directories `PYTHON_DIRS` names.
+    So a `Check(...)` constructed anywhere outside `evals/` is counted here and not there, and
+    this gate goes red at 68 against 67.
+
+    That is the intended behaviour rather than an edge to smooth over — a check the ledger cannot
+    see is precisely the narrowing this exists to catch, and it makes no difference whether the
+    narrowing was done to `CHECK_SOURCES` or to where somebody put the check. But it will also
+    fire the first time a `Check` is written outside `evals/` on purpose, and at that moment the
+    red reads as a bug here rather than as a question about scope. It is the second: the answer is
+    either to move the check or to widen `CHECK_SOURCES`, and which one is a judgment about where
+    checks live. Never to narrow this walk to match, which would delete the comparison.
+    """
+    found: set[str] = set()
+    for directory in python_dirs():
+        if not directory.is_dir():
+            raise InstrumentMissingError(f"{directory} is named by PYTHON_DIRS and does not exist")
+        for path in sorted(directory.rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+            except SyntaxError as broken:  # pragma: no cover - the suite would be red first
+                raise InstrumentMissingError(
+                    f"{path} does not parse, so it cannot be read"
+                ) from broken
+            bound = _check_is_bound_to(tree)
+            if not bound:
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                called = (
+                    func.id
+                    if isinstance(func, ast.Name)
+                    else ast.unparse(func)
+                    if isinstance(func, ast.Attribute)
+                    else ""
+                )
+                if called not in bound:
+                    continue
+                words = {k.arg: k.value for k in node.keywords if k.arg}
+                identifier = words.get("id")
+                if isinstance(identifier, ast.Constant) and isinstance(identifier.value, str):
+                    found.add(identifier.value)
+    return len(found)
+
+
+def check_ids_the_ledger_declares() -> int:
+    from evals.gate_proof import ledger
+
+    return len(ledger.declared_checks())
+
+
 def claim_targets_that_exist() -> int:
     return len(ANY_CLAIM_TARGET.findall(_makefile()))
 
@@ -338,6 +423,15 @@ COVERAGE: tuple[Coverage, ...] = (
         mutations_loaded,
         "a mutation the loader skips is a planted break that never runs, which is the orphan "
         "the ledger was built to refuse — from the other side.",
+    ),
+    Coverage(
+        "armed-or-says-why",
+        "every distinct Check(...) id under the six directories PYTHON_DIRS names",
+        check_ids_that_exist,
+        check_ids_the_ledger_declares,
+        "the newest gate sorts a population into armed, un-armable and unarmed — and a "
+        "population it enumerates itself. Narrow CHECK_SOURCES and the three counts still "
+        "print, still sum, and describe fewer checks than exist.",
     ),
     Coverage(
         "discover",
@@ -510,11 +604,11 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
     missing = [*missing, *floor_missing, *prose_missing]
     print("figures  a gate reports on what it examined; this is the difference", file=out)
     print("", file=out)
-    print(f"  {'gate':<12} {'exists':>7} {'examined':>9}   population", file=out)
+    print(f"  {'gate':<18} {'exists':>7} {'examined':>9}   population", file=out)
     for row in sorted(found, key=lambda r: r.gate):
         mark = "  " if row.passed else "<<"
         print(
-            f"  {row.gate:<12} {row.enumerated:>7} {row.examined:>9} {mark} {row.population}",
+            f"  {row.gate:<18} {row.enumerated:>7} {row.examined:>9} {mark} {row.population}",
             file=out,
         )
     print("", file=out)

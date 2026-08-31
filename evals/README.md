@@ -86,6 +86,28 @@ boundary is, it recomputes it — in a different unit, in a different structure,
 nothing with the code under test but the declared rule values. Two consumers calling the
 same function prove nothing; that is claim 5's trap and it applies here too.
 
+**A seventh, since 2026-08-31: a check is armed, or it says why it cannot be.** Rule 4 makes
+coverage a check; this makes *proof of biting* one. `make gate-proof` sorts every declared check
+into three states and prints the counts — **armed** by a mutation that names it, **declared
+un-armable** by a `unarmed_because` on the check itself, or **unarmed**.
+
+The third is reported and not refused, and that is deliberate. A gate nobody has armed yet is a
+real state; refusing it would buy a sentence where a mutation belongs, which is the opposite of
+what this rule is for. What *is* refused is a check that is both armed and declared un-armable,
+because one of the two is then untrue and nobody would notice which.
+
+`unarmed_because` is for **cannot**, never for *have not*, and the honest reasons are narrow: the
+break would edit the **detector** rather than the system, the check asserts a property of the
+**inputs** that no change to `src/holdout/` can move, or the check is **absent from the
+configuration a mutation runs at** and computing it there would make it a different check.
+
+*Why it exists.* `ledger.every-claim-target-owns-a-gate` asked the question at target level, and
+one mutation satisfies it for a claim with twelve checks. `docs/reviews/phase-1.md` §1 measured the
+gap: **21 of 57 checks owned no mutation and 8 of those named no reason** — including three of the
+four numbers claim 2 publishes. The rule that a check with no mutation names its reason was written
+on 2026-08-29 from claim 7 and never applied backwards; this is what applies it, and what stops the
+next one being written from prose.
+
 **6 · "What this does not prove" is printed on every run.** Not kept in a README where it
 can quietly stop being true. The eval says out loud, each time, what it is silent about.
 

@@ -344,6 +344,11 @@ def run(claim: int) -> Report:
             checks=(
                 Check(
                     id="gate-proof.mutations-exist",
+                    unarmed_because=(
+                        "this is `gate-proof` refusing to run with nothing planted. A mutation that could "
+                        "break it would be editing the detector, which "
+                        "`ledger.no-mutation-edits-the-detector` refuses by name."
+                    ),
                     question="Is there at least one planted mutation for the claims that have evals?",
                     passed=False,
                     figure="0 mutations",

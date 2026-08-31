@@ -467,6 +467,57 @@ closed costs the session. The one exception is `main_guard` on a command line it
 tokenise, where it falls back to a coarser match and refuses: an unbalanced quote is the single
 case where guessing in the safe direction costs only a retry.
 
+**A check is armed, or it says why it cannot be — and *unarmed* is a third state.** · 2026-08-31
+`ledger.every-claim-target-owns-a-gate` asked the question at **target** level, which one mutation
+satisfies for a claim with twelve checks. `docs/reviews/phase-1.md` §1 measured what that left:
+**21 of 57 checks owned no mutation and 8 of those named no reason**, including three of the four
+numbers claim 2 publishes.
+
+So the same question per check. `Check` gains `unarmed_because`, and `make gate-proof` sorts every
+declared check into three states and prints the counts:
+
+```
+37 armed by a mutation · 23 declared un-armable · 7 unarmed
+```
+
+**The third state is the design decision.** Unarmed is reported and **not** refused, for the reason
+`docs/FINDINGS.md` reports `adrift` rather than refusing it: a gate nobody has armed yet is a real
+state, and refusing it would buy a sentence where a mutation belongs — which is the opposite of what
+the rule is for. What *is* refused is a check both armed and declared un-armable, because one of the
+two is then untrue and nobody would notice which.
+
+`unarmed_because` is for **cannot**, never *have not*, and the honest reasons turn out to be three:
+the break would edit the **detector** (`ops/`, `corpus/`, the eval itself), the check asserts a
+property of the **inputs** no change to `src/holdout/` can move, or the check is **absent from the
+configuration a mutation runs at** and computing it there would make it a different check wearing
+the same id. Twenty-three carry one of those. The ten belonging to `gate-proof` itself are among
+them, armed instead by `tests/evals/test_ledger.py` — which is the arrangement that already
+existed and had never been written down as part of the shape.
+
+**Discovered by parsing rather than by importing.** The ledger reads `Check(...)` off the syntax
+tree of everything under `evals/`, because importing an eval means being able to run it and
+`evals/uplift/` costs half an hour. It is claim 7's `reference.py` pattern, with the same declared
+limit: a `Check` built dynamically would be invisible, and today all sixty-seven are literals.
+
+**And one of the eight was armed rather than excused.** `G7.closed-vocabulary-only` asks two
+questions; `17-a-refusal-arrives-without-its-detail` blanks a refusal's detail, which moves no
+bound, certifies no price and changes no code — **`G7` is the only check in the eval that falls**,
+which is the standard *a gate can only be shown to bite where it is the gate that refuses*. Claim 1
+is 17/17 mutations biting.
+
+**Arming it found that G7's other question cannot fail.** *Is every reason's code one the vocabulary
+declares* is checked as `reason.code.value not in declared`, and `reason.code` **is** a
+`RefusalCode` — a dead branch, the type having already closed what the check re-asks. Filed in
+`docs/FINDINGS.md` rather than patched here: rewriting a check while proving it bites means the
+mutation was written against a shape nobody reviewed, and whether a check should re-assert what a
+type guarantees is a judgment rather than a defect.
+
+**What is still uncovered, printed on every run rather than left to be rediscovered.** Twelve
+`at_decision` codes are reached by `G8` and all four `at_readout` by claims 2 and 3, but **seven of
+the eight `at_design` codes are reached by no eval** — they exist only in
+`tests/core/test_refusal_codes.py`, which is cases their own author wrote. `evals/design/` is claim
+6 and phase 4, and claim 6's headline counts N proposed and M refused over exactly that vocabulary.
+
 **Real inputs, derived cost — the corpus stops saying *real* on its own.** · 2026-08-31
 The author's decision on the half that was never ours: a corpus presented as real, whose concrete
 benchmark is a construct the regulation does not use, is not left as a declared limit in a footnote.
