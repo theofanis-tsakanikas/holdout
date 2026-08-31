@@ -183,7 +183,7 @@ FIELDS_ON_THE_DECISION_PATH: dict[type[Any], frozenset[str]] = {
             "minimum_gross_margin_pct",
             "minimum_absolute_price",
             "cost_staleness_hours",
-            "refuse_when_no_legal_price_sells",
+            "refuse_when_no_price_satisfies_every_guardrail",
             "safe_state",
         }
     ),

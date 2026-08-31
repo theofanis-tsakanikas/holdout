@@ -920,6 +920,38 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**A rule id named for what it measures, and a window read in its own vocabulary · 2026-08-31.**
+`contracts/floor-rule-id` closes the review's §7 half that T008 was empowered to move, with §3d's
+correction inside it. `refuse_when_no_legal_price_sells` claimed a demand question the envelope
+never asks — whether the item would sell — where the rule performs arithmetic: the legal range is
+empty, floor above ceiling. The refusal code shed that overreach four days ago and became
+`NO_PRICE_SATISFIES_EVERY_GUARDRAIL`; the id kept it, because renaming inside a live window is a
+contract edit and the deferral said so.
+
+**Closed through the unlock condition rather than around it.** The opening window closes at
+2026-09-01 and a new one opens carrying `refuse_when_no_price_satisfies_every_guardrail`. The closed
+window keeps the old id, which is what contract rule 1 is for. **No value moved** — `true` in both —
+so no past decision is judged differently and no published figure changes.
+
+**And the deferral had not anticipated the cost.** It named the window, the restatement chain and
+anything that had recorded the id. One more thing: **the closed window has to stay readable.** Every
+decision dated before 2026-09-01 resolves against it, which on this corpus is all of them, so the
+resolver cannot simply look for the new spelling. `envelope.py` gains **`RENAMED_RULES`** — each
+window read in its own vocabulary — and it **refuses a window carrying both spellings**, because two
+rules with one meaning leave nothing able to say which was in force. Emptying the mapping turns the
+suite red, which is how it was checked rather than assumed.
+
+**§3d's correction confirmed by running it.** The task note said a rename turns `G10` red on both
+directions at once. It does not: `refuse_when_no_legal_price_sells` appears **zero** times in
+`evals/guardrail/reference.py`. What goes red is `O2` — the id is a field name in the closed field
+set — and putting the registry back gives `FAIL O2 · 55/56 types agree`. The tenth form of the rule
+was an instruction to the next session, and this is the next session declining to follow it.
+
+**Filed, not built: `claim-2` costs an hour and the matrix re-runs on every push.** Sharding across
+the six worlds is the large safe win, a merge queue is second, and **path filtering is refused by
+name** — it buys back a claim that silently does not run. Its own branch, before the first Terraform
+layer. The practice adopted today at no cost: finish locally, run the gates, **push once**. The
+suite is **975**, measured after the rebase rather than added up across two branches.
 **A check is armed, or it says why it cannot be · 2026-08-31.** `evals/unarmed-checks` closes the
 review's §1. `ledger.every-claim-target-owns-a-gate` asked the question at target level, which one
 mutation satisfies for a claim with twelve checks — leaving **21 of 57 checks with no mutation and 8

@@ -210,7 +210,7 @@ def _sweep_envelope(
             minimum_gross_margin_pct=Decimal(margin_floor_pct),
             minimum_absolute_price=Money.of(absolute_floor),
             cost_staleness_hours=staleness_hours,
-            refuse_when_no_legal_price_sells=True,
+            refuse_when_no_price_satisfies_every_guardrail=True,
             safe_state=safe,
         ),
         max_delta=MaxDeltaRule(

@@ -23,7 +23,7 @@ safe_state:
 windows:
 
   - effective_from: 2025-01-01
-    effective_to:   null
+    effective_to:   2026-09-01
     label: Opening envelope
     rules:
 
@@ -83,3 +83,90 @@ windows:
             price below the floor to avoid an empty answer is the failure this rule exists
             to prevent.
           verified_on: 2026-08-27
+
+
+  # ------------------------------------------------------------------------------------
+  # A new window, opened for one reason: an id that claimed more than the rule does.
+  #
+  # `refuse_when_no_legal_price_sells` said the decision is a refusal "where the floor
+  # exceeds any price at which the item would sell". Whether an item would sell is a
+  # demand question, and the envelope never asks it — it has no demand input and no
+  # opinion about one. What the rule actually says is arithmetic: the legal range is
+  # empty, floor above ceiling, so no price satisfies every guardrail at once. The
+  # refusal code shed that overreach on 2026-08-27 and became
+  # NO_PRICE_SATISFIES_EVERY_GUARDRAIL; the rule id kept it for four days longer,
+  # because renaming an id inside a window that is in force is a contract edit and
+  # docs/DECISIONS.md deferred it to the next window rather than doing it quietly.
+  #
+  # This is that window. Nothing else in it changed: the value is `true` in both, so no
+  # past decision is judged differently and no recorded figure moves. Contract rule 1
+  # keeps the closed window exactly as it was, with the old id, which is what makes a
+  # decision taken in July still readable by July's vocabulary. `envelope.py`'s
+  # RENAMED_RULES is what reads each window in its own.
+
+  - effective_from: 2026-09-01
+    effective_to:   null
+    label: The floor rule named for what it measures
+    rules:
+
+      - id: minimum_gross_margin_pct
+        statement: >-
+          No certified price may leave a gross margin below this percentage of the unit
+          cost as it was known at decision time.
+        value: 0.0
+        unit: percent
+        source:
+          kind: scenario_assumption
+          note: >-
+            A commercial floor of zero — sell at cost, never below it — is the scenario's
+            stated position. It is not a legal minimum: whether and how below-cost selling
+            is restricted was not verified for this project, so no legal figure is encoded
+            here. See docs/REGULATORY.md, "Not verified".
+          verified_on: 2026-08-27
+
+      - id: minimum_absolute_price_eur
+        statement: >-
+          No certified price may fall below this absolute amount, whatever the cost says.
+        value: 0.05
+        unit: EUR
+        source:
+          kind: scenario_assumption
+          note: >-
+            An operational bound of the synthetic scenario. A price of zero or a negative
+            price is a data defect rather than a decision, and it must be refused by the
+            envelope rather than corrected downstream.
+          verified_on: 2026-08-27
+
+      - id: cost_staleness_hours
+        statement: >-
+          A unit cost older than this many hours is stale. The freshness gate fires before
+          the model is called at all and the decision falls to the ladder, marked.
+        value: 24
+        unit: hours
+        source:
+          kind: scenario_assumption
+          note: >-
+            The ERP publishes cost changes daily in this scenario, so a cost more than a
+            day old means the feed has stopped rather than that nothing changed. The
+            distinction matters: a floor computed from a stale cost is a floor in the wrong
+            place, and every price above it still passes every other check.
+          verified_on: 2026-08-27
+
+      - id: refuse_when_no_price_satisfies_every_guardrail
+        statement: >-
+          Where no price satisfies every guardrail at once — the legal range is empty, the
+          floor standing above the ceiling — the decision is a refusal: donation or
+          disposal, which is a correct output and not an error.
+        value: true
+        unit: boolean
+        source:
+          kind: scenario_assumption
+          note: >-
+            Doctrine: a refusal is an outcome the system is built to produce. Forcing a
+            price below the floor to avoid an empty answer is the failure this rule exists
+            to prevent. Restated on 2026-08-31 from
+            `refuse_when_no_legal_price_sells`, which named a demand question the envelope
+            never asks: whether the item would sell is the model's territory, and the
+            condition here is arithmetic. The prior window keeps the prior id, per
+            contract rule 1, and docs/DECISIONS.md carries the deferral this closes.
+          verified_on: 2026-08-31

@@ -131,6 +131,120 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**A guardrail rule id does two jobs, and a rename breaks the second one** · found 2026-08-31 · by
+oversight level 2 on `contracts/floor-rule-id`, and the check that produced it was proposed rather
+than assumed
+**One rename cost a compatibility mapping and a guard; fifteen other rules can each do the same.**
+A rule's `id` **names the rule inside a window** and **identifies the same rule across windows**.
+Those are different properties carried by one string, so renaming for the first breaks the second —
+and `RENAMED_RULES` in `envelope.py` is what you build when identity and spelling are the same
+field. It is why the deferral did not anticipate the cost: it scoped a rename, and this was never a
+rename.
+
+*The check that settles whether a map is needed at all.* If resolving a decision meant finding the
+applicable window and reading the id **in that window**, there would be nothing to map — the closed
+window keeps its own spelling by contract rule 1, and each window is self-describing. So: what looks
+a rule up by a single canonical name across all time?
+
+**`envelope_as_of` does, and it does it sixteen times.** It resolves each contract rule into a
+dataclass field by a hard-coded literal — `minimum_gross_margin_pct`, `cost_staleness_hours`,
+`cap_benchmark`, `perishable_exemption` and twelve more. It cannot read "the window's own id"
+because a window carries four or five ids and nothing says which one fills
+`FloorRule.cost_staleness_hours`. The literal **is** the link, and it is the only one. So the map is
+necessary in the current model, and **fifteen other rules carry the same latent cost**: each is one
+rename away from needing its own entry.
+
+*Three shapes, with their prices, so whoever takes this is choosing.*
+
+**The map, which is what shipped.** Correct, guarded — a window carrying both spellings is refused,
+because two rules with one meaning leave nothing able to say which was in force — and checked to
+bite, since emptying it turns the suite red. Its price is that it accumulates forever and it puts
+contract knowledge in the engine, when the contract layer is this repository's declared source of
+truth. A real cost paid slowly rather than a defect.
+
+**A window-scoped vocabulary.** Better placed, but it does not remove the map on its own: the
+sixteen literals are the problem, and moving them into the contract only moves where the
+correspondence is written.
+
+**Separating identity from spelling** — a stable identity that never changes, and an `id` that is
+the human-readable name within a window. Then a rename changes a spelling and nothing else, and no
+map is ever needed. This is the real fix and it is a change to the **contract model**, so it may
+not ride on a branch about one rule.
+
+*What is not in question.* The refusal of a window carrying both spellings is right under all three
+shapes and stays wherever the resolution ends up living.
+
+*Site:* `src/holdout/core/guardrails/envelope.py` :: `RENAMED_RULES: dict[tuple[GuardrailId, str], tuple[str, ...]] = {`
+*Disposition:* its own branch, unlocked when **the contracts move in phase 2** — the event
+`docs/DECISIONS.md` already declares for *"the generated SQL has never been executed"*: `phase 2,
+when gold is built. If gold does not match, the contracts move`. That is the moment the contract
+model is open anyway, and separating identity from spelling is cheap while it is being changed and
+expensive at any other time. The two travel together
+*Status:* open
+
+**`claim-2` costs an hour and the whole matrix re-runs on every push** · found 2026-08-31 · by the
+author, and decided rather than deferred
+`claim-2` runs on one machine at **32m17s to 1h18m18s** against a 90-minute timeout, and every
+intermediate push re-runs the full matrix. On `#30` that meant three draws for a pull request that
+needed one — the branch, the review fixes, then a follow-up — with one cancelled at 65 minutes and
+two superseded. The question raised was whether an hour a run is what a professional would do. The
+answer taken: **the cost per run is justified and the dead time is not.**
+
+*And the within-commit spread is a draw, not a constant — which is what the second pair
+established.* Two pairs are now measured, each being one commit's two matrix legs, same tree, same
+push, same cache key:
+
+| commit | legs | apart |
+|---|---|---|
+| `7b1fd6c` (#30) | 32m30s · 32m47s — runs 33358845044, 33358846344 | **1.01x** |
+| `46b8225` (#27) | 32m17s · 54m39s | **1.69x** |
+
+One pair agreed to within seventeen seconds; the other disagreed by twenty-two minutes. So there is
+no *within-commit variance* to use as a headroom multiplier — **one pair predicts nothing about the
+next**, and the distribution to size a budget against is the distribution over **runners**, not over
+commits and not over pairs. The pair that agreed is as much a measurement as the pair that did not,
+and it is the one that would have been dropped as unremarkable. The honest summary of the sample:
+eight or more measured runs, **32m17s to 1h18m18s, 2.43x**, with the maximum having moved once. It
+is *the largest number seen so far is not the largest number*, one level along.
+
+*Two fixes, neither of which changes what is proved.* **Sharding `claim-2` across its six worlds**
+is the large safe win — the same work on more machines, nothing skipped, roughly six-fold on wall
+clock, with a combine step as the real cost because the eval prints aggregates across worlds. **A
+merge queue** is second: the expensive matrix once, on the merged result, rather than on every
+push. `#30`'s two superseded runs are the measurement that justifies it.
+
+*And path filtering is refused, by name and in advance.* Skipping `claim-2` when only documents
+change reintroduces **a claim that silently does not run**, which is precisely what `discover` and
+`claims-complete` were built to make impossible — the `claim-[1-7]` defect bought back for a saving
+in minutes. It will be proposed as the obvious cheap fix, and this line is here so that whoever
+proposes it meets the refusal before the argument.
+
+*The practice that costs nothing and was adopted immediately:* finish a piece locally, run
+`make check` and the relevant `make claim-N`, and **push once**. Where a review produces findings,
+apply all of them and push the result. That captures most of a merge queue's benefit with no
+engineering.
+
+*Revisit trigger, so this is a decision and not a deferral with no teeth:* **if any of phase 1's six
+remaining branches causes more than two full-matrix runs through incomplete work, the arithmetic
+changes and this reopens.**
+
+*Restated the same day, before it was ever evaluated, because the first wording counted the wrong
+thing.* It read *"needs more than two pushes"*. A rebase forced by somebody else's merge is a
+second push and is not waste: the branch was pushed once, complete and green, which is what the
+practice asks, and counting it would penalise the discipline rather than the waste. What the trigger
+is actually about is a matrix run caused by work that was not finished.
+
+*And the case that produced the restatement is itself a measurement for the fixes above.* `bec0e7f`
+landing on `main` forced a rebase and a second full-matrix run of `contracts/floor-rule-id` — an
+hour, unavoidable **only because there is no merge queue**, since a queue rebases and runs once at
+the end. So it is not a trigger hit; it is another priced argument for the second fix.
+
+*Site:* `.github/workflows/ci.yml` :: `timeout-minutes: 90`
+*Disposition:* its own branch, before the first Terraform layer — phase 2 is where the push rate
+multiplies, and CI is what everything else depends on, so rebuilding it mid-phase risks the defect
+it protects against. Phase 1's six remaining branches are four documents and two small ones; they
+do not justify rebuilding the thing that judges them
+*Status:* open
 
 **The corpus describes an industry median as the benchmark a Greek instrument defines** · found
 2026-08-27 · by oversight level 2

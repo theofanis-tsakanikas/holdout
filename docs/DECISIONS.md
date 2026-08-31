@@ -1344,6 +1344,28 @@ the old one, which is exactly what "never deleted" is for. `contracts/floor-rule
 that opens it, and `docs/reviews/phase-1.md` §3d carries the correction that goes with it: the gate
 that turns red on the rename is `O2`, because the id is a field name in `ops/personhood.py`'s
 registry — not `G10`, which never bounds this rule at all.
+> *Closed:* 2026-08-31 — by `contracts/floor-rule-id`, through the unlock condition rather than
+> around it. `floor.yaml`'s opening window is closed at 2026-09-01 and a new one opens carrying
+> `refuse_when_no_price_satisfies_every_guardrail` and a restated `statement`; the closed window
+> keeps `refuse_when_no_legal_price_sells`, which is what contract rule 1 is for. No value moved —
+> the rule is `true` in both windows — so no past decision is judged differently and no recorded
+> figure changes.
+>
+> **What the deferral did not anticipate, and it is the whole cost of the change.** It said the
+> blast radius touches "the window, the restatement chain and anything that has already recorded
+> that id". It does, and one thing more: **the closed window has to stay readable.** Every decision
+> dated before 2026-09-01 resolves against it, which on this corpus is all of them, so the resolver
+> cannot simply look for the new spelling. `envelope.py` gains `RENAMED_RULES`, which reads each
+> window in its own vocabulary — and refuses a window carrying **both** spellings, because two
+> rules with one meaning leave nothing able to say which was in force. Emptying that mapping turns
+> the suite red, so the mechanism is not decoration.
+>
+> **§3d's correction is confirmed by running it rather than by reading it.** Putting
+> `ops/personhood.py`'s registry back the way it was and running `python -m evals.oversight` gives
+> `FAIL O2.every-decision-path-type-carries-exactly-the-fields-written-down — 55/56 types agree`.
+> `G10` never bounds this rule: `refuse_when_no_legal_price_sells` appears zero times in
+> `evals/guardrail/reference.py`, which is what the task note asserted it did.
+
 *Restated 2026-08-31:* this read *"failing that, a deliberate item for the phase-1 integration
 session"*, which names a session rather than an event and is what `CLAUDE.md` now refuses.
 

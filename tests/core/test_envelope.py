@@ -22,7 +22,7 @@ from types import MappingProxyType
 
 import pytest
 
-from holdout.contracts.model import ContractSet
+from holdout.contracts.model import ContractSet, Guardrail, GuardrailRule
 from holdout.core.decision import DecisionKey, DecisionPath, PriceSource, SafeState
 from holdout.core.guardrails import (
     AnnouncementBasis,
@@ -693,3 +693,77 @@ def test_a_per_product_code_cap_is_evaluated_per_decision_and_that_is_stricter(
         assert basis.basis is not None and basis.basis in maximum.why, (
             "the certificate records which basis was applied"
         )
+
+
+# ------------------------------------------------- a window is read in its own vocabulary
+#
+# `floor.yaml` renamed one rule id when it opened its 2026-09-01 window:
+# `refuse_when_no_legal_price_sells` claimed a demand question the envelope never asks, and
+# `refuse_when_no_price_satisfies_every_guardrail` says the arithmetic the rule actually
+# performs. Contract rule 1 keeps the closed window exactly as it was, so both spellings are
+# live forever — one per window — and `RENAMED_RULES` is what reads each in its own.
+#
+# These tests are written against the two failures rather than the success, because the
+# success is what every other test in this file already exercises: `DECIDED_ON` is
+# 2026-04-01, inside the closed window, so the whole suite resolves through the old spelling.
+
+
+def test_a_decision_in_each_window_resolves_through_that_window_s_spelling(
+    contracts: ContractSet,
+) -> None:
+    """The old id before the boundary, the new id after it, and the same value from both."""
+    before = envelope_as_of(contracts.guardrails, on=date(2026, 8, 31), path=DecisionPath.MARKDOWN)
+    after = envelope_as_of(contracts.guardrails, on=date(2026, 9, 1), path=DecisionPath.MARKDOWN)
+    assert before.floor.refuse_when_no_price_satisfies_every_guardrail
+    assert after.floor.refuse_when_no_price_satisfies_every_guardrail
+
+    windows = next(g for g in contracts.guardrails if g.id == "floor").windows
+    closed = next(w for w in windows if w.effective_to is not None)
+    live = next(w for w in windows if w.effective_to is None)
+    assert closed.rule("refuse_when_no_legal_price_sells") is not None
+    assert closed.rule("refuse_when_no_price_satisfies_every_guardrail") is None
+    assert live.rule("refuse_when_no_price_satisfies_every_guardrail") is not None
+    assert live.rule("refuse_when_no_legal_price_sells") is None
+
+
+def _floor_with(contracts: ContractSet, rules: tuple[GuardrailRule, ...]) -> list[Guardrail]:
+    """The contract set with the floor's closed window carrying exactly `rules`."""
+    floor = next(g for g in contracts.guardrails if g.id == "floor")
+    closed = next(w for w in floor.windows if w.effective_to is not None)
+    swapped = dataclasses.replace(
+        floor,
+        windows=tuple(
+            dataclasses.replace(w, rules=rules) if w is closed else w for w in floor.windows
+        ),
+    )
+    return [swapped if g.id == "floor" else g for g in contracts.guardrails]
+
+
+def test_a_window_carrying_both_spellings_is_refused(contracts: ContractSet) -> None:
+    """Two rules with one meaning, and nothing can say which was in force.
+
+    The failure a rename invites: somebody adds the new id to the closed window "so the code
+    can find it" and leaves the old one there. Both are then true, both are readable, and the
+    envelope would take whichever the lookup reached first without saying so.
+    """
+    floor = next(g for g in contracts.guardrails if g.id == "floor")
+    closed = next(w for w in floor.windows if w.effective_to is not None)
+    old = closed.rule("refuse_when_no_legal_price_sells")
+    assert old is not None
+    doubled = (
+        *closed.rules,
+        dataclasses.replace(old, id="refuse_when_no_price_satisfies_every_guardrail"),
+    )
+
+    with pytest.raises(EnvelopeError, match="one vocabulary"):
+        envelope_as_of(_floor_with(contracts, doubled), on=DECIDED_ON, path=DecisionPath.MARKDOWN)
+
+
+def test_a_window_carrying_neither_spelling_is_refused(contracts: ContractSet) -> None:
+    """Still the old refusal: a default is a lie with a plausible shape."""
+    floor = next(g for g in contracts.guardrails if g.id == "floor")
+    closed = next(w for w in floor.windows if w.effective_to is not None)
+    stripped = tuple(r for r in closed.rules if not r.id.startswith("refuse_when_no"))
+
+    with pytest.raises(EnvelopeError, match="no rule"):
+        envelope_as_of(_floor_with(contracts, stripped), on=DECIDED_ON, path=DecisionPath.MARKDOWN)

@@ -97,7 +97,7 @@ def independent_envelope() -> Envelope:
             minimum_gross_margin_pct=Decimal("12.5"),
             minimum_absolute_price=Money.of("0.10"),
             cost_staleness_hours=6,
-            refuse_when_no_legal_price_sells=True,
+            refuse_when_no_price_satisfies_every_guardrail=True,
             safe_state=SafeState.LADDER,
         ),
         max_delta=MaxDeltaRule(
@@ -175,7 +175,7 @@ def independent_base_price_envelope() -> Envelope:
             minimum_gross_margin_pct=Decimal("8"),
             minimum_absolute_price=Money.of("0.15"),
             cost_staleness_hours=48,
-            refuse_when_no_legal_price_sells=True,
+            refuse_when_no_price_satisfies_every_guardrail=True,
             safe_state=SafeState.NO_ACTION,
         ),
         max_delta=MaxDeltaRule(
