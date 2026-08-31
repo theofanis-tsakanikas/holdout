@@ -131,6 +131,70 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**`test_the_truth_is_not_lying_in_the_file_in_plain_sight` fails about 1 run in 254** · found
+2026-08-31 · by `evals/world-cache-measured`, from one red in a suite run
+**The failure a reader will meet:** `AssertionError: 248` at
+`tests/corpus/test_world_seal.py:136`, `assert phrase not in raw, phrase`. It passes on retry. This
+entry exists so that a search for that text lands here in one step, because at 1 in 254 it will fire
+on somebody who knows none of this.
+
+*Determinism is not implicated, and that was established before the cause.* The seal was generated
+three times at the same seed and scale and compared field by field: `payload`, `nonce`,
+`commitment_sha256`, `openings`, `world`, `seed` and `scale` are **byte-identical**. **One field
+varies — `sealed_at`** — which is correct for a thing recording when it was sealed. Nothing the
+seeded exact-arithmetic machinery produces is non-deterministic, so the cross-runner sha256 result
+stands unqualified.
+
+*The cause.* The test asserts five phrases from the truth do not appear in the sealed bytes. Four
+are 62, 113, 23 and 6 characters. The fifth is `str(truth.totals["acks_failed"])` = **`'248'`**, and
+it is tested against a string containing `2026-08-31T10:15:55.965333+00:00`. It fails whenever those
+three digits land in the timestamp.
+
+*The rate, measured over 200,000 simulated sealing moments:* `"248"` appears in the timestamp in
+**785/200000 = 0.39%**, about **1 run in 254**. It is corpus-dependent — another world or scale
+gives another `acks_failed`, and a two-digit value would fail far more often.
+
+**And the finding above the bug is that the docstring is right.** It says the phrases are taken
+*"from the truth itself… not from a list somebody wrote while thinking about what to hide. A
+hand-written list would test the author's imagination; this tests the file."* That reasoning is
+sound and it is the better design — **and it is why the defect exists.** Taking phrases from the
+truth means taking whatever type they happen to be, and one of them is a small integer.
+
+This is **not** *a guard tested by its author*. It is a guard that **removed** the author's judgment
+and inherited the data's shape instead — usually right, and wrong when the data contains something
+too small to be evidence. It is the first instance recorded here where **doing the correct thing
+caused the defect**.
+
+*Three fixes, none obviously best.*
+
+**(a) Skip phrases below a length.** Reintroduces a threshold somebody chose, which is what the
+docstring's design exists to avoid.
+
+**(b) Search the `payload` rather than the whole file.** Also a narrowing, and in the direction
+refused all day: the test currently covers every field, and narrowing means a leak into some other
+field stops being caught. *Those fields cannot contain secrets* is an assertion that would need
+demonstrating.
+
+**(c) Exclude `sealed_at` by name, with a written reason.** It is the only field that varies —
+established by measurement — and a timestamp is not secret. Removes exactly the source of the false
+positives and keeps coverage of everything else. The same shape as `make language`'s excepted paths
+and `unarmed_because`: **a named exemption carrying its justification, rather than a narrowed scope
+carrying none.**
+
+*And the ordering that solved it is the reusable part, not the fix.* The first question asked was
+not *what makes it flaky* but **which side of the determinism line it falls on** — answerable in one
+command, before anything about the cause was known, and if it had come out the other way it would
+have been the most serious thing found that day rather than a footnote.
+
+> **When an observation contradicts a measured property, establish whether it is inside that
+> property's scope before investigating the cause.** The cause can take an hour; the scope question
+> took one command.
+
+*Site:* `tests/corpus/test_world_seal.py` :: `        str(truth.totals["acks_failed"]),`
+*Disposition:* its own branch — a claim-adjacent test, and the choice among three fixes is a
+judgment that should not ride on a branch about CI measurement
+*Status:* open
+
 **A limit was stated in review and did not reach the branch** · found 2026-08-31 · by oversight
 level 2 on `evals/world-cache-measured`, by grepping for a word rather than reading for a claim
 The measurement's own limit — *the sample lies inside one world-source epoch, so it says nothing
@@ -161,9 +225,30 @@ seconds, and it is available for every limit either session states aloud. Nobody
 be careful; the check is *did the thing I said reach the file*.
 
 *Site:* `PLAN.md` :: `review and **did not reach the branch until oversight level 2 grepped for it and found it absent**`
-*Disposition:* none — the instance is closed; whether the grep-for-the-claim check becomes a
-practice is a judgment about how the two sessions work, not about this repository
-*Status:* open
+*Adopted, in two halves, because the first has the reviewer's memory in it.* What worked here was
+one session happening to recall a striking sentence from an hour earlier — **which is not a
+mechanism, it is the faculty that produced `42`.** Scaled to a week it catches whatever the reader
+happens to remember. So the burden moves to the writer, at the moment they know it best:
+
+> **A limit stated in conversation names the file it will land in.** *"That is a narrower claim
+> than the cache saves 18 minutes — it goes in `ci.yml`'s comment."*
+
+Then the check is `grep` against a **named file** rather than against recall. It costs four words
+where the claim is made, and it is the same move as *carry the command*: the discipline lands on the
+person asserting, while they assert, instead of on somebody later trying to remember. The reader's
+grep still catches what it catches; this removes the need for it to.
+
+*And the limit, stated rather than left to be discovered:* **neither half is a mechanism.** Both are
+habits, and habits are what this repository exists to distrust — nothing goes red if either is
+forgotten, and the failure is silent in the way every failure at this site has been.
+
+*Disposition:* adopted as a working practice between the two sessions, in both halves, with the
+limit above
+*Closed:* 2026-08-31 — the instance corrected in four files, and the practice recorded rather than
+left open with nobody able to close it
+*Now:* `PLAN.md` :: `Every cold run in the sample was a **spurious** invalidation, so 18.4 is what a spurious`
+*Now:* `evals/README.md` :: `**That last clause was a projection until 2026-08-31, and the number that replaced it is from a`
+*Status:* closed
 
 **A branch name in the record is a checkable assertion, and nothing offline can check it** · found
 2026-08-31 · by `evals/world-cache-measured`, which built the gate and measured it wrong
