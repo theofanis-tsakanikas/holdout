@@ -432,6 +432,14 @@ them recurring.
 
 ## Proposed branches, in order
 
+> **This table records what was proposed on 2026-08-30 and is not updated.** It is the review's
+> output, and rewriting its rows to match what has since landed would overwrite history — which
+> doctrine rule 4 refuses, and which would destroy the thing `#9`'s author needs: what the method
+> produced *before* anyone knew which rows survived. **Current status lives in `TASKS.md` and
+> `docs/FINDINGS.md`**, which are where present-tense claims belong because they can be
+> overwritten. Added 2026-08-31, for the same reason the suite count is a finding: a historical
+> document carrying a present-tense claim reads as current because nothing says it is not.
+
 | # | branch | what it closes |
 |---|---|---|
 | 1 | `ops/every-number-carries-its-kind` | §8 — the only rule with no gate |

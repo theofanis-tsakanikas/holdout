@@ -395,6 +395,11 @@ it is encoded in `contracts/`.**
   which a rule did not apply is written as a window that says so, with its own source,
   because an absent window and a lapsed rule look identical on disk and only one of them is
   a fact.
-* **Verification dates age.** Every `verified_on` in this repository reads 2026-08-27. A
+* **Verification dates age.** `verified_on` in this repository reads **2026-08-27 sixty-nine
+  times, 2026-08-28 fifteen times and 2026-08-31 once** — counted by
+  `grep -rho "verified_on: 20[0-9-]*" contracts/ | sort | uniq -c`, not asserted. It read *"every
+  one reads 2026-08-27"* until 2026-08-31, which was true when written and had been false since
+  T000 re-verified fifteen of them the following day; the 2026-08-31 is `floor.yaml`'s new window.
+  A
   citation is a claim about a moment; treat anything more than a few months old as
   unchecked, and re-open the gazette rather than trusting this file.

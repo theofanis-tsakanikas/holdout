@@ -18,6 +18,30 @@ stores**; it gets stronger with 200 seeds and six adversarial worlds, which run 
 nothing. Where a figure depends on corpus size it is reported as such and never extrapolated to the
 full estate.
 
+> **Reversed 2026-08-29, and the reversal is written here on 2026-08-31 — which is late, and the
+> lateness is the point.** This file's own opening sentence is *where a decision has been reversed,
+> the original stays and the reversal is written underneath it.* `CLAUDE.md` withdrew this entry
+> two days ago and the one reversed decision in this file was the one without its reversal
+> underneath it. `docs/reviews/phase-1.md` §3c found that; `docs/layout-and-restatements` is what
+> closed it.
+>
+> **What was reversed.** *"This is a cost decision and nothing else"* is false. Two units of scale
+> exist and only the second is load-bearing: the nominal estate, and **the roster that survives the
+> design engine's automatic exclusions** — the units a lottery is actually drawn over. The control
+> arm is a share of the second, and the balance tolerance is judged on it, so the second decides
+> whether an experiment can exist at all while the first has never decided anything.
+>
+> **And two of this entry's own figures do not stand.** *"About 36M POS lines"* is stale;
+> `corpus/world/README.md` restated it to **39.2M** under T00E. And *"the corpus is 100"* names
+> the wrong scale: **claim 2 runs at `harness` — 320 stores, a surviving roster of 269.** 100 is
+> `scenario`, which proves nothing about claim 2. The entry written to argue that corpus size is
+> only a bill had the bill's own number pointing at the wrong thing.
+>
+> **What survives.** Claim 2 does not get stronger by adding stores — that much held, and for the
+> reason given: it gets stronger with 200 seeds and six worlds. What was wrong was the inference
+> that scale is therefore *only* cost. `CLAUDE.md` carries the measured table, and `ops/roster.py`
+> is the one place the number lives.
+
 **Three decisions, one stream, and only one actuates itself.** · 2026-08-24
 Markdown on expiring fresh actuates automatically; base price by zone is a proposal to a human;
 a joint plan with a supplier goes through a Clean Room. The middle one is not a policy statement —
@@ -380,6 +404,23 @@ What it measured, at the scale claim 2 was to be proved at:
 And it did not scale out: 400 stores left a roster of 130, 1,200 left **212**. The towns were a
 fixed size, so every store added made the estate denser rather than larger and the share the
 engine excludes rose without limit.
+
+> **Restated 2026-08-31 by `docs/layout-and-restatements`, completing a chain that stopped at
+> `CLAUDE.md` on 2026-08-29.** `1,200 stores left a roster of 212` is written above as a
+> measurement and it is not one. `--scale` admits exactly four names — `smoke`, `rehearsal`,
+> `harness`, `scenario` — and the largest is **320 stores**. No declared scale reaches 1,200, so
+> that figure was a projection appearing in a paragraph whose argument is that the load-bearing
+> number is the surviving roster rather than the store count. It is **withdrawn rather than
+> corrected**: 1,200 stores is the scenario the system is written for, not a scale this
+> repository has ever run.
+>
+> The 100-store chain above it is also stale — it was measured before **T00E** moved the
+> placement rule. `python -m ops.roster` is the one place the number lives, and `CLAUDE.md`
+> carries the table it now prints.
+>
+> **What survives is the argument, untouched**: the number a claim rests on is the roster a
+> lottery is drawn over. What did not survive is the figure that asserted it, which is the rule
+> about a rule not being exempt from itself, for the second time on the same paragraph.
 
 *Caught by neither level 1 nor level 2.* CI was green — every test passed, because every test was
 about one of the two files. A fresh-context reviewer reading either diff would have found nothing
@@ -1649,6 +1690,15 @@ publishes. Or phase 2's gold layer, which supplies a realised per-code margin an
 derived cost with a measured one, at which point the frequency is a different number.
 *Restated 2026-08-31:* this read *"the phase-1 integration session, which is allowed to propose a
 restatement"*, which names a session rather than an event.
+
+> *Closed:* 2026-08-31 — by `docs/the-documents-agree-with-the-code`, through the first limb of
+> the unlock condition. Doctrine rule 1 now reads *a declared safe state may still be empty, and
+> then the correct output is a refusal*, with the prior wording kept beside it and the 716
+> named. **The ladder still knows about a floor and not about a ceiling**, and that half stays
+> deferred on the second limb: it needs `floor_behaviour`'s counterpart in the policy contract,
+> which is a contract change, and phase 2's gold layer would in any case replace the derived
+> cost with a measured one and make the frequency a different number. What closed is the
+> sentence that was false of the system, not the gap in the ladder.
 
 **The regulated basket's benchmark does not say which denominator it is in** · deferred 2026-08-27
 ΥΑ 21330/2026 άρθρο 4 παρ. 4 defines the capped margin as

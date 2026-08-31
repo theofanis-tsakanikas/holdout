@@ -261,8 +261,13 @@ def test_the_two_founding_findings_were_entered_before_their_fixes() -> None:
     by nobody.
     """
     findings = parse(REGISTRY.read_text(encoding="utf-8"))
-    by_date = sorted(findings, key=lambda f: f.found)
-    legal, orphan = by_date[0], by_date[1]
+
+    # Selected by title, not by position in a date sort. `by_date[1]` identified the orphan for
+    # as long as no second finding shared its date, and a finding filed on 2026-08-30 by the same
+    # review broke it — which is `every-anchor-is-aimed-at-one-place` inside the test that guards
+    # the register: a key that is not unique names whichever row sorted first.
+    legal = next(f for f in findings if "industry median" in f.title)
+    orphan = next(f for f in findings if "serves no claim" in f.title)
     assert legal.found == date(2026, 8, 27), "the legal finding predates the register"
     assert orphan.found == date(2026, 8, 30), "§4 predates it too"
     assert len(legal.sites) >= 3, "it names every site it is acted on"
