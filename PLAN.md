@@ -186,11 +186,25 @@ phase-1 review found — **prose asserting more than the code supports**:
    every check that calls itself a second implementation. Relatedly, G3's one-cent tolerance
    cannot catch a bound that is one cent **too strict** — which is precisely the shape of the
    ladder bug its own docstring cites as motivation.
-3. **"The 2025 benchmark margin" is a 2008–2020 industry median.** ΥΑ 21330/2026 άρθρο 4 παρ. 5
-   defines the benchmark as the trader's own average, per product code, over 2025. The corpus
-   documents describe the Eurostat figure as something its sources never state, and
+3. **"The 2025 benchmark margin" is a 2008–2020 industry median.** The instrument anchors the
+   benchmark to the trader's **own** 2025 rather than to a sector figure. The corpus documents
+   describe the Eurostat figure as something its sources never state, and
    `corpus/real/README.md` reads an equivalence into άρθρο 4 παρ. 4 that the article does not
    contain.
+
+   > *Restated 2026-08-31 by `corpus/legal-claims-restated`, and the correction is to this
+   > finding rather than to the code.* The sentence read *"ΥΑ 21330/2026 άρθρο 4 παρ. 5 defines
+   > the benchmark as the trader's own average, per product code, over 2025."* **παρ. 5 defines
+   > Περίοδος Αναφοράς** — the reference period, per undertaking, keyed to that undertaking's own
+   > last closed financial year. The per-product-code average is defined elsewhere in the
+   > instrument. The finding's conclusion survives untouched; the article behind it was wrong.
+   >
+   > It is provable inside this tree with no external source, which is the part worth keeping:
+   > `docs/REGULATORY.md` and `corpus/real/MANIFEST.yaml` both have παρ. 5 right and this line
+   > had it wrong, in the same repository, for four days. **Two documents agreed, a third
+   > disagreed, and nothing compared them** — which is the argument for `docs/FINDINGS.md`
+   > rather than a footnote to it. A restatement that repeated this wording would have imported
+   > the error into the fix.
 
 Also found, not blocking: the margin-cap ceiling is algebraically the item's median price, so
 the Eurostat figure cancels out of the cap entirely; `which_direction_it_errs` argues only the
@@ -905,6 +919,80 @@ here can only be checked by something the forge has already agreed to run. So it
 exist today?* is now in T008's `closes` for the `integration-review` skill. It is the first rule
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
+
+**And the author settled the half that was never ours: real inputs, derived cost · 2026-08-31.**
+The prose sites were defects and got fixed. What was left was a judgment about the product — a
+corpus presented as real whose concrete benchmark is a construct the regulation does not use, either
+an acceptable declared limit or a claim the corpus should stop making. The decision: **wherever the
+corpus is described as a whole, the wording names all three parts** — real prices, real law, derived
+cost — and *real* does not stand alone with the derivation in a footnote.
+
+Six sites carry it. `docs/SCENARIO.md` and `CLAUDE.md` were checked and left: neither ever claimed
+the cost was observed, and the sweep is over places that overclaimed rather than over the word.
+
+*Why the wording and not the data.* No public source carries a retailer's cost and none will. There
+is no version of this corpus, rebuildable from published sources, in which the cost is observed — so
+the choice was never *fix it* or *leave it*, but **say what it is every time, or say it once and let
+the rest read as though everything were sourced.** The second is what was there: the README named
+three real things and omitted the cost, and the manifest header said every price, category and
+margin came from somebody else, which is true and silent about the number the envelope turns on.
+
+**And the founding finding closed through the mechanism** — `*Closed:*` with the transition, a
+`*Now:*` for each of its three sites, and the closing text held to the same exactly-once rule for as
+long as the entry exists. `1 open, 2 closed · closed and still held 4 line(s)`. The one still open
+is §4, adrift by design until somebody scopes it with the module in front of them.
+
+*And a test froze a status for the third time today.* `legal.is_open` was true when written and the
+finding legitimately closed. First `len(findings) == 2`, then a status — both true when written,
+both holding a **state that is supposed to move** rather than the property that must not. What must
+not move is that the two entries were filed open before any branch touched them, so their `found`
+dates are asserted and nothing else is. `make findings` prints open, closed, adrift and concurred;
+nothing asserts them, because every one of those numbers is supposed to change. The suite is **965**.
+
+**The legal claims restated, and the second half of the scope turned out to exist already ·
+2026-08-31.** `corpus/legal-claims-restated` closes the older of the register's two founding
+entries in part and the newer one whole.
+
+**The prose.** Five sites: `corpus/real/README.md` (the equivalence, and the claim that it made
+`m / (1 − m)` exact — algebra made to rest on law), `corpus/real/MANIFEST.yaml` (the same
+equivalence in the provenance record, the copy a reader trusts most), `evals/guardrail/build.py`
+(*"The published 2025 gross margin"* — neither 2025 nor published, at the point closest to the
+arithmetic), `PLAN.md` (the finding's own miscitation of άρθρο 4 παρ. 5, which defines the
+reference period and not the benchmark), and `benchmark.py`, whose narrow claim **holds** and got a
+verification date rather than a rewrite.
+
+**The benchmark half was already built.** Measured before writing any of it: the core takes a
+benchmark per proposal and bounds each decision against its own; the contract carries a name, never
+a level; only the corpus flattens it, at four call sites. **The scope asked for a shape that
+exists** — an assertion about the code made from something other than the code, one layer out from
+the defect the branch was opened for.
+
+What remained had two disguises. A per-code margin computed from the corpus's own derived cost
+returns `m` exactly for every code; a per-item signature returning one constant is per-code
+structure around a single number. Both read as fidelity. So the flatness is carried by a **name**:
+`sector_wide_benchmark()`, met four times before anything else, refusing the inference at the place
+it was made.
+
+**Measured against the baseline the branch diverges from** — `b7ab2ae`, not the `f0a9994` the scope
+named, with the two verified byte-identical for claim 1 first. **232,373 decisions, 10 checks,
+sha256 `22a6daea…` on both sides.** A refactor that provably moves nothing, stated as a number.
+
+**And the register bit on its author within an hour of landing.** Rewriting `PLAN.md`'s site removed
+its anchor and `make findings` went red, asking a person whether the finding was fixed or the anchor
+stale. It was neither: one entry was answering for two defects with different fixes and different
+landing dates. Split — and the citation half **closed through the mechanism**, with `*Now:*` still
+being checked, rather than being demonstrated after the fact.
+
+That exposed an interaction neither session saw at design time. Doctrine rule 4 keeps defective
+wording beside its correction, so three restated sites kept their anchors and the one that was
+*rewritten* lost its. **An anchor detects drift and revert and cannot detect *fixed*** — and an
+anchor vanishing therefore means the repository's own convention was not followed there, which is
+exactly when a person should look. Declared in `docs/FINDINGS.md` as an interaction rather than a
+shortcoming.
+
+**And a frozen count went red on a legitimate split.** `len(findings) == 2` — a number standing in
+for the property it protected, inside the work about numbers standing in for things. The property is
+asserted now and the count is printed by the target and claimed by nobody. The suite is **965**.
 
 **An open finding gets a home, because it was the one thing that had none · 2026-08-31.**
 `docs/FINDINGS.md` and `make findings`. Every mechanism here was aimed at a claim, a gate or a

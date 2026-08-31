@@ -205,7 +205,9 @@ re-running last month's readout returns a different number as late data arrives.
 ### The corpora that are not ours
 
 Two claims are attacked from data published by people who have never seen this repository, and
-`corpus/real/` holds it committed and digest-checked:
+`corpus/real/` holds it committed and digest-checked. **Real inputs, derived cost:** the three
+sources below are observed, and the unit cost claim 1's margins rest on is derived from the third
+because no public source carries a retailer's cost.
 
 - **[C] 32,480 individual price quotes** collected by hand in shops by the UK Office for
   National Statistics and published under the Open Government Licence v3.0, retrieved

@@ -5,6 +5,21 @@ agreeing with itself*. This directory is the answer to it: real retail prices, a
 regulated-goods list and a real industry margin, all published by people who have never seen
 this repository.
 
+> **Real inputs, derived cost — and the second half is not a footnote.** Everything committed
+> here was published by somebody else and is digest-checked. **The unit cost is not.** No public
+> source carries a retailer's cost, so `evals/guardrail/build.py` derives one —
+> `unit_cost = price × (1 − m)`, with `m` a sector median — and every margin, every floor and
+> every cap in claim 1 rests on it. So the accurate description of what claim 1 is driven by is
+> **real prices, real law, derived cost**, and this file uses those words rather than *real*
+> alone wherever the corpus as a whole is described. Prices, price endings, dispersion,
+> markdowns, the regulated list and the margin statistic are real. The cost is a construct, and
+> naming it every time is cheaper than one reader taking the wrong half on trust.
+>
+> *Restated 2026-08-31.* The paragraph above named three real things and did not mention the
+> cost at all, so a reader could take the whole directory as observed. That is the same defect
+> `docs/FINDINGS.md`'s first entry records at four other sites — the corpus claiming, in the
+> place it claims realism, more than it has.
+
 **Two corpora since 2026-08-29, not one.** Claim 7's trap is the same trap in different
 clothes — *a list of person-shaped words written by whoever also wrote the field names is one
 function agreeing with itself* — so the words are not ours either. Two published vocabularies
@@ -109,9 +124,34 @@ against roughly 17% either side of it. The row stays in the file. Deleting it wo
 the number honest by accident, and the reasoning above would then describe a decision nobody
 had to make. `tests/corpus/test_manifest.py` asserts the row is still there.
 
-Eurostat's ratio is a margin over turnover, which is the same quantity άρθρο 4 παρ. 4 of the
-Greek decision calls **ΠΜΚ** — margin over the selling price. That alignment is not a
-coincidence and it is what makes the conversion in `evals/guardrail/build.py` exact.
+**What this figure is, and what it is not.** Eurostat's ratio and the ΠΜΚ that ΥΑ 21330/2026
+άρθρο 4 παρ. 4 defines are both margins over a **selling-side denominator**, which is why one can
+stand in for the other in a synthetic corpus at all. They are **not the same quantity.** Eurostat
+divides by an industry's turnover; the article divides by the selling price of one product code.
+And the level is not the instrument's either: άρθρο 4 παρ. 5 fixes the reference period as the
+trader's **own** last closed financial year of 2025, while this is a 2008–2020 median across the
+sector. **No public dataset contains a per-undertaking, per-code cost**, so no corpus that anybody
+can rebuild from published sources could carry the real one.
+
+So the figure is a **corpus device for deriving a plausible cost**, chosen because it is the right
+industry, the right country and a real published statistic. It is not the benchmark the regulation
+names, and `contracts/guardrails/regulated_basket.yaml` does not pretend otherwise: it keeps its
+benchmark symbolic — `average_gross_margin_2025`, sourced to the instrument — precisely so that a
+number this repository derived never stands in a contract as the law's.
+
+The conversion in `evals/guardrail/build.py` is exact because `m / (1 − m)` is algebra between two
+denominators, and for no other reason. Its exactness does not depend on any alignment between
+Eurostat and the article, and saying that it did made a fact of arithmetic rest on a legal claim
+the article does not contain.
+
+> **Restated 2026-08-31.** This paragraph read: *"Eurostat's ratio is a margin over turnover, which
+> is the same quantity άρθρο 4 παρ. 4 of the Greek decision calls **ΠΜΚ** — margin over the selling
+> price. That alignment is not a coincidence and it is what makes the conversion in
+> `evals/guardrail/build.py` exact."* Both halves were wrong: *the same quantity* is an equivalence
+> the article does not state, and attributing the conversion's exactness to it made algebra depend
+> on law. It was the third of three blocking findings oversight level 2 raised against claim 1 on
+> 2026-08-27, and the only one that left the record — see `docs/FINDINGS.md`, which exists because
+> of it.
 
 ---
 

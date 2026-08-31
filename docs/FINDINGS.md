@@ -92,6 +92,37 @@ Neither works alone. And the instance that produced them was caught inside an ho
 one party happened to remember a rule it had stated that morning — which is not a defence, and is
 this file's own blind spot rather than an argument that it does not have one.
 
+### The anchor and doctrine rule 4, which interact
+
+**An anchor detects drift and revert. It cannot detect *fixed*, and that is an interaction with
+this repository's own convention rather than a shortcoming of anchors.**
+
+Doctrine rule 4 says a correction never erases what was previously stated. So a fix here usually
+*restates*: the new text goes in and the defective wording is kept beside it, quoted. The anchor is
+on the defective wording — so it survives the fix, and the entry stays green while its subject is
+already repaired. Closure is what records that, and closure is a transition rather than an anchor
+vanishing, which is why nothing breaks.
+
+**An anchor vanishing is therefore the unusual case, and it means the site was *rewritten* rather
+than restated** — that is, the repository's own convention was not followed there. `MOVED` asking a
+person is exactly right for that: it fires precisely where somebody should look.
+
+*Both behaviours appeared within an hour of this file landing, on the same fix.*
+`corpus/legal-claims-restated` restated three sites with the old wording quoted, and their anchors
+held; it rewrote `PLAN.md`'s, and that anchor vanished and turned the gate red. Same branch, same
+finding, two behaviours, decided by how each restatement was written. Neither session saw it at
+design time. The answer was to **split** the entry — one anchor was answering for two defects with
+different fixes and different landing dates — rather than to loosen the check, and the split
+produced this file's first closure through the mechanism instead of around it.
+
+### The count is printed and asserted by nobody
+
+`tests/ops/test_findings.py` asserted `len(findings) == 2` until the split above turned it red on a
+legitimate change. **A frozen count standing in for the property it was there to protect**, inside
+the work about numbers standing in for things. The property — both founding entries filed open,
+dated before any branch that touches them — is what the test asserts now. The count is printed by
+`make findings` and claimed by nothing.
+
 **The standing limit.** An anchor proves a line exists and still reads as expected. It cannot prove
 it is the **right** line. A true but irrelevant anchor is a green that means nothing, and no
 mechanism here can catch it — the same limit as a mutation planted against the detector, which this
@@ -117,7 +148,7 @@ in the text.
 *The benchmark.* The instrument anchors the benchmark to the trader's own 2025. The corpus uses a
 2008–2020 industry median and `evals/guardrail/build.py` calls it *"The published 2025 gross
 margin"*, which is wrong on both words that matter, at the point closest to the arithmetic — and it
-**is** the cap's benchmark: `benchmark_margin_on_price()` feeds `ProposedPrice.benchmark_markup_on_cost`
+**is** the cap's benchmark: `sector_wide_benchmark_on_price()` feeds `ProposedPrice.benchmark_markup_on_cost`
 on all 232,373 decisions claim 1 drives.
 
 *What does not move.* **Claim 1 does not reopen**, and the reason was written three weeks before
@@ -128,24 +159,53 @@ the contract does not implement the law with a median either. What does not surv
 the **scenario** claim — a corpus presented as real, citing a live Greek regulation, whose concrete
 benchmark is a construct that regulation does not use.
 
-*And the finding miscites its own article.* It says άρθρο 4 παρ. 5 *"defines the benchmark as the
-trader's own average, per product code, over 2025"*. παρ. 5 defines **Περίοδος Αναφοράς** — the
-reference period, per undertaking, keyed to that undertaking's own closed financial year. The
-per-product-code average is defined elsewhere. This is provable inside the tree with no external
-source: `docs/REGULATORY.md` and `corpus/real/MANIFEST.yaml` both have παρ. 5 right and `PLAN.md`
-has it wrong. The conclusion survives; the citation behind it does not, and a restatement repeating
-it would import the error into the fix.
+*The article behind it was also miscited*, which is its own entry below — split out on
+2026-08-31 because the two have different files, different fixes and different landing dates, and
+one entry covering both meant one anchor answering for two defects.
 
 *Corroboration, labelled as what it is:* the reviewing session opened a secondary source
 reproducing the decision's full text on 2026-08-31 and reports both articles verbatim. Not the
 gazette, not opened here, and nothing above depends on it.
 
-*Site:* `PLAN.md` :: `defines the benchmark as the trader's own average, per product code, over 2025`
+*How the scenario half was settled, which was not ours to settle.* The prose sites are defects and
+were fixed. What was left is a judgment about the product: a corpus presented as real, whose
+concrete benchmark is a construct the regulation does not use, is either an acceptable declared
+limit or a claim the corpus should stop making. The author decided: **real inputs, derived cost** —
+the wording becomes precise everywhere the corpus is described, and *real* does not stand alone with
+the derivation in a footnote. Six sites carry it now: this directory's README and `__init__`, the
+manifest header, the attack's own docstring in `evals/guardrail/checks.py`, the eval's README, and
+`docs/SCENARIO.md`. The prices, endings, dispersion, markdowns, regulated list and margin statistic
+are real; the unit cost is a construct, and it is named as one every time.
+
 *Site:* `corpus/real/README.md` :: `That alignment is not a`
 *Site:* `corpus/real/MANIFEST.yaml` :: `Eurostat's ratio is gross margin on goods for resale over turnover,`
 *Site:* `evals/guardrail/build.py` :: `The published 2025 gross margin`
 *Disposition:* branch `corpus/legal-claims-restated`
-*Status:* open
+*Closed:* 2026-08-31 — `corpus/legal-claims-restated` landed. The four sites are restated with their prior wording kept beside them per doctrine rule 4; the corpus's benchmark is named `sector_wide_benchmark()` at every call site rather than reshaped, because the per-code shape was already in the core; and the author decided the scenario half — *real inputs, derived cost*, stated wherever the corpus is described rather than *real* alone with the derivation in a footnote. Claim 1's output is bit-identical to `b7ab2ae` over 232,373 decisions, sha256 `22a6daea…`.
+*Now:* `corpus/real/README.md` :: `So the accurate description of what claim 1 is driven by is`
+*Now:* `corpus/real/MANIFEST.yaml` :: `It is a corpus device for deriving a plausible`
+*Now:* `evals/guardrail/build.py` :: `A sector median over 2008-2020, standing in for a quantity no public dataset contains.`
+
+**The finding miscites the article it rests on** · found 2026-08-31 · by the reviewing session
+Split out of the entry above on 2026-08-31. `PLAN.md`'s record of oversight level 2's third
+blocking finding said ΥΑ 21330/2026 **άρθρο 4 παρ. 5** *"defines the benchmark as the trader's own
+average, per product code, over 2025"*. παρ. 5 defines **Περίοδος Αναφοράς** — the reference period,
+per undertaking, keyed to that undertaking's own last closed financial year. The per-product-code
+average is defined elsewhere in the instrument.
+
+*The conclusion survives and the citation does not.* The benchmark is still anchored to the trader's
+own 2025, so a 2008–2020 sector median is still not it. What would have been imported into the fix
+is the wrong article, by a restatement that repeated the wording it was correcting.
+
+*Provable inside the tree, with no external source, which is the part worth keeping.*
+`docs/REGULATORY.md` and `corpus/real/MANIFEST.yaml` both have παρ. 5 right; `PLAN.md` had it wrong.
+**Two documents agreed, a third disagreed, and nothing compared them** — for four days, in one
+repository. That is the argument for this file rather than a footnote to it.
+
+*Site:* `PLAN.md` :: `defines the benchmark as the trader's own average, per product code, over 2025`
+*Disposition:* branch `corpus/legal-claims-restated`
+*Closed:* 2026-08-31 — restated in `PLAN.md` by `corpus/legal-claims-restated`, with the prior wording kept beside it per doctrine rule 4
+*Now:* `PLAN.md` :: `benchmark to the trader's **own** 2025 rather than to a sector figure.`
 
 **`pricing/selection.py` serves no claim, and the review that said so assigned it nowhere** · found
 2026-08-30 · by oversight level 3

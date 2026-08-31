@@ -251,3 +251,42 @@ def test_which_refusals_are_ceilings_is_read_off_the_rule_not_a_list_of_codes() 
         if seen[code] != {side}
     }
     assert not wrong, f"a rule bounds on a side this test did not expect: {wrong}"
+
+
+def test_the_corpus_benchmark_is_deliberately_one_level_for_every_item() -> None:
+    """The flatness is named at the call site rather than hidden behind a signature.
+
+    `ProposedPrice.benchmark_markup_on_cost` is per proposal and `envelope.py` bounds each
+    decision against its own, so the shape ΥΑ 21330/2026 requires — a benchmark per product
+    code — is already in the core. What is flat is this corpus, and it is flat because no public
+    dataset contains a per-undertaking per-code cost.
+
+    Two ways of hiding that were considered and both are disguises. Computing a per-code margin
+    from the corpus's own derived cost returns `m` exactly for every code, because
+    `cost = price x (1 - m)` is that identity — per-code numbers that are the flat number in
+    costume. A per-item signature returning one constant everywhere is the same disguise in the
+    other direction: per-code structure around a single number. The name carries it instead, and
+    this test is what stops the name from becoming a lie by accident.
+    """
+    from evals.guardrail import build
+
+    level = build.sector_wide_benchmark()
+    assert build.sector_wide_benchmark() is level, "one sector level, cached, for every item"
+    assert not hasattr(build.sector_wide_benchmark, "__wrapped__") or (
+        build.sector_wide_benchmark.__wrapped__.__code__.co_argcount == 0
+    ), "it takes no argument, so it cannot appear to vary by one"
+    assert "sector" in build.sector_wide_benchmark.__name__
+
+
+def test_no_call_site_reads_as_though_the_benchmark_were_the_instrument_s() -> None:
+    """The original claim was made possible by four call sites reading `benchmark_markup_on_cost()`
+    as though a benchmark simply *is* one number. A reader must meet the word `sector` first."""
+    import re
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parents[2] / "evals" / "guardrail" / "build.py").read_text(
+        encoding="utf-8"
+    )
+    supplied = re.findall(r"benchmark_markup_on_cost=(\w+)\(\)", source)
+    assert supplied, "the call sites moved; this test names them and must be updated with them"
+    assert all("sector" in name for name in supplied), supplied

@@ -396,25 +396,55 @@ def _markdown_proposal(
         cost_known_at=decided_at.replace(hour=14) - timedelta(hours=age),
         changes_dispatched_today=dispatched,
         prior_price=prior_price,
-        benchmark_markup_on_cost=benchmark_markup_on_cost(),
+        benchmark_markup_on_cost=sector_wide_benchmark(),
     )
     return proposal, cost
 
 
 @lru_cache(maxsize=1)
-def benchmark_margin_on_price() -> MarginOnPrice:
-    """The published 2025 gross margin, in the denominator its source publishes it in.
+def sector_wide_benchmark_on_price() -> MarginOnPrice:
+    """The corpus's derived benchmark level, in the denominator its source publishes it in.
 
-    Eurostat's figure is a margin **over turnover**, and ΥΑ 21330/2026 άρθρο 4 παρ. 4
-    defines the capped margin over the **selling price** too. This is the number as it
-    arrives: nothing here converts it, so nothing here can convert it wrongly.
+    **A sector median over 2008-2020, standing in for a quantity no public dataset contains.**
+    Eurostat's figure is a margin over an industry's **turnover**; ΥΑ 21330/2026 άρθρο 4 παρ. 4
+    defines the capped margin over the **selling price** of one product code, and άρθρο 4
+    παρ. 5 fixes the period as the trader's own last closed financial year of 2025. Both are
+    selling-side denominators, which is why one can stand in for the other in a synthetic
+    corpus; they are not the same quantity and this is not the instrument's level.
+
+    What the type buys is the half that can be got right: the number arrives in the
+    denominator its publisher used, nothing here converts it, so nothing here can convert it
+    wrongly. `contracts/guardrails/regulated_basket.yaml` keeps the contract's own benchmark
+    symbolic and sourced to the instrument, so a figure this repository derived never stands in
+    a contract as the law's.
+
+    *Restated 2026-08-31.* This docstring opened *"The published 2025 gross margin"*, which is
+    wrong on both words that matter — it is neither 2025 nor published as a benchmark by
+    anybody — at the point in the tree closest to the arithmetic. See `docs/FINDINGS.md`.
     """
     return MarginOnPrice(median_gross_margin_fraction() * 100)
 
 
 @lru_cache(maxsize=1)
-def benchmark_markup_on_cost() -> MarkupOnCost:
-    """The same benchmark in the denominator the envelope's arithmetic is in.
+def sector_wide_benchmark() -> MarkupOnCost:
+    """The same sector figure in the denominator the envelope's arithmetic is in.
+
+    **It takes no argument and that is the point.** The core's `ProposedPrice` carries a
+    benchmark per proposal and `envelope.py` bounds each decision against its own, so the shape
+    the instrument requires — a benchmark per product code — is already there. What is flat is
+    this corpus: one sector level for all 232,373 decisions, because no public dataset contains
+    a per-undertaking, per-code cost and nothing that can be rebuilt from published sources ever
+    will.
+
+    *Named rather than shaped, and the alternatives were both disguises.* Computing a per-code
+    margin from the corpus's own derived cost returns `m` exactly for every code — `cost =
+    price x (1 - m)` is that identity — so it would manufacture per-code numbers that are the
+    flat number wearing a disguise. And a per-item signature returning one constant everywhere
+    would manufacture per-code *structure* around a single number, which is the same disguise in
+    the other direction. Both would look like fidelity. A name cannot: a reader of the four call
+    sites below sees `sector_wide_benchmark()` and cannot make the inference that produced the
+    2026-08-27 finding. If a real per-item benchmark ever arrives, it arrives as a real change
+    against a name that never lied.
 
     The conversion is `m / (1 - m)` and it happens in exactly one place, in the core's own
     `MarginOnPrice.as_markup_on_cost`. That the eval calls the core's converter rather than
@@ -424,7 +454,7 @@ def benchmark_markup_on_cost() -> MarkupOnCost:
     is that the number cannot arrive in the wrong denominator by accident — 16.81% of the
     price is 20.21% of the cost, and the field will not take the first.
     """
-    return benchmark_margin_on_price().as_markup_on_cost()
+    return sector_wide_benchmark_on_price().as_markup_on_cost()
 
 
 def observed_price_moves() -> Iterator[Case]:
@@ -486,7 +516,7 @@ def observed_price_moves() -> Iterator[Case]:
                     unit_cost=cost,
                     cost_known_at=decided_at
                     - timedelta(hours=COST_AGE_HOURS_GRID[index % len(COST_AGE_HOURS_GRID)]),
-                    benchmark_markup_on_cost=benchmark_markup_on_cost(),
+                    benchmark_markup_on_cost=sector_wide_benchmark(),
                 )
                 yield Case(
                     family="B1",
@@ -651,7 +681,7 @@ def missing_inputs() -> Iterator[Case]:
                         unit_cost=cost,
                         cost_known_at=decided_at if cost is not None else None,
                         changes_dispatched_today=dispatched,
-                        benchmark_markup_on_cost=benchmark_markup_on_cost(),
+                        benchmark_markup_on_cost=sector_wide_benchmark(),
                     ),
                     unit_cost=unit_costs()[row.item_id],
                     origin=f"{row.item_id}@{row.outlet} {month} with {missing}",
@@ -679,7 +709,7 @@ def missing_inputs() -> Iterator[Case]:
                     announced_as_reduction=False,
                     unit_cost=unit_costs()[row.item_id],
                     cost_known_at=decided_at,
-                    benchmark_markup_on_cost=benchmark_markup_on_cost(),
+                    benchmark_markup_on_cost=sector_wide_benchmark(),
                 ),
                 unit_cost=unit_costs()[row.item_id],
                 origin=f"{row.item_id}@{row.outlet} {month} with no week-opening price",
