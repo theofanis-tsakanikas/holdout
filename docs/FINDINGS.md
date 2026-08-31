@@ -237,9 +237,15 @@ the day the gate that would have reported it was filed, which is the argument fo
 refused* arriving as an example rather than as a rule.
 
 *Site:* `.claude/hooks/main_guard.py` :: `    branch = current_branch(Path(cwd) if isinstance(cwd, str) else Path.cwd())`
-*Disposition:* `ops/main-guard-judges-the-command` — **awaiting the author's word**, because the
-hook enforces his rule and changing it changes what a session is permitted to do
-*Status:* open
+*Disposition:* `ops/main-guard-judges-the-command`
+*Closed:* 2026-08-31 — authorised by the author, then fixed on that branch. `commits()` becomes
+`commit_targets()` and reports **which repository** each commit is aimed at; `main()` judges each
+one. Heredoc bodies are excised only for `cat` and `tee` with nothing carrying them onward. Six
+tests fail against the previous hook and pass against this one, which is how the fix was checked
+rather than asserted — and a fourth spelling, `GIT_DIR=`, was found by review of the fix itself and
+would have left defect 1 alive in a different form.
+*Now:* `.claude/hooks/main_guard.py` :: `    here = Path(cwd) if isinstance(cwd, str) else Path.cwd()`
+*Status:* closed
 
 **`test_the_truth_is_not_lying_in_the_file_in_plain_sight` fails about 1 run in 254** · found
 2026-08-31 · by `evals/world-cache-measured`, from one red in a suite run

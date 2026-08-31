@@ -163,3 +163,127 @@ def test_it_ignores_every_tool_that_is_not_bash(fire: Callable[..., Any], on_mai
 def test_it_fails_open_on_input_it_cannot_read(fire: Callable[..., Any], on_main: Path) -> None:
     fired = fire(HOOK, "{ not json", cwd=on_main)
     assert fired.code == 0, fired.stderr
+
+
+# ------------------------------------------- the repository the command targets, not the cwd
+#
+# Two defects, one sentence: **the guard was judged against something other than the command it
+# was refusing** — the wrong directory here, the wrong text below. Both were found on
+# 2026-08-31 by two sessions sharing a checkout, which is the arrangement `CLAUDE.md`'s git rule
+# requires and the one nothing had ever been run against.
+
+
+def _worktree(of: Path, at: Path, branch: str) -> Path:
+    subprocess.run(["git", "worktree", "add", "-q", str(at), "-b", branch], cwd=of, check=True)
+    return at
+
+
+def test_a_commit_into_a_worktree_on_a_branch_is_allowed(
+    on_main: Path, tmp_path: Path, fire: Callable[..., Any]
+) -> None:
+    """The safe commit the old hook refused.
+
+    A session whose cwd is the shared checkout, committing into a worktree that is on a branch.
+    The old version read `event["cwd"]`, found `main`, and refused — blocking exactly the
+    workflow two sessions sharing a repository are required to use.
+    """
+    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    tree = _worktree(on_main, tmp_path / "wt", "ops/somewhere")
+    assert fire(HOOK, _bash(f"git -C {tree} commit -m 'x'", on_main)).code == 0
+
+
+def test_a_commit_into_the_checkout_on_main_is_refused_from_a_branch(
+    on_main: Path, tmp_path: Path, fire: Callable[..., Any]
+) -> None:
+    """The dangerous direction, which the old hook **allowed**.
+
+    A session whose cwd is on a branch, committing into the checkout that is on `main`. The old
+    version judged the session's directory, found a branch, and let it through — the guard
+    permitting exactly what it exists to prevent.
+    """
+    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    tree = _worktree(on_main, tmp_path / "wt", "ops/elsewhere")
+    assert fire(HOOK, _bash(f"git -C {on_main} commit -m 'x'", tree)).code == 2
+
+
+def test_the_environment_names_a_repository_too(
+    on_main: Path, tmp_path: Path, fire: Callable[..., Any]
+) -> None:
+    """`GIT_DIR` is a fourth spelling, and the first fix enumerated only the flags.
+
+    Two places in the hook already handled environment assignments — `_COARSE`'s prefix and
+    `_is_git_commit`'s skip — and the third forgot they exist. Found by review of the fix, which
+    is the original defect surviving its own repair in a different spelling.
+    """
+    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    tree = _worktree(on_main, tmp_path / "wt", "ops/env")
+    assert fire(HOOK, _bash(f"GIT_DIR={on_main}/.git git commit -m 'x'", tree)).code == 2
+    assert (
+        fire(
+            HOOK, _bash(f"GIT_WORK_TREE={on_main} GIT_DIR={on_main}/.git git commit -m 'x'", tree)
+        ).code
+        == 2
+    )
+
+
+def test_the_environment_can_also_name_a_safe_repository(
+    on_main: Path, tmp_path: Path, fire: Callable[..., Any]
+) -> None:
+    """The mirror, so the fix refuses the **right** repository rather than merely more of them."""
+    subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=on_main, check=True)
+    tree = _worktree(on_main, tmp_path / "wt", "ops/mirror")
+    assert fire(HOOK, _bash(f"GIT_DIR={tree}/.git git commit -m 'x'", on_main)).code == 0
+
+
+# ------------------------------------------------------ a heredoc body is data, unless it runs
+
+
+def test_a_heredoc_that_writes_prose_about_a_commit_is_allowed(
+    on_main: Path, fire: Callable[..., Any]
+) -> None:
+    """The false positive that made two sessions work around the guard in one hour.
+
+    It needs **both** an apostrophe — which unbalances `shlex` and drops to `_COARSE` — and a
+    shell operator inside the quoted text for `_COARSE` to match after. The docstring's own
+    example, `Don't run git commit here`, is the half-case that works, which is why its author
+    believed it closed.
+    """
+    quoted = "`git add -A && git commit`"
+    command = f"cat > note.md <<'EOF'\nIt caught {quoted} on one line and didn't on two.\nEOF"
+    assert fire(HOOK, _bash(command, on_main)).code == 0
+
+
+def test_a_heredoc_written_to_a_file_is_allowed_even_when_its_body_is_a_command(
+    on_main: Path, fire: Callable[..., Any]
+) -> None:
+    """A runbook documenting a git command is a file, not a commit.
+
+    This route never reaches `_COARSE`: lines are split, the body line tokenises cleanly, and
+    `_is_git_commit` returns true. `bash <<EOF` and `cat > f <<EOF` with identical bodies got
+    identical verdicts, and **the two commands differ only in the consumer** — so nothing about
+    the body can separate them.
+    """
+    assert fire(HOOK, _bash("cat > runbook.md <<'EOF'\ngit commit -m x\nEOF", on_main)).code == 0
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        pytest.param("bash <<'EOF'\ngit commit -m x\nEOF", id="bash runs its body"),
+        pytest.param("sh <<'EOF'\ngit commit -m x\nEOF", id="sh runs its body"),
+        pytest.param("cat <<'EOF' | bash\ngit commit -m x\nEOF", id="a pipe carries it onward"),
+        pytest.param("python3 - <<'EOF'\ngit commit -m x\nEOF", id="python runs its body"),
+        pytest.param("x=$(cat <<'EOF'\ngit commit -m x\nEOF\n)", id="a substitution may run it"),
+    ],
+)
+def test_an_executed_heredoc_keeps_its_body_matched(
+    command: str, on_main: Path, fire: Callable[..., Any]
+) -> None:
+    """The whitelist is two consumers, and everything else fails closed.
+
+    `python` is refused **deliberately**: its body executes and can reach git through
+    `os.system` or a subprocess with no line beginning with `git`, so no pattern over the body
+    would see it. **The workaround is the editor tool, not a wider list** — a refusal recorded
+    as a false positive is a refusal somebody later removes.
+    """
+    assert fire(HOOK, _bash(command, on_main)).code == 2

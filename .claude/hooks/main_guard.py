@@ -74,6 +74,71 @@ _REFUSAL = (
 )
 
 
+#: The only two consumers whose heredoc body provably cannot execute. A whitelist of two
+#: rather than a classification of every consumer: not *is this executed?*, which needs the
+#: command understood, but *is this one of the two forms that cannot execute?*, which is a
+#: string comparison. `bash`, `sh`, `python3` and anything unrecognised keep their bodies
+#: matched, and that is deliberate — an executing body reaches git through `os.system` or a
+#: subprocess without any line beginning with `git`, so no pattern over the body would see it.
+#:
+#: **The workaround for a refused `python <<EOF` is the editor tool, not a wider list.** A
+#: refusal recorded as a false positive is a refusal somebody later removes, and adding
+#: `python` here opens exactly the hole this leaves closed.
+_WRITES_ITS_INPUT = {"cat", "tee"}
+
+#: `<<EOF`, `<<-EOF`, `<<'EOF'`, `<<"EOF"`. The delimiter is what ends the body.
+_HEREDOC = re.compile(r"""<<-?[ \t]*(['"]?)(?P<delim>[A-Za-z_]\w*)\1""")
+
+#: Anything that could carry the body onward to something that runs it. A pipe disqualifies
+#: the line from the whitelist rather than being reasoned about separately, and so does a
+#: command substitution — `$(cat <<EOF …)` is a body whose output the shell may execute.
+_CARRIES_ONWARD = ("|", "$(", "`")
+
+
+def _writes_rather_than_runs(line: str) -> bool:
+    """Is this heredoc's body written somewhere, rather than executed?
+
+    Fails closed by construction: a consumer that is not `cat` or `tee`, or a line that could
+    carry the body onward, keeps its body matched.
+    """
+    if any(token in line for token in _CARRIES_ONWARD):
+        return False
+    try:
+        lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        tokens = list(lexer)
+    except ValueError:
+        return False
+    index = 0
+    while index < len(tokens) and re.fullmatch(r"[A-Za-z_]\w*=.*", tokens[index]):
+        index += 1
+    return index < len(tokens) and Path(tokens[index]).name in _WRITES_ITS_INPUT
+
+
+def without_written_heredocs(command: str) -> str:
+    """The command with the bodies of *written* heredocs removed.
+
+    A heredoc body is data, not command — but only when nothing runs it. `bash <<EOF` and
+    `cat > f <<EOF` differ **only** in the consumer, so nothing about the body can separate
+    them and the consumer is the whole distinction.
+    """
+    lines = command.splitlines()
+    kept: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        kept.append(line)
+        index += 1
+        match = _HEREDOC.search(line)
+        if match is None or not _writes_rather_than_runs(line):
+            continue
+        delimiter = match.group("delim")
+        while index < len(lines) and lines[index].strip() != delimiter:
+            index += 1
+        index += 1  # the terminator is not command either
+    return "\n".join(kept)
+
+
 def _segments(command: str) -> list[list[str]]:
     """The command split into the individual commands it actually runs.
 
@@ -114,13 +179,56 @@ def _is_git_commit(segment: list[str]) -> bool:
     return False
 
 
-def commits(command: str) -> bool:
-    """Does this command line run `git commit`?"""
+#: Every way a command can name a repository other than the one the session sits in. **An
+#: enumeration, and it is not a proof of completeness** — it is four spellings that are known,
+#: not four that are all there are. `GIT_DIR` and `GIT_WORK_TREE` were missed by the first
+#: version of this function and found by review: the flags were enumerated and the environment
+#: was not, which is defect 1 surviving its own fix in a different spelling.
+#:
+#: **A spelling not on this list falls back to the session's directory**, which is where the
+#: original defect lived. So a fifth spelling is a hole of exactly the shape this fixed, and
+#: whoever finds one should add it here rather than concluding the design is wrong.
+#:
+#: **And one case is not a spelling and cannot be added here at all.** A target named *outside*
+#: the command — `export GIT_DIR=…` in an earlier call, or a variable inherited from the
+#: environment the session started in — leaves nothing in the command string to read. The hook
+#: is handed a command and a directory and never an environment, so the information required to
+#: detect it is not present in what it is given. **That is a limit rather than a defect**, and it
+#: is written here so that somebody meeting it tries to understand it rather than trying to add
+#: a row and concluding the design is broken when they cannot.
+_NAMES_A_REPOSITORY = ("--git-dir=", "--work-tree=", "GIT_DIR=", "GIT_WORK_TREE=")
+
+
+def _target_of(segment: list[str]) -> str | None:
+    """The repository this segment commits into, or None for the session's directory."""
+    for index, token in enumerate(segment):
+        if token == "-C" and index + 1 < len(segment):
+            return segment[index + 1]
+        for prefix in _NAMES_A_REPOSITORY:
+            if token.startswith(prefix):
+                path = Path(token.split("=", 1)[1])
+                # `GIT_DIR` and `--git-dir` name the `.git` directory; the branch is read from
+                # the work tree beside it.
+                return str(path.parent if path.name == ".git" else path)
+    return None
+
+
+def commit_targets(command: str) -> list[str | None] | None:
+    """Every repository this command line commits into, or None if it commits nowhere.
+
+    A list rather than a boolean, because **the branch to judge is the branch of the
+    repository the command targets** — not of the directory the session happens to sit in. A
+    session working in a worktree has its cwd in the shared checkout; judging there refused a
+    safe commit and, worse, allowed `git -C <the checkout on main> commit` from a branch.
+
+    An empty list is impossible: a command either commits somewhere or returns None.
+    """
     try:
-        segments = _segments(command)
+        segments = _segments(without_written_heredocs(command))
     except ValueError:
-        return bool(_COARSE.search(command))
-    return any(_is_git_commit(segment) for segment in segments)
+        return [None] if _COARSE.search(command) else None
+    targets = [_target_of(s) for s in segments if _is_git_commit(s)]
+    return targets or None
 
 
 def current_branch(cwd: Path) -> str | None:
@@ -160,14 +268,19 @@ def main() -> int:
     if not isinstance(tool_input, dict):
         return 0
     command = tool_input.get("command")
-    if not isinstance(command, str) or not commits(command):
+    if not isinstance(command, str):
+        return 0
+    targets = commit_targets(command)
+    if targets is None:
         return 0
     cwd = event.get("cwd")
-    branch = current_branch(Path(cwd) if isinstance(cwd, str) else Path.cwd())
-    if branch != PROTECTED:
-        return 0
-    sys.stderr.write(_REFUSAL.format(branch=branch) + "\n")
-    return 2
+    here = Path(cwd) if isinstance(cwd, str) else Path.cwd()
+    for target in targets:
+        where = here / target if target is not None else here
+        if current_branch(where) == PROTECTED:
+            sys.stderr.write(_REFUSAL.format(branch=PROTECTED) + "\n")
+            return 2
+    return 0
 
 
 if __name__ == "__main__":

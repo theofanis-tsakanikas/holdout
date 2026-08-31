@@ -98,9 +98,32 @@ a step toward guessing, so each is taken only when the one above has failed.
   see `x = 1; import holdout`. `tests/boundary/` asserts that limit directly rather than
   leaving it for whoever hits it.
 - `main_guard` reads the command line it is given. A `git commit` inside a shell script the
-  command *invokes* is not on that command line. It also judges the branch by the session's
-  working directory, so `git -C elsewhere commit` is refused on the strength of *this*
-  repository's branch — the safe direction, and a case that does not arise here.
+  command *invokes* is not on that command line.
+- **Restated 2026-08-31.** This read: *"It also judges the branch by the session's working
+  directory, so `git -C elsewhere commit` is refused on the strength of this repository's
+  branch — the safe direction, and a case that does not arise here."* Both halves were wrong.
+  It was **not** the safe direction: `git -C <the checkout on main> commit` from a session on a
+  branch was **allowed**, the guard permitting exactly what it exists to prevent. And the case
+  **does** arise here — it is what two sessions sharing a checkout produce, which is the
+  arrangement `CLAUDE.md`'s git rule requires. The hook now resolves the branch of the
+  repository the **command targets**: `-C`, `--git-dir=`, `--work-tree=`, `GIT_DIR=`,
+  `GIT_WORK_TREE=`, else the session's directory.
+- That list is **an enumeration, not a proof**. A spelling not on it falls back to the session's
+  directory, which is where the original defect lived — so a sixth is a hole of the same shape
+  and belongs on the list. **And one case is not a spelling at all**: a target named outside the
+  command, by an `export` in an earlier call or an inherited environment, leaves nothing in the
+  command string to read. The hook is handed a command and a directory and never an
+  environment, so that one is a **limit rather than a defect** and cannot be closed by adding a
+  row.
+- A heredoc body is data, not command — **but only when nothing runs it.** `bash <<EOF` and
+  `cat > f <<EOF` with identical bodies differ only in the consumer, so nothing about the body
+  can separate them. The body is excised only for `cat` and `tee`, with no `|`, `$(` or
+  backtick on the line; **everything else keeps its body matched, `python` included and
+  deliberately.** An executing body reaches git through `os.system` or a subprocess with no
+  line beginning with `git`, so no pattern over it would see one. **The workaround for a
+  refused `python <<EOF` is the editor tool, not a wider list** — a refusal recorded as a false
+  positive is a refusal somebody later removes, and adding `python` there opens exactly the
+  hole the whitelist leaves closed.
 - On a command line `shlex` cannot tokenise — an unbalanced quote, most often a heredoc with
   an apostrophe in it — `main_guard` falls back to a narrow grep that requires `git` at a
   plausible command position. It can still be wrong in both directions there; it is the one

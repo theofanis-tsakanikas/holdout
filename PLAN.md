@@ -920,6 +920,61 @@ exist today?* is now in T008's `closes` for the `integration-review` skill. It i
 in this repository that is deliberately a question rather than a gate, because the thing it
 guards is outside the repository.
 
+**The guard was judged against something other than the command it refuses · 2026-08-31.**
+`ops/main-guard-judges-the-command` fixes two defects in `.claude/hooks/main_guard.py`, found by a
+cold session and oversight level 2 and **authorised by the author** — a hook is registered in
+`settings.json`, the harness applies it whether a session consents or not, and it is the mechanism
+that constrains what a session may do, so a peer's instruction was not enough.
+
+**One sentence covers both:** the guard is judged against something other than the command it is
+refusing — the wrong **directory** in the first, the wrong **text** in the second.
+
+**The directory.** `main()` read `event["cwd"]`, the *session's* directory; `-C` was parsed only to
+skip its value. So committing into a worktree on a branch was **refused**, and — the direction that
+matters — `git -C <the checkout on main> commit` from a session on a branch was **allowed.** The
+guard permitting exactly what it exists to prevent, in the arrangement `CLAUDE.md`'s git rule
+requires when two sessions share a checkout. Never exploited: no direct commit to `main` has landed
+since the hook arrived, verified commit by commit against the API.
+
+**And the first fix left the defect alive in a fourth spelling.** It enumerated `-C`,
+`--git-dir=` and `--work-tree=` and forgot the **environment** — `GIT_DIR=` and `GIT_WORK_TREE=`
+were still allowed. Two places in the same file already handle environment assignments, and the
+third did not. `_NAMES_A_REPOSITORY` now says in as many words that it is **an enumeration and not
+a proof**, that an unrecognised spelling falls back to the session's directory *which is where the
+original defect lived*, and — separately — that a target named **outside** the command by an
+exported variable is a **limit rather than a defect**, because the hook is handed a command and
+never an environment and no row can be added for it.
+
+**The text, which is two defects wearing one description.** One needs **both** an apostrophe, to
+unbalance `shlex` into `_COARSE`, and a shell operator inside the quoted text; the hook's own
+docstring names *Don't run `git commit` here* as the case it closed, and that is the half-case that
+works. The other never reaches `_COARSE`: `bash <<EOF` and `cat > f <<EOF` with **identical bodies**
+get identical verdicts, and the second is wrong. **The two commands differ only in the consumer**, so
+nothing about the body can separate them — the written-versus-executed distinction is not one option
+among several but the only thing that carries it.
+
+The body is excised for `cat` and `tee` with no `|`, `$(` or backtick — **a whitelist of two rather
+than a classification of every consumer**, so the question is not *is this executed?* but *is this
+one of the two forms that cannot be?*, which is a string comparison.
+
+**And the accounting is what stops the next repair.** Two refusals happened. One was a false
+positive; the other — a `python` heredoc, run while measuring the first — was a **correct refusal
+that felt like one**. Its body executes and can reach git with no line beginning with `git`. **A
+refusal recorded as a false positive is a refusal somebody later removes**, so the docstring and
+`.claude/README.md` both say `python` is refused deliberately and the workaround is the editor tool,
+not a wider list.
+
+**Fifteen attacks, with the previous hook wrong on seven, and six tests that fail against it and
+pass against this one.** The harness itself was wrong twice first — everything allowed because the
+session had moved off `main`, then two heredoc cases still pointed at a branch and would have passed
+with the heredoc logic deleted. **A vacuous green on exactly the two cases the fix exists for**,
+caught by reading the table rather than the total.
+
+`.claude/README.md` carried *"the safe direction, and a case that does not arise here"* about this
+exact behaviour. Both halves were false, and the restatement stays beside them.
+
+The suite is **992**.
+
 **The cache was never measured, and the branch that would have measured it never existed ·
 2026-08-31.** `evals/world-cache-measured` closes the review's §2b and §2c — the last of the eight,
 and the one nobody opened.
