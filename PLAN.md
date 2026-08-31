@@ -987,6 +987,35 @@ caught by reading the table rather than the total.
 `.claude/README.md` carried *"the safe direction, and a case that does not arise here"* about this
 exact behaviour. Both halves were false, and the restatement stays beside them.
 
+**A fourth candidate was tested and came back negative, and that is worth as much as the three
+that did not.** `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY` and `GIT_CEILING_DIRECTORIES` were each
+set alone against a second repository on `main`: **none makes a commit land there.**
+`GIT_COMMON_DIR` was the right one to doubt, since it exists *for worktrees* and worktrees are the
+fix's whole subject. The negative is recorded in the hook and in `.claude/README.md` with its
+reason — the next person reaches the same list and would otherwise re-derive the same answer.
+
+> **A method that only ever produces hits is indistinguishable from one that is finding what it
+> went looking for.** *Ask rather than assert* changed the outcome three times today — the `python`
+> heredoc, the `GIT_DIR` spelling, and this one. The first two were real. **This one is not, and
+> recording it as a refuted candidate with its measurement is what makes the other two findings
+> rather than confirmations.** A register of confirmed suspicions with no refuted ones would be a
+> register worth distrusting.
+
+**And one result in that measurement is unexplained, which is said here rather than smoothed
+over.** Two probe forms disagreed on a *local* effect of `GIT_COMMON_DIR` — one commit succeeded
+into its own repository, the other left that repository's `HEAD` unresolvable. The first
+explanation reached for was invalid fixtures; re-running with verified repositories reproduced the
+disagreement, so that explanation was wrong. **It is still unexplained.** What held across every
+run is the only thing the fix depends on: the second repository's commit count never moved.
+
+> **An unexplained result sitting beside a solid one, in the same measurement, at the end of a long
+> branch, is where a clean story gets manufactured.** The honest shape is *I cannot account for
+> this, and here is the invariant that never moved* — two statements, kept apart, rather than one
+> reason stretched to cover both.
+
+Not filed as a finding: it is a question about git's behaviour with no bearing on this repository,
+and the register would be carrying something it cannot close.
+
 The suite is **994**.
 
 **The cache was never measured, and the branch that would have measured it never existed ·
