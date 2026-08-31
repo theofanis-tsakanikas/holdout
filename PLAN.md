@@ -1154,6 +1154,40 @@ the CI run is what settles those.**
 
 The suite is **994**.
 
+**The skill exists, and the column that says so had nothing checking it · 2026-09-01.**
+`docs/the-skill-exists` makes `CLAUDE.md`'s skills-table row true — `integration-review` moved from
+`T008` to **exists** when `#36` landed — and closes the gap that update revealed.
+
+**The row would have gone false at the moment of the merge.** It read `T008`, meaning *a task that
+will produce this*, and the task produced it. That is the shape the status column was added to stop,
+occurring on **the column's own first occupant**, one day after it was added.
+
+**And nothing enumerated the column against the directory.** The column exists because the table
+listed **four** skills as living here and one did. Adding it fixed the count and left the count
+unchecked — so a third status going stale would have looked exactly like the two that did not. That
+is the same defect the column was added to fix, one layer up, and it was mine: I added the column
+and did not add the gate.
+
+`make figures` gains a **`skills`** row: **2 = 2**, the population being every directory under
+`.claude/skills/`. And a second check for the other direction, because the coverage comparison is
+one-sided by design and this question is not — **a table naming a skill that is not there sends its
+reader looking for it**, which is the repository layout's pair arriving in a second place. Both
+directions were made to bite before either shipped:
+
+```
+skill exists, table does not mark it   →  skills: 1 of 2 never looked at
+table claims a skill that is not there →  refused by name
+```
+
+**And the first test of the two was a vacuous green until it was checked.** It patched
+`skills_the_table_marks_as_existing` on the module — but `COVERAGE` captured the callable at
+**import**, so the patch never reached the row and the test passed against unmodified behaviour. The
+row is rebuilt instead, which is what the layout narrowing test already did and what this one should
+have copied. **A test asserting a gate bites, that does not reach the gate**, is the day's shape in
+its smallest available form.
+
+The suite is **1000**.
+
 **The cache was never measured, and the branch that would have measured it never existed ·
 2026-08-31.** `evals/world-cache-measured` closes the review's §2b and §2c — the last of the eight,
 and the one nobody opened.
