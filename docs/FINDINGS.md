@@ -273,6 +273,36 @@ figures immediately. What is needed is a rule for *which* occurrence is present 
 one carrying a marker — and that is a judgment about the document, which is why it is a finding and
 not a patch.
 
+*A candidate, offered with its two checks already run, to be tested by whoever takes the branch
+rather than adopted from here.* The four-kinds rule marks a published number `[M]` measured, `[D]`
+declared, `[C]` cited, `[S]` scenario. If figures carried their kind, *present tense* would stop
+being a judgment about position and become a property the text carries — a superseded figure is no
+longer a measurement of anything, it is the record of one — and `PROSE` could register `PLAN.md`
+and re-run exactly the marked ones. It is the same move as selecting on `where` rather than on a
+name prefix, one file along.
+
+**Check one fails as stated, and that is the important half.** `PLAN.md` contains eight marker
+occurrences and every one of them is prose *about* the four-kinds rule, in the session entry that
+introduced it. **No figure in the file carries a kind, and no suite line carries one.** The
+repository has the vocabulary and applies it in `docs/SCENARIO.md`, where `**320 stores [M]**` and
+`**[M]** python -m ops.roster --scale <name>` sit beside their commands. So the distinction is not
+already here waiting to be read; it exists elsewhere and has never been applied to this file.
+
+**Check two passes, and more cheaply than it was feared to.** Precisely *because* no figure here is
+marked, adopting this rewrites none of the six historical lines — they are already unmarked, which
+is the state the rule wants history to be in. Nothing doctrine rule 4 protects gets edited, and the
+change is forward-only.
+
+**What neither check found, and what the branch will actually have to answer.** The marker has to
+*migrate*. If `figures` re-runs every marked figure, then the session after next must take the
+marker off this entry's `972` or that number goes red the moment the suite grows — so every session
+boundary carries a small edit to the previous session's line. Removing a marker does not change a
+stated value, so it is not a rule 4 violation, but it is routine editing of superseded text, and it
+is the kind of step that gets forgotten. A forgotten marker is a red on correct history, which is
+the failure that teaches people to delete markers rather than to write them. **Any version of this
+needs the migration to be enforced by the same gate, or it decays into exactly the noise it was
+built to remove.**
+
 *Site:* `ops/figures.py` :: `#: **Deliberately small, and the reason is doctrine rule 4.** `PLAN.md` and `TASKS.md` are the`
 *Disposition:* `ops/the-newest-figure-is-present-tense` — small, and it belongs where the count is
 published rather than in the branch that found it
