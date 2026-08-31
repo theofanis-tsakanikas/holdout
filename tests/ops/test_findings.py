@@ -148,15 +148,69 @@ def test_a_closure_with_no_transition_is_refused(tmp_path: Path) -> None:
         _run(_registry(tmp_path, entry))
 
 
-def test_a_closed_finding_stops_being_checked(tmp_path: Path) -> None:
-    """A closed entry keeps its sites so what it anchored to stays readable, and stops gating."""
-    entry = ANCHORED.replace(
-        "*Status:* open", "*Closed:* 2026-08-31 — branch some/branch landed and the gate went green"
-    )
-    code, out = _run(_registry(tmp_path, entry, subject="the line was rewritten\n"))
+# ------------------------------------------- closure restates a site, it does not release it
+#
+# The first draft let a closed entry stop being checked. The reviewing session found the hole
+# before the file landed: a finding that stops being examined the moment somebody accounts for
+# it is a claim about the past that reads as a claim about the present, and a fix reverted in
+# November would leave the register saying `closed` forever. That is the legal finding's own
+# story — two of three parts closed, and what hid the third was that nothing re-examines a thing
+# already accounted for.
+
+CLOSED = """**A planted finding that anchors** · found 2026-08-01
+Planted by `tests/ops/test_findings.py`.
+*Site:* `subject.md` :: `the line the finding is about`
+*Disposition:* branch `some/branch`
+*Closed:* 2026-08-31 — branch some/branch landed and the gate went red to green
+*Now:* `subject.md` :: `the line as it reads now`
+
+"""
+
+FIXED = "before\nthe line as it reads now\nafter\n"
+
+
+def test_a_closed_finding_is_still_checked_on_what_replaced_the_defect(tmp_path: Path) -> None:
+    code, out = _run(_registry(tmp_path, CLOSED, subject=FIXED))
     assert code == 0, out
-    assert "1 open, 0 closed" not in out
     assert "0 open, 1 closed" in out
+    assert "closed and still held  1 line(s)" in out
+
+
+def test_a_reverted_fix_turns_a_closed_finding_red(tmp_path: Path) -> None:
+    """The whole reason closure restates. The entry that already knows about the defect is the
+    one that has to notice it coming back."""
+    reverted = SUBJECT  # the defective text, restored
+    code, out = _run(_registry(tmp_path, CLOSED, subject=reverted))
+    assert code == 1, out
+    assert "REVERTED" in out
+    assert "no longer carries the text that closed it" in out
+
+
+def test_a_closure_that_does_not_restate_its_site_is_refused(tmp_path: Path) -> None:
+    """Closing without naming the replacement is the release this design refuses."""
+    entry = CLOSED.replace("*Now:* `subject.md` :: `the line as it reads now`\n", "")
+    code, out = _run(_registry(tmp_path, entry, subject=FIXED))
+    assert code == 1, out
+    assert "UNRESTATED" in out
+    assert "it does\n" in out or "does not release" in out.replace("\n", " ")
+
+
+def test_a_site_that_nothing_replaced_may_be_declared_gone(tmp_path: Path) -> None:
+    """Where the defect was an absence, or the file went away, there is no replacement text —
+    and inventing one would be worse than saying so."""
+    entry = CLOSED.replace(
+        "*Now:* `subject.md` :: `the line as it reads now`",
+        "*Now:* `subject.md` :: gone — the section was deleted outright",
+    )
+    code, out = _run(_registry(tmp_path, entry, subject="nothing here\n"))
+    assert code == 0, out
+    assert "closed and still held  0 line(s)" in out
+
+
+def test_a_closing_text_that_matches_twice_is_refused(tmp_path: Path) -> None:
+    code, out = _run(_registry(tmp_path, CLOSED, subject=FIXED + "the line as it reads now\n"))
+    assert code == 1, out
+    assert "AMBIGUOUS" in out
 
 
 # ------------------------------------------------ concurred is a state, and it is not closed

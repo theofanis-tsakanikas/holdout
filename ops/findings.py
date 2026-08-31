@@ -29,7 +29,9 @@ What is refused, and what is only reported
   `ops/claims-are-required`;
 * a finding with **no disposition line at all** — `none — <reason>` is a disposition; saying
   nothing is not;
-* a `*Closed:*` with no transition after the date. Closure is a transition, never a verdict.
+* a `*Closed:*` with no transition after the date. Closure is a transition, never a verdict;
+* a closed entry whose sites have no `*Now:*` line, or whose restated text no longer occurs
+  exactly once. **Closure restates a site; it does not release it** — see below.
 
 **Reported, not refused:**
 
@@ -46,6 +48,28 @@ decision to drop it, but two parties who held it agreeing it was handled. So `co
 state this module can represent, prints in its own count, and **counts as open**. If the two
 heaviest users of a register could retire an entry by agreeing, it would measure their agreement
 rather than the repository.
+
+Closure restates, it does not release
+-------------------------------------
+A closed entry keeps being checked, on the text that replaced the defect rather than on the
+defect. The first design let a closed entry stop being examined, and the reviewing session found
+the hole: **a finding that stops being examined the moment somebody accounts for it is a claim
+about the past that reads as a claim about the present.** A fix reverted in November would leave
+the register saying `closed` forever.
+
+That is the legal finding's own story one layer along. Two of its three parts were closed, and
+what made the third invisible was precisely that nothing re-examines a thing already accounted
+for. Building a closure path with that property, in the file whose subject is that property,
+would have been indefensible.
+
+So `*Closed:*` carries a date and a transition, and every site gets a `*Now:*` — either the text
+that replaced it, held to the same exactly-once rule for as long as the entry exists, or
+`gone — <reason>` where nothing replaced it, because the defect was an absence or the file went
+away. The original `*Site:*` stays beside it, per doctrine rule 4.
+
+The price is naming the replacement text rather than only the transition, and it is the price the
+`[M]` rule already charges: a number is not published without the command that produces it, so a
+defect is not recorded as fixed without the text that fixed it.
 
 The standing limit
 ------------------
@@ -92,6 +116,14 @@ _CLOSED = re.compile(
     re.MULTILINE,
 )
 _CLOSED_LOOSE = re.compile(r"^\*Closed:\*", re.MULTILINE)
+#: What a site says **after** the finding was closed. A closed entry does not stop being checked;
+#: it is re-pointed at the text that replaced the defect, and that text is then held to the same
+#: exactly-once rule for as long as the entry exists. See `Closure restates, it does not release`.
+_NOW = re.compile(
+    r"^\*Now:\*[ \t]*`(?P<path>[^`]+)`[ \t]*::[ \t]*"
+    r"(?:gone[ \t]*(?:—|--)[ \t]*(?P<gone>\S.*)|`(?P<fragment>.+)`)[ \t]*$",
+    re.MULTILINE,
+)
 _SECTION = re.compile(r"^##[ \t]+(?P<name>Open|Closed)[ \t]*$", re.MULTILINE)
 
 
@@ -105,6 +137,15 @@ class Site:
     fragment: str
 
 
+@dataclass(frozen=True, slots=True)
+class Restatement:
+    """What a site says now that the finding is closed. `gone` when nothing replaced it."""
+
+    path: str
+    fragment: str | None
+    gone: str | None
+
+
 @dataclass(frozen=True)
 class Finding:
     title: str
@@ -113,6 +154,7 @@ class Finding:
     disposition: str | None
     closed: date | None
     closed_transition: str | None
+    restated: tuple[Restatement, ...]
     concurred: bool
 
     @property
@@ -182,6 +224,14 @@ def parse(text: str) -> list[Finding]:
                     ),
                     closed=date.fromisoformat(closed.group("date")) if closed else None,
                     closed_transition=closed.group("transition").strip() if closed else None,
+                    restated=tuple(
+                        Restatement(
+                            path=m.group("path"),
+                            fragment=m.group("fragment"),
+                            gone=m.group("gone").strip() if m.group("gone") else None,
+                        )
+                        for m in _NOW.finditer(entry)
+                    ),
                     concurred=bool(status and status.group("what") == "concurred"),
                 )
             )
@@ -190,8 +240,72 @@ def parse(text: str) -> list[Finding]:
     return findings
 
 
+def _occurrences(base: Path, path: str, fragment: str) -> int | None:
+    """How many times the fragment occurs, or `None` when the file is not there."""
+    target = base / path
+    if not target.is_file():
+        return None
+    return target.read_text(encoding="utf-8").count(fragment)
+
+
+def closed_failures(findings: Sequence[Finding], base: Path) -> list[str]:
+    """A closed entry is still checked, on the text that replaced the defect.
+
+    **Closure restates a site; it does not release it.** A finding that stopped being examined
+    the moment somebody accounted for it is a claim about the past that reads as a claim about
+    the present — and that is the legal finding's own story: two of its three parts were closed
+    and what made the third invisible was that nothing re-examines a thing already accounted
+    for. A fix reverted in November has to turn the register red on the entry that already knows
+    about it.
+
+    The price is that closing a finding means naming the text that replaced the defect, not only
+    the transition. It is the price the `[M]` rule already charges everywhere else: a number is
+    not published without the command that produces it, so a defect is not recorded as fixed
+    without the text that fixed it.
+    """
+    reasons: list[str] = []
+    for finding in findings:
+        if finding.is_open:
+            continue
+        restated = {r.path for r in finding.restated}
+        for site in finding.sites:
+            if site.path not in restated:
+                reasons.append(
+                    f"UNRESTATED {finding.title}\n"
+                    f"           closed, and {site.path} has no *Now:* line. Closure restates a "
+                    "site; it does\n"
+                    "           not release it. `*Now:* `path` :: `the text that replaced it`` "
+                    "— or\n"
+                    "           `*Now:* `path` :: gone — why nothing replaced it`."
+                )
+        for entry in finding.restated:
+            if entry.gone is not None:
+                continue
+            assert entry.fragment is not None
+            found = _occurrences(base, entry.path, entry.fragment)
+            if found is None:
+                reasons.append(
+                    f"REVERTED   {finding.title}\n"
+                    f"           {entry.path} is gone and the closure did not say it would be."
+                )
+            elif found == 0:
+                reasons.append(
+                    f"REVERTED   {finding.title}\n"
+                    f"           was closed, and {entry.path} no longer carries the text that "
+                    "closed it.\n"
+                    "           Either the fix was reverted or the closure was restated without "
+                    "saying so."
+                )
+            elif found > 1:
+                reasons.append(
+                    f"AMBIGUOUS  {finding.title}\n"
+                    f"           the closing text occurs {found} times in {entry.path}."
+                )
+    return reasons
+
+
 def anchor_failures(findings: Sequence[Finding], root: Path | None = None) -> list[str]:
-    """Every site whose fragment no longer occurs exactly once in the file it names."""
+    """Every open site whose fragment no longer occurs exactly once in the file it names."""
     base = root or REPO_ROOT
     reasons: list[str] = []
     for finding in findings:
@@ -246,7 +360,8 @@ def failures(findings: Sequence[Finding], root: Path | None = None) -> list[str]
                 "saying\n"
                 "           nothing is not."
             )
-    return [*reasons, *anchor_failures(findings, root)]
+    base = root or REPO_ROOT
+    return [*reasons, *anchor_failures(findings, root), *closed_failures(findings, base)]
 
 
 def report(findings: Sequence[Finding], as_of: date, out: TextIO) -> None:
@@ -255,11 +370,16 @@ def report(findings: Sequence[Finding], as_of: date, out: TextIO) -> None:
     adrift = [f for f in live if f.is_adrift]
     concurred = [f for f in live if f.concurred]
     sites = sum(len(f.sites) for f in live)
+    still_held = sum(1 for f in findings if not f.is_open for r in f.restated if r.gone is None)
 
     print(f"findings  as of {as_of.isoformat()}", file=out)
     print("", file=out)
     print(f"  {len(findings)} finding(s): {len(live)} open, {len(closed)} closed", file=out)
     print(f"  anchored to {sites} line(s) that must still say what the finding says", file=out)
+    print(
+        f"  closed and still held  {still_held} line(s) that must still carry what fixed them",
+        file=out,
+    )
     print(
         f"  adrift  {len(adrift)} of {len(live)} open — no branch, no task, a written reason",
         file=out,

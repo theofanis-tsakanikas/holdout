@@ -54,6 +54,22 @@ real state and refusing it would only teach people not to file.
 line changing, a branch landing with the gate going red-to-green, or a named human saying so. Any
 of them goes in a `*Closed:*` line with the date and what happened.
 
+**And closure restates a site rather than releasing it.** A closed entry keeps being checked — on
+the text that replaced the defect. Every site gets a `*Now:*` line carrying either that text, held
+to the same exactly-once rule for as long as the entry exists, or `gone — <reason>` where nothing
+replaced it. The original `*Site:*` stays beside it, per doctrine rule 4.
+
+This is not tidiness. **A finding that stops being examined the moment somebody accounts for it is
+a claim about the past that reads as a claim about the present**, and a fix reverted in November
+would leave this file saying `closed` forever. It is the legal finding's own story one layer along:
+two of its three parts were closed, and what made the third invisible was that nothing re-examines
+a thing already accounted for. The first draft of this registry had exactly that property and the
+reviewing session found it before the file landed.
+
+The price is naming the replacement text, not only the transition — the price the `[M]` rule
+already charges: a number is not published without the command that produces it, so a defect is not
+recorded as fixed without the text that fixed it.
+
 ### `concurred` is not `closed`
 
 **Two agents agreeing is not a check.** It is two representations agreeing, which buys nothing
@@ -164,5 +180,5 @@ than for a case anybody had in hand, and then a case arrived.
 
 ## Closed
 
-Nothing yet. An entry moves here with its `*Closed:*` line and its sites intact, so that what it
-anchored to stays checkable after the fact.
+Nothing yet. An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact,
+and a `*Now:*` for each — and it goes on being checked. What closed it has to keep being true.

@@ -495,6 +495,16 @@ the date.
 scoped yet is a real state, and refusing it would teach people not to file, which is the state that
 lost the first one.
 
+**Closure restates a site rather than releasing it**, and the first draft did not. It let a closed
+entry stop being checked, and the reviewing session found the hole before the file landed: *a
+finding that stops being examined the moment somebody accounts for it is a claim about the past
+that reads as a claim about the present.* A fix reverted in November would leave the register
+saying `closed` forever — which is the legal finding's own story one layer along, since what hid
+its third part was precisely that nothing re-examines a thing already accounted for. So every site
+gets a `*Now:*` carrying the text that replaced the defect, held to the same exactly-once rule for
+as long as the entry exists, or `gone — <reason>` where nothing replaced it. The price is naming
+the replacement text, which is what the `[M]` rule already charges everywhere else.
+
 **`concurred` is not `closed`, and that is the entry that matters.** Closure is a transition: the
 anchored line changes, a branch lands and the gate goes red-to-green, or a named human says so.
 Agreement between the reviewing session and the building session is a **fourth state**, carried as

@@ -919,6 +919,12 @@ site, no disposition, or a `*Closed:*` with no transition: refused. A dispositio
 <reason>`: reported as **adrift**, because a finding nobody has scoped is a real state and refusing
 it teaches people not to file.
 
+**Closure restates a site rather than releasing it.** The first draft let a closed entry stop being
+checked; the reviewing session found the hole before it landed — a finding that stops being examined
+the moment somebody accounts for it is a claim about the past reading as a claim about the present,
+and that is exactly what hid the legal finding's third part. Every site gets a `*Now:*` with the
+text that replaced the defect, held to the same exactly-once rule, or `gone — <reason>`.
+
 **`concurred` is not `closed`.** Closure is a transition — the anchored line changes, a branch lands
 and the gate goes red-to-green, or a named human says so. Agreement between the reviewing and
 building sessions is a fourth state, carried as open and counted apart. It exists because it nearly
