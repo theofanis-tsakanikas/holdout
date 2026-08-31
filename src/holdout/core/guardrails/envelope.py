@@ -104,16 +104,16 @@ class FloorRule:
     minimum_gross_margin_pct: Decimal
     minimum_absolute_price: Money
     cost_staleness_hours: int
-    refuse_when_no_legal_price_sells: bool
+    refuse_when_no_price_satisfies_every_guardrail: bool
     safe_state: SafeState
 
     def __post_init__(self) -> None:
-        if not self.refuse_when_no_legal_price_sells:
+        if not self.refuse_when_no_price_satisfies_every_guardrail:
             raise EnvelopeError(
-                "floor.refuse_when_no_legal_price_sells is false, and this core has no "
-                "other behaviour to offer. Forcing a price below the floor to avoid an "
-                "empty answer is the failure the rule exists to prevent, and inventing a "
-                "third option here would be doctrine rule 3 in reverse."
+                "floor.refuse_when_no_price_satisfies_every_guardrail is false, and this "
+                "core has no other behaviour to offer. Forcing a price below the floor to "
+                "avoid an empty answer is the failure the rule exists to prevent, and "
+                "inventing a third option here would be doctrine rule 3 in reverse."
             )
 
 
@@ -832,8 +832,10 @@ def envelope_as_of(guardrails: Sequence[Guardrail], *, on: date, path: DecisionP
                 floor_window, GuardrailId.FLOOR, "minimum_absolute_price_eur"
             ),
             cost_staleness_hours=_int(floor_window, GuardrailId.FLOOR, "cost_staleness_hours"),
-            refuse_when_no_legal_price_sells=_bool(
-                floor_window, GuardrailId.FLOOR, "refuse_when_no_legal_price_sells"
+            refuse_when_no_price_satisfies_every_guardrail=_bool(
+                floor_window,
+                GuardrailId.FLOOR,
+                "refuse_when_no_price_satisfies_every_guardrail",
             ),
             safe_state=floor_safe,
         ),
@@ -893,15 +895,90 @@ def envelope_as_of(guardrails: Sequence[Guardrail], *, on: date, path: DecisionP
 # ------------------------------------------------------------------ reading a rule value
 
 
+@dataclass(frozen=True, slots=True)
+class Renaming:
+    """What a rule was called before `since`, and the date the canonical name took over.
+
+    `previously` is **every** spelling this rule has ever had, oldest included — not the one
+    the canonical name directly replaced. A second rename that lists only its predecessor
+    leaves the oldest window unresolvable, and that failure arrives on a historical decision
+    rather than at the moment of the edit, which is the worst place for it to appear.
+    """
+
+    since: date
+    previously: tuple[str, ...]
+
+
+#: Rules whose **id** changed when a window closed, canonical spelling to what it was called
+#: before, **and from when**.
+#:
+#: A window is read in its own vocabulary. Contract rule 1 says no version is ever deleted, so
+#: `floor.yaml`'s closed window keeps `refuse_when_no_legal_price_sells` forever — and a decision
+#: dated inside it must still resolve, because that is the whole point of judging April by April's
+#: rule. The alternative was renaming the id inside the live window, which is the contract edit
+#: `docs/DECISIONS.md` refused on 2026-08-27 for exactly this reason.
+#:
+#: **`since` is what makes this a rename rather than a second permanent name.** An old spelling is
+#: accepted only in a window that opened *before* the canonical name took over. Without it the map
+#: states a fact about all time: write a window dated 2027 — by copying an older one, which is how
+#: contract windows actually get written — put the retired id in it, and the envelope resolves it
+#: without complaint. The retired name would be alive and in force in a window opened months after
+#: the branch that retired it, undoing the rename it exists to serve, and nothing else would catch
+#: it: `ops/personhood.py` reads dataclass fields rather than the YAML, and the both-spellings
+#: guard below does not fire when only one spelling is present.
+#:
+#: **This is not a default and not a fallback.** A window declares *one* spelling. Declaring both
+#: is refused, because then two rules with the same meaning disagree about which is in force and
+#: nothing says which was read; declaring neither is refused as it always was. What the mechanism
+#: buys is that a rename costs a window rather than a rewrite of history.
+#:
+#: The map is a symptom and `docs/FINDINGS.md` says so: an id names a rule inside a window *and*
+#: identifies it across windows, and one string cannot do both through a rename. Fifteen other
+#: rules are each one rename from an entry here.
+RENAMED_RULES: dict[tuple[GuardrailId, str], Renaming] = {
+    (GuardrailId.FLOOR, "refuse_when_no_price_satisfies_every_guardrail"): Renaming(
+        since=date(2026, 9, 1),
+        previously=("refuse_when_no_legal_price_sells",),
+    ),
+}
+
+
 def _required(window: GuardrailWindow, guardrail: GuardrailId, rule_id: str) -> GuardrailRule:
-    rule = window.rule(rule_id)
-    if rule is None:
+    renaming = RENAMED_RULES.get((guardrail, rule_id))
+    retired: tuple[str, ...] = renaming.previously if renaming else ()
+    accepted = (
+        (rule_id, *retired)
+        if renaming is None or window.effective_from < renaming.since
+        else (rule_id,)
+    )
+
+    found = [(name, window.rule(name)) for name in accepted]
+    present = [(name, rule) for name, rule in found if rule is not None]
+
+    if len(present) > 1:
+        carried = ", ".join(repr(name) for name, _ in present)
         raise EnvelopeError(
             f"the window of {guardrail.value} in force from {window.effective_from} declares "
-            f"no rule {rule_id!r}. The envelope needs it and will not substitute a value: a "
+            f"{carried} — the same rule under a name and its replacement. A window is read in "
+            "one vocabulary, and nothing here can say which of the two was meant."
+        )
+    if not present:
+        stale = [name for name in retired if window.rule(name) is not None]
+        if stale and renaming is not None:
+            raise EnvelopeError(
+                f"the window of {guardrail.value} opening {window.effective_from} declares "
+                f"{stale[0]!r}, which was retired on {renaming.since}. A window opened after a "
+                f"rename is written in the vocabulary of its own time: it declares {rule_id!r}. "
+                "The old spelling is readable only in the windows that were open when it was "
+                "the name."
+            )
+        wanted = " or ".join(repr(name) for name in accepted)
+        raise EnvelopeError(
+            f"the window of {guardrail.value} in force from {window.effective_from} declares "
+            f"no rule {wanted}. The envelope needs it and will not substitute a value: a "
             "default is a lie with a plausible shape."
         )
-    return rule
+    return present[0][1]
 
 
 def _exact_decimal(value: object, where: str) -> Decimal:

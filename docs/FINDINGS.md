@@ -131,6 +131,157 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**A guardrail rule id does two jobs, and a rename breaks the second one** · found 2026-08-31 · by
+oversight level 2 on `contracts/floor-rule-id`, and the check that produced it was proposed rather
+than assumed
+**One rename cost a compatibility mapping and a guard; fifteen other rules can each do the same.**
+A rule's `id` **names the rule inside a window** and **identifies the same rule across windows**.
+Those are different properties carried by one string, so renaming for the first breaks the second —
+and `RENAMED_RULES` in `envelope.py` is what you build when identity and spelling are the same
+field. It is why the deferral did not anticipate the cost: it scoped a rename, and this was never a
+rename.
+
+*The check that settles whether a map is needed at all.* If resolving a decision meant finding the
+applicable window and reading the id **in that window**, there would be nothing to map — the closed
+window keeps its own spelling by contract rule 1, and each window is self-describing. So: what looks
+a rule up by a single canonical name across all time?
+
+**`envelope_as_of` does, and it does it sixteen times.** It resolves each contract rule into a
+dataclass field by a hard-coded literal — `minimum_gross_margin_pct`, `cost_staleness_hours`,
+`cap_benchmark`, `perishable_exemption` and twelve more. It cannot read "the window's own id"
+because a window carries four or five ids and nothing says which one fills
+`FloorRule.cost_staleness_hours`. The literal **is** the link, and it is the only one. So the map is
+necessary in the current model, and **fifteen other rules carry the same latent cost**: each is one
+rename away from needing its own entry.
+
+*Three shapes, with their prices, so whoever takes this is choosing.*
+
+**The map, which is what shipped.** Correct, guarded — a window carrying both spellings is refused,
+because two rules with one meaning leave nothing able to say which was in force — and checked to
+bite, since emptying it turns the suite red. Its price is that it accumulates forever and it puts
+contract knowledge in the engine, when the contract layer is this repository's declared source of
+truth. A real cost paid slowly rather than a defect.
+
+**A window-scoped vocabulary.** Better placed, but it does not remove the map on its own: the
+sixteen literals are the problem, and moving them into the contract only moves where the
+correspondence is written.
+
+**Separating identity from spelling** — a stable identity that never changes, and an `id` that is
+the human-readable name within a window. Then a rename changes a spelling and nothing else, and no
+map is ever needed. This is the real fix and it is a change to the **contract model**, so it may
+not ride on a branch about one rule.
+
+*And the rule is enforced in one direction only, which whoever costs the third shape should have in
+front of them.* `accepted = (rule_id, *retired) if window.effective_from < renaming.since else
+(rule_id,)` — so a window opened **before** `since` accepts the canonical name as well as the
+retired ones. A 2025 window carrying `refuse_when_no_price_satisfies_every_guardrail`, a name that
+did not exist in 2025, resolves silently. That is F1's mirror: F1 was an old name accepted in a new
+window; this is a new name accepted in an old one, and the stated principle — *a window is read in
+the vocabulary of its own time* — covers both.
+
+**Deliberately not fixed on `contracts/floor-rule-id`.** The consequence is an anachronism in a
+contract document rather than a wrong value; the fix would cost a fourth full matrix on a branch
+that has had three; and the whole question disappears under the third shape, where a window's
+spellings are its own and there is no cross-window name to admit. It is recorded here rather than
+deferred separately because it is the same finding: one field doing two jobs, now visible from both
+sides.
+
+*What is not in question.* The refusal of a window carrying both spellings is right under all three
+shapes and stays wherever the resolution ends up living.
+
+*The map got a time bound before it shipped, and the review is what found it missing.* As first
+written, `RENAMED_RULES` was keyed by guardrail and canonical id alone, with nothing scoping an old
+spelling to *when* it was valid — so a window opened in 2027 carrying the retired id resolved
+without complaint, undoing the rename the mechanism exists to serve. It reproduced before it was
+fixed. `Renaming` now carries `since`, an old spelling is readable only in a window that opened
+before it, and `tests/core/test_envelope.py` holds both halves — the refusal, and the historical
+window still resolving, so the fix is a time bound rather than a ban. **The mechanism being a
+symptom is unchanged by that, and is the finding.**
+
+*Anchor re-aimed 2026-08-31, and the gate is what asked.* `make findings` reported `MOVED` when
+`RENAMED_RULES` changed type from `tuple[str, ...]` to `Renaming` under this branch's own F1 fix.
+The register says an anchor vanishing means the site was **rewritten** rather than restated, and
+that only a person can say whether the finding was fixed. It was not: the map still exists, an id
+still does two jobs, and the fix made the map *more* elaborate rather than less. So the anchor moves
+to the line that carries it now.
+
+*Site:* `src/holdout/core/guardrails/envelope.py` :: `RENAMED_RULES: dict[tuple[GuardrailId, str], Renaming] = {`
+*Disposition:* its own branch, unlocked when **the contracts move in phase 2** — the event
+`docs/DECISIONS.md` already declares for *"the generated SQL has never been executed"*: `phase 2,
+when gold is built. If gold does not match, the contracts move`. That is the moment the contract
+model is open anyway, and separating identity from spelling is cheap while it is being changed and
+expensive at any other time. The two travel together
+*Status:* open
+
+**`claim-2` costs an hour and the whole matrix re-runs on every push** · found 2026-08-31 · by the
+author, and decided rather than deferred
+`claim-2` runs on one machine at **32m17s to 1h18m18s** against a 90-minute timeout, and every
+intermediate push re-runs the full matrix. On `#30` that meant three draws for a pull request that
+needed one — the branch, the review fixes, then a follow-up — with one cancelled at 65 minutes and
+two superseded. The question raised was whether an hour a run is what a professional would do. The
+answer taken: **the cost per run is justified and the dead time is not.**
+
+*And the within-commit spread is a draw, not a constant — which is what the second pair
+established.* Two pairs are now measured, each being one commit's two matrix legs, same tree, same
+push, same cache key:
+
+| commit | legs | apart |
+|---|---|---|
+| `7b1fd6c` (#30) | 32m30s · 32m47s — runs 33358845044, 33358846344 | **1.01x** |
+| `46b8225` (#27) | 32m17s · 54m39s | **1.69x** |
+
+One pair agreed to within seventeen seconds; the other disagreed by twenty-two minutes. So there is
+no *within-commit variance* to use as a headroom multiplier — **one pair predicts nothing about the
+next**, and the distribution to size a budget against is the distribution over **runners**, not over
+commits and not over pairs. The pair that agreed is as much a measurement as the pair that did not,
+and it is the one that would have been dropped as unremarkable. The honest summary of the sample:
+eight or more measured runs, **32m17s to 1h18m18s, 2.43x**, with the maximum having moved once. It
+is *the largest number seen so far is not the largest number*, one level along.
+
+*Two fixes, neither of which changes what is proved.* **Sharding `claim-2` across its six worlds**
+is the large safe win — the same work on more machines, nothing skipped, roughly six-fold on wall
+clock, with a combine step as the real cost because the eval prints aggregates across worlds. **A
+merge queue** is second: the expensive matrix once, on the merged result, rather than on every
+push. `#30`'s two superseded runs are the measurement that justifies it.
+
+*And path filtering is refused, by name and in advance.* Skipping `claim-2` when only documents
+change reintroduces **a claim that silently does not run**, which is precisely what `discover` and
+`claims-complete` were built to make impossible — the `claim-[1-7]` defect bought back for a saving
+in minutes. It will be proposed as the obvious cheap fix, and this line is here so that whoever
+proposes it meets the refusal before the argument.
+
+*The practice that costs nothing and was adopted immediately:* finish a piece locally, run
+`make check` and the relevant `make claim-N`, and **push once**. Where a review produces findings,
+apply all of them and push the result. That captures most of a merge queue's benefit with no
+engineering.
+
+*The revisit trigger was written, restated and then retired inside a day, and the retirement is
+the measurement.* It read first *"more than two pushes"*, then *"more than two full-matrix runs
+through incomplete work"* — the second because a rebase forced by somebody else's merge is a push
+and is not waste, and counting it would penalise the discipline rather than the waste.
+
+**`contracts/floor-rule-id` then ran the full matrix three times and every one was legitimate.**
+The first push complete and green; the second forced by `bec0e7f` landing on `main`; the third by a
+review finding that had to be fixed. **Not one was work pushed before it was finished** — which is
+precisely what the trigger counted — and roughly three hours of compute happened anyway.
+
+*So the trigger is withdrawn rather than restated a third time.* A condition that cannot fire on
+three hours of real waste is not a safety valve; it is a number that makes its author feel measured.
+What replaces it is not another trigger but the evidence it failed to capture: **one branch, three
+justified matrices, and a merge queue would have made it one.** That is a stronger argument for the
+second fix than the trigger ever was, and it came from the trigger failing rather than firing.
+
+The prior wordings stay per doctrine rule 4, and the delta is the finding: **a trigger is an
+assertion about what the system does, wearing a number instead of a verb** — and this one was
+written against the failure its author imagined rather than against the runs that actually
+happened.
+
+*Site:* `.github/workflows/ci.yml` :: `timeout-minutes: 90`
+*Disposition:* its own branch, before the first Terraform layer — phase 2 is where the push rate
+multiplies, and CI is what everything else depends on, so rebuilding it mid-phase risks the defect
+it protects against. Phase 1's six remaining branches are four documents and two small ones; they
+do not justify rebuilding the thing that judges them
+*Status:* open
 
 **The corpus describes an industry median as the benchmark a Greek instrument defines** · found
 2026-08-27 · by oversight level 2
