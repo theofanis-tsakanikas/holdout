@@ -542,6 +542,36 @@ stop_at       When (1) is in the tree and (2) is written up with the exact API c
 review        yes
 ```
 
+**And the cost case is measured now, because it did not survive being asked.** The disposition in
+`docs/FINDINGS.md` justified a queue on `#30`'s *two superseded runs*. **Those two were the push
+run and the pull_request run of one sha** — the duplication T00F removes — so that measurement is
+already spent and cannot be spent twice.
+
+*What is left was counted rather than argued.* Over the 200-run window, every branch's head shas
+ordered by first run, classified by the branch's own commit subjects and its merge-base:
+
+| transition | count |
+|---|---|
+| **forced update** — same work, new base | **1** |
+| the author changed the work | 49 |
+| amend or retry on the same base | 0 |
+
+**A merge queue removes the first row and nothing else.** One full matrix in five days.
+
+*The instrument is recorded because the first one was wrong.* `git patch-id` was tried first, on
+the reasoning that a rebase preserves patch-ids. It does not when the rebase overlaps what landed:
+it classified `contracts/floor-rule-id`'s second matrix as a content change, and
+`docs/FINDINGS.md` records that one as *forced by `bec0e7f` landing on main*. **A documented event
+is what caught it.** The subject-plus-base discriminator reproduces that branch exactly — 1 forced,
+2 content — which is why it is the one reported. The earlier timing signal gave *at most 17*; that
+was a ceiling over coincidence and is superseded by a count.
+
+*So T00I is not justified on measured cost today, and the honest ask says so.* Its case is that it
+removes a **class** of wasted run rather than a quantity of them, and that the quantity is a
+function of the merge rate — which phase 2 raises and which nothing has yet measured at that rate.
+**That is a forward-looking argument and must be put to the author as one**, not as a saving. The
+saving was 58 hours and T00F already took it.
+
 **And the standing limit, which is the reason this atom is shaped as two halves.** What the ruleset
 requires is a fact about the forge that no file in this tree carries, `make check` cannot read, and
 no amount of reading `ci.yml` reveals. `docs/reviews/phase-1.md` §2d is what it costs to assume
