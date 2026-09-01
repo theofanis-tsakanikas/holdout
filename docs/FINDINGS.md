@@ -725,6 +725,45 @@ unlocked by T00G landing — after which the key has one meaning and a widening 
 against it rather than through it
 *Status:* open
 
+**The checks list cannot show a duplicate-context defect, and has hidden two** · found
+2026-09-01 · by T00H, from a count that disagreed with an expectation that happened to exist
+Sharding named eight jobs `claim-2`, so eight check runs shared one context name. `gh pr checks 41`
+reported **nine** checks. The run had **sixteen** jobs.
+
+*That is not a quirk of the tool.* `gh pr checks` answers *which contexts exist and did they
+pass*. It cannot answer *how many runs produced them*, because same-named contexts collapse into
+one row — so **any defect whose shape is a duplicate context name is invisible to it, by
+construction**.
+
+**Both of this repository's context-count defects have had exactly that shape.** `#39`'s doubling —
+every context twice on every pull-request head — took pairing 200 runs on `headSha` to see. This
+one took listing the run's jobs. **Twice, the convenient view was the one that could not show it.**
+
+> **For anything about how many runs or jobs produced a result, the instrument is the jobs API or
+> `/check-runs`. `gh pr checks` is for *did the named things pass*.**
+
+*And the second half is why it was caught at all, which is the less comfortable one.* Nine looks
+like a healthy checks list — five claims, `gate-proof`, `discover`, `gate`, `secrets` — and nothing
+about it invites a second look. It was suspicious only because a matrix had just been **computed at
+sixteen**, five minutes earlier, for an unrelated reason: the concurrency ceiling.
+
+> **When a change alters how many things there should be, compute the expected count before
+> running it, and compare.**
+
+It costs a minute; it was the only thing that would have caught this; and it is available for
+precisely the class of change that is otherwise hardest to verify — one that alters **structure**
+rather than behaviour, where every individual thing still passes and only the arrangement is wrong.
+
+*Neither half is a mechanism and both are habits*, which this repository distrusts on principle —
+nothing goes red if either is forgotten. They are recorded because the failure they catch is
+silent in the way every failure at this site has been, and because the first one is at least
+checkable: a reader who sees `gh pr checks` used to count anything can say so.
+
+*Site:* `.github/workflows/ci.yml` :: `    name: ${{ matrix.name }}`
+*Disposition:* `evals/claim-2-sharded` (T00H) — the fix is in that branch with a guard and an
+attack; this entry is the method, which no guard covers
+*Status:* open
+
 **`make language` enumerates repository content by a hand-written exclusion list** · found
 2026-09-01 · by T00H, when the gate went red on a directory that branch created
 `ops/language.py`'s `content_files` walks the tree and skips a `NOT_CONTENT` set of names —
