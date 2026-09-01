@@ -106,6 +106,14 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 addopts = "-q --strict-markers --strict-config"
 pythonpath = ["src"]
+# A mark here says "this test belongs to a claim target rather than to the suite". Registered
+# rather than free-form because `--strict-markers` is on: an unregistered mark is a typo that
+# would silently select nothing, and a mark that selects nothing is a test that runs nowhere.
+# What stops that being a hole is `ops/figures.py`'s `suite` row, which requires every test
+# `make test` deselects to be selected by some `claim-*` target.
+markers = [
+  "claim_2: claim 2's own evidence — minutes, and it generates worlds. Run by `make claim-2` and by `make claim-2-combine`, which is the one CI runs for a sharded target.",
+]
 
 [tool.coverage.run]
 source = ["src/holdout", "evals", "corpus", "ops"]

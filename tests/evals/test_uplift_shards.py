@@ -16,6 +16,19 @@ harness is 456 draws and minutes; the property under test is arithmetic about po
 denominators, and it holds or fails identically at either size. `test_the_published_shape_is_the`
 `_one_that_ships` is what stops that being a hole: the sizes and the shard arithmetic of the
 *published* configuration are asserted without running it.
+
+**And the machinery configuration is still minutes, which is why this file is marked.** Measured
+on one machine with a cold cache: the suite is 1m36s without this file and 8m14s with it, and
+~200s of the difference is generating the machinery worlds — which the `gate` job caches nowhere,
+so it pays that on every run. The first CI run carrying this file cancelled `make check` at its
+fifteen-minute budget with the whole shard matrix already green.
+
+So the file carries `claim_2` and `make test` deselects it: this is claim 2's evidence, and
+`make check`'s own closing line has always said the claim targets are not in the suite because
+they take minutes. It runs in `make claim-2` and in `make claim-2-combine`, which is the target
+CI actually runs once a claim is sharded. Two gates keep that from being a deselection nobody
+notices — `ops/figures.py`'s `suite` row and `tests/ops/test_ci_sharding.py` — and both are
+named here because a test that runs nowhere reads exactly like a test that passes.
 """
 
 from __future__ import annotations
@@ -32,6 +45,10 @@ from evals.uplift import checks, shards
 from holdout.contracts.loader import ContractSet, load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#: Every test in this file is claim 2's, not the suite's. See the note at the top of the module
+#: for what it costs and for the two gates that require it to be run somewhere.
+pytestmark = pytest.mark.claim_2
 
 
 @pytest.fixture(scope="module")

@@ -1348,6 +1348,67 @@ and which of the two moves is the author's call rather than a session's, so it i
 instead of being given a branch it would be the wrong session to open
 *Status:* open
 
+**A guard covered naming exhaustively and the artifact's path not at all** · found 2026-09-02 ·
+by the session sent to fix the run it produced
+
+`tests/ops/test_ci_sharding.py` guards the transport between claim 2's eight shard jobs and the
+one job that judges them. `check_the_draws_travel` asserts the artifact's **name** against the
+download's **pattern**, that a shard producing nothing fails where it knows, and that
+`merge-multiple` is set. Four properties, every one of them about naming.
+
+It never asserted anything about the **path**. `actions/upload-artifact` has filtered every
+path whose name begins with a dot since v4.4, before the glob is judged, and the directory is
+`.shards/`. So run `33483742285` ran `make claim-2 N/8` to success on all eight machines,
+uploaded nothing on any of them, and failed at the last step of each — eleven to sixteen
+minutes of runner time per shard, discarded. The combine, which needs the shards, never ran.
+
+**This is not *a guard tested by its author*, and the difference is the finding.** That defect is
+an author testing their own assumption, in the shape their assumption already handles. Here the
+author was not testing an assumption at all: the session that wrote this check had, in the
+change immediately before it, fixed a defect where eight shards reported under one context
+**name**. Naming was the topic in front of them. The guard they wrote covers naming exhaustively
+and covers the path not at all — not because the path was assumed safe, but because it was not
+the subject. **A guard covers the topic its author had in mind, and the topic is set by whatever
+they were just doing.**
+
+It is why the fix is stated generally — *any* path component beginning with a dot requires
+`include-hidden-files` — rather than as a rule about `.shards`. A check written to the instance
+would be the same defect a third time, scoped to the case that produced it, which is the reason
+`CLAUDE.md` gives for not writing a rule at three instances.
+
+*Site:* `tests/ops/test_ci_sharding.py` :: `def check_the_draws_travel(path: Path) -> None:`
+*Site:* `.github/workflows/ci.yml` :: `include-hidden-files: true`
+*Disposition:* branch `evals/claim-2-sharded` — the check and its attack land with the one-line
+fix, and the entry closes when that branch merges with the sharded run green, which is also the
+first evidence that the upload works at all
+*Status:* open
+
+---
+
+**A comment quoting a value silently disarmed the attack that guards it** · found 2026-09-02 ·
+by the same session, one command later
+
+The attacks in `tests/ops/test_ci_sharding.py` are textual: each names a fragment of `ci.yml`
+and replaces it. `_broken` asserted the fragment was `in` the file and then replaced the
+**first** occurrence. The change above added a comment above the upload step explaining why
+`if-no-files-found` is set to `error` — and quoted the setting. The attack that flips that
+setting then edited the comment, left the step exactly as it was, and every check went green;
+`test_each_attack_is_refused_by_some_check` read that as *no guard exists for this attack* and
+failed on a guard that was working.
+
+It failed loudly, which is the only reason it is a finding and not a defect. The same
+mis-anchoring in the other direction — an attack that quietly stops attacking while everything
+stays green — is available to any of the seven, and was until the anchor became `== 1`.
+
+**It is `docs/FINDINGS.md`'s own rule about anchors, in a second population.** This file requires
+each `*Site:*` fragment to occur in its file exactly once, for exactly this reason, and the
+argument had never been carried across to the attacks even though they anchor the same way.
+
+*Site:* `tests/ops/test_ci_sharding.py` :: `f"the attack {attack!r} anchors on text occurring {found} time(s) in ci.yml. Zero means "`
+*Disposition:* branch `evals/claim-2-sharded` — fixed in the same change that produced it, and
+the entry closes when that branch merges
+*Status:* open
+
 ---
 
 ## Closed

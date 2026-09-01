@@ -74,6 +74,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from typing import TextIO
 
@@ -514,6 +515,117 @@ def discover_floor() -> int:
     return int(match.group("floor"))
 
 
+# ------------------------------------- what the suite deselects, and what runs it instead
+
+#: How a Makefile recipe declares which marks it selects. `pytest -m "not claim_2"` and
+#: `pytest -m claim_2` are both read; the expression is handed to pytest verbatim, never
+#: re-implemented here, because a second implementation of mark selection would be a second
+#: definition of which tests exist.
+PYTEST_SELECTION = re.compile(
+    r"""pytest\s+-m\s+(?:"(?P<quoted>[^"]+)"|'(?P<single>[^']+)'|(?P<bare>[\w.-]+))"""
+)
+
+#: Every target whose recipe may own tests the suite has given up. `claim-` rather than
+#: `claim-[0-9]` on purpose: a sharded claim's work runs under `claim-2-shard` and
+#: `claim-2-combine`, and a rule that could not see those would report coverage from the one
+#: target CI never runs.
+CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)
+
+
+def _recipe(target: str) -> list[str]:
+    """The tab-indented lines that follow one target, or `[]` where it has none."""
+    lines = _makefile().splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith(f"{target}:"):
+            recipe = []
+            for following in lines[index + 1 :]:
+                if not following.startswith("\t"):
+                    break
+                recipe.append(following)
+            return recipe
+    return []
+
+
+def _selection_of(target: str) -> str | None:
+    """The mark expression a target hands pytest, or `None` where it hands none."""
+    for line in _recipe(target):
+        match = PYTEST_SELECTION.search(line)
+        if match is not None:
+            return match.group("quoted") or match.group("single") or match.group("bare")
+    return None
+
+
+def suite_selection() -> str | None:
+    if not _recipe("test"):
+        raise InstrumentMissingError(
+            "the Makefile has no `test` target with a recipe, so what the suite runs cannot be "
+            "read and neither can what it leaves out. Nothing is reported rather than a zero."
+        )
+    return _selection_of("test")
+
+
+def claim_selection() -> str | None:
+    """Every mark expression the claim targets select, as one `or`.
+
+    Derived from the Makefile the way `discover` derives the target names from it, rather than
+    declared in a list here: a list would be a second registry of which claims own which tests,
+    kept by hand, in the file that exists so nobody has to keep one.
+    """
+    found: list[str] = []
+    for name in sorted({m.group("name") for m in CLAIM_TARGET_NAME.finditer(_makefile())}):
+        selection = _selection_of(name)
+        if selection is not None and selection not in found:
+            found.append(selection)
+    if not found:
+        return None
+    return " or ".join(f"({selection})" for selection in found)
+
+
+@cache
+def _collected(expression: str) -> int:
+    """How many tests one mark expression selects, asked of pytest itself.
+
+    Cached on the expression because the tree does not change inside one process and `check()`
+    is run eight times by `tests/ops/test_figures.py` alone; a cache miss is a subprocess.
+    """
+    text = _tool_output(["uv", "run", "pytest", "--collect-only", "-m", expression])
+    if re.search(r"no tests (?:collected|ran)", text):
+        return 0
+    # `17/1065 tests collected (1048 deselected)` under a filter, `1065 tests collected`
+    # without one. Reading the wrong half of the first shape reports the whole tree as
+    # selected, which is how this function was wrong on its first run -- and it was wrong in
+    # the direction that passes, because both sides then answer 1065 and the row is equal.
+    match = re.search(r"(?:(?P<selected>\d+)/)?(?P<total>\d+) tests? collected", text)
+    if match is None:
+        raise InstrumentMissingError(
+            f"pytest --collect-only -m {expression!r} printed no count this module could read. "
+            "That is a red run rather than a count of zero: an expression that selects nothing "
+            "and an expression pytest refused look the same from here otherwise."
+        )
+    return int(match.group("selected") or match.group("total"))
+
+
+def tests_the_suite_deselects() -> int:
+    selection = suite_selection()
+    if selection is None:
+        return 0
+    return _collected(f"not ({selection})")
+
+
+def tests_a_claim_target_runs() -> int:
+    """Of the tests the suite deselects, how many some claim target selects.
+
+    **The intersection, not the union**, so this can never exceed what it is compared against
+    and equality is the only way the row passes. Counting the two sides separately would let a
+    claim target select fourteen tests that are not the fourteen the suite gave up.
+    """
+    suite = suite_selection()
+    claims = claim_selection()
+    if suite is None or claims is None:
+        return 0
+    return _collected(f"(not ({suite})) and ({claims})")
+
+
 #: Every gate, its population as a rule, and how to ask what it examined.
 COVERAGE: tuple[Coverage, ...] = (
     Coverage(
@@ -591,6 +703,15 @@ COVERAGE: tuple[Coverage, ...] = (
         "the status column was added because the table listed four skills and one existed. "
         "Nothing enumerated the column against the directory, so a third status going stale "
         "would have looked exactly like the two that did not.",
+    ),
+    Coverage(
+        "suite",
+        "every test `make test` deselects",
+        tests_the_suite_deselects,
+        tests_a_claim_target_runs,
+        "a test deselected from the suite and selected by nothing runs on no push and looks "
+        "exactly like one that passed. Both sides are asked of pytest rather than read off a "
+        "list, and the second is the intersection, so equality is the only pass.",
     ),
     Coverage(
         "discover",

@@ -142,6 +142,16 @@ jobs:
     # runner fits. T003's `stop_at` said the answer was to split the claim targets into their
     # own jobs rather than to raise it a third time, and that is what happened. The deferral
     # in `docs/DECISIONS.md` that carried the 25 is closed in this change.
+    #
+    # **And it was cancelled at 15 once, with this number correct and the suite wrong.** The
+    # branch that sharded claim 2 put `tests/evals/test_uplift_shards.py` into `make check`:
+    # measured on one machine, cold, that took the suite from 1m36s to 8m14s, of which ~200s is
+    # generating machinery worlds this job caches nowhere. Run 33483742285 cancelled `make
+    # check` at 907s with the whole shard matrix already green. Raising the budget would have
+    # been the third raise, and the second one that hid a suite doing work the target's own
+    # closing line says it does not do; the file is marked `claim_2` and runs behind claim 2
+    # instead, and `make check` came back to 1m32s. The number is unchanged and is now measured
+    # against a suite that fits it.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -398,11 +408,24 @@ jobs:
       # A shard's draws, on their way to whatever combines them. Named by the slug so the
       # combine step can take every one of them and `gather` can refuse a set that is not the
       # whole — which is the shape this matrix produces whenever one leg fails.
+      #
+      # **`include-hidden-files`, because `.shards` is a hidden directory.** Since v4.4 this
+      # action filters every path whose name begins with a dot *before* the glob is judged, so
+      # the first sharded run wrote `.shards/uplift-1-of-8.pickle` on all eight machines, saw
+      # the flag default to false in its own printed inputs, and reported `No files were found
+      # with the provided path`. Eight runners spent eleven to sixteen minutes each and the
+      # work was discarded at the last step. The `error` setting one line below is what made it
+      # a red run rather than a combine over nothing, and it stays.
+      #
+      # The alternative was renaming the directory. The flag is local to the one step that
+      # needs it; the rename would have touched the Makefile, `.gitignore`, two docstrings and
+      # the tests, and dropped the convention `.worlds/` already sets.
       - if: matrix.shard != ''
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: draws-${{ matrix.target }}-${{ matrix.slug }}
           path: .shards/
+          include-hidden-files: true
           retention-days: 1
           if-no-files-found: error
 

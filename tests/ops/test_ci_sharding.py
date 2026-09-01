@@ -162,6 +162,44 @@ def check_the_draws_travel(path: Path) -> None:
     )
 
 
+def check_the_uploaded_path_survives_the_uploader(path: Path) -> None:
+    """A path the uploader filters out is a job that succeeds and delivers nothing.
+
+    `actions/upload-artifact` has excluded every path whose name begins with a dot since v4.4,
+    and the filter runs **before** the glob is judged. `.shards/` is such a path, so the first
+    sharded run wrote its draws on all eight machines and uploaded none of them --
+    `shard 1/8: 57 draw(s) -> .shards/uplift-1-of-8.pickle`, the flag defaulting to false in the
+    step's own printed inputs, and then `No files were found with the provided path`.
+
+    **This check exists because the one above it did not cover this.**
+    `check_the_draws_travel` asserts the artifact's *name* against the download's *pattern*,
+    and `if-no-files-found`, and `merge-multiple` — every property of the naming. It was written
+    by the session that had just fixed a naming defect, so it was written in the shape of what
+    its author was thinking about, and the path was the half nobody was thinking about. The
+    property is stated generally rather than as `.shards`: a dot anywhere in the path needs the
+    flag, whatever the directory is later called.
+    """
+    jobs = _jobs(path)
+    for name, job in jobs.items():
+        for step in job.get("steps", []):
+            if "actions/upload-artifact@" not in str(step.get("uses", "")):
+                continue
+            with_ = step.get("with", {})
+            uploaded = str(with_.get("path", ""))
+            hidden = [
+                part
+                for part in uploaded.split("/")
+                if part.startswith(".") and part not in {".", ".."}
+            ]
+            if not hidden:
+                continue
+            assert with_.get("include-hidden-files") is True, (
+                f"{name} uploads {uploaded!r}, whose component(s) {hidden} begin with a dot, "
+                "without include-hidden-files. The uploader drops them before the glob is "
+                "judged, so the step fails with `No files were found` on work that succeeded."
+            )
+
+
 def check_each_shard_has_its_own_context(path: Path) -> None:
     """A job's name is its check-run context name, so shards must not share one.
 
@@ -184,6 +222,7 @@ CHECKS: dict[str, Callable[[Path], None]] = {
     "the combine key is its own": check_combine_is_its_own_key,
     "the two families share a prefix": check_families_share_a_prefix,
     "every shard's draws reach the combine": check_the_draws_travel,
+    "the uploaded path survives the uploader": check_the_uploaded_path_survives_the_uploader,
     "each shard reports under its own context": check_each_shard_has_its_own_context,
 }
 
@@ -224,6 +263,10 @@ ATTACKS: dict[str, tuple[str, str]] = {
         "pattern: draws-${{ matrix.target }}-*",
         "pattern: draws-${{ matrix.target }}-1-of-8",
     ),
+    "the hidden-directory flag dropped": (
+        "include-hidden-files: true",
+        "include-hidden-files: false",
+    ),
     "a shard that produced nothing allowed to pass": (
         "if-no-files-found: error",
         "if-no-files-found: warn",
@@ -236,9 +279,25 @@ ATTACKS: dict[str, tuple[str, str]] = {
 
 
 def _broken(attack: str, into: Path) -> Path:
+    """One anchor, occurring **exactly once**, replaced.
+
+    `== 1` rather than `in`, and the difference is not pedantry: the replacement takes the first
+    occurrence, so an anchor that also appears in a comment above the step edits the comment and
+    leaves the step intact. The attack then reports every check green and the test that reads
+    that as *no guard exists* fires on a guard that is fine. It happened here, to
+    `if-no-files-found: error`, in the same change that added the check two lines up — a comment
+    was written quoting the value, and the attack silently started editing the prose.
+
+    It is `docs/FINDINGS.md`'s own rule about anchors, arriving in a second population.
+    """
     old, new = ATTACKS[attack]
     text = CI_WORKFLOW.read_text(encoding="utf-8")
-    assert old in text, f"the attack {attack!r} no longer applies to ci.yml — its anchor moved"
+    found = text.count(old)
+    assert found == 1, (
+        f"the attack {attack!r} anchors on text occurring {found} time(s) in ci.yml. Zero means "
+        "the anchor moved; more than one means the replacement may edit something that is not "
+        "the step under attack, and the attack would then pass for the wrong reason."
+    )
     into.write_text(text.replace(old, new, 1), encoding="utf-8")
     return into
 
@@ -289,9 +348,10 @@ def _shard_variable(target: str) -> str:
     return target.upper().replace("-", "_") + "_SHARDS"
 
 
-def _declared_shards(target: str) -> int:
+def _declared_shards(target: str, makefile: str | None = None) -> int:
     """What the Makefile declares for a target, or 1 where it declares nothing."""
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    if makefile is None:
+        makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
     found = re.search(
         rf"^{_shard_variable(target)}[ \t]*:=[ \t]*(\d+)", makefile, flags=re.MULTILINE
     )
@@ -335,3 +395,79 @@ def test_claim_2_declares_the_shard_count_the_measurements_were_taken_at() -> No
         f"a run would launch {jobs} jobs against a documented ceiling of 20. Past the ceiling "
         "the wall clock stops improving and only the flight count grows."
     )
+
+
+# ---------------------------------- the target CI runs, which is not the target that is named
+
+
+#: How a Makefile recipe declares which marks it hands pytest. The same shape `ops/figures.py`
+#: reads, written again here rather than imported, because the two ask different questions of
+#: it: that module asks whether *anything* runs a deselected test, and this one asks whether the
+#: thing that runs it is the target this workflow invokes.
+PYTEST_SELECTION = re.compile(r"""pytest\s+-m\s+(?:"(?P<quoted>[^"]+)"|(?P<bare>[\w.-]+))""")
+
+
+def _selection_of(target: str, makefile: str) -> str | None:
+    lines = makefile.splitlines()
+    for index, line in enumerate(lines):
+        if not line.startswith(f"{target}:"):
+            continue
+        for following in lines[index + 1 :]:
+            if not following.startswith("\t"):
+                break
+            found = PYTEST_SELECTION.search(following)
+            if found is not None:
+                return found.group("quoted") or found.group("bare")
+        return None
+    return None
+
+
+def check_a_sharded_target_s_tests_run_where_ci_runs_them(makefile: str) -> None:
+    """For a sharded claim, CI never runs the plain target — so it may not own the tests alone.
+
+    `discover` emits `claim-2` and the matrix turns it into `claim-2-shard` on eight machines
+    and `claim-2-combine` on one. `make claim-2` is what a laptop runs and what CI does not, so
+    a mark selected only there is deselected from the suite by `make test` and selected by
+    nothing on any push.
+
+    `ops/figures.py`'s `suite` row cannot see this: it asks whether *some* `claim-*` target
+    selects the mark, and `claim-2` is one. The two gates are the same question at different
+    resolutions, and only this one knows that sharding changes which target is invoked.
+    """
+    named = re.finditer(r"^(?P<name>claim-\d+):", makefile, re.MULTILINE)
+    for target in sorted({match.group("name") for match in named}):
+        if _declared_shards(target, makefile) <= 1:
+            continue
+        plain = _selection_of(target, makefile)
+        if plain is None:
+            continue
+        combine = _selection_of(f"{target}-combine", makefile)
+        assert combine == plain, (
+            f"{target} is sharded and selects tests with -m {plain!r}, but "
+            f"{target}-combine selects {combine!r}. CI runs the shards and the combine and "
+            f"never `make {target}`, so those tests would run on no push at all."
+        )
+
+
+def test_a_sharded_target_s_tests_run_where_ci_runs_them() -> None:
+    check_a_sharded_target_s_tests_run_where_ci_runs_them(
+        (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    )
+
+
+def test_the_combine_dropping_the_tests_is_refused() -> None:
+    """The attack, in the shape the other checks use: a Makefile with the line removed.
+
+    It is separate from `ATTACKS` because that mechanism breaks `ci.yml`, and this check reads
+    the `Makefile`. A check with no attack has never been shown to bite and looks identical to
+    one that cannot, so it gets one here rather than none.
+    """
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    dropped = makefile.replace(
+        "claim-2-combine:  ## claim 2's checks over every shard's draws, then the mutations\n"
+        "\t$(RUN) pytest -m claim_2\n",
+        "claim-2-combine:  ## claim 2's checks over every shard's draws, then the mutations\n",
+    )
+    assert dropped != makefile, "the combine target no longer carries the line this attack removes"
+    with pytest.raises(AssertionError, match="would run on no push"):
+        check_a_sharded_target_s_tests_run_where_ci_runs_them(dropped)

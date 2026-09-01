@@ -57,8 +57,30 @@ format:  ## ruff, rewriting
 typecheck:  ## mypy, strict
 	$(RUN) mypy
 
-test:  ## the suite
-	$(RUN) pytest
+# **`-m "not claim_2"`, and the deselection is a gate rather than a convenience.**
+#
+# `tests/evals/test_uplift_shards.py` proves that sharding moves where claim 2's draws are
+# produced and not a single number, byte for byte at three shard counts. That property is claim
+# 2's evidence and it costs what claim 2's evidence costs: measured on one machine, cold, the
+# suite went from **1m36s to 8m14s** and every second of the difference was that one file, of
+# which ~200s is generating the machinery worlds the `gate` job caches nowhere. In CI it took
+# `make check` past the fifteen-minute budget it had just been given, and the run was cancelled
+# with the whole shard matrix already green.
+#
+# So it runs where claim 2 runs, which is what the line at the bottom of `check` has always
+# said: the claim targets are not in the suite because they take minutes.
+#
+# **What that buys has to be paid for**, and it is, in two places — because a test deselected
+# from the suite and run by nothing looks exactly like one that is covered, which is `claim-[1-7]`
+# with a different population:
+#
+#   * `ops/figures.py`'s `suite` row: every test `make test` deselects must be selected by some
+#     `claim-*` target, counted by asking pytest itself rather than by reading a list.
+#   * `tests/ops/test_ci_sharding.py`: for a **sharded** target CI never runs the plain target at
+#     all — it runs `-shard` on N machines and `-combine` on one — so whatever `claim-2` selects,
+#     `claim-2-combine` must select too, or CI runs none of it.
+test:  ## the suite, minus what a claim target owns
+	$(RUN) pytest -m "not claim_2"
 
 contracts:  ## validate every contract and refuse a stale or hand-edited generated artefact
 	$(RUN) holdout-contracts check
@@ -139,6 +161,7 @@ claim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
 # mutation changes eval code -- so the ten runs generate the worlds once. What invalidates
 # that is a digest, not a list: see evals/uplift/cache.py.
 claim-2:  ## claim 2 — no uplift without a valid holdout, and A/A holds against alpha
+	$(RUN) pytest -m claim_2
 	$(RUN) python -m evals.uplift
 	$(RUN) python -m evals.gate_proof --claim 2
 
@@ -170,7 +193,12 @@ claim-2-shard:  ## one slice of claim 2's draws — SHARD=i/N, written to $(SHAR
 # The checks run **once, over every draw**, so sharding cannot change a rate by changing what a
 # denominator is computed over. `gather` refuses a set that is not the whole one rather than
 # averaging over what arrived, because `U1`'s `8/200` computed over 150 draws is still a number.
+# **And it carries `claim-2`'s marked tests, because CI never runs `claim-2` for a sharded
+# target.** The matrix runs `claim-2-shard` on eight machines and this on one, so a test that
+# only the plain target selects would be deselected from the suite and run by nothing on every
+# push. `tests/ops/test_ci_sharding.py` is what makes that structural rather than remembered.
 claim-2-combine:  ## claim 2's checks over every shard's draws, then the mutations
+	$(RUN) pytest -m claim_2
 	$(RUN) python -m evals.uplift --combine $(SHARD_DIR)/*.pickle
 	$(RUN) python -m evals.gate_proof --claim 2
 
