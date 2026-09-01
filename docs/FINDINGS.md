@@ -706,6 +706,21 @@ is the phrase *two matrix legs*: it named the observation correctly and made the
 being two invisible. **Nobody asks why a pair is a pair when the word for it already implies an
 answer.**
 
+*And the fix retires an instrument, which is named here rather than discovered later.* The
+duplication was two independent runs of one tree on two runners, free, on every push. It is what
+established that this machinery is deterministic across machines, and it is where every same-tree
+spread figure in the record came from. **After the filter the pairs stop being produced.** The
+evidence stays valid and becomes historical; reproducing it deliberately is `workflow_dispatch` on
+the same sha, twice.
+
+**And the register under-counted its own instrument by seven-fold.** This entry reasoned from two
+pairs and the reviewing session recalled five. Re-pulled from the same 200-run sample, `claim-2`
+succeeded under both events on **35 shas** — 35 same-tree, two-runner comparisons, ratio min 1.00,
+median 1.10, max 1.69. The conclusion they were used for is unchanged and better supported. What is
+new is that a measurement nobody had to ask for was arriving on every push and being noticed one
+time in seven, which is the same shape as the pair itself: **the thing that goes unexamined is not
+the thing that is hidden, it is the thing that arrives without being requested.**
+
 *Site:* `.github/workflows/ci.yml` :: `  push:`
 *Disposition:* `ops/ci-runs-once-per-tree`, `TASKS.md` :: `T00F` — first of the four atoms that open
 phase 2, and before `T00H` for a structural reason as well as a cost one: concurrency peaks at 16

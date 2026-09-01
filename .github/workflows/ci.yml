@@ -44,6 +44,30 @@ name: ci
 # carries one run of each context and the question cannot arise. The fix dissolves it rather
 # than answering it, which is why nobody later needs to know how it would have resolved.
 #
+# WHAT THIS FILTER RETIRES, WHICH IS NOT NOTHING. The duplication was also an instrument, and
+# an accidental one: two independent runs of one tree on two runners, free, on every push. It is
+# what established that this machinery is deterministic across machines — byte-identical result
+# lines and the same sha256 — and it is where every same-tree spread figure in the record came
+# from. After this filter there is one run per sha and **the pairs stop being produced**.
+#
+# That is not an argument against the fix: 58 h is an absurd price for a comparison, and the
+# measurements are already taken. But a later session reading *the same tree produces the same
+# numbers on different machines* would go looking for the pairs behind it and find a repository
+# that no longer makes them, so the evidence is named as HISTORICAL and the way to make more of
+# it deliberately is named beside it: **`workflow_dispatch` the same sha twice.**
+#
+# And the record under-counted its own instrument. `docs/FINDINGS.md` reasoned from two pairs and
+# the reviewing session recalled five; re-pulled from the 200-run sample, `claim-2` succeeded
+# under both events on **35 shas** — 35 same-tree, two-runner comparisons, of which the register
+# had noticed five:
+#
+#     ratio max/min over 35 pairs:  min 1.00 · median 1.10 · max 1.69
+#
+# The conclusion those pairs were used for is unchanged and better supported — the distribution
+# to size a budget against is the distribution over runners. What is new is that a measurement
+# nobody had to ask for was arriving on every push, and the fix is the moment to say so, because
+# afterwards there is nothing to notice.
+#
 # THE TRADE, AND ITS EXPOSURE IS ZERO RATHER THAN SMALL. A push to a branch with no open PR now
 # runs nothing. `pull_request` fires on `synchronize`, so every push *after* a PR opens is still
 # covered — visible in the sample as the 81 shas that carry a `pull_request` run, which are
