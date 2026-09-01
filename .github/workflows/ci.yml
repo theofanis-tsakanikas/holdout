@@ -74,11 +74,28 @@ name: ci
 # second-and-later pushes. Only the first push of a branch, before its PR exists, is uncovered:
 # **3 of 118 shas**, and a branch with no pull request merges nothing into `main`. Nothing that
 # can reach `main` is less covered than it was.
+#
+# **`pull_request` CARRIES NO BRANCH FILTER, AND THAT IS THE CORRECTION THE FIRST DRAFT NEEDED.**
+# It read `branches: [main]`, which is the spelling every example uses and which was wrong here
+# within the hour: with `push` scoped to `main`, a pull request opened against **any other base**
+# matched neither event and got **no CI at all**. It was found by this branch's own successor —
+# `#40`, stacked on `#39` — reporting *no checks reported on the branch*, and before that change
+# the unscoped `push` had been covering that case by accident.
+#
+# So the paragraph above was right about what it examined and wrong about what exists: it
+# measured *a push with no pull request* and never asked about *a pull request whose base is not
+# `main`*. **A guard tested by its author is tested in the shape the author pictured**, and the
+# shape here was the one this repository's own workflow produces the moment two pieces of work
+# stack. The prior wording stays per doctrine rule 4; the exposure it claims is only true with
+# the filter removed.
+#
+# Unfiltered costs nothing and doubles nothing: `push` fires only on `main`, so a branch's pull
+# request produces exactly one run whatever it targets, and a merge into `main` produces exactly
+# one more.
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 # A pull request and the push that created it are separate groups on purpose: collapsing
 # them would let one cancel the other, and the cancelled one is sometimes the required check.

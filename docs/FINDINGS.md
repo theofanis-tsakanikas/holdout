@@ -706,6 +706,25 @@ is the phrase *two matrix legs*: it named the observation correctly and made the
 being two invisible. **Nobody asks why a pair is a pair when the word for it already implies an
 answer.**
 
+*And the first draft of the fix had the defect it was written about, found within the hour by
+its own successor.* It wrote `pull_request: branches: [main]` — the spelling every example uses.
+With `push` scoped to `main`, a pull request opened against **any other base** then matched
+neither event and got **no CI at all**: `#40`, stacked on `#39`, reported *no checks reported on
+the branch*, and the unscoped `push` had been covering that case by accident until an hour
+earlier.
+
+**The exposure paragraph was right about what it examined and wrong about what exists.** It
+measured *a push with no pull request* — 3 of 118 shas — and never asked about *a pull request
+whose base is not `main`*. Stacking one reviewed piece of work on another is this repository's own
+practice, so the uncovered case was not exotic; it was the next branch. `pull_request` therefore
+carries **no** branch filter, which costs nothing and doubles nothing, because `push` fires only
+on `main`.
+
+*It is the eighth form of a guard tested by its author, and the sharpest available here:* the
+branch whose subject is *a gate reports on what it examined* shipped an exposure claim measured
+over the shape its author pictured. `tests/ops/test_ci_triggers.py` now parametrises the base over
+`main` **and** a working branch, so the case is driven rather than assumed.
+
 *And the fix retires an instrument, which is named here rather than discovered later.* The
 duplication was two independent runs of one tree on two runners, free, on every push. It is what
 established that this machinery is deterministic across machines, and it is where every same-tree

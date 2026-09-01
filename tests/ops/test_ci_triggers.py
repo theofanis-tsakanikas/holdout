@@ -157,17 +157,32 @@ def test_a_push_to_main_still_starts_ci() -> None:
     assert push_starts_workflow(_on_block(_ci_text()), "main")
 
 
-def test_a_pull_request_into_main_still_starts_ci() -> None:
-    """And the event that now carries every branch, so the trade above is the only trade.
+@pytest.mark.parametrize("base", ["main", "ops/ci-runs-once-per-tree"])
+def test_a_pull_request_starts_ci_whatever_it_targets(base: str) -> None:
+    """The event that now carries every branch — and it may not be scoped to `main`.
 
-    If `pull_request` were ever narrowed too, the two tests above would both still pass and a
-    branch would be covered by nothing at all.
+    If `pull_request` were narrowed too, the two tests above would both still pass and a branch
+    would be covered by nothing at all.
+
+    **The second case is not hypothetical and is why this is parametrised.** The first draft of
+    this change wrote `pull_request: branches: [main]`, the spelling every example uses. With
+    `push` scoped to `main`, a pull request opened against any other base then matched neither
+    event: `#40`, stacked on `#39`, reported *no checks reported on the branch*. Stacking one
+    reviewed piece of work on another is this repository's own practice, so the uncovered case
+    was reached within the hour by the very next branch.
+
+    The paragraph that justified the trade had measured *a push with no pull request* and never
+    asked about *a pull request whose base is not `main`* — the author's own imagined shape, one
+    layer along from the four filters below.
     """
     on_block = _on_block(_ci_text())
+    assert "pull_request" in on_block, "ci.yml no longer runs on pull requests at all"
     pull_request = on_block["pull_request"]
-    assert pull_request is None or any(
-        _matches(p, "main") for p in pull_request.get("branches", ["**"])
-    ), "pull requests into main no longer start ci, so a branch is covered by no event at all"
+    patterns = ["**"] if pull_request is None else pull_request.get("branches", ["**"])
+    assert any(_matches(p, base) for p in patterns), (
+        f"a pull request targeting {base!r} starts no run. With push scoped to main, such a "
+        "pull request matches neither event and is covered by nothing at all"
+    )
 
 
 # ------------------------------------------------- four filters that filter nothing, each driven
@@ -177,20 +192,19 @@ def test_a_pull_request_into_main_still_starts_ci() -> None:
     ("name", "replacement"),
     [
         # The exact state `main` was in until 2026-09-01.
-        ("no filter at all", "on:\n  push:\n  pull_request:\n    branches: [main]\n"),
+        ("no filter at all", "on:\n  push:\n  pull_request:\n"),
         # Three that a reader scanning for `branches:` would take for a filter.
         (
             "a pattern that matches everything",
-            "on:\n  push:\n    branches: ['**']\n  pull_request:\n    branches: [main]\n",
+            "on:\n  push:\n    branches: ['**']\n  pull_request:\n",
         ),
         (
             "main plus the branches this repository actually uses",
-            "on:\n  push:\n    branches: [main, 'ops/*']\n  pull_request:\n    branches: [main]\n",
+            "on:\n  push:\n    branches: [main, 'ops/*']\n  pull_request:\n",
         ),
         (
             "an ignore list that names something else",
-            "on:\n  push:\n    branches-ignore: [gh-pages]\n  pull_request:\n"
-            "    branches: [main]\n",
+            "on:\n  push:\n    branches-ignore: [gh-pages]\n  pull_request:\n",
         ),
     ],
 )
@@ -201,7 +215,7 @@ def test_a_filter_that_does_not_filter_is_refused(name: str, replacement: str) -
     the whole reason this file asks the question of the parsed configuration instead.
     """
     text = _ci_text()
-    current = "on:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n"
+    current = "on:\n  push:\n    branches: [main]\n  pull_request:\n"
     assert current in text, "ci.yml's on: block is not in the shape this attack rewrites"
 
     attacked = _on_block(text.replace(current, replacement, 1))
