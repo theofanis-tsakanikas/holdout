@@ -1385,28 +1385,80 @@ first evidence that the upload works at all
 
 ---
 
-**A comment quoting a value silently disarmed the attack that guards it** · found 2026-09-02 ·
-by the same session, one command later
+**One anchoring rule, two populations, and only one of them had it** · found 2026-09-02 · by
+the same session, one command later
 
-The attacks in `tests/ops/test_ci_sharding.py` are textual: each names a fragment of `ci.yml`
-and replaces it. `_broken` asserted the fragment was `in` the file and then replaced the
-**first** occurrence. The change above added a comment above the upload step explaining why
-`if-no-files-found` is set to `error` — and quoted the setting. The attack that flips that
-setting then edited the comment, left the step exactly as it was, and every check went green;
-`test_each_attack_is_refused_by_some_check` read that as *no guard exists for this attack* and
-failed on a guard that was working.
+This file requires every `*Site:*` fragment to occur in its file **exactly once**. The section
+above says why in as many words: *zero means the line moved or was fixed; two means the anchor
+is ambiguous and proves nothing about which line was meant.* It has been enforced since the
+registry existed.
 
-It failed loudly, which is the only reason it is a finding and not a defect. The same
-mis-anchoring in the other direction — an attack that quietly stops attacking while everything
-stays green — is available to any of the seven, and was until the anchor became `== 1`.
+`tests/ops/test_ci_sharding.py`'s attacks anchor the same way — each names a fragment of
+`ci.yml` and replaces it — and the rule had never been carried across. `_broken` asserted the
+fragment was `in` the file and replaced the **first** occurrence.
 
-**It is `docs/FINDINGS.md`'s own rule about anchors, in a second population.** This file requires
-each `*Site:*` fragment to occur in its file exactly once, for exactly this reason, and the
-argument had never been carried across to the attacks even though they anchor the same way.
+**What that costs was demonstrated rather than argued, by accident.** The change above added a
+comment over the upload step explaining why `if-no-files-found` is set to `error`, quoting the
+setting. The attack that flips it then edited the comment, left the step exactly as it was, and
+every check passed — so `test_each_attack_is_refused_by_some_check` reported *no guard exists
+for this attack* against a guard that was working perfectly.
+
+**It failed loudly only by luck of direction.** An attack that starts editing prose reports a
+missing guard, which is noisy and false. The same mis-anchoring one step further along — an
+anchor whose second occurrence is another *step* rather than a comment — reports that the guard
+bit, on a file where the step under attack was never touched. That is `gate-proof` switched
+off, printing green. Any of the seven attacks could have been in that state and nothing would
+have said so.
+
+**The generalisation is the entry, not the fix.** The fix is `== 1`. The finding is that a rule
+argued once, in the file that invented it, does not travel to the next thing that anchors — and
+this repository now has two populations that anchor a fragment to a file and one more (`Now:`)
+in the same document. The next one will need the same sentence, and nothing enumerates the
+populations that anchor.
+
+*(And the rule cannot anchor to itself. A `*Site:*` naming `docs/FINDINGS.md` quotes the
+fragment on the site line, which is then a second occurrence in the same file, so the gate calls
+it ambiguous — driven, not deduced: this entry tried it and went red. The rule is therefore
+cited by section here rather than anchored, and the limit is small but it is real.)*
 
 *Site:* `tests/ops/test_ci_sharding.py` :: `f"the attack {attack!r} anchors on text occurring {found} time(s) in ci.yml. Zero means "`
-*Disposition:* branch `evals/claim-2-sharded` — fixed in the same change that produced it, and
-the entry closes when that branch merges
+*Disposition:* branch `evals/claim-2-sharded` — the `== 1` half is fixed in the change that
+produced it; what stays open is that nothing enumerates which populations anchor a fragment to a
+file, so the third one will arrive the same way
+*Status:* open
+
+---
+
+**`make expiry` judges in UTC against dates written in the author's local day** · found
+2026-09-02 · by the same session, from an age column reading `-1d`
+
+`ops/expiry.py` and `ops/findings.py` both compute today as `datetime.now(UTC).date()`. The
+dates in `docs/DECISIONS.md` and in this file are written by the author, in Athens, on the
+author's calendar. For part of every local day the two disagree, and `is_expired` compares
+`expires <= as_of` against the UTC one.
+
+**Measured across every hour of 2026 rather than reasoned from the offset**, DST included:
+
+    hours where the local date and the UTC date differ:  940 of 8,760  (10.7%)
+    largest lag between the local day starting and UTC agreeing:  3:00:00
+    ever a whole day:  no
+    ever early:  no — Athens is never behind UTC, so the gate cannot fire before its date
+
+**So this is hours, not a day, and that is the whole of why it is filed low rather than fixed.**
+A deferral that expires on the 2nd goes red at 03:00 local rather than at 00:00; a finding filed
+at 01:00 prints its age as `-1d`. CI runs in UTC throughout, so the two never disagree with each
+other — only with the calendar the dates were written on.
+
+It is recorded because the direction was not obvious before it was measured. A gate that fires
+**late** is a different object from one that fires **early**, and only one of the two would have
+been worth stopping for; nothing in either module says which it is.
+
+*Site:* `ops/expiry.py` :: `as_of = args.as_of or datetime.now(tz=UTC).date()`
+*Site:* `ops/findings.py` :: `today = as_of or datetime.now(UTC).date()`
+*Disposition:* none — the fix is a timezone the repository would have to declare, which is a
+decision about whose calendar the dates are in rather than an edit, and at three hours it does
+not earn a branch of its own. It is here so the next person who sees `-1d` finds the measurement
+instead of taking it for a bug in the arithmetic
 *Status:* open
 
 ---
