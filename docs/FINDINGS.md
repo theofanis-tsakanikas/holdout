@@ -650,6 +650,81 @@ model is open anyway, and separating identity from spelling is cheap while it is
 expensive at any other time. The two travel together
 *Status:* open
 
+**Two values reach the world cache as data rather than as an import, and one of them is silent**
+· found 2026-09-01 · by T00G, and the second only because the reviewing session asked whether the
+first was alone
+`evals/uplift/cache.py` keys its entries on a digest of every **source file** a cached artefact was
+produced by. That is the right rule for a ledger, which is a pure function of the world and of
+`outcomes.py`. It is not the whole rule for one entry.
+
+`agreement/walked` caches `reference.compute(run, metric=metric)`, and `reference.py` finishes with
+`metric.rounding.canonical_integer(total)`. **The rounding arrives as an argument, out of
+`contracts/metrics/`, not as an import** — so a change to the metric contract leaves that entry in
+the cache while the value it stands for has moved. The key carries `world_id`, `world_seed` and
+`scale.name`, and nothing about which metric was asked for.
+
+*What it does today, measured against the code rather than feared.* The half it is compared with,
+`grouped = outcomes.cell_margins(ledger, metric.rounding)`, is computed **fresh** on every run — the
+*ledger* is cached, the margins are not. So after a rounding change `U10` compares a fresh value
+against a stale one and **goes red**. That is the safe direction: a false failure, not a silent
+pass, and it is why this is filed rather than fixed on sight.
+
+*Why it is still a defect.* `cache.py`'s docstring says the exception *"is not a list of file paths
+somebody keeps up to date"* and that changing any byte of what produced an artefact moves the key.
+For this entry that is not true, and the gap is invisible to the very test written to close it:
+`test_every_module_a_cached_artefact_is_produced_by_is_in_the_digest` walks the **import** closure,
+and an argument is not an import. The test says so in its own docstring rather than leaving the
+limit to be found.
+
+*And the shape is the one this repository keeps meeting.* Not a claim checked against the wrong
+artefact — **a rule whose scope is the mechanism its author had in mind.** *Every source file it was
+produced by* is a complete rule for values produced by code alone, and this value is produced by code
+**and a contract**. The digest is a second implementation of *what could change this*, and it is
+implemented over one of the two.
+
+*The fix is a widening and does not travel with a narrowing.* Two candidates, and the choice is not
+obvious: put `metric.id` and `metric.version` **in the key**, which is local, precise, and rests on
+`make contracts` refusing a metric whose arithmetic moved without a version; or add `contracts/` to
+`DEPENDS_ON`, which is blunter, invalidates every world on any contract edit, and is the
+over-coverage `cache.py` already argues against one directory in. **T00G is a narrowing**, and
+shipping a widening in the same branch is how a cache change stops being reviewable — the two move
+the key in opposite directions and a single measurement could not tell which one did what.
+
+**And then the question that found the other one.** The reviewing session asked whether the
+rounding was the only member of its class — *anything reaching the world-producing path as data
+rather than as an import* — and said plainly it was asking rather than asserting, because inferring
+what a generator reads from what generators usually read is the move that produced *matrix legs*.
+
+**It was not alone, and the second one is worse.** `corpus/world/__init__.py`'s `prepare()` calls
+`policy.contract_ladder()`, which reads `contracts/policies/ladder_policy@v1.yaml` at run time —
+**the control arm of every fresh-markdown world**, and therefore the markdown behaviour the entire
+ledger is a summary of. Driven rather than argued: moving one rung from `depth_pct: 20` to `25`
+changed the policy and left the digest at `0b15f66b64bc0b4e69b6ab44decb144a`.
+
+*The two fail in opposite directions, which is the whole reason they are one entry and not two.*
+The rounding gap is compared against a half computed **fresh**, so a stale entry produces a red
+`U10` — annoying, visible, safe. The ladder gap has nothing to disagree with it: every consumer
+reads the same stale ledger, and the run reports a world built with the old ladder **in silence**.
+That is a gate disarmed, which is the failure this repository has already paid for four times.
+
+*So the ladder is closed inside T00G and the rounding is not, and the split is on the direction
+rather than on convenience.* A proven silent hole is not something a branch may declare as a limit
+while claiming its coverage is computed — that would be prose asserting a check nobody wrote, in
+the branch whose subject is exactly that. The rounding stays open because it fails safe and because
+its fix is a genuine widening with two candidate shapes.
+
+*What closing it looks like, so it is not a second list.* `DEPENDS_ON` gains **one file**, not
+`contracts/` — the rest of that directory reaches no world — and
+`test_the_contract_the_generator_reads_is_taken_from_the_generator` takes the path from
+`policy.LADDER_CONTRACT` rather than repeating it, so a generator pointed somewhere else cannot
+leave the list behind. That is the second-registry problem one layer down, refused the same way.
+
+*Site:* `evals/uplift/agreement.py` :: `        cache.key("agreement/walked", world_id, world_seed, scale.name),`
+*Disposition:* the **ladder half is closed on T00G**; the rounding half is its own branch,
+unlocked by T00G landing — after which the key has one meaning and a widening can be measured
+against it rather than through it
+*Status:* open
+
 **`ci.yml` is entered twice for every branch push** · found 2026-09-01 · by this session, while
 scoping the other three CI items — and the pair was already in this register under another name
 `on: push:` carried no branch filter while `pull_request` was scoped to `main`. A push to a branch

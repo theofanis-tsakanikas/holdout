@@ -487,7 +487,51 @@ out_of_scope  Lowering the 90-minute budget. The ceiling exists for the cold dra
               will still move — less often, which is the point.
 stop_at       When the key is narrowed and the both-directions test drives real files.
 review        yes
+status        open
 ```
+
+**What it landed, and one thing the `closes` line did not ask for.** `DEPENDS_ON` becomes
+`("corpus/world", "corpus/__init__.py", "evals/uplift/outcomes.py", "evals/uplift/reference.py")` —
+15 files where it read 18. `corpus/__init__.py` is kept **by name**: it executes on any import of
+`corpus.world`, so narrowing to the subdirectory alone would have dropped it, and it holds only a
+docstring today, which is precisely why that looks safe and is not. The question is what *can*
+produce a world, not what happens to today.
+
+*The coverage is computed rather than declared.* `test_every_module_a_cached_artefact_is_produced_by_is_in_the_digest`
+walks the **import closure** of the three roots and requires every repository-local module in it to
+be a file the digest reads. It reaches **13 modules** and reports **11 missing** when `corpus/world`
+is dropped from the list, so it bites. That is a second implementation of *what produces a world*,
+in the sense `evals/README.md`'s rule 5 uses the words — not a list somebody keeps in step.
+
+*And a `DEPENDS_ON` entry that names nothing now raises.* It used to be skipped silently, which is
+this narrowing's own failure mode wearing the shape of a typo: `corpus/wolrd` would have digested
+the two `evals/uplift` modules alone, every world would have read back unchanged forever, and a
+mutation to the generator would have reported `SURVIVED`. **An instrument that cannot answer raises
+rather than returning a smaller number** — `ops/figures.py`'s rule, at the one site where the
+smaller number is silently wrong rather than merely wrong.
+
+*What the closure test cannot see, and what asking about it found.* A value reaching the
+world-producing path **as data rather than as an import** is invisible to an import walk by
+construction. Two exist, they fail in opposite directions, and the split between them is on the
+direction rather than on convenience:
+
+*(1) The ladder contract — closed here, because it is silent.* `prepare()` calls
+`policy.contract_ladder()`, which reads `contracts/policies/ladder_policy@v1.yaml` at run time:
+the control arm of every fresh-markdown world, and so the markdown behaviour the whole ledger is a
+summary of. Moving one rung changed the policy and left the digest where it was. Nothing recomputes
+anything that would disagree, so every consumer reads the same stale ledger and the run reports a
+world with the old ladder **in silence** — a gate disarmed. `DEPENDS_ON` gains **one file**, not
+`contracts/`, and the test takes the path from `policy.LADDER_CONTRACT` rather than repeating it,
+so a generator pointed elsewhere cannot leave the list behind.
+
+*(2) The metric rounding — filed, because it fails safe.* `agreement/walked` caches a value whose
+rounding arrives from the metric contract as an argument. The half it is compared against is
+computed fresh, so a stale entry produces a **red** `U10` rather than a silent pass. **The fix is a
+genuine widening with two candidate shapes and T00G is a narrowing**; shipping both would move the
+key in two directions at once and no measurement could say which did what.
+
+**A proven silent hole may not be declared as a limit by the branch claiming its coverage is
+computed.** That is what separated the two, and it is why (1) did not wait for its own branch.
 
 **The warning travels with this one and is the load-bearing half.** Over-covering costs time.
 **Under-covering serves a stale world and nothing goes red** — the mutation reports `SURVIVED`
