@@ -162,12 +162,29 @@ def check_the_draws_travel(path: Path) -> None:
     )
 
 
+def check_each_shard_has_its_own_context(path: Path) -> None:
+    """A job's name is its check-run context name, so shards must not share one.
+
+    Eight shards under `${{ matrix.target }}` put **eight contexts called `claim-2`** on one sha
+    — the duplication `#39` removed, reintroduced by sharding at eight times the count. It was
+    found by reading the first sharded run's **job list**, because `gh pr checks` collapses
+    same-named contexts and showed nine where there were sixteen.
+    """
+    jobs = _jobs(path)
+    name = str(jobs["claims"].get("name", ""))
+    assert "matrix.name" in name, (
+        f"the claims job is named {name!r}, which does not vary by shard. Every shard would "
+        "report under one context name, and a checks list cannot show which of them failed."
+    )
+
+
 CHECKS: dict[str, Callable[[Path], None]] = {
     "one digest across every world-cache key": check_one_digest,
     "the shard key varies by shard": check_shard_namespaced,
     "the combine key is its own": check_combine_is_its_own_key,
     "the two families share a prefix": check_families_share_a_prefix,
     "every shard's draws reach the combine": check_the_draws_travel,
+    "each shard reports under its own context": check_each_shard_has_its_own_context,
 }
 
 
@@ -210,6 +227,10 @@ ATTACKS: dict[str, tuple[str, str]] = {
     "a shard that produced nothing allowed to pass": (
         "if-no-files-found: error",
         "if-no-files-found: warn",
+    ),
+    "every shard reporting under one context name": (
+        "    name: ${{ matrix.name }}\n    needs: [discover]",
+        "    name: ${{ matrix.target }}\n    needs: [discover]",
     ),
 }
 

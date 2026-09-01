@@ -283,7 +283,13 @@ jobs:
   # separate assertions about separate machinery and one failing tells you nothing about
   # the other.
   claims:
-    name: ${{ matrix.target }}
+    # **`matrix.name`, not `matrix.target`.** The job name is the check-run context name, so
+    # eight shards under `${{ matrix.target }}` would put **eight contexts called `claim-2`** on
+    # one sha — which is precisely the duplication `#39` removed, reintroduced by this change at
+    # eight times the count. It was found by reading the first sharded run's job list rather
+    # than the checks list, which collapses same-named contexts and showed nine where there
+    # were sixteen.
+    name: ${{ matrix.name }}
     needs: [discover]
     if: needs.discover.outputs.any == 'true'
     runs-on: ubuntu-latest

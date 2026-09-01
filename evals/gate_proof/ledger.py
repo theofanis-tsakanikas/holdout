@@ -134,6 +134,17 @@ def targets(makefile: str | None = None) -> tuple[Target, ...]:
 #: new one belongs here only when the target really is the same claim's work rearranged, and
 #: `tests/evals/test_ledger.py` drives the case where a *different* claim's target runs these
 #: mutations and must still be refused.
+#:
+#: **And it is a hand-maintained list that is not the fifth instance of a bad pattern, because it
+#: fails loudly.** `_TAKES_A_VALUE`, `_NAMES_A_REPOSITORY`, `DEPENDS_ON` and the layout population
+#: were lists of things that **exist in the world** — flags git accepts, ways to name a
+#: repository, files that produce a world — and incompleteness there meant something real was not
+#: seen, silently: a commit allowed, a stale world served, a directory unchecked.
+#:
+#: This is a list of **conventions we chose**, and incompleteness fails the other way. Add a
+#: `claim-2-parallel` target without adding `-parallel` here and `owner_name` returns the name
+#: unchanged, the stem differs from `claim-2`, the mutation has two owners, and the duplicate
+#: check **fires** — a red at the moment the new arrangement is written, by whoever wrote it.
 ARRANGEMENTS: tuple[str, ...] = ("-shard", "-combine")
 
 

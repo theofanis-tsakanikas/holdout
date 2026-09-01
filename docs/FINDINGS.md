@@ -725,6 +725,35 @@ unlocked by T00G landing — after which the key has one meaning and a widening 
 against it rather than through it
 *Status:* open
 
+**`make language` enumerates repository content by a hand-written exclusion list** · found
+2026-09-01 · by T00H, when the gate went red on a directory that branch created
+`ops/language.py`'s `content_files` walks the tree and skips a `NOT_CONTENT` set of names —
+`.git`, `.venv`, `.worlds`, `notes`, and now `.shards`. Every entry is generated or ignored
+output, and every one had to be remembered.
+
+*It went red the day sharding landed*, on eight pickle files under `.shards/` — enumerated as
+repository content and not examined, which `make figures` correctly reports as under-coverage.
+That is the list **working**; it is also the fourth time in four days that a hand-maintained list
+has had to be extended by whoever tripped over it.
+
+**The answer is already in the tree, one file away.** `ops/figures.py`'s `_layout_population`
+was rewritten to ask git — `_tracked_paths()` runs `git ls-files`, and its docstring says *what
+git tracks, which is the only defensible answer to what is repository content*. Its own comment
+records that **nothing is excluded by name**, and the defect that produced it is the one where
+`notes/` counted on the author's laptop and not on a clean checkout. `content_files` is the one
+gate that did not get that move.
+
+*So this is not "design a way to enumerate repository content".* It is applying a change that has
+already landed, to the place it did not reach — which is why it is filed with `_layout_population`
+named rather than left as a direction.
+
+*Not taken on T00H*, deliberately: it is a change to a gate, inside a branch about CI wall clock,
+and it costs a full matrix to land. Nothing about it is blocking.
+
+*Site:* `ops/language.py` :: `NOT_CONTENT: frozenset[str] = frozenset(`
+*Disposition:* its own branch — small, and unblocked now rather than by anything
+*Status:* open
+
 **The combine job's worlds are disjoint from every shard's** · found 2026-09-01 · by T00H, from
 measuring a cold combine rather than reasoning about one — so sharding splits the world cache
 along with the phases
