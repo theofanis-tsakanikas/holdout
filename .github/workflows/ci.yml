@@ -11,13 +11,62 @@
 
 name: ci
 
+# **One run per tree.** `push` is scoped to `main` so that a branch is covered by the
+# `pull_request` event alone; before 2026-09-01 `push` carried no branch filter at all, and a
+# push to a branch with an open PR fired *both*, entering this whole workflow twice for one
+# sha.
+#
+# Measured over 200 runs, 2026-08-27 to 08-31, by pairing the run list on `headSha`:
+#
+#     118 distinct head shas, 81 of them ran under BOTH events
+#     push 586 jobs 3542 min  ·  pull_request 586 jobs 3478 min
+#     one whole side redundant: ~58 h of runner time in five days
+#     of which claim-2 alone: 2092 min = 34.9 h, 36% of all successful claim-2 compute
+#
+#     gh run list --workflow=ci --limit 200 \
+#        --json databaseId,event,headSha,conclusion,createdAt
+#
+# **What this saves is a prediction until a week of runs exists on the other side of it.** The
+# 58 hours is a measurement of what was spent, not of what the fix returns.
+#
+# THE SECOND EFFECT, WHICH IS NOT A SAVING. Every context existed twice on every PR head sha —
+# `gh api /repos/.../commits/<sha>/check-runs` returned 20 on a two-job-short workflow, every
+# name doubled, including all three the `main` ruleset requires (`gate`, `secrets`,
+# `claims-complete`). So each required context was resolved between two check runs of the same
+# name from two different runs of one tree.
+#
+# **That hazard was never realised, and the honest statement is the weaker one.** All 36 merged
+# pull requests carried doubled contexts at their head sha and in **zero** of them did a
+# required context disagree with itself. Three self-disagreements exist in the sample — `gate`
+# twice, `claim-1` once — and all three sit on commits that were superseded before the PR
+# merged, so the ambiguity decided nothing. Whether the forge takes the latest check run or
+# either one is **not established here** and is not guessed at: after this filter a PR head
+# carries one run of each context and the question cannot arise. The fix dissolves it rather
+# than answering it, which is why nobody later needs to know how it would have resolved.
+#
+# THE TRADE, AND ITS EXPOSURE IS ZERO RATHER THAN SMALL. A push to a branch with no open PR now
+# runs nothing. `pull_request` fires on `synchronize`, so every push *after* a PR opens is still
+# covered — visible in the sample as the 81 shas that carry a `pull_request` run, which are
+# second-and-later pushes. Only the first push of a branch, before its PR exists, is uncovered:
+# **3 of 118 shas**, and a branch with no pull request merges nothing into `main`. Nothing that
+# can reach `main` is less covered than it was.
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
 
 # A pull request and the push that created it are separate groups on purpose: collapsing
 # them would let one cancel the other, and the cancelled one is sometimes the required check.
+#
+# **Restated 2026-09-01, and the comment above it is why.** With `push` unscoped the two runs
+# it names were two runs of the *same sha*, and keeping them in separate groups is what let
+# both complete — which, read against the merge heads, is the reason no merge ever saw the two
+# disagree. The mechanism worked; what was wrong was that there were two runs to protect from
+# each other. Scoping `push` to `main` means a branch sha now produces one run and this group
+# separates a `main` push from a pull request, which are genuinely different trees. The prior
+# wording stays per doctrine rule 4, and the delta is the finding: **a mechanism that manages a
+# symptom correctly can outlive the cause, and reads as load-bearing while it does.**
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

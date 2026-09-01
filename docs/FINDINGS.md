@@ -650,6 +650,69 @@ model is open anyway, and separating identity from spelling is cheap while it is
 expensive at any other time. The two travel together
 *Status:* open
 
+**`ci.yml` is entered twice for every branch push** · found 2026-09-01 · by this session, while
+scoping the other three CI items — and the pair was already in this register under another name
+`on: push:` carried no branch filter while `pull_request` was scoped to `main`. A push to a branch
+with an open pull request fired **both**, so the whole workflow ran twice for one sha — not two
+matrix legs, two workflow runs, seconds apart.
+
+*The measurement, from the run list paired on `headSha`:*
+
+```
+gh run list --workflow=ci --limit 200 --json databaseId,event,headSha,conclusion,createdAt
+```
+
+200 runs, 2026-08-27 to 08-31 — 118 distinct head shas, **81 of them under both events**. Job
+timing from `/actions/runs/{id}/jobs`:
+
+```
+across the 81 doubled shas:  push 586 jobs 3542 min · pull_request 586 jobs 3478 min
+one whole side redundant:    ~58 h of runner time in five days
+of which claim-2 alone:      2092 min = 34.9 h
+successful claim-2 jobs:     n=90, 78.4 h; 35 shas succeeded under both events
+                             → 27.9 h duplicated = 36% of all successful claim-2 compute
+```
+
+**Roughly 8x the cache over-coverage**, which is 11 spurious invalidations at +18.4 min = 3.4 h over
+the same period, and which was the item ranked first when the work was scoped.
+
+*The second effect, stated at the strength the data carries and no higher.* Every context existed
+twice on every pull-request head sha — `gh api /repos/.../commits/<sha>/check-runs` returns 20, every
+name doubled, including all three the `main` ruleset requires. So each required context was resolved
+between two check runs of one name from two runs of one tree.
+
+**The hazard was never realised.** All 36 merged pull requests carried doubled contexts at their head
+sha, and in **zero** did a required context disagree with itself. Three self-disagreements exist —
+`gate` twice, `claim-1` once — and **all three sit on commits superseded before the pull request
+merged**, so the ambiguity decided nothing. Whether the forge takes the latest check run or either
+one is **not established here and is not guessed at**: after the filter a head carries one run of
+each context and the question cannot arise. **The fix dissolves it rather than answering it**, which
+is the better outcome and should be read as one — nobody later needs to know how it would have
+resolved.
+
+*The first draft of this entry did not say that.* It said *a gate whose verdict depends on which run
+the forge happens to read*, and the reviewing session restated it back in stronger terms still. It
+was withdrawn against the 36 merge heads before the branch was written. **Agreement from the
+reviewer is exactly the moment a finding stops being examined**, and that is the only reason this
+paragraph is here.
+
+*And the pair was already in this register, measured, under a description that hid it.* The entry
+below reads *"each being one commit's two matrix legs, same tree, same push, same cache key"* and
+names runs `33358845044, 33358846344` at 1.01x apart. Those two are the **push** run and the
+**pull_request** run of `7b1fd6c`. The figures are right and the conclusion drawn from them — that
+the distribution to size a budget against is the distribution over runners — survives untouched and
+is if anything strengthened, since two runs on two runners is exactly what they are. What was wrong
+is the phrase *two matrix legs*: it named the observation correctly and made the reason for there
+being two invisible. **Nobody asks why a pair is a pair when the word for it already implies an
+answer.**
+
+*Site:* `.github/workflows/ci.yml` :: `  push:`
+*Disposition:* `ops/ci-runs-once-per-tree`, `TASKS.md` :: `T00F` — first of the four atoms that open
+phase 2, and before `T00H` for a structural reason as well as a cost one: concurrency peaks at 16
+jobs against a ceiling of 20 *because jobs double*, and six shards do not fit until the doubling is
+gone
+*Status:* open
+
 **`claim-2` costs an hour and the whole matrix re-runs on every push** · found 2026-08-31 · by the
 author, and decided rather than deferred
 `claim-2` runs on one machine at **32m17s to 1h18m18s** against a 90-minute timeout, and every
@@ -661,6 +724,13 @@ answer taken: **the cost per run is justified and the dead time is not.**
 *And the within-commit spread is a draw, not a constant — which is what the second pair
 established.* Two pairs are now measured, each being one commit's two matrix legs, same tree, same
 push, same cache key:
+
+> **Restated 2026-09-01: they are not matrix legs.** Runs `33358845044` and `33358846344` are the
+> **push** run and the **pull_request** run of `7b1fd6c` — the whole workflow entered twice for one
+> sha, because `on: push:` carried no branch filter. The numbers stand and the conclusion stands;
+> what does not is the word that made the pair look like a property of the matrix. **A description
+> that already implies an answer is where nobody asks the question** — the finding above is what it
+> hid, and it is ~8x this entry's own cache item. The prior wording stays per doctrine rule 4.
 
 | commit | legs | apart |
 |---|---|---|
