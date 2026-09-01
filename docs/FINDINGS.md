@@ -725,6 +725,23 @@ branch whose subject is *a gate reports on what it examined* shipped an exposure
 over the shape its author pictured. `tests/ops/test_ci_triggers.py` now parametrises the base over
 `main` **and** a working branch, so the case is driven rather than assumed.
 
+**And the general form is one turn tighter than that, which is worth separating because it is not
+the same rule.** *A gate reports on what it examined* is about a **check's population**. This is
+about a **change's obligations**:
+
+> **It enumerated what the change stops firing, and not what the change still has to fire.**
+
+*A push with no pull request* — 3 of 118 — is a count of what the filter **removes**. *A pull
+request whose base is not `main`* is a case the filter had to keep **covering**, and did not. Two
+different questions, and only the first was asked. **When a trigger is narrowed, the enumeration
+that matters is what must still run.**
+
+*The mechanism that caught it earns its own line, because nothing else would have.* `#40` existed
+to be **stacked on `#39`**, so the uncovered case was produced by this repository's own working
+practice within the hour. A change that shipped alone would have hidden it until the next time two
+pieces of work stacked — and no reading found it, including a review that had approved the
+paragraph.
+
 *And the fix retires an instrument, which is named here rather than discovered later.* The
 duplication was two independent runs of one tree on two runners, free, on every push. It is what
 established that this machinery is deterministic across machines, and it is where every same-tree
