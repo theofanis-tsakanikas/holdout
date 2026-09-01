@@ -45,23 +45,70 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: caches beside itself rather than reaching back into the repository it was copied from.
 CACHE_DIR = Path(os.environ.get("HOLDOUT_WORLD_CACHE", REPO_ROOT / ".worlds"))
 
-#: What a cached artefact is produced by. Everything under `corpus/` because that is the
-#: world, and the two modules that turn a world into something worth storing: `outcomes.py`
-#: for the grouped ledgers and `reference.py` for the slow path's cells, which `U10` compares
-#: and which cost a second pass over five million events.
+#: What a cached artefact is produced by: `corpus/world/`, which is the world, and the two
+#: modules that turn a world into something worth storing — `outcomes.py` for the grouped
+#: ledgers and `reference.py` for the slow path's cells, which `U10` compares and which cost a
+#: second pass over five million events.
 #:
 #: Nothing else is in the list, and that is as deliberate as what is. A digest over the whole
 #: repository would move on every mutation, every world would be regenerated for every one of
 #: them, and the claim target would not finish — which is the other way to make a cache
 #: useless.
+#:
+#: **This read `"corpus"` until 2026-09-01, and the wider spelling had a price.** `corpus/real/`
+#: is claim 1's and claim 7's corpus — hand-collected price quotes and two published
+#: vocabularies — and **nothing under `corpus/world/` imports it**, so it cannot produce a byte
+#: of a world. It was in the digest anyway, and a commit touching it threw away every world
+#: ledger: measured over 71 `claim-2` jobs, **11 spurious invalidations at +18.4 min each**
+#: (95% CI +13.5 to +23.2), about **3.4 h** of CI already spent regenerating worlds that could
+#: not have changed.
+#:
+#: **`corpus/__init__.py` stays, and it is the whole reason this is a narrowing rather than a
+#: rename.** It executes on any import of `corpus.world`, so a future edit to it can change a
+#: world even though it holds only a docstring today. Narrowing to `corpus/world` alone would
+#: have dropped it, and **under-covering is the direction that fails silently**: a mutation
+#: handed a world built before it reports `SURVIVED` while the thing it broke never ran.
+#: Over-covering costs minutes and announces itself; the trade is not symmetric and the list is
+#: not narrowed past what the import graph justifies.
+#:
+#: `tests/evals/test_uplift_cache.py` proves the coverage rather than asserting it: it walks the
+#: import closure of these three roots and requires every repository-local module in it to be a
+#: file this digest reads.
+#: **And one file that is not source.** `prepare()` calls `policy.contract_ladder()`, which
+#: reads `contracts/policies/ladder_policy@v1.yaml` at run time — the control arm of every
+#: fresh-markdown world, and therefore the markdown behaviour the whole ledger is a summary of.
+#: A digest over source files cannot see a value that arrives as **data**, and this one is the
+#: silent direction: change a rung, and every cached ledger describes a world with the old
+#: ladder while nothing recomputes anything to disagree with it.
+#:
+#: Driven rather than reasoned: editing one rung moved the policy and left the digest at
+#: `0b15f66b…`. It is one file rather than `contracts/`, because the rest of that directory
+#: reaches no world — and the test takes the path from `policy.LADDER_CONTRACT` rather than
+#: repeating it, so a contract that moves cannot leave this list pointing at the old one.
 DEPENDS_ON: tuple[str, ...] = (
-    "corpus",
+    "corpus/world",
+    "corpus/__init__.py",
     "evals/uplift/outcomes.py",
     "evals/uplift/reference.py",
+    "contracts/policies/ladder_policy@v1.yaml",
 )
 
 
+class DependencyMissingError(Exception):
+    """A `DEPENDS_ON` entry names nothing on disk, so the digest cannot be computed."""
+
+
 def _source_files() -> list[Path]:
+    """Every file the digest reads, or an exception — never a quietly shorter list.
+
+    An entry that matches nothing used to be skipped. That is the failure this whole module
+    exists to prevent, wearing the shape of a typo: `corpus/wolrd` would have produced a digest
+    over the two `evals/uplift` modules alone, every world would have looked unchanged forever,
+    and a mutation to the generator would have reported `SURVIVED` against a world built before
+    it. **An instrument that cannot answer raises rather than returning a smaller number** —
+    the rule `ops/figures.py` states, at the one place in this repository where the smaller
+    number is silently wrong instead of merely wrong.
+    """
     found: list[Path] = []
     for entry in DEPENDS_ON:
         path = REPO_ROOT / entry
@@ -69,6 +116,13 @@ def _source_files() -> list[Path]:
             found.extend(sorted(p for p in path.rglob("*.py") if "__pycache__" not in p.parts))
         elif path.is_file():
             found.append(path)
+        else:
+            raise DependencyMissingError(
+                f"DEPENDS_ON names {entry!r} and there is no such file or directory under "
+                f"{REPO_ROOT}. The digest would have been computed over what is left, every "
+                "world would read back as unchanged, and a mutation to the generator would "
+                "report SURVIVED while the thing it broke never ran."
+            )
     return sorted(found)
 
 
