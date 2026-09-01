@@ -67,9 +67,34 @@ _SEPARATORS = {"&&", "||", ";", "|", "&", "(", ")", "{", "}"}
 #: segment with a keyword and never reach the `git` test.
 _KEYWORDS = {"then", "do", "else", "elif", "!", "time", "exec", "nohup"}
 
-#: `git`'s own options, before the subcommand. These two take their value as the next token,
-#: so the token after them is never the subcommand.
-_TAKES_A_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
+#: `git`'s own options that take their value as the **next token**, so the token after them is
+#: never the subcommand. An omission here is not a missed target — it is a **missed commit**:
+#: `_is_git_commit` advances by one, reads the flag's value as the subcommand, and returns False.
+#:
+#: **Checked against `git help git` rather than written from memory**, which is how the three
+#: below were settled on 2026-09-01:
+#:
+#: * `--attr-source` and `--config-env` were **missing**. Both accept a space-separated value,
+#:   both let `git commit` through unseen, and both were verified by counting commits rather
+#:   than by reading an exit code;
+#: * `--exec-path` was **present and should not be**. Its value is optional and must be attached
+#:   with `=`, so `git --exec-path <path>` does not consume the path — listing it made the hunt
+#:   skip `commit` itself. Measured: `git --exec-path commit` exits 0 and **does not commit**,
+#:   which is what made an earlier probe report it as a hole.
+#:
+#: `tests/hooks/test_main_guard.py` holds this to git's behaviour over every option the manual
+#: documents, with **two** repositories — one is not enough, because an option that *redirects*
+#: leaves the watched repository's count unchanged and reads as harmless. That is how `-C` stayed
+#: invisible for this file's whole history.
+_TAKES_A_VALUE = {
+    "-C",
+    "-c",
+    "--git-dir",
+    "--work-tree",
+    "--namespace",
+    "--attr-source",
+    "--config-env",
+}
 
 #: Used only when the command does not tokenise — an unbalanced quote, most often. Coarser
 #: than the tokeniser and deliberately so: an unparsable command is the one case where

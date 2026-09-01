@@ -131,6 +131,54 @@ repository closed by putting the detector out of reach rather than by testing th
 ---
 
 ## Open
+**The shell surface of `main_guard`, and whether parsing a command is the right basis at all** ·
+found 2026-08-31 · by `holdout-e0` and oversight level 2 · *the git surface is closed; this half
+is a decision the author has deliberately not taken yet*
+The git-interface half is finished. `--attr-source` and `--config-env` were **missing** from
+`_TAKES_A_VALUE` and each let a `git commit` past unseen; `--exec-path` was **present and should
+not have been**, because its optional value must be attached with `=`. All three are settled
+against `git help git` rather than against memory, and
+`test_no_documented_option_lets_a_commit_past_the_guard` holds the file to git's behaviour over
+every documented option, with **two** repositories.
+
+*What is deliberately left open, and it is not an oversight.* **`cd` and `pushd` are not parsed at
+all.** `cd <a checkout on main> && git commit`, from a session on a branch, is allowed — and the
+commit **lands**, measured by counting rather than by reading a verdict. The mirror is refused
+wrongly. `pushd` is a second spelling and `(cd X; git commit)`, `cd` through a variable and
+`bash -c '…'` are the beginning of a third enumeration.
+
+*Why no list is being added for them.* Three enumerations were shown incomplete by measurement in
+one day — the target flags, the value-taking flags, and now the shell. **Adding two names to a
+third list, on the day three lists were shown incomplete, is the move this whole sequence is an
+argument against.**
+
+*The exposure, measured rather than assumed, which is what makes deferring it a decision.* The
+`main` ruleset is `enforcement=active` with **`bypass_actors: []`**, requiring `pull_request`,
+`non_fast_forward`, and the checks `gate`, `secrets` and `claims-complete` — read from the API, not
+quoted. So a commit reaching local `main` through any shell-surface hole **cannot reach `origin`**,
+by anyone. The cost is a local mess recoverable with `git reset`; it cannot be a published one.
+**The rule is enforced twice — imperfectly here, completely at the boundary that matters** — and
+this hook's job on that surface is to catch the mistake early rather than to be the thing that
+prevents it.
+
+*The question, which is the author's and is not answered here:* **is parsing an arbitrary shell
+command the right basis for the shell half**, given that three enumerations over it have each been
+found incomplete, that the guard is a speed bump with a human behind it, and that the ruleset
+already refuses the push? *Accept approximate, with the reason written down* and *no, and the
+answer is not another list* both have evidence behind them.
+
+*And the axis matters, because the obvious framing is wrong.* Classifying all nine defects two ways
+— **surface** (git's interface / the shell) against **family** (redirects the commit / hides it) —
+puts both families on **both** surfaces. So *targets are closeable, detection is not* does not hold:
+`cd` is a redirect and it is open; `--attr-source` was a hide and it is closed. The line falls
+between git's interface, which is documented and finite and has now been enumerated against, and
+the shell, which is neither.
+
+*Site:* `.claude/hooks/main_guard.py` :: `_SEPARATORS = {"&&", "||", ";", "|", "&", "(", ")", "{", "}"}`
+*Disposition:* the author's, deferred with the exposure measured — the fix is not a list, and which
+it should be is a design judgment with a person's name on it
+*Status:* open
+
 **`main_guard` is judged against something other than the command it refuses — twice** · found
 2026-08-31 · by `holdout-e0` and oversight level 2, measured by both
 **The hook is not changed here.** It enforces a rule its author reserved to himself, the harness
