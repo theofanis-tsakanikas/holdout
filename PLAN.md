@@ -1154,6 +1154,46 @@ the CI run is what settles those.**
 
 The suite is **994**.
 
+**The guard reads git's own list, and the shell half is left as a decision · 2026-09-01.**
+`ops/the-guard-reads-gits-own-list` closes the git-interface half of `main_guard`'s defects and
+**deliberately does not close the shell half**, which is filed with its exposure measured.
+
+**Two entries were missing and one was wrong**, settled against `git help git` rather than memory.
+`--attr-source` and `--config-env` each accept a space-separated value and each let a `git commit`
+past **unseen** — not the wrong repository, no refusal at all. `--exec-path` was present and should
+not have been: its value is optional and must be attached with `=`, so listing it made the
+subcommand hunt skip `commit` itself.
+
+**And `--exec-path` is why the count was three and is two.** An earlier probe read `exit 0` as
+*committed*; `git --exec-path commit` exits 0 and **does not commit** — it prints the path and
+stops. Counting commits instead of reading exit codes removed a hole that was never there. *A proxy
+for the question, failing for exactly the case under test.*
+
+**The anchor is outside the file now.** `test_no_documented_option_lets_a_commit_past_the_guard`
+asks one question over every option the manual documents — *did git commit, and did the guard see
+it* — and **classifies nothing**, so there is no taxonomy to drift. It uses **two** repositories,
+because an option that *redirects* leaves one repository's count unchanged and reads as harmless,
+which is how `-C` stayed invisible for this file's whole history. It fails against the previous
+hook, naming both escapes.
+
+**What is left open is a decision, not a gap.** `cd` and `pushd` are not parsed at all —
+`cd <a checkout on main> && git commit` from a branch session is allowed and **the commit lands**,
+measured by counting. No list is being added for them, because **three enumerations were shown
+incomplete by measurement in one day** and adding a fourth is the move the whole sequence argues
+against.
+
+The exposure is bounded and was read from the API rather than quoted: the `main` ruleset is active
+with **zero bypass actors**, so a commit reaching local `main` cannot reach `origin` by anyone. The
+rule is enforced twice — imperfectly here, completely at the boundary — and on that surface this
+hook's job is to catch the mistake early, not to be the thing that prevents it.
+
+**And the framing that looked obvious is wrong.** Classified two ways — surface against family —
+both families appear on **both** surfaces. *Targets are closeable, detection is not* does not hold:
+`cd` is a redirect and it is open; `--attr-source` was a hide and it is closed. The line falls
+between git's interface and the shell, and only the first has been enumerated against.
+
+The suite is **1001**.
+
 **The skill exists, and the column that says so had nothing checking it · 2026-09-01.**
 `docs/the-skill-exists` makes `CLAUDE.md`'s skills-table row true — `integration-review` moved from
 `T008` to **exists** when `#36` landed — and closes the gap that update revealed.

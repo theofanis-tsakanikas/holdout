@@ -13,6 +13,7 @@ only git can answer and stubbing it would test the stub.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -383,3 +384,92 @@ def test_an_executed_heredoc_keeps_its_body_matched(
     as a false positive is a refusal somebody later removes.
     """
     assert fire(HOOK, _bash(command, on_main)).code == 2
+
+
+# ------------------------------------ git's own list, not a memory of it, over two repositories
+#
+# Every defect in this file has been information that was already written down somewhere and that
+# nothing looked at: in the command, in another constant three lines up, or in `git help git`.
+# This is the last of those anchors moved outside the file.
+
+
+def _documented_options() -> list[str]:
+    """Every top-level option `git help git` documents, read from git rather than listed here."""
+    manual = subprocess.run(
+        ["git", "help", "git"],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, **_ISOLATED},
+    ).stdout
+    return sorted(
+        {
+            m.group(1)
+            for line in manual.splitlines()
+            if (m := re.match(r"^\s+(--?[A-Za-z][A-Za-z-]*)", line))
+        }
+    )
+
+
+#: A plausible value for the options that want one. An option absent here is probed bare, which
+#: is the case that matters for a flag whose value is optional.
+_A_VALUE_FOR = {
+    "-c": "user.name=t",
+    "--namespace": "n",
+    "--attr-source": "HEAD",
+    "--config-env": "user.name=GIT_AUTHOR_NAME",
+    "--list-cmds": "builtins",
+}
+
+
+def test_no_documented_option_lets_a_commit_past_the_guard(
+    tmp_path: Path, fire: Callable[..., Any]
+) -> None:
+    """Did a commit happen that the guard did not refuse — **wherever it landed**?
+
+    One question covering both families. All day on 2026-08-31 they were treated separately: an
+    option that **hides** a commit from the guard, and one that **redirects** it elsewhere. They
+    are two answers to the same question, and a probe watching **one** repository can only see
+    the first — a redirect leaves the watched repository's count unchanged and reads as *did not
+    commit*. That is how `-C` stayed invisible for this file's whole history, so there are two.
+
+    It classifies nothing. It does not ask whether an option takes a value; it asks whether git
+    committed and whether the guard saw it, which needs no taxonomy and therefore cannot drift
+    from one.
+
+    **It measures the git that is installed.** A version that adds a committing route turns this
+    red, which is the intent — and local and CI can legitimately disagree, which is stated here
+    rather than discovered.
+    """
+    here, elsewhere = (_repo(tmp_path / n, "main") for n in ("here", "elsewhere"))
+    for repo in (here, elsewhere):
+        _root_commit(repo)
+
+    def commits_in(repo: Path) -> int:
+        out = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            env={**os.environ, **_ISOLATED},
+        ).stdout.strip()
+        return int(out) if out.isdigit() else -1
+
+    escaped: list[str] = []
+    for option in _documented_options():
+        argv = [option] + ([_A_VALUE_FOR[option]] if option in _A_VALUE_FOR else [])
+        before = commits_in(here), commits_in(elsewhere)
+        subprocess.run(
+            ["git", *argv, "commit", "-q", "--allow-empty", "-m", "probe"],
+            cwd=here,
+            capture_output=True,
+            text=True,
+            env={**os.environ, **_ISOLATED},
+        )
+        if (commits_in(here), commits_in(elsewhere)) == before:
+            continue  # git refused it, so there is nothing for the guard to have missed
+        command = "git " + " ".join(argv) + " commit -m 'x'"
+        if fire(HOOK, _bash(command, here)).code != 2:
+            escaped.append(command)
+
+    assert not escaped, "these commit and the guard does not refuse them: " + "; ".join(escaped)
