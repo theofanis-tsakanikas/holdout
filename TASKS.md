@@ -427,6 +427,210 @@ in this phase, because the only evidence for a bigger threshold would be the mea
 the question. `docs/DECISIONS.md` carries the deferral with what the rate is a function of and what
 would give grounds to set one; its unlock is T008.
 
+**Phase 2 opens with CI rather than with Terraform, and the order is measured rather than felt.**
+`docs/FINDINGS.md` carries the disposition — *its own branch, before the first Terraform layer* —
+because phase 2 is where the push rate multiplies and CI is what every later phase is judged by.
+Rebuilding the instrument mid-phase risks the defect it protects against. Four atoms, and the
+first is not the one that was on the list: it was found by pairing the Actions run list on
+`headSha` while scoping the other three.
+
+```
+id            T00F          <- do this one first, of the four that open phase 2
+title         One tree, one run — ci.yml is entered twice for every branch push
+branch        ops/ci-runs-once-per-tree
+depends_on    —
+blocks        T00H
+closes        `on: push:` carries a branch filter, so a push to a branch with an open pull
+              request no longer fires BOTH the push and the pull_request event. Measured over
+              200 runs, 2026-08-27 to 08-31: 118 distinct head shas, 81 under both events,
+              ~58 h of redundant runner time in five days, 34.9 h of it claim-2 — 36% of all
+              successful claim-2 compute, and roughly 8x the cache over-coverage in T00G.
+              A guard that judges the trigger's EFFECT rather than its spelling: given the
+              parsed `on:` block, does a push to a non-main branch start this workflow? Four
+              filters that filter nothing are driven as attacks — no filter, `['**']`,
+              `[main, 'ops/*']`, and `branches-ignore` — because a guard keyed to the literal
+              line `branches: [main]` passes on three of them. Verified against `main`, where
+              the block parses as `{'push': None, …}` and the guard goes red.
+out_of_scope  The cache key (T00G), sharding (T00H) and the merge queue (T00I). The 90-minute
+              budget is NOT lowered: it is a ceiling against the slowest cold draw, and this
+              change does not move a cold draw.
+stop_at       When the fix and its guard land. What this SAVES is a prediction until a week of
+              runs exists on the other side of it — the 58 h is what was spent, not what comes
+              back, and no figure in the branch may say otherwise.
+review        yes
+status        open
+```
+
+**The second effect, and it is written down at the weaker strength the data supports.** Every
+context existed twice on every pull-request head sha — 36 of 36 merged pull requests — including
+all three the `main` ruleset requires. That is a live hazard and it was **never realised**: in zero
+of those 36 did a required context disagree with itself. Three self-disagreements exist in the
+sample and all three sit on superseded commits, so the ambiguity decided nothing. Whether the forge
+takes the latest check run or either one is **not established**, and the fix dissolves the question
+rather than answering it — after the filter, a head carries one run of each context. A first draft
+of this entry claimed *a gate whose verdict depends on which run the forge happens to read*; it was
+withdrawn against the merge heads before the branch was written, which is the register's rule
+arriving in time for once.
+
+```
+id            T00G
+title         The world cache key over-covers, and narrowing it is the dangerous direction
+branch        evals/cache-key-covers-the-world
+depends_on    —
+closes        `evals/uplift/cache.py`'s DEPENDS_ON stops taking all of `corpus/`. `corpus/real/`
+              is claim 1's and claim 7's corpus and cannot produce a byte of a world, yet a
+              commit touching it threw away every world ledger: 11 spurious invalidations over
+              71 claim-2 jobs at +18.4 min each (95% CI +13.5 to +23.2), ~3.4 h already spent.
+              The test DEMONSTRATES that the key still MOVES when world sources genuinely
+              change, against two commits that differ, rather than asserting it.
+out_of_scope  Lowering the 90-minute budget. The ceiling exists for the cold draw and the key
+              will still move — less often, which is the point.
+stop_at       When the key is narrowed and the both-directions test drives real files.
+review        yes
+status        open
+```
+
+**What it landed, and one thing the `closes` line did not ask for.** `DEPENDS_ON` becomes
+`("corpus/world", "corpus/__init__.py", "evals/uplift/outcomes.py", "evals/uplift/reference.py")` —
+15 files where it read 18. `corpus/__init__.py` is kept **by name**: it executes on any import of
+`corpus.world`, so narrowing to the subdirectory alone would have dropped it, and it holds only a
+docstring today, which is precisely why that looks safe and is not. The question is what *can*
+produce a world, not what happens to today.
+
+*The coverage is computed rather than declared.* `test_every_module_a_cached_artefact_is_produced_by_is_in_the_digest`
+walks the **import closure** of the three roots and requires every repository-local module in it to
+be a file the digest reads. It reaches **13 modules** and reports **11 missing** when `corpus/world`
+is dropped from the list, so it bites. That is a second implementation of *what produces a world*,
+in the sense `evals/README.md`'s rule 5 uses the words — not a list somebody keeps in step.
+
+*And a `DEPENDS_ON` entry that names nothing now raises.* It used to be skipped silently, which is
+this narrowing's own failure mode wearing the shape of a typo: `corpus/wolrd` would have digested
+the two `evals/uplift` modules alone, every world would have read back unchanged forever, and a
+mutation to the generator would have reported `SURVIVED`. **An instrument that cannot answer raises
+rather than returning a smaller number** — `ops/figures.py`'s rule, at the one site where the
+smaller number is silently wrong rather than merely wrong.
+
+*What the closure test cannot see, and what asking about it found.* A value reaching the
+world-producing path **as data rather than as an import** is invisible to an import walk by
+construction. Two exist, they fail in opposite directions, and the split between them is on the
+direction rather than on convenience:
+
+*(1) The ladder contract — closed here, because it is silent.* `prepare()` calls
+`policy.contract_ladder()`, which reads `contracts/policies/ladder_policy@v1.yaml` at run time:
+the control arm of every fresh-markdown world, and so the markdown behaviour the whole ledger is a
+summary of. Moving one rung changed the policy and left the digest where it was. Nothing recomputes
+anything that would disagree, so every consumer reads the same stale ledger and the run reports a
+world with the old ladder **in silence** — a gate disarmed. `DEPENDS_ON` gains **one file**, not
+`contracts/`, and the test takes the path from `policy.LADDER_CONTRACT` rather than repeating it,
+so a generator pointed elsewhere cannot leave the list behind.
+
+*(2) The metric rounding — filed, because it fails safe.* `agreement/walked` caches a value whose
+rounding arrives from the metric contract as an argument. The half it is compared against is
+computed fresh, so a stale entry produces a **red** `U10` rather than a silent pass. **The fix is a
+genuine widening with two candidate shapes and T00G is a narrowing**; shipping both would move the
+key in two directions at once and no measurement could say which did what.
+
+**A proven silent hole may not be declared as a limit by the branch claiming its coverage is
+computed.** That is what separated the two, and it is why (1) did not wait for its own branch.
+
+**The warning travels with this one and is the load-bearing half.** Over-covering costs time.
+**Under-covering serves a stale world and nothing goes red** — the mutation reports `SURVIVED`
+while the thing it broke never ran, which is a gate silently disarmed and the failure this
+repository has already paid for four times. `cache.py`'s own docstring names the opposite hazard
+and has the defect one directory in.
+
+```
+id            T00H
+title         Shard claim-2 across its six worlds
+branch        evals/claim-2-sharded
+depends_on    T00F
+closes        The six worlds run on six runners instead of one, with a combine step, because
+              the eval prints aggregates ACROSS worlds. Both CI invariants survive: `discover`
+              still finds targets by grep over the Makefile and the workflow still never lists
+              one, and `claims-complete` still sees every shard — a shard that silently does
+              not run is refused exactly as a skipped matrix is. Correctness is exact rather
+              than statistical: the sharded output equals the unsharded output BYTE FOR BYTE,
+              same sha256, no tolerance. Two runners in different regions 1.69x apart in wall
+              clock already produce byte-identical result lines, which is what makes that test
+              available.
+out_of_scope  Path filtering, refused by name in docs/FINDINGS.md: skipping claim-2 when only
+              documents change reintroduces a claim that silently does not run.
+stop_at       When the sharded and unsharded outputs are compared and equal.
+review        yes
+```
+
+**Why it depends on T00F rather than merely following it.** Concurrency, measured: queue delay
+median 3 s, peak **16 jobs simultaneous against a documented ceiling of 20**, and the 16 is what it
+is *because jobs double*. Six shards on top of the doubling exceed the ceiling, past which the wall
+clock stops improving and only the flight count grows. Removing the duplication is what makes the
+headroom exist.
+
+```
+id            T00I
+title         A merge queue — prepared, verified, and NOT applied
+branch        ops/merge-queue-prepared
+depends_on    T00F, T00H
+closes        The expensive matrix runs once on the merged result rather than on every push.
+              Two halves, and only the first is this repository's to make:
+              (1) `ci.yml` gains `on: merge_group`, without which the required contexts never
+                  run in the queue and every merge blocks forever;
+              (2) the `main` ruleset gains a `merge_queue` rule and LOSES
+                  `strict_required_status_checks_policy: true` — and THE TWO MOVE TOGETHER OR
+                  NEITHER MOVES. Strict mode is not only a cost. It is what guarantees a branch
+                  is tested against the `main` it will land on: a branch green against an older
+                  `main` can break `main` when merged, and strict mode is what stops that
+                  today. A queue provides the same guarantee by a different route, because it
+                  tests the MERGED RESULT. Clearing strict mode alone would trade a real
+                  guarantee for one re-run in five days, which is the worst available outcome
+                  and the one this atom could reach while looking like a simplification.
+out_of_scope  Applying (2). The ruleset IS oversight level 1 — required contexts `gate`,
+              `secrets`, `claims-complete`, zero bypass actors — and editing it is a change to
+              the forge rather than to this tree. No session applies it.
+stop_at       When (1) is in the tree and (2) is written up with the exact API call and its
+              verification, and PUT TO THE AUTHOR. A peer session cannot authorise it and this
+              session does not ask one to.
+review        yes
+```
+
+**And the cost case is measured now, because it did not survive being asked.** The disposition in
+`docs/FINDINGS.md` justified a queue on `#30`'s *two superseded runs*. **Those two were the push
+run and the pull_request run of one sha** — the duplication T00F removes — so that measurement is
+already spent and cannot be spent twice.
+
+*What is left was counted rather than argued.* Over the 200-run window, every branch's head shas
+ordered by first run, classified by the branch's own commit subjects and its merge-base:
+
+| transition | count |
+|---|---|
+| **forced update** — same work, new base | **1** |
+| the author changed the work | 49 |
+| amend or retry on the same base | 0 |
+
+**A merge queue removes the first row and nothing else.** One full matrix in five days.
+
+*The instrument is recorded because the first one was wrong.* `git patch-id` was tried first, on
+the reasoning that a rebase preserves patch-ids. It does not when the rebase overlaps what landed:
+it classified `contracts/floor-rule-id`'s second matrix as a content change, and
+`docs/FINDINGS.md` records that one as *forced by `bec0e7f` landing on main*. **A documented event
+is what caught it.** The subject-plus-base discriminator reproduces that branch exactly — 1 forced,
+2 content — which is why it is the one reported. The earlier timing signal gave *at most 17*; that
+was a ceiling over coincidence and is superseded by a count.
+
+*So T00I is not justified on measured cost today, and the honest ask says so.* Its case is that it
+removes a **class** of wasted run rather than a quantity of them, and that the quantity is a
+function of the merge rate — which phase 2 raises and which nothing has yet measured at that rate.
+**That is a forward-looking argument and must be put to the author as one**, not as a saving. The
+saving was 58 hours and T00F already took it.
+
+**And the standing limit, which is the reason this atom is shaped as two halves.** What the ruleset
+requires is a fact about the forge that no file in this tree carries, `make check` cannot read, and
+no amount of reading `ci.yml` reveals. `docs/reviews/phase-1.md` §2d is what it costs to assume
+otherwise: the ruleset required `gate`, the claims left `gate` for their own matrix, and **a pull
+request with a red `claim-2` merged** for two days with nothing able to say so. A merge queue
+configured wrong fails in the same direction — a required context satisfied by a run that did not
+test the merged result — so (2) is verified against the API and never against a memory of it.
+
+
 ---
 
 ## Phase 1 — the core, the contracts, and the hardest claim

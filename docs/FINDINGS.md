@@ -650,6 +650,195 @@ model is open anyway, and separating identity from spelling is cheap while it is
 expensive at any other time. The two travel together
 *Status:* open
 
+**Two values reach the world cache as data rather than as an import, and one of them is silent**
+· found 2026-09-01 · by T00G, and the second only because the reviewing session asked whether the
+first was alone
+`evals/uplift/cache.py` keys its entries on a digest of every **source file** a cached artefact was
+produced by. That is the right rule for a ledger, which is a pure function of the world and of
+`outcomes.py`. It is not the whole rule for one entry.
+
+`agreement/walked` caches `reference.compute(run, metric=metric)`, and `reference.py` finishes with
+`metric.rounding.canonical_integer(total)`. **The rounding arrives as an argument, out of
+`contracts/metrics/`, not as an import** — so a change to the metric contract leaves that entry in
+the cache while the value it stands for has moved. The key carries `world_id`, `world_seed` and
+`scale.name`, and nothing about which metric was asked for.
+
+*What it does today, measured against the code rather than feared.* The half it is compared with,
+`grouped = outcomes.cell_margins(ledger, metric.rounding)`, is computed **fresh** on every run — the
+*ledger* is cached, the margins are not. So after a rounding change `U10` compares a fresh value
+against a stale one and **goes red**. That is the safe direction: a false failure, not a silent
+pass, and it is why this is filed rather than fixed on sight.
+
+*Why it is still a defect.* `cache.py`'s docstring says the exception *"is not a list of file paths
+somebody keeps up to date"* and that changing any byte of what produced an artefact moves the key.
+For this entry that is not true, and the gap is invisible to the very test written to close it:
+`test_every_module_a_cached_artefact_is_produced_by_is_in_the_digest` walks the **import** closure,
+and an argument is not an import. The test says so in its own docstring rather than leaving the
+limit to be found.
+
+*And the shape is the one this repository keeps meeting.* Not a claim checked against the wrong
+artefact — **a rule whose scope is the mechanism its author had in mind.** *Every source file it was
+produced by* is a complete rule for values produced by code alone, and this value is produced by code
+**and a contract**. The digest is a second implementation of *what could change this*, and it is
+implemented over one of the two.
+
+*The fix is a widening and does not travel with a narrowing.* Two candidates, and the choice is not
+obvious: put `metric.id` and `metric.version` **in the key**, which is local, precise, and rests on
+`make contracts` refusing a metric whose arithmetic moved without a version; or add `contracts/` to
+`DEPENDS_ON`, which is blunter, invalidates every world on any contract edit, and is the
+over-coverage `cache.py` already argues against one directory in. **T00G is a narrowing**, and
+shipping a widening in the same branch is how a cache change stops being reviewable — the two move
+the key in opposite directions and a single measurement could not tell which one did what.
+
+**And then the question that found the other one.** The reviewing session asked whether the
+rounding was the only member of its class — *anything reaching the world-producing path as data
+rather than as an import* — and said plainly it was asking rather than asserting, because inferring
+what a generator reads from what generators usually read is the move that produced *matrix legs*.
+
+**It was not alone, and the second one is worse.** `corpus/world/__init__.py`'s `prepare()` calls
+`policy.contract_ladder()`, which reads `contracts/policies/ladder_policy@v1.yaml` at run time —
+**the control arm of every fresh-markdown world**, and therefore the markdown behaviour the entire
+ledger is a summary of. Driven rather than argued: moving one rung from `depth_pct: 20` to `25`
+changed the policy and left the digest at `0b15f66b64bc0b4e69b6ab44decb144a`.
+
+*The two fail in opposite directions, which is the whole reason they are one entry and not two.*
+The rounding gap is compared against a half computed **fresh**, so a stale entry produces a red
+`U10` — annoying, visible, safe. The ladder gap has nothing to disagree with it: every consumer
+reads the same stale ledger, and the run reports a world built with the old ladder **in silence**.
+That is a gate disarmed, which is the failure this repository has already paid for four times.
+
+*So the ladder is closed inside T00G and the rounding is not, and the split is on the direction
+rather than on convenience.* A proven silent hole is not something a branch may declare as a limit
+while claiming its coverage is computed — that would be prose asserting a check nobody wrote, in
+the branch whose subject is exactly that. The rounding stays open because it fails safe and because
+its fix is a genuine widening with two candidate shapes.
+
+*What closing it looks like, so it is not a second list.* `DEPENDS_ON` gains **one file**, not
+`contracts/` — the rest of that directory reaches no world — and
+`test_the_contract_the_generator_reads_is_taken_from_the_generator` takes the path from
+`policy.LADDER_CONTRACT` rather than repeating it, so a generator pointed somewhere else cannot
+leave the list behind. That is the second-registry problem one layer down, refused the same way.
+
+*Site:* `evals/uplift/agreement.py` :: `        cache.key("agreement/walked", world_id, world_seed, scale.name),`
+*Disposition:* the **ladder half is closed on T00G**; the rounding half is its own branch,
+unlocked by T00G landing — after which the key has one meaning and a widening can be measured
+against it rather than through it
+*Status:* open
+
+**`ci.yml` is entered twice for every branch push** · found 2026-09-01 · by this session, while
+scoping the other three CI items — and the pair was already in this register under another name
+`on: push:` carried no branch filter while `pull_request` was scoped to `main`. A push to a branch
+with an open pull request fired **both**, so the whole workflow ran twice for one sha — not two
+matrix legs, two workflow runs, seconds apart.
+
+*The measurement, from the run list paired on `headSha`:*
+
+```
+gh run list --workflow=ci --limit 200 --json databaseId,event,headSha,conclusion,createdAt
+```
+
+200 runs, 2026-08-27 to 08-31 — 118 distinct head shas, **81 of them under both events**. Job
+timing from `/actions/runs/{id}/jobs`:
+
+```
+across the 81 doubled shas:  push 586 jobs 3542 min · pull_request 586 jobs 3478 min
+one whole side redundant:    ~58 h of runner time in five days
+of which claim-2 alone:      2092 min = 34.9 h
+successful claim-2 jobs:     n=90, 78.4 h; 35 shas succeeded under both events
+                             → 27.9 h duplicated = 36% of all successful claim-2 compute
+```
+
+**Roughly 8x the cache over-coverage**, which is 11 spurious invalidations at +18.4 min = 3.4 h over
+the same period, and which was the item ranked first when the work was scoped.
+
+*The second effect, stated at the strength the data carries and no higher.* Every context existed
+twice on every pull-request head sha — `gh api /repos/.../commits/<sha>/check-runs` returns 20, every
+name doubled, including all three the `main` ruleset requires. So each required context was resolved
+between two check runs of one name from two runs of one tree.
+
+**The hazard was never realised.** All 36 merged pull requests carried doubled contexts at their head
+sha, and in **zero** did a required context disagree with itself. Three self-disagreements exist —
+`gate` twice, `claim-1` once — and **all three sit on commits superseded before the pull request
+merged**, so the ambiguity decided nothing. Whether the forge takes the latest check run or either
+one is **not established here and is not guessed at**: after the filter a head carries one run of
+each context and the question cannot arise. **The fix dissolves it rather than answering it**, which
+is the better outcome and should be read as one — nobody later needs to know how it would have
+resolved.
+
+*The first draft of this entry did not say that.* It said *a gate whose verdict depends on which run
+the forge happens to read*, and the reviewing session restated it back in stronger terms still. It
+was withdrawn against the 36 merge heads before the branch was written. **Agreement from the
+reviewer is exactly the moment a finding stops being examined**, and that is the only reason this
+paragraph is here.
+
+*And the pair was already in this register, measured, under a description that hid it.* The entry
+below reads *"each being one commit's two matrix legs, same tree, same push, same cache key"* and
+names runs `33358845044, 33358846344` at 1.01x apart. Those two are the **push** run and the
+**pull_request** run of `7b1fd6c`. The figures are right and the conclusion drawn from them — that
+the distribution to size a budget against is the distribution over runners — survives untouched and
+is if anything strengthened, since two runs on two runners is exactly what they are. What was wrong
+is the phrase *two matrix legs*: it named the observation correctly and made the reason for there
+being two invisible. **Nobody asks why a pair is a pair when the word for it already implies an
+answer.**
+
+*And the first draft of the fix had the defect it was written about, found within the hour by
+its own successor.* It wrote `pull_request: branches: [main]` — the spelling every example uses.
+With `push` scoped to `main`, a pull request opened against **any other base** then matched
+neither event and got **no CI at all**: `#40`, stacked on `#39`, reported *no checks reported on
+the branch*, and the unscoped `push` had been covering that case by accident until an hour
+earlier.
+
+**The exposure paragraph was right about what it examined and wrong about what exists.** It
+measured *a push with no pull request* — 3 of 118 shas — and never asked about *a pull request
+whose base is not `main`*. Stacking one reviewed piece of work on another is this repository's own
+practice, so the uncovered case was not exotic; it was the next branch. `pull_request` therefore
+carries **no** branch filter, which costs nothing and doubles nothing, because `push` fires only
+on `main`.
+
+*It is the eighth form of a guard tested by its author, and the sharpest available here:* the
+branch whose subject is *a gate reports on what it examined* shipped an exposure claim measured
+over the shape its author pictured. `tests/ops/test_ci_triggers.py` now parametrises the base over
+`main` **and** a working branch, so the case is driven rather than assumed.
+
+**And the general form is one turn tighter than that, which is worth separating because it is not
+the same rule.** *A gate reports on what it examined* is about a **check's population**. This is
+about a **change's obligations**:
+
+> **It enumerated what the change stops firing, and not what the change still has to fire.**
+
+*A push with no pull request* — 3 of 118 — is a count of what the filter **removes**. *A pull
+request whose base is not `main`* is a case the filter had to keep **covering**, and did not. Two
+different questions, and only the first was asked. **When a trigger is narrowed, the enumeration
+that matters is what must still run.**
+
+*The mechanism that caught it earns its own line, because nothing else would have.* `#40` existed
+to be **stacked on `#39`**, so the uncovered case was produced by this repository's own working
+practice within the hour. A change that shipped alone would have hidden it until the next time two
+pieces of work stacked — and no reading found it, including a review that had approved the
+paragraph.
+
+*And the fix retires an instrument, which is named here rather than discovered later.* The
+duplication was two independent runs of one tree on two runners, free, on every push. It is what
+established that this machinery is deterministic across machines, and it is where every same-tree
+spread figure in the record came from. **After the filter the pairs stop being produced.** The
+evidence stays valid and becomes historical; reproducing it deliberately is `workflow_dispatch` on
+the same sha, twice.
+
+**And the register under-counted its own instrument by seven-fold.** This entry reasoned from two
+pairs and the reviewing session recalled five. Re-pulled from the same 200-run sample, `claim-2`
+succeeded under both events on **35 shas** — 35 same-tree, two-runner comparisons, ratio min 1.00,
+median 1.10, max 1.69. The conclusion they were used for is unchanged and better supported. What is
+new is that a measurement nobody had to ask for was arriving on every push and being noticed one
+time in seven, which is the same shape as the pair itself: **the thing that goes unexamined is not
+the thing that is hidden, it is the thing that arrives without being requested.**
+
+*Site:* `.github/workflows/ci.yml` :: `  push:`
+*Disposition:* `ops/ci-runs-once-per-tree`, `TASKS.md` :: `T00F` — first of the four atoms that open
+phase 2, and before `T00H` for a structural reason as well as a cost one: concurrency peaks at 16
+jobs against a ceiling of 20 *because jobs double*, and six shards do not fit until the doubling is
+gone
+*Status:* open
+
 **`claim-2` costs an hour and the whole matrix re-runs on every push** · found 2026-08-31 · by the
 author, and decided rather than deferred
 `claim-2` runs on one machine at **32m17s to 1h18m18s** against a 90-minute timeout, and every
@@ -661,6 +850,13 @@ answer taken: **the cost per run is justified and the dead time is not.**
 *And the within-commit spread is a draw, not a constant — which is what the second pair
 established.* Two pairs are now measured, each being one commit's two matrix legs, same tree, same
 push, same cache key:
+
+> **Restated 2026-09-01: they are not matrix legs.** Runs `33358845044` and `33358846344` are the
+> **push** run and the **pull_request** run of `7b1fd6c` — the whole workflow entered twice for one
+> sha, because `on: push:` carried no branch filter. The numbers stand and the conclusion stands;
+> what does not is the word that made the pair look like a property of the matrix. **A description
+> that already implies an answer is where nobody asks the question** — the finding above is what it
+> hid, and it is ~8x this entry's own cache item. The prior wording stays per doctrine rule 4.
 
 | commit | legs | apart |
 |---|---|---|
