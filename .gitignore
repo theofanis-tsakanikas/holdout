@@ -33,6 +33,12 @@ htmlcov/
 # convention corpus/world/README.md uses.
 .worlds/
 
+# One shard's draws, on the way to whatever combines them. Not the world cache and not keyed
+# like one: a world is a pure function of (world, seed, scale), while a draw is the whole
+# system run once against a lottery seed. `make claim-2-shard SHARD=i/N` writes here and
+# `make claim-2-combine` reads it.
+.shards/
+
 # Editors / OS
 .DS_Store
 .idea/

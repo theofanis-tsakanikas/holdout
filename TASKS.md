@@ -622,6 +622,106 @@ function of the merge rate — which phase 2 raises and which nothing has yet me
 **That is a forward-looking argument and must be put to the author as one**, not as a saving. The
 saving was 58 hours and T00F already took it.
 
+
+**What it landed, and the number is measured rather than projected.** Eight interleaved shards of
+the expanded draw list, a combine step that runs the checks **once over every draw**, and both
+wired into `ci` without the workflow naming a claim or a shard count — `discover` derives
+`CLAIM_2_SHARDS` from the target name and reads it out of the `Makefile`, the way it already reads
+the target names.
+
+*The split is not by world, and the measurement is why.* Six worlds is the obvious unit and the
+wrong one: the harness decomposes into **18 tasks** carrying **456 draws**, and eight of those
+tasks hold the 400 K-draws. The heaviest task **alone** is 240.3s against 270s for the whole
+parallel harness — 89% of the wall clock is one task — so no arrangement of whole tasks beats it.
+The unit is the draw.
+
+*And the slices are interleaved rather than contiguous.* Per-draw cost varies about tenfold across
+tasks — W1's heaviest at 4.8s, W2's lightest at 0.45s — and the expanded list is ordered by task,
+so a contiguous slice is the **worst** distribution available. Measured over eight interleaved
+shards: **38 43 39 42 37 40 43 41 seconds, max over min 1.16**.
+
+*The guarantee is exact rather than statistical.* The combined output equals the unsharded output
+**byte for byte**, driven at 1, 3 and 8 shards, and end to end through the real `Makefile` targets:
+eight `claim-2-shard` runs then `claim-2-combine`, green at 13/13 checks and 8/8 mutations.
+
+*Completeness is guaranteed where `report()` cannot do it.* Every rate has a count of draws as its
+denominator, so a missing shard produces a plausible number rather than an error — `U1`'s `8/200`
+over 150 draws still prints. `gather` refuses a position that never arrives or arrives twice;
+`shards.parts` checks the files as a **set** — different trees by digest, disagreeing counts, and a
+set that is not all of them, which is the shape a CI matrix produces when one leg fails.
+
+*What the mutation ledger caught, and it was right to.* `claim-2-combine` runs claim 2's mutations
+and so does `claim-2`, which counted by name is the duplicate the accountant exists to refuse. The
+answer was not to widen the assertion: `claim-2-combine` **is** claim 2's target in the sharded
+arrangement, so ownership is now counted over a **closed** list of arrangement suffixes, and
+`tests/evals/test_ledger.py` drives both halves — a shard and a combine are one owner, and a
+*different* claim's target running them is still two.
+
+*What is cached rather than removed, said plainly because the atom would otherwise read as
+finished.* A cold combine is **596s** — `_truths` 411, `U11` 195, `U10` 51 — because the
+counterfactual generations it needs are produced by no shard. Two key families with one writer each
+and the same digest make it a bounded penalty paid once per world-source change rather than a
+partial cache silently regenerating. `docs/FINDINGS.md` carries the removal and the reason it is
+safe.
+
+```
+id            T00J
+title         The counterfactual generations move into the shards
+branch        evals/truths-in-the-shards
+depends_on    T00H
+closes        The combine job stops generating counterfactual worlds. `_truths`'s expensive
+              half — `counterfactual_unit_weeks` — runs in the shards, which already have
+              every world warm because the slices are interleaved. The combine keeps choosing
+              the units over the WHOLE set, so the byte-identical comparison is unchanged and
+              is what proves the move.
+              Measured before: a cold combine is 596s, of which _truths is 411s. A cold run is
+              cold BECAUSE the corpus or the generator changed, which is the run where every
+              shard is cold too and the parallel phase is worth the most — so this removes a
+              serial tail from exactly the runs the 90-minute ceiling exists for.
+out_of_scope  The agreement checks (U10, U11), which take no records at all and want their own
+              shard rather than a shard's leftovers. 246s of the 596.
+stop_at       When a cold combine is seconds and the output is still byte-identical.
+review        yes
+status        open
+```
+
+**Why it is safe, recorded here because it is not obvious and was nearly the reason not to do it.**
+`_truths` takes its units from the **globally-first** record with outcomes, so a shard computing
+truths from its own interleaved subset would pick a different record, different units, a different
+truth, and the comparison would be gone. **But the expensive half takes no units:**
+`counterfactual_unit_weeks` returns the full control and treatment maps and
+`average_treatment_effect` filters them afterwards. The generation moves; the choice of units does
+not.
+
+```
+id            T00K
+title         Shard claim 2's mutations
+branch        evals/mutations-sharded
+depends_on    T00H
+closes        `evals/gate_proof`'s nine runs — one baseline and eight mutations — stop being
+              strictly serial. They are the other half of `make claim-2` and, measured on the
+              runner from the timestamped log of job 99702683729, they are 22m01s of its
+              50m44s: harness 01:18:52 -> 01:47:34, mutations 01:47:34 -> 02:09:36.
+              Nine near-equal units, so the balance interleaving had to buy for the draws is
+              free here.
+out_of_scope  Anything about the ledger's ownership rule, which T00H already answered.
+stop_at       When the sharded mutation report equals the unsharded one exactly.
+review        yes
+status        open
+```
+
+**And the reason this is a separate atom rather than part of T00H.** The two halves have different
+mechanisms and different failure modes, and folding them together would mean one branch in which
+two measurements cannot be separated — the same argument this repository has already made twice
+about a widening and a narrowing in one diff. **T00H delivers a number and so will this.**
+
+*One thing the laptop would have got wrong, recorded because it nearly did.* Measured warm on a
+fourteen-core laptop the mutations are **59%** of the target and the harness 41%; measured on the
+four-core runner the harness is **57%** and the mutations 43%. **The ratio inverts**, so a session
+choosing which half to shard from its own machine would have chosen the wrong one. It is
+`CLAUDE.md`'s hardware rule arriving in a decision about which work to move rather than about a
+number.
+
 **And the standing limit, which is the reason this atom is shaped as two halves.** What the ruleset
 requires is a fact about the forge that no file in this tree carries, `make check` cannot read, and
 no amount of reading `ci.yml` reveals. `docs/reviews/phase-1.md` §2d is what it costs to assume

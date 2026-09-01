@@ -725,6 +725,53 @@ unlocked by T00G landing — after which the key has one meaning and a widening 
 against it rather than through it
 *Status:* open
 
+**The combine job's worlds are disjoint from every shard's** · found 2026-09-01 · by T00H, from
+measuring a cold combine rather than reasoning about one — so sharding splits the world cache
+along with the phases
+`make claim-2`'s draws now run on eight machines and are judged on one. The judging step is not a
+merge: `report()` calls `_truths()`, which generates **counterfactual** worlds — a control-arm and
+a treatment-arm generation per world seed for W6, W4 and W5 — and the agreement checks, which
+generate and then walk five million events.
+
+*Measured on this repository's corpus:*
+
+```
+warm combine                       1s
+cold combine                     596s     _truths 411s · U11 195s · U10 51s
+whole unsharded harness, warm    270s
+```
+
+**A cold combine costs more than twice the entire run it was meant to speed up.** Both cold and
+warm combines are byte-identical to the unsharded baseline, so nothing is wrong with the
+arithmetic; it is entirely the world cache.
+
+*And the diagnosis is sharper than the one two sessions had reached independently.* We both said
+*the cache is partial* and both proposed per-shard keys. Per-shard keys do not fix this: **no
+shard's cache can contain what the combine needs**, because a shard builds a fixture and draws
+against it while the counterfactual generations are different entries entirely. It is not that the
+cache is partial. **The combine's work is disjoint from every shard's.**
+
+*Today's unsharded run hides it* by doing draws and truths in one process, so `.worlds` ends up
+holding both and the next run restores everything. Splitting the phases splits the cache with them.
+
+*What T00H does, and what it does not.* Two key families with one writer each — per-shard for the
+draw phase, one for the combine, **the same digest in both** — so the tail is **cached rather than
+removed**, paid once per world-source change. `tests/ops/test_ci_sharding.py` drives six attacks
+against those keys.
+
+*What would remove it, with the reason it is safe, so nobody has to rediscover it.* Move the
+counterfactual generations into the shards. That looks unsafe because `_truths` takes its units
+from the **globally-first** record with outcomes, and a shard holds an interleaved subset — a
+different first record, different units, a different truth, and the byte-identical comparison
+gone. **But the expensive half takes no units at all:** `counterfactual_unit_weeks` returns the
+full control and treatment maps and `average_treatment_effect` filters them afterwards. So a shard
+can generate the maps and the combine can still choose the units over the whole set.
+
+*Site:* `.github/workflows/ci.yml` :: `          key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}-combine`
+*Disposition:* its own branch, unlocked by **T00H landing** — after which the key families exist
+and a change that moves work between phases can be measured against them rather than through them
+*Status:* open
+
 **`ci.yml` is entered twice for every branch push** · found 2026-09-01 · by this session, while
 scoping the other three CI items — and the pair was already in this register under another name
 `on: push:` carried no branch filter while `pull_request` was scoped to `main`. A push to a branch

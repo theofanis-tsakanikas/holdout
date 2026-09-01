@@ -26,6 +26,7 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
         expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 \
+        claim-2-shard claim-2-combine \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
 
@@ -139,6 +140,38 @@ claim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
 # that is a digest, not a list: see evals/uplift/cache.py.
 claim-2:  ## claim 2 — no uplift without a valid holdout, and A/A holds against alpha
 	$(RUN) python -m evals.uplift
+	$(RUN) python -m evals.gate_proof --claim 2
+
+#: How many machines claim 2's draws are produced on. **Declared here and nowhere else**, so
+#: `ci` reads it the way it reads the target names — by grepping this file — and the workflow
+#: goes on naming no claim. A second registry of which claims are sharded, kept by hand in a
+#: file no test can see, is the shape `discover` exists to refuse.
+#:
+#: Eight, and the number is chosen by the concurrency ceiling rather than by the work: a run is
+#: ten jobs today, sharding makes it `9 + N + 1`, and this account's documented ceiling is
+#: twenty. Eight fits one pull request with headroom and two do not, which matches the
+#: one-branch-at-a-time practice this repository already follows.
+#:
+#: What it buys, measured on this repository's own corpus rather than projected: eight
+#: interleaved shards at 38 43 39 42 37 40 43 41 seconds, max over min **1.16**, against 270s
+#: unsharded. The balance is what interleaving buys — a contiguous split would put W1's 200
+#: draws on one machine at 4.8s each and a handful of W2's on another at 0.45s.
+CLAIM_2_SHARDS := 8
+
+#: Where a shard leaves its draws and where the combine step looks for them. Never committed —
+#: `.gitignore` carries it — and it holds draws rather than worlds, so it is not the world
+#: cache and is not keyed like one.
+SHARD_DIR ?= .shards
+
+claim-2-shard:  ## one slice of claim 2's draws — SHARD=i/N, written to $(SHARD_DIR)
+	@test -n "$(SHARD)" || { echo "claim-2-shard needs SHARD=i/N, e.g. SHARD=3/8"; exit 2; }
+	$(RUN) python -m evals.uplift --shard $(SHARD) --out $(SHARD_DIR)/uplift-$(subst /,-of-,$(SHARD)).pickle
+
+# The checks run **once, over every draw**, so sharding cannot change a rate by changing what a
+# denominator is computed over. `gather` refuses a set that is not the whole one rather than
+# averaging over what arrived, because `U1`'s `8/200` computed over 150 draws is still a number.
+claim-2-combine:  ## claim 2's checks over every shard's draws, then the mutations
+	$(RUN) python -m evals.uplift --combine $(SHARD_DIR)/*.pickle
 	$(RUN) python -m evals.gate_proof --claim 2
 
 # Claim 3 is the one door with no key. The eval is seconds rather than minutes -- a chain is

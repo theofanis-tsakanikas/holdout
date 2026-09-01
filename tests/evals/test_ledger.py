@@ -271,3 +271,63 @@ def test_every_check_the_detector_declares_about_itself_carries_a_reason() -> No
     inside = [d for d in declared_checks() if d.where.startswith("evals/gate_proof/")]
     assert inside, "the scan no longer reaches the detector's own tree"
     assert all(d.unarmed_because for d in inside), [d.id for d in inside if not d.unarmed_because]
+
+
+# ------------------------------- one claim, two arrangements — and the line between them
+
+
+def test_a_shard_and_a_combine_are_one_owner_rather_than_two() -> None:
+    """Sharding gave one claim two Makefile routes to the same mutations.
+
+    A laptop runs `claim-2` whole; CI runs the shards and then `claim-2-combine`, which is where
+    the mutations run on that path. Counted by name they look like the duplicate this check
+    exists to refuse, and widening the assertion to let them through would have removed the
+    check rather than answered it. So the names are reduced to what they are an arrangement of.
+    """
+    targets = _makefile("""\
+        claim-1:
+        \t$(RUN) python -m evals.gate_proof --claim 1
+
+        claim-1-shard:
+        \t$(RUN) python -m evals.uplift --shard $(SHARD) --out x
+
+        claim-1-combine:
+        \t$(RUN) python -m evals.gate_proof --claim 1
+        """)
+    check = ledger.check_every_mutation_is_owned_once([_mutation()], targets)
+    assert check.passed, check.counterexamples
+
+
+def test_a_different_claim_running_them_is_still_two_owners() -> None:
+    """The half the collapse must not swallow, driven rather than asserted in a docstring.
+
+    `owner_name` strips a declared suffix and never a different stem, so `gate-proof` running
+    claim 1's mutations is still exactly what it was before sharding existed: two owners.
+    """
+    targets = _makefile("""\
+        claim-1:
+        \t$(RUN) python -m evals.gate_proof --claim 1
+
+        claim-1-combine:
+        \t$(RUN) python -m evals.gate_proof --claim 1
+
+        gate-proof:
+        \t$(RUN) python -m evals.gate_proof --claim 1
+        """)
+    check = ledger.check_every_mutation_is_owned_once([_mutation()], targets)
+    assert not check.passed
+    assert "run by claim-1, gate-proof" in check.counterexamples[0]
+
+
+def test_only_the_declared_suffixes_collapse() -> None:
+    """A target that merely *starts* with a claim's name is not an arrangement of it.
+
+    `claim-1-extra` would be a second target running claim 1's mutations, and collapsing it
+    would hide exactly what the duplicate check is for. The list is closed and narrowing it is
+    the safe direction.
+    """
+    assert ledger.owner_name("claim-2-shard") == "claim-2"
+    assert ledger.owner_name("claim-2-combine") == "claim-2"
+    assert ledger.owner_name("claim-2") == "claim-2"
+    assert ledger.owner_name("claim-2-extra") == "claim-2-extra"
+    assert ledger.owner_name("gate-proof") == "gate-proof"
