@@ -531,8 +531,14 @@ closes        The expensive matrix runs once on the merged result rather than on
               (1) `ci.yml` gains `on: merge_group`, without which the required contexts never
                   run in the queue and every merge blocks forever;
               (2) the `main` ruleset gains a `merge_queue` rule and LOSES
-                  `strict_required_status_checks_policy: true` — the setting that forced
-                  `contracts/floor-rule-id`'s second matrix, and which the queue replaces.
+                  `strict_required_status_checks_policy: true` — and THE TWO MOVE TOGETHER OR
+                  NEITHER MOVES. Strict mode is not only a cost. It is what guarantees a branch
+                  is tested against the `main` it will land on: a branch green against an older
+                  `main` can break `main` when merged, and strict mode is what stops that
+                  today. A queue provides the same guarantee by a different route, because it
+                  tests the MERGED RESULT. Clearing strict mode alone would trade a real
+                  guarantee for one re-run in five days, which is the worst available outcome
+                  and the one this atom could reach while looking like a simplification.
 out_of_scope  Applying (2). The ruleset IS oversight level 1 — required contexts `gate`,
               `secrets`, `claims-complete`, zero bypass actors — and editing it is a change to
               the forge rather than to this tree. No session applies it.
