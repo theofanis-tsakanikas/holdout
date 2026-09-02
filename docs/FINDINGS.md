@@ -1749,6 +1749,41 @@ reached. A probe built to test an assumption carried one of its own, in the colu
 whole point of it. It is recorded because it is the same defect as the entry it was measuring, one
 layer out, and because the corrected probe computes lexability instead of labelling it.
 
+**Three doors, and the third one is priced rather than argued.** Proposed by `projects-0a`; the
+figures are this branch's.
+
+1. **Teach the fallback to find `-C`.** Refused: a second enumeration kept in step by memory, in the
+   file that has had exactly that defect three times.
+2. **Leave it.** Row A stands.
+3. **Refuse when the command does not lex.** *Not* find the target in a command we could not parse —
+   that is door 1 wearing a disguise — but **a commit whose target cannot be determined is
+   refused.** No enumeration at all, and fail-closed is the direction this repository takes
+   everywhere else. Row A becomes REFUSED, which is the whole point; row C is already REFUSED and
+   does not move.
+
+**Door 3's cost is friction and it is measurable, so it was measured** rather than described.
+Every commit on `main` was rebuilt into the two command shapes a session actually writes and put
+through the hook's own `without_written_heredocs` + `_segments` — the hook lexes the *command* and
+never the message, so the message alone answers nothing:
+
+| the shape a session writes | would not lex |
+|---|---|
+| `git commit -q -F - <<MSGEOF` … `MSGEOF` | **34 of 43 · 79.1%** |
+| `git commit -m "<subject>"` | **0 of 43 · 0.0%** |
+
+**So the price is not "79% of commits refused". It is "79% of commits would have to be written
+with `-F <file>` instead of a heredoc"** — which lexes, costs one extra file, and is the workaround
+already recorded below. A subject line passed with `-m` never breaks at all: the apostrophes sit
+inside double quotes, which is why the naive reading of this defect gets it backwards, and why the
+first probe did.
+
+**And the 79% is a property of this repository rather than of git.** These messages are unusually
+prose-heavy by house style — apostrophes, em dashes and quoted sentences in every body — so the
+figure is close to a ceiling for the shape, not a floor. What it does establish is that door 3
+would be felt on nearly every commit here, which is a real cost and is the author's to weigh
+against a guard that currently lets the one thing it exists to stop through a door the file itself
+called *worse*.
+
 *Site:* `.claude/hooks/main_guard.py` :: `    return [None] if _COARSE.search(command) else None`
 *Site:* `.claude/hooks/main_guard.py` :: `#: prose inside a heredoc, and a heredoc with an apostrophe in it is exactly what unbalances`
 *Disposition:* **the author's** — a hook enforces a rule he reserved to himself, and the harness
