@@ -1489,13 +1489,34 @@ procedure and then propagate it deliberately.
 ```
 id            T009
 title         pipelines/ingest — Zerobus driver + Lakeflow Connect definitions
-branch        pipelines/ingest
+branches      pipelines/ingest · pipelines/ingest-bulk-load
 depends_on    T008
 closes        A driver that writes as the corpus's 100 stores would: correct distribution over
               time, late arrivals, duplicates, a store that drops for two hours and then sends
               everything at once. The Lakeflow Connect definitions.
+              --
+              RESTATED 2026-09-02, because `closes` was incomplete and two other documents said
+              so. It omits the S3 bulk load, which `CLAUDE.md`'s layout lists as the third thing
+              under `pipelines/ingest/` and which `docs/DECISIONS.md` names by task -- "the S3
+              bulk load in T009" -- as the unlock condition of a live deferral. Reached honestly
+              as written, this task would close and leave that deferral pointing at a task that
+              finished without doing the thing, and `make expiry` cannot see it: it checks that
+              a condition is present, never that it is right.
+              So T009 also closes the S3 bulk load, and `corpus/world/`'s writer gaining a
+              Parquet target beside the CSV one, which is the same deferral's other half.
+              Two branches rather than one, because streaming pathologies and Parquet writing
+              are different mechanisms and one review over both is a review over neither. The
+              deferral's unlock names the task and not a branch, so it stays valid untouched.
+              The prior wording stays per doctrine rule 4; the delta is the finding, and it is
+              in `docs/FINDINGS.md`.
+              --
+              And `100 stores` is a figure `CLAUDE.md` withdrew on 2026-08-29: 100 is the
+              `scenario` scale, claim 2 runs at `harness`, and the size that decides anything is
+              the surviving roster rather than the store count. The driver takes a scale like
+              everything else and reads it off `corpus/world/scale.py`.
 out_of_scope  Any apply to a workspace (Phase 3).
-stop_at       When the driver produces a stream with the declared pathologies.
+stop_at       When the driver produces a stream with the declared pathologies, and the bulk load
+              writes what the lakehouse reads.
 review        yes
 status        open
 ```
