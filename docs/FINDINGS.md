@@ -1594,6 +1594,46 @@ stop the mutation paying for a regeneration that is not what it tests, which is 
 territory — the same 826s sits on the critical path of the whole run, so the two arrive
 together and neither is opened here.
 
+> **The prediction landed, 2026-09-02, and it is a measurement now.** This entry called itself
+> *"a prediction with a search term attached, not work"*. The search term hit on run
+> **33610996234**, `claim-2 combine`: `the-grouped-path-rounds-like-a-price-not-like-the-contract`
+> **CRASHED, killed at the 900s budget, 100% of it**, taking `claims-complete` — a required
+> context — red with it.
+>
+> **Four observations now, and the fourth is not a duration because the job was killed before it
+> produced one:**
+>
+> | when | run | result |
+> |---|---|---|
+> | (recorded here previously) | — | 747s · **83%** |
+> | (recorded here previously) | — | 826s · **92%** |
+> | 2026-09-02 06:45, `main` @ `83171e9` | 33600284036 | 806s · **90%** · passed |
+> | 2026-09-02 08:48, `docs/day-one` @ `c9902bf` | 33610996234 | **900s · 100% · KILLED** |
+>
+> **The tree that crossed is the tree that did not, plus five Markdown files.** `docs/day-one`'s
+> whole diff is 621 inserted lines across `PLAN.md`, `TASKS.md`, `docs/DAY-ONE.md`,
+> `docs/DECISIONS.md` and this file — no Python, no contract, nothing on any path this mutation
+> regenerates. So the variable is the runner and not the repository, which is what three
+> observations spanning 747–826 already implied and what nobody could state until one of them
+> went over.
+>
+> **This is `CLAUDE.md`'s fourth form of the rule arriving on its own terms** — *a timeout, a K, a
+> tolerance, a threshold, a budget is an assertion about what the system does, wearing a number
+> instead of a verb.* `TIMEOUT_SECONDS = 900` asserts *this mutation finishes in 900 seconds*, it
+> was set from observations that all sat under it, and it is now false on the hardware that runs
+> it.
+>
+> **Nothing is changed here and the reason is the entry's own.** Raising the budget a fourth time
+> is the reflex the deferral beside `ci.yml`'s `timeout-minutes` exists to refuse, and it would
+> again be set from below. The two named exits are unchanged: **set `TIMEOUT_SECONDS` from a
+> measurement** — for which this table is now the measurement, and it says the budget must clear
+> a ceiling nobody has yet observed rather than the 900 it was pinned under — **or T00K removes
+> the regeneration this mutation pays for and is not testing.** Both are decisions, and neither
+> is this branch's.
+>
+> **What it blocks, said plainly:** `docs/day-one` cannot merge, because a required context is
+> red for a reason that has nothing to do with its diff.
+
 *Site:* `evals/gate_proof/engine.py` :: `#:     747s (83%)  ·  826s (92%)      two observations, 1.11x apart, both under 900`
 *Site:* `evals/gate_proof/mutations/claim-2/07-the-grouped-path-rounds-like-a-price-not-like-the-contract.yaml` :: `eval_module: evals.uplift.machinery`
 *Disposition:* none — it is a prediction with a search term attached, not work. It closes when
