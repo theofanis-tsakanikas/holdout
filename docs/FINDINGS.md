@@ -1896,6 +1896,109 @@ which is a scheduled job spending runner time to make one number look better. It
 that a later reading of *sharding pays* knows which cache state produced it
 *Status:* open
 
+**An unlock condition points at a task whose `closes` does not mention it** · found 2026-09-02 ·
+by reading T009 before starting it, because a peer's scoping did not match the layout
+
+`docs/DECISIONS.md` defers `corpus/world/` writing gzipped CSV rather than Parquet, and its
+unlock condition names a task:
+
+    *Unlock condition:* the S3 bulk load in T009, which is the first thing that needs files on
+    disk in the format the lakehouse reads. The writer gains a Parquet target there, beside the
+    CSV one.
+
+**T009's `closes` does not mention the S3 bulk load.** It names the driver and the Lakeflow
+Connect definitions and stops. `CLAUDE.md`'s layout lists three things under `pipelines/ingest/`
+and the bulk load is the third, so two documents assign it to that task and the task's own
+`closes` omits it.
+
+**The failure mode is silence, and it is the one this repository is worst at seeing.** T009
+reached its `stop_at` honestly, closed, and the deferral would sit open pointing at a task that
+finished without doing the thing it was waiting for. Nothing anywhere goes red: `make expiry`
+checks that an unlock condition is **present**, never that it is **right** — the standing limit
+`docs/DECISIONS.md` declares about itself and the one `CLAUDE.md` says is the smallest it can be
+kept.
+
+> **An unlock condition can point at a task whose `closes` does not mention the thing it is
+> waiting for, and nothing checks that pair.**
+
+**It is not `pricing/selection.py`'s shape and the difference is worth stating.** That one is
+work named nowhere, assigned to nobody — an omission that announces itself the moment somebody
+looks for an owner. This is work *with* a task, *with* something depending on it, and a summary
+of that task that leaves it out. **The artefact looks complete**, which is the more dangerous of
+the two shapes and the one `CLAUDE.md` already records under *a form the schema manufactured*.
+
+**Fixed for this instance, not for the class.** `TASKS.md`'s T009 is restated per doctrine rule 4
+— prior wording kept, the bulk load and the Parquet target named, `branch` widened to `branches`,
+`stop_at` extended. **What is not built is the check**: nothing pairs an unlock condition that
+names a task id against that task's `closes`, and the population is small enough to make it
+plausible and awkward enough that it is a decision — an unlock condition is free prose by
+design, and a checker over it would be reading English for meaning.
+
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the S3 bulk load in T009, which is the first thing that needs files on disk in`
+*Site:* `TASKS.md` :: `RESTATED 2026-09-02, because `closes` was incomplete and two other documents said`
+*Disposition:* none for the class — the instance is closed by the restatement in the same change.
+The check that would catch the next one is a decision about whether an unlock condition stays free
+prose, which is the author's rather than a session's
+*Status:* open
+
+---
+
+**A task note repeated a figure `CLAUDE.md` had withdrawn** · found 2026-09-02 · while reading
+T009 for the same branch
+
+T009's `closes` opens *"A driver that writes as the corpus's **100 stores** would"*. `CLAUDE.md`
+withdrew that figure on 2026-08-29: 100 is the `scenario` scale, claim 2 runs at `harness`, and
+the restatement's own subject is that a nominal store count is not the number anything rests on —
+the surviving roster is. The paragraph making that argument **had the nominal number wrong
+itself**, which is why the withdrawal is emphatic.
+
+**The withdrawal did not travel.** `CLAUDE.md` restated; `TASKS.md` kept the number, in a task
+that had not started, where the next session to open it would read *100 stores* as the
+specification. It is the same shape as T008's note naming `G10` where `O2` was the correct check
+— **a summary repeating a superseded figure is how a restatement fails to arrive**, and doctrine
+rule 4 keeps the old value recoverable precisely so this is a correction rather than an
+archaeology problem.
+
+Restated in place with the prior wording kept. **What is not fixed is that nothing enumerates
+where a withdrawn figure was copied to**, and the honest note is that both instances were found
+by reading rather than by any gate.
+
+*Site:* `TASKS.md` :: `And `100 stores` is a figure `CLAUDE.md` withdrew on 2026-08-29: 100 is the`
+*Disposition:* none — the instance is corrected in the same change; the class is *a figure
+restated in one file and repeated in another*, which is `make figures`' `PROSE` question over a
+population nobody has enumerated
+*Status:* open
+
+---
+
+**Nothing checks that a directory declared *not yet built* is still unbuilt** · found 2026-09-02 ·
+by asking what T009 would do to the layout gate before writing anything
+
+`CLAUDE.md`'s layout has two halves — what exists, and *"Declared and not yet built — phase 2 and
+later"*. `ops/figures.py` asks two questions of them and there is a third it does not ask:
+
+    is everything that exists named          layout_packages vs layout_packages_named  — asked
+    is everything named real                 layout_fabrications, present block only    — asked
+    is everything declared-future still future                                          — not asked
+
+`layout_packages_named` searches the **whole** body, future block included, so a directory listed
+under *declared and not yet built* satisfies it. The moment `pipelines/ingest/` exists, the map
+describes it as unbuilt, the row stays green at `21 = 21`, and nothing anywhere says the sentence
+became false.
+
+**This is the third direction of a question this repository has already asked twice**, and
+`CLAUDE.md` records the pair under *Three one-directional checks*: *is everything real listed* and
+*is everything listed real*. The third is *is everything declared-future still unbuilt*, and it is
+the one that goes wrong by ordinary work rather than by a mistake — every phase-2 and phase-3 task
+moves a directory across that line.
+
+*Site:* `ops/figures.py` :: `def layout_packages_named() -> int:`
+*Site:* `CLAUDE.md` :: `**Declared and not yet built — phase 2 and later.**`
+*Disposition:* none — the check is small and the edit it would force is to `CLAUDE.md`, which is
+the author's. Filed so the first branch that creates one of those directories does not have to
+rediscover that no gate noticed
+*Status:* open
+
 ---
 
 ## Closed
