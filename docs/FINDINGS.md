@@ -1771,11 +1771,29 @@ never the message, so the message alone answers nothing:
 | `git commit -q -F - <<MSGEOF` … `MSGEOF` | **34 of 43 · 79.1%** |
 | `git commit -m "<subject>"` | **0 of 43 · 0.0%** |
 
-**So the price is not "79% of commits refused". It is "79% of commits would have to be written
-with `-F <file>` instead of a heredoc"** — which lexes, costs one extra file, and is the workaround
-already recorded below. A subject line passed with `-m` never breaks at all: the apostrophes sit
-inside double quotes, which is why the naive reading of this defect gets it backwards, and why the
-first probe did.
+**79.1% is a frequency of inconvenience, not a refusal rate, and the difference decides the
+choice.** It is not *79% of commits refused*, and it is not even *79% would need `-F`* read as a
+burden. It is **how often the heredoc shape would have to become a two-step** — write the message
+to a file, then commit with `-F`. Measured, both halves are clean:
+
+| | lexes? |
+|---|---|
+| `cat > msg.txt <<EOF` … `EOF`, apostrophes and all | **yes** — a *written* heredoc, excised by `without_written_heredocs`, so nothing is triggered |
+| `git commit -q -F msg.txt` | **yes** |
+| `git commit -q -F - <<EOF` … `EOF` | no — this is the only shape that breaks |
+
+**So the choice is between a guard that lets through the one thing it exists to stop, through a
+door the file itself calls *worse*, and one extra command when a commit message is long.** Anyone
+weighing 79.1% as four commits in five being blocked has been misled by the figure, which is why it
+is stated this way rather than as a percentage on its own.
+
+**And the fact underneath all of it, written on its own line because it has now been wrong three
+times in three different hands:** *an apostrophe inside double quotes lexes perfectly.* It is why
+`-m "<subject>"` is a clean **0 of 43**; it is why the first probe labelled `-m "don't"` unlexable
+and returned the opposite of the truth for the two rows that were its entire point; and it is why
+the naive reading of this defect comes out backwards **in exactly one place and keeps being that
+place.** The next person to reason about apostrophes here will be wrong the same way unless they
+run it.
 
 **And the 79% is a property of this repository rather than of git.** These messages are unusually
 prose-heavy by house style — apostrophes, em dashes and quoted sentences in every body — so the
