@@ -48,7 +48,7 @@ from corpus.world import Arm, Run, prepare
 from corpus.world.scale import Scale
 from corpus.world.worlds import World, world_by_id
 
-from evals.uplift import cache, outcomes
+from evals.uplift import cache, grouped_metric, outcomes
 from evals.uplift.outcomes import Week
 
 if TYPE_CHECKING:
@@ -118,7 +118,7 @@ def build(world_id: str, *, world_seed: str, scale: Scale, rounding: Rounding) -
         cache.key("potential/control", world.id, world_seed, scale.name),
         lambda: (outcomes.collect(control_run),),
     )
-    control = outcomes.unit_weeks(control_ledger, rounding)
+    control = grouped_metric.unit_weeks(control_ledger, rounding)
     if world.is_aa:
         return Potential(
             world=world,
@@ -143,7 +143,7 @@ def build(world_id: str, *, world_seed: str, scale: Scale, rounding: Rounding) -
         scale=scale,
         run=control_run,
         control=control,
-        treatment=outcomes.unit_weeks(treatment_ledger, rounding),
+        treatment=grouped_metric.unit_weeks(treatment_ledger, rounding),
         control_ledger=control_ledger,
         treatment_ledger=treatment_ledger,
     )
@@ -178,7 +178,7 @@ def counterfactual_unit_weeks(
             cache.key(f"potential/{arm.value}", world.id, world_seed, scale.name),
             lambda run=run: (outcomes.collect(run),),  # type: ignore[misc]
         )
-        pair.append(outcomes.unit_weeks(ledger, rounding))
+        pair.append(grouped_metric.unit_weeks(ledger, rounding))
     return pair[0], pair[1]
 
 

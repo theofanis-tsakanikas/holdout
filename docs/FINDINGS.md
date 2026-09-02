@@ -1590,8 +1590,8 @@ red should land here.
 **Not fixed here, and the two candidate fixes are named so nobody has to re-derive them.**
 Raising `TIMEOUT_SECONDS` a third time is the reflex the deferral beside `ci.yml`'s
 `timeout-minutes` argues against, and it would be set from two observations. The other is to
-stop the mutation paying for a regeneration that is not what it tests, which is **T00K's**
-territory — the same 826s sits on the critical path of the whole run, so the two arrive
+stop the mutation paying for a regeneration that is not what it tests, which is **T00L's**
+territory (this read `T00K's` until 2026-09-02; T00K is sharding and cannot fix it) — the same 826s sits on the critical path of the whole run, so the two arrive
 together and neither is opened here.
 
 > **The prediction landed, 2026-09-02, and it is a measurement now.** This entry called itself
@@ -1850,6 +1850,208 @@ the obvious repair — teach the regex to find `-C` too — is a second enumerat
 memory, which is the defect this file has already had three times. The workaround for the refusing
 direction costs nothing and is written down here: pass the message as a file,
 `git -C <worktree> commit -F <path>`, with no heredoc on the line
+*Status:* open
+
+**`U10` compares two implementations and is armed from one side of the comparison** · found
+2026-09-02 · by T015, while measuring what became T00L
+**It is not an unarmed check, and saying so first is the point.** The arming unit in this
+repository is the *check*, and `make gate-proof` classifies all 67 of them — **37 armed · 23
+declared un-armable · 7 unarmed**. `U10.truth-implementations-agree` is in the armed 37: mutation
+`07-the-grouped-path-rounds-like-a-price-not-like-the-contract` bites it on every run. So this does
+**not** belong in the *21 of 57* family that `#30` closed, and filing it there would have been a
+finding invented out of the wrong unit.
+
+**What is true is narrower and is about which side.** `U10` exists to compare two implementations
+of one metric definition — `evals/uplift/outcomes.py`, the grouped path, and
+`evals/uplift/reference.py`, the deliberately slow one that *"may not share a line with it"*.
+Measured over all eight of claim 2's mutations: **one is planted on the grouped path and none on
+the reference path.** So what is demonstrated is that `U10` catches a defect introduced on the side
+the production code will become; nothing has been shown about a defect on the side the comparison
+is anchored to.
+
+**Why that asymmetry is worth a line rather than a shrug.** The reference implementation is not a
+test helper — it is the independence claim 2's `U10` rests on, and `CLAUDE.md` says the pair
+*"doubles as a fourth, independent check of claim 5"*. A defect planted there and **not** caught
+would say something quite different from the same defect on the grouped path: it would mean the
+comparison can be anchored to a wrong number. Nobody has asked.
+
+**And there is a cost reason it may have gone unwritten, which is not an excuse but is a fact.**
+`reference.py` is one of the five entries in `evals/uplift/cache.py`'s `DEPENDS_ON`, so a mutation
+planted on it invalidates the world cache exactly as mutation 07 does — measured on run
+33600284036, that is **806s against its seven siblings' 32–87s, roughly 90% of it world
+regeneration**. A mutation nobody wrote because it would cost twelve minutes is a mutation whose
+absence was decided by a budget rather than by an argument. **T00L removes that cost — but only for the consumers.** A mutation planted on
+`by_unit_week` or `window_mean` becomes cheap; one planted on **`compute`**, this path's
+producer, still invalidates the cache and still pays the rebuild, correctly. So T00L does
+not unblock this entry: it unblocks the cheaper half of it, which is exactly the half that
+tests less.
+
+*Site:* `evals/uplift/reference.py` :: `is the other implementation, and **it may not share a line with it**. It`
+*Site:* `evals/uplift/agreement.py` :: `        id="U10.truth-implementations-agree",`
+**Two options, and they are not the same kind of thing — which `23 declared un-armable` will
+otherwise disguise.**
+
+- **Plant a mutation on `reference.py`.** Cheap once T00K lands, and until then it costs the 806s
+  above.
+- **Declare it un-armable, with a stated reason.** This is a real option and 23 checks already
+  carry it — **but not for this kind of reason.** Those 23 *cannot* be armed: a property of the
+  corpus, a predicate with no bound, a check that would be a tautology. **This one can be armed
+  and has not been**, and the difference between *impossible* and *unaffordable* is the whole
+  content of this entry. Nor is the subject a helper: `reference.py` is the anchor of the
+  independence claim 2 rests on, so declaring it un-armable is declaring that **the anchor of an
+  independence argument cannot be tested** — a considerably larger sentence than any of the 23
+  carries, and one that should be written out in full by whoever signs it rather than inherited
+  from a count.
+
+*Disposition:* its own branch, unlocked by **T00L landing** — after which planting on a
+consumer costs what planting on any other file costs, while `compute` does not. Not folded into
+T00L: that task is about where a function lives, and this is about which side of a comparison has
+been attacked
+*Status:* open
+
+**A task's identity was taken from a sentence about it, and the sentence named the wrong task** ·
+found 2026-09-02 · by T00L, and by `projects-0a` naming its own half first
+The `TIMEOUT_SECONDS` entry says the second way out of the rounding mutation's budget is *"to
+stop the mutation paying for a regeneration that is not what it tests, which is **T00K's**
+territory"*. **It is not.** `T00K` is *Shard claim 2's mutations* — parallelising nine serial
+runs — and sharding cannot fix that flake at all, because `TIMEOUT_SECONDS` is applied
+**per mutation, to its own subprocess**: `07` would still take ~800s and still be killed at 900s
+on whichever shard drew it.
+
+**Two sessions then spent two hours designing "T00K" without either of them opening `TASKS.md`.**
+The reviewing session named its own half of it first and in the sharper form: *twice now I have
+taken a task's identity from a sentence about it rather than from the task* — the same shape as
+telling the author for three days that phase 2 was Terraform. **A wrong cross-reference that
+nobody follows costs nothing; this one was followed, and cost two hours of design against the
+wrong closing condition.**
+
+It was caught the way the other one was: by opening the file the sentence pointed at, immediately
+before building, rather than by any amount of reasoning about the sentence.
+
+**And `T00K`'s own `closes` carries a second one, measured rather than argued.** It says *"Nine
+near-equal units, so the balance interleaving had to buy for the draws is free here"*. Measured on
+run 33600284036 they span **32-87s against 806s — 25x**, so the balance argument rests on a
+near-equality that does not hold. After T00L the spread is **32-87s, about 2.7x**, which is better
+and is **still not near-equal**; the entry is restated with both spreads rather than with a claim
+that T00L makes the sentence true.
+
+**The half of this that lives in `docs/FINDINGS.md` could not be anchored at all**, and that is
+its own entry below rather than a note here. The half that can be anchored is `TASKS.md`'s; the
+other is corrected in place with its prior wording kept.
+
+*Site:* `TASKS.md` :: `> It is 25x. The prior wording stays per doctrine rule 4 and the delta is the finding: **a`
+*Disposition:* the cross-reference is corrected on `evals/the-digest-cannot-tell-collect-from-window-mean`
+along with `T00K`'s `closes`; **the entry is left open** because what it records is not the two
+sentences — those are fixed here — but that nothing checks a cross-reference between two documents
+in this repository, and there is no gate proposed for it
+*Status:* open
+
+**The register cannot anchor a finding about itself** · found 2026-09-02 · **recorded first by the
+session that wrote `One anchoring rule, two populations`, as a parenthetical**, then met again from
+scratch by T00L four hours later
+**Attribution corrected before anything else, because getting it wrong here would be the finding
+happening a third time.** This entry first read *found by T00L, by trying it*. It was recorded
+hours earlier, on `main`, inside another entry: *"(And the rule cannot anchor to itself. A
+`*Site:*` naming `docs/FINDINGS.md` quotes the fragment on the site line, which is then a second
+occurrence in the same file …)"*. T00L met it fresh and paid the full cost — three attempts and a
+correction — **and the session that had recorded it hit it again on its own branch the same day.**
+
+> **The evidence for this limit is not only that it fires. It is that it fired on somebody who had
+> already written it down.**
+
+That is why it is filed as a limit in its own right rather than left where it was: **a limit
+recorded inside another finding is not a limit anybody searches for.** It is one instance of
+*Write discipline, and no read discipline* below, which is the general form.
+
+**A limit of the instrument, in the register of language this repository's other limits use.** A
+finding declares a `*Site:*` whose fragment must occur **exactly once** in the file it names. When
+the file named is `docs/FINDINGS.md`, **the `*Site:*` line is itself a second occurrence of the
+line it points at.** The rule then refuses the anchor — correctly, by its own terms, and
+permanently.
+
+**Measured, not reasoned.** Writing the cross-reference finding above, the anchor was tried and
+`make findings` reported `AMBIGUOUS  the anchor occurs 3 times`; after the quoted sentence was
+corrected it reported **2**, which is the floor: the defect line and the `*Site:*` line naming it.
+It never reaches 1.
+
+**Why this matters more than a quirk.** A defect *in the register* disarms every finding the
+register carries, so it is the class most worth catching — and it is the one class the register
+structurally cannot hold. **Every other instrument here has been hardened against exactly this
+shape**: `ops/figures.py` raises rather than returning a smaller number, a `DEPENDS_ON` entry
+naming nothing raises rather than being skipped, `gather` refuses a partial set rather than
+averaging it. This one has the property inverted — it cannot examine itself — and it took writing
+a finding about it to find that out.
+
+**What made this one findable does not generalise.** It had a second half living in `TASKS.md`, so
+the entry above anchors there. **A defect purely internal to `docs/FINDINGS.md` has nowhere to
+go.**
+
+**No fix is proposed, and the reason is the rule's own load-bearing property.** Both escapes
+weaken it:
+
+- *exclude the `*Site:*` line from its own count* — a rule that can be told to ignore one
+  occurrence can be told to ignore the wrong one, and which occurrence is "its own" is a judgment
+  the parser would have to make;
+- *anchor by digest rather than by quoted text* — this discards the property the whole mechanism
+  rests on, that **a moved line breaks its anchor**. An anchor that survives the line moving is not
+  an anchor.
+
+**And the cost, which is the honest half:** while this stands, **the register's own defects are
+found by somebody noticing, not by `make findings`.** Today that was a session mid-edit, by
+accident, while writing about something else.
+
+*Site:* `ops/findings.py` :: `* a site whose fragment does **not occur exactly once** in the file it names. Zero means the line`
+*Disposition:* **none — and stated as a limit rather than as work.** Neither escape above is worth
+its cost, and a third has not been found. It closes if somebody finds a way to let the register
+examine itself **without** teaching the anchor rule to ignore an occurrence or to survive a move.
+Recorded so the next session that hits `AMBIGUOUS` on a finding about this file knows in one search
+that it is the instrument and not their entry
+*Status:* open
+
+**Write discipline, and no read discipline** · found 2026-09-02 · by `projects-0a`, from four
+instances in one day — three of them its own or T00L's
+**Four things were correct, written down, and not found.**
+**Every mechanism in this repository verifies that something is *recorded*. Nothing verifies that a
+recorded thing is *retrievable*.** Anchors, restatement, dispositions, `*Now:*` lines, the refusal
+of silence, `make expiry`, `make findings`, `make figures` — each one asks *was this written down,
+and is it still true*. **None asks whether anybody can find it.** Every gate here would pass on a
+register nobody can retrieve anything from.
+
+**Four instances, one day, and all four were correct when written:**
+
+| | what was written | what happened |
+|---|---|---|
+| 1 | the `TIMEOUT_SECONDS` entry's *"which is T00K's territory"* | followed by nobody; **two sessions designed against it for two hours** without opening `TASKS.md`, where T00K is *Shard claim 2's mutations* and cannot fix that flake at all |
+| 2 | *the rule cannot anchor to itself*, a parenthetical inside another finding | **rediscovered from scratch four hours later at full cost**, and hit again by the session that wrote it |
+| 3 | `CLAUDE.md` withdrawing the *100 stores* figure on 2026-08-29 | `TASKS.md` went on carrying it |
+| 4 | `TASKS.md`'s heading: *Phase 2 — … (local)* | **the author was told for three days that phase 2 was Terraform and AWS**, by a session that had never opened the file |
+
+**Three of the four were caught by somebody noticing mid-edit. The fourth ran for three days into
+what the author was told.** That is the cost, and it is the honest half: **the register's
+retrievability is currently enforced by attention.**
+
+**It is the same shape as the write-side hole `T00G` closed**, one layer out: it fails safe on the
+side that is checked, so nothing goes red. A cross-reference that is correct and unfollowed, a
+limit that is recorded and unsearchable, a withdrawal that is published and uncarried — none of
+them is a *defect* by any gate's definition, and all four cost real work.
+
+**And this reaches the thesis rather than the housekeeping.** This project's claim is that a number
+nobody can check is worth nothing. **A methodology that is correct and unretrievable is worth what
+an uplift number without a holdout is worth** — the reader cannot get to the thing that would let
+them check. That is the reason this is filed against the project and not against tidiness.
+
+**No gate is proposed, deliberately.** Nobody here knows what would check retrievability, and a
+mechanism invented in the same hour as the finding is exactly how the four confident sentences
+above got written. The instances stay recorded and the general form stays unnamed until somebody
+has a mechanism that is not a fifth confident sentence.
+
+*Site:* `TASKS.md` :: `## Phase 2 — pipelines, the metric contract's three consumers, the model (local)`
+*Site:* `CLAUDE.md` :: `> are not measurements. It is withdrawn rather than corrected: **1,200 stores is the scenario the`
+*Site:* `ops/findings.py` :: `* a site whose fragment does **not occur exactly once** in the file it names. Zero means the line`
+*Disposition:* **none — and it is not work.** It closes when somebody proposes a mechanism for
+retrievability that survives the objection above, or when the author decides the cost of attention
+is acceptable and says so. Both are decisions. The child entry
+*The register cannot anchor a finding about itself* is one instance of it and says so
 *Status:* open
 
 ---

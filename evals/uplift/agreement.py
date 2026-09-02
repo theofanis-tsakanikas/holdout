@@ -20,7 +20,15 @@ from corpus.world import alternating, prepare
 from corpus.world.scale import Scale
 
 from evals.report import Check
-from evals.uplift import cache, design, outcomes, potential, reference
+from evals.uplift import (
+    cache,
+    design,
+    grouped_metric,
+    outcomes,
+    potential,
+    reference,
+    walked_metric,
+)
 from evals.uplift.harness import DrawRecord
 from holdout.contracts.model import Metric
 
@@ -46,7 +54,7 @@ def implementations_agree(world_id: str, *, world_seed: str, scale: Scale, metri
         cache.key("agreement/grouped", world_id, world_seed, scale.name),
         lambda: (outcomes.collect(run),),
     )
-    grouped = outcomes.cell_margins(ledger, metric.rounding)
+    grouped = grouped_metric.cell_margins(ledger, metric.rounding)
     walked = cache.cached(
         cache.key("agreement/walked", world_id, world_seed, scale.name),
         lambda: reference.compute(run, metric=metric),
@@ -66,14 +74,14 @@ def implementations_agree(world_id: str, *, world_seed: str, scale: Scale, metri
     weeks = ledger.weeks
     period = weeks[-design.PERIOD_WEEKS :] if len(weeks) > design.PERIOD_WEEKS else weeks
     units = ledger.units
-    grouped_mean = outcomes.window_mean(
-        outcomes.unit_weeks(ledger, metric.rounding),
+    grouped_mean = grouped_metric.window_mean(
+        grouped_metric.unit_weeks(ledger, metric.rounding),
         units=units,
         weeks=period,
         rounding=metric.rounding,
     )
-    walked_mean = reference.window_mean(
-        reference.by_unit_week(walked), units=units, weeks=period, metric=metric
+    walked_mean = walked_metric.window_mean(
+        walked_metric.by_unit_week(walked), units=units, weeks=period, metric=metric
     )
     drifting = sorted(unit for unit in units if grouped_mean[unit] != walked_mean[unit])
     passed = not missing and not disagreeing and not drifting
@@ -145,7 +153,7 @@ def composition_is_exact(
             cache.key("composition/mixed", world_id, world_seed, scale.name),
             _mixed_ledger(world_id, world_seed, scale, mixed),
         )
-        generated = outcomes.unit_weeks(drawn, metric.rounding)
+        generated = grouped_metric.unit_weeks(drawn, metric.rounding)
         interferes = bool(run.world.spillover_pct)
         if interferes:
             # `potential.build` refuses a world that declares spillover, which is the guard

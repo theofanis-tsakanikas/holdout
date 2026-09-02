@@ -40,7 +40,7 @@ cancels out of the comparison.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Sequence
 from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -132,46 +132,3 @@ def compute(run: Run, *, metric: Metric, stream: Iterable[Event] | None = None) 
             )
 
     return {cell: metric.rounding.canonical_integer(total) for cell, total in running.items()}
-
-
-def by_unit_week(cells: Mapping[Cell, int]) -> dict[tuple[str, Week], int]:
-    """The grain's categories added up inside each store-week.
-
-    The experiment randomises stores, so the categories inside a store-week are summed. It is
-    written out here rather than shared with the grouped path for the reason the module
-    docstring gives about the as-of lookup: a shared line is a line whose bug cancels.
-    """
-    out: dict[tuple[str, Week], int] = defaultdict(int)
-    for (store, year, week, _category), value in cells.items():
-        out[(store, (year, week))] += value
-    return dict(out)
-
-
-def window_mean(
-    by_week: Mapping[tuple[str, Week], int],
-    *,
-    units: Sequence[str],
-    weeks: Sequence[Week],
-    metric: Metric,
-) -> dict[str, int]:
-    """Each unit's mean over the window, rounded by the contract — this path's own arithmetic.
-
-    A week in which a unit has no record contributes zero rather than shortening the divisor:
-    a week a store traded nothing is a week it earned nothing, and dividing by the weeks it
-    happened to appear in would pay it for being absent. The grouped path makes the same
-    decision, separately, and the two agreeing on it is part of what is being checked.
-    """
-    if not weeks:
-        raise ReferenceError("a window of no weeks has no mean")
-    span = Decimal(len(weeks))
-    return {
-        unit: metric.rounding.canonical_integer(
-            sum(
-                (Decimal(by_week.get((unit, week), 0)) for week in weeks),
-                Decimal(0),
-            )
-            / CENTS_PER_EURO
-            / span
-        )
-        for unit in units
-    }

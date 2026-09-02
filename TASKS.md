@@ -694,6 +694,64 @@ truth, and the comparison would be gone. **But the expensive half takes no units
 not.
 
 ```
+id            T00L
+title         The world cache's digest hashes a file; the dependency is a function
+branch        evals/the-digest-cannot-tell-collect-from-window-mean
+depends_on    T00G
+blocks        T00K
+closes        Every cached artefact is produced by outcomes.collect or reference.compute, and
+              source_digest() hashes those two files WHOLE -- so editing a function that
+              produces nothing cached throws away six families of artefact. Measured: 11
+              function definitions across the two files, 6 producers and 5 consumers, no
+              function on both sides. The consumers move to grouped_metric.py and
+              walked_metric.py, after which hashing outcomes.py and reference.py whole is
+              correct. DEPENDS_ON, key() and source_digest() are untouched -- the fix makes the
+              files honest rather than the instrument cleverer.
+out_of_scope  Widening DEPENDS_ON, and TIMEOUT_SECONDS. T00G filed a widening as out of scope
+              because a narrowing and a widening in one diff cannot be separated by
+              measurement; the same argument applies here. The budget is re-set AFTER this
+              lands, from a re-measurement, because every observation of it today is of a form
+              this task removes.
+stop_at       When mutation 07 runs in its siblings' band on CI, published as a measurement
+              beside the five observations of its expensive form: 528 / 747 / 779 / 806 / 826
+              and one killed at 900.
+review        yes
+status        open   <- the measurement below is in; the branch is not merged
+```
+
+**The measurement, on run 33621267184.** `07` ran in **58s**, `bit`, against the five observations
+of its expensive form -- `528 / 747 / 779 / 806 / 826` and one killed at `900`.
+
+**It is the median of its siblings, not merely nearer them.** The eight now read
+`34 / 55 / 58 / 58 / 60 / 66 / 70 / 93`, and `07` is no longer the slowest mutation in claim 2 --
+that is `the-power-check-is-judged-on-the-variance-the-design-assumed` at **93s, 10% of the 900s
+budget**. *Nearer* would have been consistent with the fix merely helping; the median is consistent
+with the anomaly being gone.
+
+**Two observations, and two is not a spread.** Run 33621267184 gave **58s** and run 33627230673 --
+the follow-up commits on this branch -- gave **59s**. They are **1.02x apart**, against the
+expensive form's **1.56x across five** completed runs plus a kill.
+
+**That is suggestive and is not evidence.** It is consistent with the variance having lived in the
+regeneration rather than in the mutation's own work, which is what the diagnosis predicts -- and
+**two points cannot establish a distribution**, which is the day's whole lesson arriving on the
+number that closes it. `the-power-check-is-judged-on-the-variance-the-design-assumed` was the
+slowest mutation at **93s in both runs**, which is a second thing that did not move.
+
+Anything stronger needs `workflow_dispatch` re-runs on one sha, and none were taken.
+
+**The job-level figure is deliberately not the measurement**: `claim-2 combine` went 47m04s ->
+37m19s across two runs on two runners with different cache states, a difference of ~585s where the
+mutation alone accounts for 748s. That is spread in everything else. The clean number is the
+per-mutation one, taken by the same instrument on both sides.
+
+**And one property worth recording because it is the first of its kind today.** The two follow-up
+commits on this branch -- the attribution correction and the parent finding -- cost it **one** CI
+run rather than the ~1.25 every other branch has paid, because the coin toss they would have faced
+is the thing this branch removed. **It is the first change today that made the next change cheaper
+rather than more expensive.**
+
+```
 id            T00K
 title         Shard claim 2's mutations
 branch        evals/mutations-sharded
@@ -702,13 +760,46 @@ closes        `evals/gate_proof`'s nine runs — one baseline and eight mutation
               strictly serial. They are the other half of `make claim-2` and, measured on the
               runner from the timestamped log of job 99702683729, they are 22m01s of its
               50m44s: harness 01:18:52 -> 01:47:34, mutations 01:47:34 -> 02:09:36.
-              Nine near-equal units, so the balance interleaving had to buy for the draws is
-              free here.
+              The units are NOT near-equal and the balance interleaving buys is not free:
+              measured on run 33600284036 they span 32-87s against 806s, a spread of 25x, so
+              one unit alone floors the phase. After T00L the spread is 32-87s, about 2.7x --
+              better, and still not near-equal.
+depends_on    T00H, T00L
 out_of_scope  Anything about the ledger's ownership rule, which T00H already answered.
 stop_at       When the sharded mutation report equals the unsharded one exactly.
 review        yes
 status        open
 ```
+
+> **`closes` restated 2026-09-02 by T00L.** It read *"Nine near-equal units, so the balance
+> interleaving had to buy for the draws is free here"*, and the near-equality was never measured.
+> It is 25x. The prior wording stays per doctrine rule 4 and the delta is the finding: **a
+> scheduling argument was made from an equality nobody had checked**, in a task about scheduling.
+>
+> **And `T00L` is now a dependency rather than a sibling**, because sharding's floor is the unit
+> `T00L` fixes. Stated as seconds rather than as a ratio, because the ratio misleads here and did:
+> serial the phase is ~1213s and perfectly sharded it is ~806s, so sharding saves **~407s today**
+> and **~373s after T00L** -- the *ratio* improves 1.5x to 5.3x while the *wall clock saved falls*,
+> and CI bills minutes.
+>
+> **Which leaves a question this entry now carries openly, and T00L's own run sharpened it from
+> a projection into a measurement.** On run 33621267184, with T00L landed:
+>
+> ```
+> make claim-2-combine                    2229s   37m09s
+>   the eval, --combine                   1432s   23m52s   64%
+>   gate-proof --claim 2                   797s   13m17s   36%
+>     of which the eight mutations         494s    8m14s   22% of the job
+>   T00K saves at most                     401s    6m41s   18% of the job
+> ```
+>
+> **So: is `T00K` worth its own review for a measured 6m41s, against an unmeasured 23m52s
+> sitting beside it?** Nothing has been done to the `--combine` phase and nobody has measured
+> what is inside it. Sharding the mutations now optimises the smaller half -- **which is the
+> error this entry's own `closes` records the laptop nearly making about which half to shard**,
+> arriving a second time because the two halves swapped places when T00L landed. Nobody has
+> decided it, and a task whose value is now the smaller of two numbers should say so before
+> somebody builds it from momentum.
 
 **And the reason this is a separate atom rather than part of T00H.** The two halves have different
 mechanisms and different failure modes, and folding them together would mean one branch in which
