@@ -1483,6 +1483,14 @@ the eval into a loop, which is what the budget exists to catch. Nobody reading t
 tell which had happened, and the arithmetic available from the outside — `gate_proof` at 1391s
 here against 1421 · 1432 · 1421 · 1455 · 1351s on `main` — bounds it without deciding it.
 
+**Measured once the seconds existed: 747s, 83% of the budget, while the other seven sat between
+32s and 86s.** And the two runs are *not* a spread — the tree changed between them, because
+`COPIED` carries `.worlds` and `claim-2-tests` had moved out of the combine — so there is one
+observation and no variance estimate. The variance of the job it lives in is measured and wide:
+paired on `headSha` over the 200 runs before `#39` removed the doubling, 33 trees ran `claim-2`
+twice, widest same-tree pair **1.69x**, median **1.09x**, and 1931s to 4698s end to end. The
+comment beside `TIMEOUT_SECONDS` carries it, and nothing there proposes a number.
+
 So the engine now prints each mutation's wall clock beside its verdict and publishes
 `slowest mutation — Ns of a 900s budget (N%)` on every run, **including green ones**: the
 headroom is the figure a later session needs in order to size `TIMEOUT_SECONDS` from a

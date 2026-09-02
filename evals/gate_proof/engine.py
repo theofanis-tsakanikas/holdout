@@ -120,6 +120,32 @@ COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 #: corpus and generates nothing at all, and under it the rounding mutation reported CRASHED —
 #: a gate recorded as broken because the guard against hanging fired on work that was doing
 #: exactly what it was asked to.
+#:
+#: **And what nobody had until the seconds were printed: 747s of this, once.** Run 33577549272
+#: measured `the-grouped-path-rounds-like-a-price-not-like-the-contract` at **747s — 83% of the
+#: budget** — while the other seven sat between 32s and 86s. One run earlier the same mutation
+#: was killed at 900s.
+#:
+#: **Those two are not a spread, and reading them as one would be the mistake this comment
+#: exists to stop.** The tree changed between them: `COPIED` includes `.worlds`, and the run
+#: that crossed 900 had ~11 MB of machinery worlds in it that the next run did not, because
+#: `claim-2-tests` had moved to its own job. Before and after a change is not variance.
+#:
+#: So there is **one** observation of this mutation under the current arrangement and **no**
+#: variance estimate for it. What is measured is the variance of the job it lives in, and it is
+#: wide. Every `ci` run of one tree, paired on `headSha` across the 200 runs before `#39`
+#: removed the doubling — 33 shas with two successful `claim-2` jobs each:
+#:
+#:     widest same-tree pair   1.69x     median same-tree pair   1.09x
+#:     fastest 1931s · slowest 4698s over 66 observations — 2.43x end to end
+#:
+#: At the median ratio 747s becomes 814s and fits. At the widest it becomes 1262s and does not.
+#: **Applying a whole-job ratio to one step inside it is an assumption and is written down as
+#: one** — but it is the only variance anybody has, and it says a single observation at 83% is
+#: not evidence of headroom.
+#:
+#: Nothing here proposes a number. Every future run prints the seconds and the percentage,
+#: which is what makes the second and third observations free; the budget gets set from them.
 TIMEOUT_SECONDS = 900
 
 
