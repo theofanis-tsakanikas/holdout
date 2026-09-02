@@ -151,7 +151,40 @@ COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 #: numbers already cost this file once.** The prior wording stays per doctrine rule 4 because it
 #: was written one run before the observation that corrects it, and the correction is the point.
 #:
-#: What survives all three is the shape rather than the direction: **one mutation at 59-92% of
+#: **A fourth, from the first run on `main` after the merge — 806s, 90%:**
+#:
+#:     528s (59%) · 747s (83%) · 806s (90%) · 826s (92%)     1.53x across four, none over 900
+#:
+#: It fell out of a run taken for a different reason, which is the argument for printing the
+#: seconds unconditionally: nobody went looking for it. **The range holds and the trend stays
+#: dead** — the fourth landed inside the first three rather than beyond them.
+#:
+#: ---
+#:
+#: **`none over 900` was disproved ninety minutes after it was written, and the line stays.**
+#: Doctrine rule 4: the prior wording is kept because the delta is the argument, and the delta
+#: here is that a table asserting a budget had never been crossed was the most recent thing in
+#: this file when the budget was crossed. Read from six job logs rather than from a summary:
+#:
+#:     528s (59%)   33584456101   evals/claim-2-sharded
+#:     747s (83%)   33577549272   evals/claim-2-sharded
+#:     779s (87%)   33615045192   docs/day-one
+#:     806s (90%)   33600284036   main
+#:     826s (92%)   33581480860   evals/claim-2-sharded
+#:     847s (94%)   33608418765   ops/the-caches-did-not-survive-the-merge
+#:     >=900s       33610996234   docs/day-one -- CRASHED, killed at the budget
+#:
+#: **Six completed, one killed.** Spread across the completed 847/528 = **1.604x**. The budget
+#: sat **1.063x** above the highest completed observation.
+#:
+#: > **A limit 1.06x above the highest observation of a quantity that varies 1.60x is not a
+#: > limit. It is a lottery that had not yet been drawn.**
+#:
+#: The killed run's true cost is **unknown and above 900** — a kill measures the budget, never
+#: the work — so the distribution has six points and one censored observation, which is the
+#: shape claim 4 is about, arriving in this file's own instrumentation.
+#:
+#: What survives all four is the shape rather than the direction: **one mutation at 59-92% of
 #: the budget while the other seven sit between 32s and 86s**, so whatever crosses first will be
 #: this one, and a red on it is the budget rather than a gate.
 #:
@@ -169,6 +202,28 @@ COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 #:
 #: Nothing here proposes a number. Every future run prints the seconds and the percentage,
 #: which is what made the second observation free; the budget gets set from them.
+#:
+#: **A raise was written here on 2026-09-02 and withdrawn before it shipped, and the reason is
+#: worth more than the number would have been.** Run 33610996234 killed `07` at the budget, and
+#: an interim of 1359s was drafted -- 847 x (847/528), the highest completed observation times
+#: the spread the completed observations show. Both inputs measured; **the rule combining them
+#: chosen**, which is what 900 was and what the draft's own prose failed to say.
+#:
+#: It did not survive its headroom check. `gate_proof --claim 2` runs in `claim-2-combine`,
+#: ceiling **60 minutes**, and that job's worst measured run is 2824s -- cold `--combine` 1339s,
+#: the baseline and seven cheap mutations 671s, `07` 806s. Component-wise worst with `07` at
+#: 1359: **1339 + 739 + 1359 = 3437s against 3600**, a margin of **1.047x** on a job whose nine
+#: measured runs span **2.88x**. That is tighter than the 1.063x this file already calls a
+#: lottery, so the raise would have moved the failure rather than removed it -- from a red that
+#: names the mutation and prints its seconds, to `the combine job timed out`, which names
+#: nothing.
+#:
+#: A budget that fits the ceiling with the margin `claims` was given (1.15x) would cap `07` at
+#: ~1052s, which is 1.24x above its highest observation of a quantity varying 1.604x -- a
+#: lottery on the other side. **The two constraints are incompatible, so no per-mutation value
+#: is safe while the combine's ceiling is 60 minutes.** Both move together or neither does, and
+#: they get derived together once the mutation stops paying for a regeneration it is not
+#: testing. `docs/FINDINGS.md` carries it open.
 TIMEOUT_SECONDS = 900
 
 

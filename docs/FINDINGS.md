@@ -2056,6 +2056,312 @@ is acceptable and says so. Both are decisions. The child entry
 
 ---
 
+**A branch's warm caches do not survive its own merge** · found 2026-09-02 · by the first `ci`
+run on `main` after `#41`, taken to check something else
+
+`#41`'s last four runs on the branch were warm and claim 2 came in at **1701s** against an
+unsharded median of 3271s. The first run on `main` carrying the same code, run `33600284036`,
+took **4075s — 68 minutes**, and its combine job says why in its own log:
+
+    Cache not found for input keys: worlds-Linux-d5d27bdca303d9be70f3b07057bee8a7-combine
+    …
+    Cache saved with key: worlds-Linux-d5d27bdca303d9be70f3b07057bee8a7-combine
+
+**Same digest, same key, written by the branch four times, and `main` missed it.** The shards
+tell the same story from the other side: 655 · 815 · 827 · 834 · 953 · 955 · 959 · 961 against
+186–266 warm on the branch.
+
+**Which half of this is measured.** That a cache written on the branch was not visible to `main`
+— measured, above. That `main`'s caches *are* visible to branches, which is what makes this a
+one-time transition cost rather than a permanent tax — **not measured here.** It is documented
+GitHub behaviour and it is stated as documentation, because the whole weight of the "one-time"
+reading rests on it and this repository has been wrong before about a fact it read rather than
+ran.
+
+**Nobody costed it, and it changes how one of the branch's own figures should be read.**
+*Sharding pays — 1701s against a 3271s median* was measured in a cache state that the merge
+destroyed. Neither figure is wrong: 1701s is the warm steady state and 4075s is the first run in
+the code's permanent home. What was missing is the sentence naming which state each was taken
+in, and that a branch which warms its caches over five runs hands `main` nothing.
+
+**And a fourth observation of the rounding mutation fell out of the same run: 806s, 90%.**
+`528 · 747 · 806 · 826` — **1.53x across four, none over 900.** It landed inside the first three
+rather than beyond them, so the range holds and the trend stays dead. Nobody went looking for
+it; it printed because the seconds print unconditionally, which was the argument for printing
+them on green runs.
+
+*Site:* `.github/workflows/ci.yml` :: `key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}-combine`
+*Site:* `evals/gate_proof/engine.py` :: `#:     528s (59%) · 747s (83%) · 806s (90%) · 826s (92%)     1.53x across four, none over 900`
+*Disposition:* none — there is nothing to fix. A cache that has to be built once in the place it
+will live is the cost of having caches at all, and the alternative is warming `main` on purpose,
+which is a scheduled job spending runner time to make one number look better. It is recorded so
+that a later reading of *sharding pays* knows which cache state produced it
+*Status:* open
+
+**An unlock condition points at a task whose `closes` does not mention it** · found 2026-09-02 ·
+by reading T009 before starting it, because a peer's scoping did not match the layout
+
+`docs/DECISIONS.md` defers `corpus/world/` writing gzipped CSV rather than Parquet, and its
+unlock condition names a task:
+
+    *Unlock condition:* the S3 bulk load in T009, which is the first thing that needs files on
+    disk in the format the lakehouse reads. The writer gains a Parquet target there, beside the
+    CSV one.
+
+**T009's `closes` does not mention the S3 bulk load.** It names the driver and the Lakeflow
+Connect definitions and stops. `CLAUDE.md`'s layout lists three things under `pipelines/ingest/`
+and the bulk load is the third, so two documents assign it to that task and the task's own
+`closes` omits it.
+
+**The failure mode is silence, and it is the one this repository is worst at seeing.** T009
+reached its `stop_at` honestly, closed, and the deferral would sit open pointing at a task that
+finished without doing the thing it was waiting for. Nothing anywhere goes red: `make expiry`
+checks that an unlock condition is **present**, never that it is **right** — the standing limit
+`docs/DECISIONS.md` declares about itself and the one `CLAUDE.md` says is the smallest it can be
+kept.
+
+> **An unlock condition can point at a task whose `closes` does not mention the thing it is
+> waiting for, and nothing checks that pair.**
+
+**It is not `pricing/selection.py`'s shape and the difference is worth stating.** That one is
+work named nowhere, assigned to nobody — an omission that announces itself the moment somebody
+looks for an owner. This is work *with* a task, *with* something depending on it, and a summary
+of that task that leaves it out. **The artefact looks complete**, which is the more dangerous of
+the two shapes and the one `CLAUDE.md` already records under *a form the schema manufactured*.
+
+**Fixed for this instance, not for the class.** `TASKS.md`'s T009 is restated per doctrine rule 4
+— prior wording kept, the bulk load and the Parquet target named, `branch` widened to `branches`,
+`stop_at` extended. **What is not built is the check**: nothing pairs an unlock condition that
+names a task id against that task's `closes`, and the population is small enough to make it
+plausible and awkward enough that it is a decision — an unlock condition is free prose by
+design, and a checker over it would be reading English for meaning.
+
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the S3 bulk load in T009, which is the first thing that needs files on disk in`
+*Site:* `TASKS.md` :: `RESTATED 2026-09-02, because `closes` was incomplete and two other documents said`
+*Disposition:* none for the class — the instance is closed by the restatement in the same change.
+The check that would catch the next one is a decision about whether an unlock condition stays free
+prose, which is the author's rather than a session's
+*Status:* open
+
+---
+
+**A task note repeated a figure `CLAUDE.md` had withdrawn** · found 2026-09-02 · while reading
+T009 for the same branch
+
+T009's `closes` opens *"A driver that writes as the corpus's **100 stores** would"*. `CLAUDE.md`
+withdrew that figure on 2026-08-29: 100 is the `scenario` scale, claim 2 runs at `harness`, and
+the restatement's own subject is that a nominal store count is not the number anything rests on —
+the surviving roster is. The paragraph making that argument **had the nominal number wrong
+itself**, which is why the withdrawal is emphatic.
+
+**The withdrawal did not travel.** `CLAUDE.md` restated; `TASKS.md` kept the number, in a task
+that had not started, where the next session to open it would read *100 stores* as the
+specification. It is the same shape as T008's note naming `G10` where `O2` was the correct check
+— **a summary repeating a superseded figure is how a restatement fails to arrive**, and doctrine
+rule 4 keeps the old value recoverable precisely so this is a correction rather than an
+archaeology problem.
+
+Restated in place with the prior wording kept. **What is not fixed is that nothing enumerates
+where a withdrawn figure was copied to**, and the honest note is that both instances were found
+by reading rather than by any gate.
+
+*Site:* `TASKS.md` :: `And `100 stores` is a figure `CLAUDE.md` withdrew on 2026-08-29: 100 is the`
+*Disposition:* none — the instance is corrected in the same change; the class is *a figure
+restated in one file and repeated in another*, which is `make figures`' `PROSE` question over a
+population nobody has enumerated
+*Status:* open
+
+---
+
+**Nothing checks that a directory declared *not yet built* is still unbuilt** · found 2026-09-02 ·
+by asking what T009 would do to the layout gate before writing anything
+
+`CLAUDE.md`'s layout has two halves — what exists, and *"Declared and not yet built — phase 2 and
+later"*. `ops/figures.py` asks two questions of them and there is a third it does not ask:
+
+    is everything that exists named          layout_packages vs layout_packages_named  — asked
+    is everything named real                 layout_fabrications, present block only    — asked
+    is everything declared-future still future                                          — not asked
+
+`layout_packages_named` searches the **whole** body, future block included, so a directory listed
+under *declared and not yet built* satisfies it. The moment `pipelines/ingest/` exists, the map
+describes it as unbuilt, the row stays green at `21 = 21`, and nothing anywhere says the sentence
+became false.
+
+**This is the third direction of a question this repository has already asked twice**, and
+`CLAUDE.md` records the pair under *Three one-directional checks*: *is everything real listed* and
+*is everything listed real*. The third is *is everything declared-future still unbuilt*, and it is
+the one that goes wrong by ordinary work rather than by a mistake — every phase-2 and phase-3 task
+moves a directory across that line.
+
+*Site:* `ops/figures.py` :: `def layout_packages_named() -> int:`
+*Site:* `CLAUDE.md` :: `**Declared and not yet built — phase 2 and later.**`
+*Disposition:* none — the check is small and the edit it would force is to `CLAUDE.md`, which is
+the author's. Filed so the first branch that creates one of those directories does not have to
+rediscover that no gate noticed
+*Status:* open
+
+**The mutation budget was a lottery that had not been drawn, and then it was** · found
+2026-09-02 · by run `33610996234`, ninety minutes after a branch asserted it had never been
+crossed
+
+`the-grouped-path-rounds-like-a-price-not-like-the-contract` was killed at its 900s budget on
+`docs/day-one`, turning a run red on a tree whose gates were all working. Read from six job logs
+rather than from any summary:
+
+    528s (59%)   33584456101      747s (83%)   33577549272      779s (87%)   33615045192
+    806s (90%)   33600284036      826s (92%)   33581480860      847s (94%)   33608418765
+    >=900s       33610996234  — CRASHED, killed at the budget
+
+**Six completed, one killed.** The completed span **1.604x**, and the budget sat **1.063x** above
+the highest of them.
+
+> **A limit 1.06x above the highest observation of a quantity that varies 1.60x is not a limit.
+> It is a lottery that had not yet been drawn.**
+
+**And the killed run measures the budget, not the work.** Its true cost is unknown and above 900,
+so the distribution has six points and one **censored** observation — which is claim 4's own
+subject arriving in this repository's instrumentation, and the reason no value derived from what
+completed can be shown to cover it.
+
+**What makes this entry rather than an edit is when it happened.** `#42` was written from four
+observations and states in `engine.py` *1.53x across four, **none over 900***. Ninety minutes
+later the repository disproved it. The line stays, per doctrine rule 4, with the full table under
+it: **the most recent observation table in that file was the thing that stopped being true**, and
+that is a better record than a silently corrected number. A later reader trusts the newest table;
+this one now carries its own refutation.
+
+**One correction to how this was assembled, which is the method rather than the finding.** The
+set was given to me as *five completed, spread 1.56x, margin 1.09x*. Pulled from the job logs it
+is **six** — the sixth, 847s at 94%, was on this very branch's own run and had not been read by
+either session. Spread 1.604x, margin 1.063x. **The corrected numbers make the argument stronger,
+which is the only reason it is safe to report that they were corrected at all.**
+
+**And a raise was drafted, checked, and withdrawn — which is the other half of the finding.**
+An interim of 1359s was written: 847 x (847/528), the highest completed observation times the
+spread the completed ones show. Both inputs measured, **the rule combining them chosen** — the
+draft called it *every factor measured, none chosen*, which is precisely what 900 was and what
+the sentence hid.
+
+It did not survive its own headroom check. `gate_proof --claim 2` runs in **`claim-2-combine`,
+ceiling 60 minutes**, and that job's worst measured run is 2824s: cold `--combine` 1339s, the
+baseline and seven cheap mutations 671s, `07` 806s. Component-wise worst with `07` at 1359 is
+**1339 + 739 + 1359 = 3437s against 3600 — a margin of 1.047x**, on a job whose nine measured
+runs span **2.88x**. Tighter than the 1.063x this same entry calls a lottery.
+
+**So the raise would have moved the failure rather than removed it**: from a red that names the
+mutation, prints `900s of a 900s budget (100%)` and lands on this entry, to *the combine job
+timed out at 60 minutes*, which names nothing and kills whatever else was running. A budget that
+fits the ceiling with the margin `claims` was given (1.15x) would cap `07` near 1052s — 1.24x
+above its highest observation of a quantity varying 1.604x, a lottery on the other side.
+
+*Site:* `evals/gate_proof/engine.py` :: `#: > **A limit 1.06x above the highest observation of a quantity that varies 1.60x is not a`
+*Site:* `evals/gate_proof/engine.py` :: `#: is safe while the combine's ceiling is 60 minutes.** Both move together or neither does, and`
+*Disposition:* none — **no per-mutation value is safe while the combine's ceiling is 60 minutes.
+Both move together or neither does.** Nothing is changed here and `TIMEOUT_SECONDS` stays at 900:
+every observation is of the mutation in its expensive form, the change that stops it paying for a
+regeneration it is not testing removes that form, and a number set now is set from a distribution
+about to stop existing. Not `T00K`, which shards the mutations and leaves each one's own cost
+exactly where it was. It closes when that change has landed and `07` has been re-measured in the
+form it leaves behind — both halves, because the first alone is a condition naming a task
+*Status:* open
+
+**Two ceilings wrong in opposite directions, and the split that did it was ours** · found
+2026-09-02 · by checking whether a raise would fit, and finding the other ceiling in the same file
+
+`ci.yml` carries two budgets that were each measured honestly and are now wrong in **opposite**
+directions, and one change made both of them wrong: the sharding that moved claim 2's work out
+from under them.
+
+    claims   timeout-minutes: 90    justified from 71 jobs, cold max 78.3 min, spread 2.43x
+                                    — of claim 2 running WHOLE in that job, which it no longer does
+    combine  timeout-minutes: 60    where the mutations went, and where 900 was already too tight
+
+**What runs under `claims` now, measured over nine runs:** the worst single job is
+`claim-2 tests` at **1235s — 20.6 minutes**, on the cold post-merge run; then `claim-1` at
+653–715s and the shards at 147–973s. **A 90-minute ceiling against a 20.6-minute worst is a
+margin of 4.4x**, and a job wedged for an hour and a quarter would sit there burning budget with
+nothing to stop it. **A ceiling that cannot fire is not a safeguard.**
+
+So: **900 is too tight to survive the work it bounds, and 90 is too loose to bound anything.**
+Both were right when written. Neither was re-derived when the work moved.
+
+> **A number is justified by a measurement of the work it bounds. When the work moves, the
+> justification does not move with it — and nothing in this repository notices, because a
+> ceiling nobody reaches and a ceiling reached at random both look like green runs until one of
+> them does not.**
+
+**It is one finding and not two**, and that is the whole of it: the same change produced both,
+and a session correcting either one alone would set it from a distribution the other is about to
+change again.
+
+**And the figure that opened this was wrong in the safe direction.** It was put to me as *12
+minutes against 90, a margin of 7.5x*, computed from `claim-1` and `claim-3` alone — the eight
+shards and `claim-2 tests` run in the same matrix under the same ceiling. Measured, it is 20.6
+minutes and 4.4x. Weaker than claimed, still far too loose, and re-derived rather than taken.
+
+*Site:* `.github/workflows/ci.yml` :: `    timeout-minutes: 90`
+*Site:* `.github/workflows/ci.yml` :: `    timeout-minutes: 60`
+*Disposition:* none, and deliberately not fixed here. This branch already carries the argument
+for changing none of the three numbers, and the lesson is that ceilings get derived after the
+work settles rather than during a change that moves it. All three come together once the mutation
+stops paying for a regeneration it is not testing and `07` has been re-measured
+*Status:* open
+
+---
+
+**Resolving a `docs/FINDINGS.md` conflict can drop an entry's `*Status:*` and nothing says so** ·
+found 2026-09-02 · while rebasing this branch onto `#43`
+
+Two branches added entries at the same place — immediately before `## Closed` — and git produced
+one conflict hunk. **The `*Status:* open` line of the last entry sat *outside* the markers**,
+after `>>>>>>>`, because both sides ended with a `*Disposition:*` and the line after was common
+text.
+
+**So the obvious resolution is wrong in a way that reads as right.** Keep both hunks, delete the
+three markers, and the first block's last entry has **no `*Status:*`** — it inherits nothing,
+because the shared line now closes the second block instead. The diff looks like a clean union.
+`ops/findings.py` would report the entry as adrift or drop it from its counts, and the register
+would be quietly one entry short of what two people believed they had filed.
+
+**This is the register's own failure mode arriving through git's mechanics rather than through
+anyone's judgment**, which is why it is filed rather than fixed in passing: nothing about it is a
+defect in `findings.py`, and no rule about how to *write* entries would have prevented it.
+
+Two things make it likely rather than exotic. Entries are appended at one point in the file, so
+**every pair of branches that files a finding conflicts there** — this repository now files
+several a day. And the fields are ordered so that `*Status:*` is last, which puts the line most
+likely to fall outside the hunk on the field whose absence is hardest to see.
+
+**What was actually done here**, so the next resolution has a procedure rather than a warning:
+union in landing order, `main`'s entries first; add the missing `*Status:*` to the block that
+lost it; re-run `make findings` **before** committing, because it is the only thing that can see
+the difference.
+
+**And the `*Site:*` below names `ops/findings.py` rather than this file, which is not a
+preference.** A finding about `docs/FINDINGS.md` cannot anchor to `docs/FINDINGS.md`: the site
+line is itself a second occurrence of the fragment it quotes, so the gate reports `AMBIGUOUS`
+and never `1`. That limit is recorded a few entries above, as a parenthetical inside *One
+anchoring rule, two populations* — found by trying it and going red. **It has now been hit twice
+in one day by two sessions**, which is what a parenthetical buys: the second session met it
+fresh, because a limit recorded inside another finding is not a limit anybody searches for. It
+is being filed as an instrument limit in its own right elsewhere and is deliberately not filed
+twice here.
+
+This entry survives it only because it has a half that lives in another file — the regex that
+would fail to see the missing status. **A hazard with no such half could not be anchored at
+all**, and the honest move there is to say so in the entry rather than to invent an anchor that
+satisfies the checker without naming the defect.
+
+*Site:* `ops/findings.py` :: `_STATUS = re.compile(r"^\*Status:\*[ \t]*(?P<what>open|concurred)[ \t]*$", re.MULTILINE)`
+*Disposition:* none — a `.gitattributes` union driver would make it worse rather than better,
+because union is right for disjoint entries and wrong for two branches restating the same site,
+and nothing mechanical can tell those apart. The procedure above is the mitigation and
+`make findings` is the check
+*Status:* open
+
+---
+
 ## Closed
 
 Nothing yet. An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact,

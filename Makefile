@@ -17,11 +17,12 @@
 UV ?= uv
 RUN := $(UV) run
 
-#: Everything that is Python and is ours. `evals/`, `corpus/`, `ops/` and the harness hooks
+#: Everything that is Python and is ours. `evals/`, `corpus/`, `ops/`, `pipelines/` and the
+#: harness hooks
 #: are linted and type-checked exactly as `src/` is: an eval is the evidence a claim rests on,
 #: a hook is a guarantee, and evidence or a guarantee held to a lower standard than the code
 #: it judges is not one for long.
-PYTHON_DIRS := src tests evals corpus ops .claude/hooks
+PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
