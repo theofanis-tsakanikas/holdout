@@ -789,6 +789,18 @@ named rather than left as a direction.
 *Not taken on T00H*, deliberately: it is a change to a gate, inside a branch about CI wall clock,
 and it costs a full matrix to land. Nothing about it is blocking.
 
+**Second instance, 2026-09-02, and it carries the half that makes this worse rather than
+longer.** `make language` went red on `.claude/worktrees/ops-ci-runs-once-per-tree/…/prior_price.yaml`
+— a stray worktree left behind by `evals/claim-2-sharded` after it merged as `#41`. Untracked, and
+the gate walks it anyway, which is the `notes/` lesson exactly: **a hand-written exclusion list
+cannot know about a directory nobody meant to create.**
+
+**And the direction is the one that matters.** That failure is **invisible to CI** — a worktree
+exists on one machine and never on a runner — so the gate that would catch an untracked directory
+**never runs where the directory is**. It is not that the list is one name short. It is that the
+list is maintained on the only machine where the problem occurs and checked on the only machine
+where it cannot. Two instances now, and the second one is not a longer list.
+
 *Site:* `ops/language.py` :: `NOT_CONTENT: frozenset[str] = frozenset(`
 *Disposition:* its own branch — small, and unblocked now rather than by anything
 *Status:* open
@@ -1641,93 +1653,6 @@ together and neither is opened here.
 of those is a decision rather than an edit
 *Status:* open
 
-**The ingestion gateway Lakeflow Connect requires is classic compute, and it runs continuously** ·
-found 2026-09-02 · by T015, from the vendor's own documentation
-`CLAUDE.md` routes ERP master data and competitor prices through **Lakeflow Connect**, and its
-`backfill` sequence depends on that path. Read 2026-09-02, on two independent pages:
-
-> "The gateway runs on classic compute, and it runs continuously to capture changes before change
-> logs can be truncated in the source."
-> — [Managed database connectors](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview)
-
-> "must run the gateway as a continuous pipeline. This is critical for PostgreSQL to prevent
-> Write-Ahead Log (WAL) bloat … **The minimum requirement is 8 cores**"
-> — [Ingest data from PostgreSQL](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/postgresql-pipeline)
-
-**Three sentences in `CLAUDE.md` are contradicted by that**, and the third is the one that hurts,
-because it is not an omission but an argument that was made and is wrong:
-
-1. *"Serverless only. **No always-on cluster anywhere in the design.**"*
-2. *"there is **no separate EC2 line** — infrastructure is bundled into the serverless DBU rate."*
-3. *"The 'you pay Databricks and you pay AWS' trap applies to classic compute, **which this design
-   does not use**."* — the design does use it, unavoidably, from the moment the ERP path exists.
-
-**The word `gateway` occurs nowhere in repository content** — grepped across all Markdown on
-2026-09-02, excluding gitignored `notes/` and worktrees. The cost table's one classic-shaped line,
-*"jobs compute — silver, gold, training | 10 – 30 USD"*, is scoped to three things the gateway is
-not, and an 8-core cluster standing continuously from `backfill` to `destroy` adds both a classic
-DBU line and the EC2 line sentence 2 says does not exist.
-
-**Three ways out, named because a contradiction presented with two bad options is not a choice.**
-None is taken here.
-
-- **Accept it and restate.** The rule becomes *serverless everywhere except the one path a GA
-  vendor connector does not offer serverless for*, the cost model gains a line, and doctrine rule 4
-  governs the restatement. Honest, and it costs the cleanest sentence in the cost section.
-- **Route ERP master data through the S3 bulk load instead**, which `CLAUDE.md`'s repository map
-  already declares in `pipelines/ingest/` — *"Zerobus driver · Lakeflow Connect · the S3 bulk
-  load"*. **No connector, no gateway, no classic DBU line and no EC2 line.** *And the record
-  carries its own argument against it, which is why this is the author's call and not a session's*:
-  the ERP is deliberately **driven** during `run` — *"costs change mid-day, a product enters the
-  regulated basket, a supplier term changes retroactively, a column is added. A seeded-and-static
-  database gives incremental ingestion nothing to do and proves nothing."* A file drop is a
-  snapshot; whether the driven day still proves what it is there to prove without change capture is
-  the question, and it is a judgment about what the estate is evidence *of*.
-- **Hand-write the ingestion.** Explicitly refused already — the sources table chose Lakeflow
-  Connect for *"no custom ingestion code to maintain"* — and it is listed only so the refusal is
-  visible rather than implicit.
-
-*Site:* `CLAUDE.md` :: `- Serverless only. **No always-on cluster anywhere in the design.**`
-*Site:* `CLAUDE.md` :: `serverless DBU rate. The "you pay Databricks and you pay AWS" trap applies to classic compute,`
-*Disposition:* **the author's.** Every route changes `CLAUDE.md`, which no session may do and no
-two sessions may settle by agreeing. `docs/DAY-ONE.md` §6 records that if the second route is
-taken, five of its seven sections stop applying
-*Status:* open
-
-**Lakeflow Connect is GA; the PostgreSQL connector this estate needs is Public Preview** · found
-2026-09-02 · by T015
-> "The PostgreSQL connector for Lakeflow Connect is in Public Preview. **Reach out to your
-> Databricks account team to enroll in the Public Preview.**"
-> — [PostgreSQL connector limitations](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/postgresql-limits), read 2026-09-02
-
-`CLAUDE.md`'s sources table says **(GA)**. Lakeflow Connect *is* GA; **this connector is not**, and
-it is the only one the estate's ERP path uses. The two halves of the consequence are different in
-kind and are separated deliberately.
-
-**Mechanical, and a fact rather than an opinion.** `make preview-audit` is deferred on the unlock
-condition *"the first Terraform layer, and the first time a preview surface is considered"*. **A
-preview surface has now been considered.** That half of the condition has fired, and this branch
-records it in `docs/DECISIONS.md` rather than leaving it to be noticed. The connector is the first
-declared entry the inventory will have.
-
-**And the enrolment is the purest item this repository's day-one document can hold** — a
-conversation with a human at a vendor, with a lead time nobody here controls, blocking the entire
-ERP path. It is §1 of `docs/DAY-ONE.md` for that reason.
-
-**Judgment, and it is the author's.** Whether this breaches *"No claim depends on a non-GA
-surface."* **A reading, with its argument, offered rather than concluded:** probably not, because
-all seven claims are provable local with no workspace and no credentials, so the connector sits on
-the *estate* path — where proof is captured — and not on any claim's proof path. The counter is
-that `run`'s evidence is what the README and the article publish, and evidence resting on a preview
-surface is exactly the fragility the rule names. **The two sessions that found this both read it
-the first way, which is precisely why it is not settled here.**
-
-*Site:* `CLAUDE.md` :: `| ERP tables, competitor prices | **Lakeflow Connect** (GA) | pull from a database; no custom ingestion code to maintain |`
-*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the first Terraform layer, and the first time a preview surface is considered.`
-*Disposition:* the judgment is **the author's**; the mechanical half is recorded on `docs/day-one`
-in `docs/DECISIONS.md`, and the enrolment step is recorded in `docs/DAY-ONE.md` §1
-*Status:* open
-
 **A commit onto `main` is permitted when the guard cannot lex the command** · found 2026-09-02 ·
 by T015, by being refused four times — and **the permitting direction was found by `projects-0a`
 reading the mechanism rather than the observations**
@@ -2423,7 +2348,245 @@ workflow comment
 
 ---
 
+**The layout block cannot say *declared and never to be built*** · found 2026-09-02 · by asking
+what the ruling does to the repository map, before writing anything into it
+
+`CLAUDE.md`'s layout has two halves — what exists, and *"Declared and not yet built — phase 2 and
+later"* — and the paragraph above the second one gives the rule it enforces: *a directory that
+does not exist may not be described in the present tense beside directories that do.*
+
+**`infra/sources/` was correctly in the second half until today.** The route-2 ruling closes
+`T019` as *not built, and here is why*, so that directory is no longer *not yet* built. It is
+**never** going to be built, and the block has two states for a thing that now has three.
+
+The author's edit takes `sources` out of the `infra/` line and the reason lives in
+`docs/DECISIONS.md`, which is the right size of fix: a third marking on the file every session
+reads first, made on the day a ruling lands, is more than a ruling needs. **What is not fixed is
+that the block still cannot express the state**, and the next withdrawal will meet the same
+absence.
+
+**It is the second direction of a question `#42` files the first half of.** That branch records
+*is everything declared-future still unbuilt* — a directory that got built while the map still
+calls it future. This is *is everything declared-future ever going to be built* — one that will
+never arrive while the map still promises it. **Neither is checked**, and they belong beside each
+other; `#42` is open at the time of writing, so they are two entries until it lands.
+
+**And the site was reachable by one method only.** It says none of *Lakeflow*, *RDS* or
+*Postgres*. It says `sources`, the name of the layer being deleted — so no grep for the things
+the change was *about* reaches it. **Grep the name of the thing being removed, not the names of
+the things it touches**, which is a method rather than a piece of luck and should run on every
+future deletion of a named thing.
+
+*Site:* `CLAUDE.md` :: `infra/                 bootstrap · foundation · lakehouse · pipelines · ml · serving`
+*Disposition:* none — the instance is closed by the author's edit. The class is a third state the
+layout block has no marking for, and adding one is a change to `CLAUDE.md`'s structure rather than
+its content, which is his
+*Status:* open
+
+---
+
+**Two stale summaries, recorded and unnamed** · found 2026-09-02 · both by re-deriving a count
+that had been written once
+
+Two instances of one mechanism on one day, **recorded as instances with no rule over them**,
+which is what `CLAUDE.md` does with *Three one-directional checks* and for the reason it gives
+there: a rule generalised early is scoped to the shapes its instances happened to wear.
+
+- **`#43`'s gateway finding** said *"five of its seven sections stop applying"* of
+  `docs/DAY-ONE.md`. Measured against the document, it is **six**. §2 survives, and its own text
+  says why: the binding region constraint is Zerobus, whose availability list is the narrower one,
+  so removing the connector's wider list changes nothing.
+- **`#42`'s own pull-request title and body** said *four findings* while the branch carried
+  **seven**, and the three omitted were the three with numbers in them. Corrected on the pull
+  request; **it has no anchor in this tree, because a pull-request body is not a file**, and that
+  is said here rather than an anchor being invented to satisfy the checker.
+
+**The distinction to keep, because a third instance is what decides which rule gets written.** A
+stale figure **inside a document** is wrong where a reader can check it against the thing it
+describes. A stale summary in a **review surface** is wrong where the reader uses it *instead of*
+the thing it describes — a pull-request body is, for most reviewers, a substitute for reading the
+whole diff. Same mechanism, different blast radius, and the second is the one whose omissions a
+reader cannot reconstruct.
+
+*Site:* `docs/DAY-ONE.md` :: `**Zerobus is the narrower list, so the intersection is the Zerobus list**`
+*Disposition:* none — deliberately unnamed at two. The moment is a third instance in a form
+neither of these wears, at which point the distinction above decides between *re-derive counts*
+and *re-derive counts on anything a reviewer reads in place of the artefact*
+*Status:* open
+
+---
+
+**`*Now:* gone` is checked by nothing at all** · found 2026-09-02 · by nearly writing a false one
+while closing the first two findings this register has ever closed
+
+`docs/FINDINGS.md` checks two of its three anchor forms and not the third:
+
+    *Site:*                  the fragment must occur in its file exactly once   — checked
+    *Now:* `path` :: `text`  the replacement text must occur, exactly once       — checked
+    *Now:* `path` :: gone    nothing                                             — NOT CHECKED
+
+**A `gone` is an assertion of absence, and absence is the one thing this register never
+verifies.** Write `gone` about a line still sitting in the file and `make findings` is green, the
+entry reads as closed, and the register asserts a disappearance that did not happen.
+
+**The evidence is a near-miss on this branch and it travels with the entry.** Closing the
+PostgreSQL-connector finding, its second site — `docs/DECISIONS.md`'s `make preview-audit`
+deferral — was written as `gone — the deferral it anchored to is restated on this branch`. **It is
+not gone.** That deferral unlocks at *the first time a preview surface is considered*; route 2
+removes a surface, not the condition. The line is untouched in the file. It would have passed.
+
+**Why this is filed rather than recorded as one instance under the usual restraint.** *Record
+instances, name no rule* governs a pattern waiting for a third example to show its shape. This is
+not a pattern — it is a proven hole in a named mechanism, and `TASKS.md` already carries the rule
+for that case, from `T00G`:
+
+> **A proven silent hole may not be declared as a limit by the branch claiming its coverage is
+> computed.**
+
+**This is that branch.** It is the branch closing findings by `*Now:*`, and it found that one of
+the three forms it relies on is unchecked. Declaring it as a limit here and moving on would be the
+exact shape `T00G` refuses.
+
+**It is under-coverage rather than over**, which is the direction `ops/figures.py` calls the lie:
+a gate that cannot fail on a false claim of absence reports on what it examined as though that
+were what exists.
+
+*Site:* `ops/findings.py` :: `_NOW = re.compile(`
+*Disposition:* none, and **no gate is proposed here** — the same restraint, for the same reason
+the entry above it gives. What a checker would have to do is decide what *absence* means for a
+line that may have been reworded rather than removed, which is a judgment about the register's
+own grammar rather than an edit
+*Status:* open
+
+---
+
 ## Closed
 
-Nothing yet. An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact,
-and a `*Now:*` for each — and it goes on being checked. What closed it has to keep being true.
+An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact, and a `*Now:*`
+for each — and it goes on being checked. What closed it has to keep being true.
+
+**This section read *"Nothing yet"* until 2026-09-02.** The first two entries to arrive did so on
+the same ruling, on the same day they were filed, which is not the shape anybody expected the
+first closures to have: they were filed as *the author's*, and the author answered.
+
+---
+
+**The ingestion gateway Lakeflow Connect requires is classic compute, and it runs continuously** ·
+found 2026-09-02 · by T015, from the vendor's own documentation
+`CLAUDE.md` routes ERP master data and competitor prices through **Lakeflow Connect**, and its
+`backfill` sequence depends on that path. Read 2026-09-02, on two independent pages:
+
+> "The gateway runs on classic compute, and it runs continuously to capture changes before change
+> logs can be truncated in the source."
+> — [Managed database connectors](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview)
+
+> "must run the gateway as a continuous pipeline. This is critical for PostgreSQL to prevent
+> Write-Ahead Log (WAL) bloat … **The minimum requirement is 8 cores**"
+> — [Ingest data from PostgreSQL](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/postgresql-pipeline)
+
+**Three sentences in `CLAUDE.md` are contradicted by that**, and the third is the one that hurts,
+because it is not an omission but an argument that was made and is wrong:
+
+1. *"Serverless only. **No always-on cluster anywhere in the design.**"*
+2. *"there is **no separate EC2 line** — infrastructure is bundled into the serverless DBU rate."*
+3. *"The 'you pay Databricks and you pay AWS' trap applies to classic compute, **which this design
+   does not use**."* — the design does use it, unavoidably, from the moment the ERP path exists.
+
+**The word `gateway` occurs nowhere in repository content** — grepped across all Markdown on
+2026-09-02, excluding gitignored `notes/` and worktrees. The cost table's one classic-shaped line,
+*"jobs compute — silver, gold, training | 10 – 30 USD"*, is scoped to three things the gateway is
+not, and an 8-core cluster standing continuously from `backfill` to `destroy` adds both a classic
+DBU line and the EC2 line sentence 2 says does not exist.
+
+**Three ways out, named because a contradiction presented with two bad options is not a choice.**
+None is taken here.
+
+- **Accept it and restate.** The rule becomes *serverless everywhere except the one path a GA
+  vendor connector does not offer serverless for*, the cost model gains a line, and doctrine rule 4
+  governs the restatement. Honest, and it costs the cleanest sentence in the cost section.
+- **Route ERP master data through the S3 bulk load instead**, which `CLAUDE.md`'s repository map
+  already declares in `pipelines/ingest/` — *"Zerobus driver · Lakeflow Connect · the S3 bulk
+  load"*. **No connector, no gateway, no classic DBU line and no EC2 line.** *And the record
+  carries its own argument against it, which is why this is the author's call and not a session's*:
+  the ERP is deliberately **driven** during `run` — *"costs change mid-day, a product enters the
+  regulated basket, a supplier term changes retroactively, a column is added. A seeded-and-static
+  database gives incremental ingestion nothing to do and proves nothing."* A file drop is a
+  snapshot; whether the driven day still proves what it is there to prove without change capture is
+  the question, and it is a judgment about what the estate is evidence *of*.
+- **Hand-write the ingestion.** Explicitly refused already — the sources table chose Lakeflow
+  Connect for *"no custom ingestion code to maintain"* — and it is listed only so the refusal is
+  visible rather than implicit.
+
+*Site:* `CLAUDE.md` :: `- Serverless only. **No always-on cluster anywhere in the design.**`
+*Site:* `CLAUDE.md` :: `serverless DBU rate. The "you pay Databricks and you pay AWS" trap applies to classic compute,`
+*Disposition:* **the author's.** Every route changes `CLAUDE.md`, which no session may do and no
+two sessions may settle by agreeing. `docs/DAY-ONE.md` §6 records that if the second route is
+taken, five of its seven sections stop applying
+*Closed:* 2026-09-02 — **the author ruled route 2**: the ERP path becomes files on S3, dropped
+several times during `run`, and the connector leaves the design. The contradiction is not
+resolved by argument but by removal — there is no gateway, so there is no classic compute, so all
+three sentences are true again.
+*Now:* `CLAUDE.md` :: `- Serverless only. **No always-on cluster anywhere in the design.**`
+*Now:* `CLAUDE.md` :: `serverless DBU rate. The "you pay Databricks and you pay AWS" trap applies to classic compute,`
+
+**Both `*Now:*` lines are the original text, unchanged, and that is what closure looks like
+here.** Nothing replaced them because nothing was wrong with them — what was wrong was the design
+they described, and the design moved. A finding can close by the world changing under a sentence
+that never did.
+
+**And the price is recorded rather than absorbed.** Route 2 buys back *serverless only* by giving
+up change capture against a live source: the estate now demonstrates **incremental load of
+successive drops**. Smaller, deliberately, and put to the author as smaller.
+*Status:* open
+
+---
+
+**Lakeflow Connect is GA; the PostgreSQL connector this estate needs is Public Preview** · found
+2026-09-02 · by T015
+> "The PostgreSQL connector for Lakeflow Connect is in Public Preview. **Reach out to your
+> Databricks account team to enroll in the Public Preview.**"
+> — [PostgreSQL connector limitations](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/postgresql-limits), read 2026-09-02
+
+`CLAUDE.md`'s sources table says **(GA)**. Lakeflow Connect *is* GA; **this connector is not**, and
+it is the only one the estate's ERP path uses. The two halves of the consequence are different in
+kind and are separated deliberately.
+
+**Mechanical, and a fact rather than an opinion.** `make preview-audit` is deferred on the unlock
+condition *"the first Terraform layer, and the first time a preview surface is considered"*. **A
+preview surface has now been considered.** That half of the condition has fired, and this branch
+records it in `docs/DECISIONS.md` rather than leaving it to be noticed. The connector is the first
+declared entry the inventory will have.
+
+**And the enrolment is the purest item this repository's day-one document can hold** — a
+conversation with a human at a vendor, with a lead time nobody here controls, blocking the entire
+ERP path. It is §1 of `docs/DAY-ONE.md` for that reason.
+
+**Judgment, and it is the author's.** Whether this breaches *"No claim depends on a non-GA
+surface."* **A reading, with its argument, offered rather than concluded:** probably not, because
+all seven claims are provable local with no workspace and no credentials, so the connector sits on
+the *estate* path — where proof is captured — and not on any claim's proof path. The counter is
+that `run`'s evidence is what the README and the article publish, and evidence resting on a preview
+surface is exactly the fragility the rule names. **The two sessions that found this both read it
+the first way, which is precisely why it is not settled here.**
+
+*Site:* `CLAUDE.md` :: `| ERP tables, competitor prices | **Lakeflow Connect** (GA) | pull from a database; no custom ingestion code to maintain |`
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the first Terraform layer, and the first time a preview surface is considered.`
+*Disposition:* the judgment is **the author's**; the mechanical half is recorded on `docs/day-one`
+in `docs/DECISIONS.md`, and the enrolment step is recorded in `docs/DAY-ONE.md` §1
+*Closed:* 2026-09-02 — **the same ruling, and it closes this one by making the surface
+irrelevant rather than by making it GA.** The connector is not used, so nothing in this estate
+depends on a Public Preview surface and `CLAUDE.md`'s *(GA)* claim is not merely corrected but
+withdrawn along with the row that carried it.
+*Now:* `CLAUDE.md` :: `| ERP tables, competitor prices | **bulk load from files on S3** | several drops during the day rather than one: master data changes while the day runs, and no connector, no gateway and no ingestion code to maintain |`
+*Now:* `docs/DECISIONS.md` :: `*Unlock condition:* the first Terraform layer, and the first time a preview surface is considered.`
+
+**That second `*Now:*` is the original line, unchanged, and it was nearly written as `gone`** — a
+near-miss that turned out to be a hole in the mechanism rather than a slip, and is filed as
+*`*Now:* gone` is checked by nothing at all*.
+
+**This is the finding that made the eleven edits impossible to land alone.** `make findings` went
+red the moment the sources-table row moved, refusing to let an anchored line change without
+somebody saying whether it was fixed or had gone stale. **The ruling and its closure are one
+piece of work because the anchor rule makes them one** — which is the register doing exactly what
+it is for, on the day it was tested by an edit it had never seen.
+*Status:* open

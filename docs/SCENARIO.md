@@ -177,13 +177,22 @@ with another there — merging at bronze destroys the ability to reprocess one i
 | source | arrives by | why that mechanism |
 |---|---|---|
 | POS lines · scale labels · **ESL acknowledgements** | **Zerobus Ingest** | events from every store with no message bus to operate — **the live day only** |
-| product master · cost ledger · supplier terms · regulated basket · store master · planogram · competitor prices | **Lakeflow Connect** | a pull from a database; no custom ingestion code to maintain |
+| product master · cost ledger · supplier terms · regulated basket · store master · planogram · competitor prices | **bulk load from files on S3** | several drops during the day rather than one, so master data changes while the day runs — no connector, no gateway, no ingestion code to maintain |
 | **eight months of transaction history** | **bulk load from files on S3** | streaming eight months through Zerobus would be slow and costly, and no real deployment does it — backfill from files, then stream |
 
-The ERP is a **real Postgres**, stood up by the `sources` layer, seeded with history and then
-*driven* during the live day: a cost changes mid-day, a product enters the regulated basket, a
-supplier term changes retroactively, a column is added. A seeded-and-static database gives
-incremental ingestion nothing to do and proves nothing.
+The ERP's master data arrives as **files, dropped several times during the live day**: a cost
+changes mid-day, a product enters the regulated basket, a supplier term changes retroactively, a
+column is added. The argument is what forces the several drops rather than one — a single static
+snapshot gives incremental ingestion nothing to do and proves nothing.
+
+**What that demonstrates is incremental load of successive drops, not change capture against a
+live source**, and the difference is stated here rather than glossed because this document is the
+one an article would be written from. *Restated 2026-09-02.* It read *"The ERP is a **real
+Postgres**, stood up by the `sources` layer, seeded with history and then driven during the live
+day"*, and the prior wording stays per doctrine rule 4. **The larger claim was the better story**,
+which is exactly why it is named: a managed connector to a live Postgres requires a gateway on
+classic compute running continuously, which contradicts *serverless only*, and the author chose
+the smaller claim over the contradiction.
 
 Five silver tables — `sales · shelf_state · price_displayed · reference · quarantine` — one per
 question rather than one per bronze table. Three rules there carry most of the weight:
@@ -392,7 +401,7 @@ which is what a planner has on the morning of the order and *not* the weather or
 that has not happened yet. Sales censored by availability. ESL acknowledgements that sometimes
 fail, in every world.
 
-It emits four event streams and the three reference tables Lakeflow Connect would pull:
+It emits four event streams and the three reference tables the ERP drops would carry:
 `pos_lines · esl_acks · shelf_days · price_decisions`, plus
 `store_master · product_master · cost_ledger`. The cost ledger **moves inside the corpus**, so a
 sale at 14:00 has a cost as it was known at 14:00 to join to; `Chain` has no `current_cost`
