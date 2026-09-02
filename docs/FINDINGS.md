@@ -1854,6 +1854,50 @@ direction costs nothing and is written down here: pass the message as a file,
 
 ---
 
+**A branch's warm caches do not survive its own merge** · found 2026-09-02 · by the first `ci`
+run on `main` after `#41`, taken to check something else
+
+`#41`'s last four runs on the branch were warm and claim 2 came in at **1701s** against an
+unsharded median of 3271s. The first run on `main` carrying the same code, run `33600284036`,
+took **4075s — 68 minutes**, and its combine job says why in its own log:
+
+    Cache not found for input keys: worlds-Linux-d5d27bdca303d9be70f3b07057bee8a7-combine
+    …
+    Cache saved with key: worlds-Linux-d5d27bdca303d9be70f3b07057bee8a7-combine
+
+**Same digest, same key, written by the branch four times, and `main` missed it.** The shards
+tell the same story from the other side: 655 · 815 · 827 · 834 · 953 · 955 · 959 · 961 against
+186–266 warm on the branch.
+
+**Which half of this is measured.** That a cache written on the branch was not visible to `main`
+— measured, above. That `main`'s caches *are* visible to branches, which is what makes this a
+one-time transition cost rather than a permanent tax — **not measured here.** It is documented
+GitHub behaviour and it is stated as documentation, because the whole weight of the "one-time"
+reading rests on it and this repository has been wrong before about a fact it read rather than
+ran.
+
+**Nobody costed it, and it changes how one of the branch's own figures should be read.**
+*Sharding pays — 1701s against a 3271s median* was measured in a cache state that the merge
+destroyed. Neither figure is wrong: 1701s is the warm steady state and 4075s is the first run in
+the code's permanent home. What was missing is the sentence naming which state each was taken
+in, and that a branch which warms its caches over five runs hands `main` nothing.
+
+**And a fourth observation of the rounding mutation fell out of the same run: 806s, 90%.**
+`528 · 747 · 806 · 826` — **1.53x across four, none over 900.** It landed inside the first three
+rather than beyond them, so the range holds and the trend stays dead. Nobody went looking for
+it; it printed because the seconds print unconditionally, which was the argument for printing
+them on green runs.
+
+*Site:* `.github/workflows/ci.yml` :: `key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}-combine`
+*Site:* `evals/gate_proof/engine.py` :: `#:     528s (59%) · 747s (83%) · 806s (90%) · 826s (92%)     1.53x across four, none over 900`
+*Disposition:* none — there is nothing to fix. A cache that has to be built once in the place it
+will live is the cost of having caches at all, and the alternative is warming `main` on purpose,
+which is a scheduled job spending runner time to make one number look better. It is recorded so
+that a later reading of *sharding pays* knows which cache state produced it
+*Status:* open
+
+---
+
 ## Closed
 
 Nothing yet. An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact,

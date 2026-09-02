@@ -151,7 +151,15 @@ COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 #: numbers already cost this file once.** The prior wording stays per doctrine rule 4 because it
 #: was written one run before the observation that corrects it, and the correction is the point.
 #:
-#: What survives all three is the shape rather than the direction: **one mutation at 59-92% of
+#: **A fourth, from the first run on `main` after the merge — 806s, 90%:**
+#:
+#:     528s (59%) · 747s (83%) · 806s (90%) · 826s (92%)     1.53x across four, none over 900
+#:
+#: It fell out of a run taken for a different reason, which is the argument for printing the
+#: seconds unconditionally: nobody went looking for it. **The range holds and the trend stays
+#: dead** — the fourth landed inside the first three rather than beyond them.
+#:
+#: What survives all four is the shape rather than the direction: **one mutation at 59-92% of
 #: the budget while the other seven sit between 32s and 86s**, so whatever crosses first will be
 #: this one, and a red on it is the budget rather than a gate.
 #:
