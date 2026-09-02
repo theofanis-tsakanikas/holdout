@@ -1594,11 +1594,262 @@ stop the mutation paying for a regeneration that is not what it tests, which is 
 territory — the same 826s sits on the critical path of the whole run, so the two arrive
 together and neither is opened here.
 
+> **The prediction landed, 2026-09-02, and it is a measurement now.** This entry called itself
+> *"a prediction with a search term attached, not work"*. The search term hit on run
+> **33610996234**, `claim-2 combine`: `the-grouped-path-rounds-like-a-price-not-like-the-contract`
+> **CRASHED, killed at the 900s budget, 100% of it**, taking `claims-complete` — a required
+> context — red with it.
+>
+> **Four observations now, and the fourth is not a duration because the job was killed before it
+> produced one:**
+>
+> | when | run | result |
+> |---|---|---|
+> | (recorded here previously) | — | 747s · **83%** |
+> | (recorded here previously) | — | 826s · **92%** |
+> | 2026-09-02 06:45, `main` @ `83171e9` | 33600284036 | 806s · **90%** · passed |
+> | 2026-09-02 08:48, `docs/day-one` @ `c9902bf` | 33610996234 | **900s · 100% · KILLED** |
+>
+> **The tree that crossed is the tree that did not, plus five Markdown files.** `docs/day-one`'s
+> whole diff is 621 inserted lines across `PLAN.md`, `TASKS.md`, `docs/DAY-ONE.md`,
+> `docs/DECISIONS.md` and this file — no Python, no contract, nothing on any path this mutation
+> regenerates. So the variable is the runner and not the repository, which is what three
+> observations spanning 747–826 already implied and what nobody could state until one of them
+> went over.
+>
+> **This is `CLAUDE.md`'s fourth form of the rule arriving on its own terms** — *a timeout, a K, a
+> tolerance, a threshold, a budget is an assertion about what the system does, wearing a number
+> instead of a verb.* `TIMEOUT_SECONDS = 900` asserts *this mutation finishes in 900 seconds*, it
+> was set from observations that all sat under it, and it is now false on the hardware that runs
+> it.
+>
+> **Nothing is changed here and the reason is the entry's own.** Raising the budget a fourth time
+> is the reflex the deferral beside `ci.yml`'s `timeout-minutes` exists to refuse, and it would
+> again be set from below. The two named exits are unchanged: **set `TIMEOUT_SECONDS` from a
+> measurement** — for which this table is now the measurement, and it says the budget must clear
+> a ceiling nobody has yet observed rather than the 900 it was pinned under — **or T00K removes
+> the regeneration this mutation pays for and is not testing.** Both are decisions, and neither
+> is this branch's.
+>
+> **What it blocks, said plainly:** `docs/day-one` cannot merge, because a required context is
+> red for a reason that has nothing to do with its diff.
+
 *Site:* `evals/gate_proof/engine.py` :: `#:     747s (83%)  ·  826s (92%)      two observations, 1.11x apart, both under 900`
 *Site:* `evals/gate_proof/mutations/claim-2/07-the-grouped-path-rounds-like-a-price-not-like-the-contract.yaml` :: `eval_module: evals.uplift.machinery`
 *Disposition:* none — it is a prediction with a search term attached, not work. It closes when
 `TIMEOUT_SECONDS` is set from a measurement or when T00K removes the regeneration, and either
 of those is a decision rather than an edit
+*Status:* open
+
+**The ingestion gateway Lakeflow Connect requires is classic compute, and it runs continuously** ·
+found 2026-09-02 · by T015, from the vendor's own documentation
+`CLAUDE.md` routes ERP master data and competitor prices through **Lakeflow Connect**, and its
+`backfill` sequence depends on that path. Read 2026-09-02, on two independent pages:
+
+> "The gateway runs on classic compute, and it runs continuously to capture changes before change
+> logs can be truncated in the source."
+> — [Managed database connectors](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview)
+
+> "must run the gateway as a continuous pipeline. This is critical for PostgreSQL to prevent
+> Write-Ahead Log (WAL) bloat … **The minimum requirement is 8 cores**"
+> — [Ingest data from PostgreSQL](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/postgresql-pipeline)
+
+**Three sentences in `CLAUDE.md` are contradicted by that**, and the third is the one that hurts,
+because it is not an omission but an argument that was made and is wrong:
+
+1. *"Serverless only. **No always-on cluster anywhere in the design.**"*
+2. *"there is **no separate EC2 line** — infrastructure is bundled into the serverless DBU rate."*
+3. *"The 'you pay Databricks and you pay AWS' trap applies to classic compute, **which this design
+   does not use**."* — the design does use it, unavoidably, from the moment the ERP path exists.
+
+**The word `gateway` occurs nowhere in repository content** — grepped across all Markdown on
+2026-09-02, excluding gitignored `notes/` and worktrees. The cost table's one classic-shaped line,
+*"jobs compute — silver, gold, training | 10 – 30 USD"*, is scoped to three things the gateway is
+not, and an 8-core cluster standing continuously from `backfill` to `destroy` adds both a classic
+DBU line and the EC2 line sentence 2 says does not exist.
+
+**Three ways out, named because a contradiction presented with two bad options is not a choice.**
+None is taken here.
+
+- **Accept it and restate.** The rule becomes *serverless everywhere except the one path a GA
+  vendor connector does not offer serverless for*, the cost model gains a line, and doctrine rule 4
+  governs the restatement. Honest, and it costs the cleanest sentence in the cost section.
+- **Route ERP master data through the S3 bulk load instead**, which `CLAUDE.md`'s repository map
+  already declares in `pipelines/ingest/` — *"Zerobus driver · Lakeflow Connect · the S3 bulk
+  load"*. **No connector, no gateway, no classic DBU line and no EC2 line.** *And the record
+  carries its own argument against it, which is why this is the author's call and not a session's*:
+  the ERP is deliberately **driven** during `run` — *"costs change mid-day, a product enters the
+  regulated basket, a supplier term changes retroactively, a column is added. A seeded-and-static
+  database gives incremental ingestion nothing to do and proves nothing."* A file drop is a
+  snapshot; whether the driven day still proves what it is there to prove without change capture is
+  the question, and it is a judgment about what the estate is evidence *of*.
+- **Hand-write the ingestion.** Explicitly refused already — the sources table chose Lakeflow
+  Connect for *"no custom ingestion code to maintain"* — and it is listed only so the refusal is
+  visible rather than implicit.
+
+*Site:* `CLAUDE.md` :: `- Serverless only. **No always-on cluster anywhere in the design.**`
+*Site:* `CLAUDE.md` :: `serverless DBU rate. The "you pay Databricks and you pay AWS" trap applies to classic compute,`
+*Disposition:* **the author's.** Every route changes `CLAUDE.md`, which no session may do and no
+two sessions may settle by agreeing. `docs/DAY-ONE.md` §6 records that if the second route is
+taken, five of its seven sections stop applying
+*Status:* open
+
+**Lakeflow Connect is GA; the PostgreSQL connector this estate needs is Public Preview** · found
+2026-09-02 · by T015
+> "The PostgreSQL connector for Lakeflow Connect is in Public Preview. **Reach out to your
+> Databricks account team to enroll in the Public Preview.**"
+> — [PostgreSQL connector limitations](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/postgresql-limits), read 2026-09-02
+
+`CLAUDE.md`'s sources table says **(GA)**. Lakeflow Connect *is* GA; **this connector is not**, and
+it is the only one the estate's ERP path uses. The two halves of the consequence are different in
+kind and are separated deliberately.
+
+**Mechanical, and a fact rather than an opinion.** `make preview-audit` is deferred on the unlock
+condition *"the first Terraform layer, and the first time a preview surface is considered"*. **A
+preview surface has now been considered.** That half of the condition has fired, and this branch
+records it in `docs/DECISIONS.md` rather than leaving it to be noticed. The connector is the first
+declared entry the inventory will have.
+
+**And the enrolment is the purest item this repository's day-one document can hold** — a
+conversation with a human at a vendor, with a lead time nobody here controls, blocking the entire
+ERP path. It is §1 of `docs/DAY-ONE.md` for that reason.
+
+**Judgment, and it is the author's.** Whether this breaches *"No claim depends on a non-GA
+surface."* **A reading, with its argument, offered rather than concluded:** probably not, because
+all seven claims are provable local with no workspace and no credentials, so the connector sits on
+the *estate* path — where proof is captured — and not on any claim's proof path. The counter is
+that `run`'s evidence is what the README and the article publish, and evidence resting on a preview
+surface is exactly the fragility the rule names. **The two sessions that found this both read it
+the first way, which is precisely why it is not settled here.**
+
+*Site:* `CLAUDE.md` :: `| ERP tables, competitor prices | **Lakeflow Connect** (GA) | pull from a database; no custom ingestion code to maintain |`
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the first Terraform layer, and the first time a preview surface is considered.`
+*Disposition:* the judgment is **the author's**; the mechanical half is recorded on `docs/day-one`
+in `docs/DECISIONS.md`, and the enrolment step is recorded in `docs/DAY-ONE.md` §1
+*Status:* open
+
+**A commit onto `main` is permitted when the guard cannot lex the command** · found 2026-09-02 ·
+by T015, by being refused four times — and **the permitting direction was found by `projects-0a`
+reading the mechanism rather than the observations**
+The guard judges a repository the command did not name whenever it falls back, and which way that
+errs depends on which side the session is sitting on.
+`main_guard` falls back to a regex when a command will not lex, and the fallback answers
+`[None]` — *judge the session's own directory*. **It does not carry over the `-C <path>` that is
+sitting in plain sight in the command it just failed to parse**, so the branch judged is the branch
+of a repository the command did not name.
+
+**Measured, by feeding the hook crafted `PreToolUse` events** — the two shared checkouts on this
+machine, one on `main` and one on `docs/day-one`, each command naming the *other* with `-C`, and
+lexability computed by calling the hook's own `_segments` rather than assumed:
+
+| | what the command does | lexes? | judged against | hook |
+|---|---|---|---|---|
+| **A** | commit **onto `main`**, from a branch | **no** | the cwd | **ALLOWED** |
+| B | commit **onto `main`**, from a branch | yes | the `-C` path | REFUSED |
+| C | commit onto a branch, from `main` | **no** | the cwd | REFUSED |
+| D | commit onto a branch, from `main` | yes | the `-C` path | ALLOWED |
+
+**B and D are the tokenising path working exactly as designed. A and C are one defect facing two
+ways, and A is the one that matters:** the guard's single job is to refuse a commit onto `main` at
+the only moment refusing it is free, and in row A it does not.
+
+**The file already wrote this sentence about a different door.** Its own account of the `-C` defect
+it fixed reads: *"the branch was read from the session's directory instead — which refused a safe
+commit into a worktree and, **worse, allowed** `git -C <the checkout on main> commit` from a session
+on a branch."* That is rows C and A verbatim. **The fix closed both in the parsed path and neither
+in the fallback**, which was not re-read when the parsed path was corrected — the file's own stated
+pattern, *a flag this file already handles for one purpose is a flag it can be asked about for
+another, and the second question is asked by a different function, written later, by somebody
+reading the first list and not the file*, with `-C` recovery in place of a flag.
+
+**The trigger is an ordinary English commit message.** The file knows the mechanism and says so — *"a
+heredoc with an apostrophe in it is exactly what unbalances the lexer and sends us here"* — and the
+message that produced the four real refusals contains six apostrophes, which is unremarkable for
+English prose about somebody's connector and somebody else's design. What the file does not say is
+where the fallback then looks.
+
+**The docstring's cost model is what fails, and only in its last word.** It reasons that on an
+unparsable command *"guessing wrong in the safe direction costs a retry and guessing wrong in the
+other costs the branch"*. The asymmetry is right and the fallback is not on the safe side of it:
+**`[None]` is only conservative for a session sitting in the repository it is committing to.** For a
+session in a worktree — this repository's mandated practice whenever a peer session is live in the
+shared checkout — it names a different repository than the command does, and once it does, *which*
+way it errs is decided by which side the session happens to be sitting on rather than by anything
+about the command.
+
+**What is not claimed: `main` is not unprotected.** The ruleset refuses the push and has no bypass
+actors, which the file's own opening states is the gate and is not in question. The loss is exactly
+the thing this hook exists for and nothing more — the commits that then have to be unpicked, and
+*"the temptation, at minute nineteen, to just push"*.
+
+**And the first attempt at the table above asserted a column it had not measured.** It used
+`-m "don't"`, called it unlexable, and got REFUSED / ALLOWED for rows A and C — the opposite of the
+truth — because an apostrophe inside double quotes lexes perfectly and the fallback was never
+reached. A probe built to test an assumption carried one of its own, in the column that was the
+whole point of it. It is recorded because it is the same defect as the entry it was measuring, one
+layer out, and because the corrected probe computes lexability instead of labelling it.
+
+**Three doors, and the third one is priced rather than argued.** Proposed by `projects-0a`; the
+figures are this branch's.
+
+1. **Teach the fallback to find `-C`.** Refused: a second enumeration kept in step by memory, in the
+   file that has had exactly that defect three times.
+2. **Leave it.** Row A stands.
+3. **Refuse when the command does not lex.** *Not* find the target in a command we could not parse —
+   that is door 1 wearing a disguise — but **a commit whose target cannot be determined is
+   refused.** No enumeration at all, and fail-closed is the direction this repository takes
+   everywhere else. Row A becomes REFUSED, which is the whole point; row C is already REFUSED and
+   does not move.
+
+**Door 3's cost is friction and it is measurable, so it was measured** rather than described.
+Every commit on `main` was rebuilt into the two command shapes a session actually writes and put
+through the hook's own `without_written_heredocs` + `_segments` — the hook lexes the *command* and
+never the message, so the message alone answers nothing:
+
+| the shape a session writes | would not lex |
+|---|---|
+| `git commit -q -F - <<MSGEOF` … `MSGEOF` | **34 of 43 · 79.1%** |
+| `git commit -m "<subject>"` | **0 of 43 · 0.0%** |
+
+**79.1% is a frequency of inconvenience, not a refusal rate, and the difference decides the
+choice.** It is not *79% of commits refused*, and it is not even *79% would need `-F`* read as a
+burden. It is **how often the heredoc shape would have to become a two-step** — write the message
+to a file, then commit with `-F`. Measured, both halves are clean:
+
+| | lexes? |
+|---|---|
+| `cat > msg.txt <<EOF` … `EOF`, apostrophes and all | **yes** — a *written* heredoc, excised by `without_written_heredocs`, so nothing is triggered |
+| `git commit -q -F msg.txt` | **yes** |
+| `git commit -q -F - <<EOF` … `EOF` | no — this is the only shape that breaks |
+
+**So the choice is between a guard that lets through the one thing it exists to stop, through a
+door the file itself calls *worse*, and one extra command when a commit message is long.** Anyone
+weighing 79.1% as four commits in five being blocked has been misled by the figure, which is why it
+is stated this way rather than as a percentage on its own.
+
+**And the fact underneath all of it, written on its own line because it has now been wrong three
+times in three different hands:** *an apostrophe inside double quotes lexes perfectly.* It is why
+`-m "<subject>"` is a clean **0 of 43**; it is why the first probe labelled `-m "don't"` unlexable
+and returned the opposite of the truth for the two rows that were its entire point; and it is why
+the naive reading of this defect comes out backwards **in exactly one place and keeps being that
+place.** The next person to reason about apostrophes here will be wrong the same way unless they
+run it.
+
+**And the 79% is a property of this repository rather than of git.** These messages are unusually
+prose-heavy by house style — apostrophes, em dashes and quoted sentences in every body — so the
+figure is close to a ceiling for the shape, not a floor. What it does establish is that door 3
+would be felt on nearly every commit here, which is a real cost and is the author's to weigh
+against a guard that currently lets the one thing it exists to stop through a door the file itself
+called *worse*.
+
+*Site:* `.claude/hooks/main_guard.py` :: `    return [None] if _COARSE.search(command) else None`
+*Site:* `.claude/hooks/main_guard.py` :: `#: prose inside a heredoc, and a heredoc with an apostrophe in it is exactly what unbalances`
+*Disposition:* **the author's** — a hook enforces a rule he reserved to himself, and the harness
+applies it whether a session consents or not. Filed rather than fixed for a second reason as well:
+the obvious repair — teach the regex to find `-C` too — is a second enumeration kept in step by
+memory, which is the defect this file has already had three times. The workaround for the refusing
+direction costs nothing and is written down here: pass the message as a file,
+`git -C <worktree> commit -F <path>`, with no heredoc on the line
 *Status:* open
 
 ---

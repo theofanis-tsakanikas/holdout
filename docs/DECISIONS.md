@@ -1462,6 +1462,19 @@ CLAUDE.md lists both in the `ci` workflow. Neither has anything to act on: there
 no declared inventory of preview surfaces.
 *Unlock condition:* the first Terraform layer, and the first time a preview surface is considered.
 
+> **Half fired 2026-09-02 by T015, and recorded rather than acted on.** *The first time a preview
+> surface is considered* has happened: the **PostgreSQL connector for Lakeflow Connect is in Public
+> Preview**, it is the only database connector the estate's ERP path uses, and `CLAUDE.md`'s
+> sources table calls that surface GA. It is the first declared entry the inventory will have, and
+> it is a fact rather than a judgment.
+>
+> **The entry does not close, because the other half has not fired.** There is still no `infra/`
+> for `terraform validate` to act on, and a preview inventory built before the layer exists would
+> be a gate enumerating a population of one against nothing. **What changed is that this deferral
+> has stopped waiting on a hypothetical.** Whether a Public-Preview surface on the estate path
+> breaches *no claim depends on a non-GA surface* is the author's; `docs/FINDINGS.md` carries the
+> reading and its counter rather than a conclusion.
+
 **`docs/SCENARIO.md` and `docs/DAY-ONE.md`** · deferred 2026-08-27
 Both are named in CLAUDE.md's "read this first" table and neither exists. `DAY-ONE.md` has nothing
 to record until there is an estate; `SCENARIO.md` is a writing task, not a blocked one.
@@ -1482,6 +1495,26 @@ requires that verification to happen **before** phase 3, not inside it.
 > pathology from the basket line to the store-day, and nothing re-runs them — which is the entry
 > two above this one, *the scenario scale is measured by hand, not by a gate*, costing something for
 > the first time. The figures are restated in that README rather than overwritten.
+
+> **Closed 2026-09-02 by T015, through the unlock condition rather than around it** —
+> `docs/DAY-ONE.md` exists, before phase 3 and before the network path is attempted.
+>
+> **And the sentence above it is false, which is most of what this entry cost.** *"It still has
+> nothing to record until there is an estate"* was written from the record and never checked
+> against the vendor. Checked on 2026-09-02: the connector the estate's ERP path depends on is
+> **Public Preview requiring enrolment through a Databricks account team** — a lead time nobody
+> here controls, blocking `backfill`, and knowable on any of the three days this sentence stood.
+> **There was something to record the whole time, and what stopped anyone looking was a sentence
+> saying there was not.** It is `CLAUDE.md`'s eighth form of *a guard tested by its author* — the
+> statement of a rule is not exempt from it — with a deferral in place of the rule. The prior
+> wording stays per doctrine rule 4.
+>
+> **What the file could not do, and says so in itself rather than here.** *Verified before phase 3,
+> not inside it* is unachievable by anybody, funded or not: the workspace is created by
+> `foundation` and the RDS by `sources`, and **both are phase 3**. So `docs/DAY-ONE.md` records the
+> design and the no-API residue now, and places the assertion at the earliest moment it can exist —
+> after `sources` applies and before `backfill` spends anything. `TASKS.md`'s T019, which asserted
+> the path was "verified in T015", is restated there.
 
 **Greek citations point at gazette mirrors, not `et.gr` permalinks** · deferred 2026-08-27
 No working direct-download URL at `et.gr` could be constructed; the citations resolve to

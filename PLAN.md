@@ -697,6 +697,11 @@ registry, so the products moved — 15,533 → 17,752 attacks over 49 → 56 typ
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 *Restated 2026-08-30 by T007: `docs/SCENARIO.md` exists. `docs/DAY-ONE.md` is still absent and has
 nothing to record until there is an estate — T015, before phase 3.*
+*Restated 2026-09-02 by T015: `docs/DAY-ONE.md` exists, and the clause "has nothing to record until
+there is an estate" was false when it was written. The estate's ERP path depends on a connector that
+is in **Public Preview and needs enrolment through a vendor's account team** — no API, a lead time
+nobody here controls, blocking `backfill` — which was knowable on any of the three days that
+sentence stood. Both halves of the table are now present.*
 
 **Claim 3 closed 2026-08-29 — the one door with no key, T004.** `make claim-3` is green at 10
 checks over 36 declared configurations, with nine planted mutations of which nine bit. What the
@@ -1792,6 +1797,9 @@ Everything that needs data at scale, an engine, or a workspace.
   produces the deployed model happens on the estate in phase 3, where the data is.
 - `make preview-audit` — the declared inventory of preview surfaces, and the check that no
   claim's proof path touches one.
+- `docs/DAY-ONE.md` — the manual work with no API, written **before** phase 3 and read as a
+  checklist rather than as a record. Listed here because T015 is a phase-2 atom and this list
+  did not carry it. *Added 2026-09-02 by T015.*
 
 ### What closes this phase
 
@@ -1827,6 +1835,18 @@ The only phase that costs money. It is entered with every locally provable claim
 - **Before this phase begins**, not inside it: verify the network path from the Databricks
   workspace to RDS that Lakeflow Connect's database connectors require, and record whatever has
   no API in `docs/DAY-ONE.md`. Discovering this during a paid run is the expensive way.
+
+  > **Restated 2026-09-02 by T015, because the first half of that bullet is unachievable and the
+  > second half was done.** The workspace is created by `foundation` and the RDS by `sources`, and
+  > **both are in this phase** — so there is nothing to verify a path *between* until the phase has
+  > started, and "before this phase begins" cannot be met by anybody, funded or not. What the
+  > sentence was protecting is real and unchanged: discovering it during a paid run means five
+  > applied layers standing and billing while somebody debugs networking. So the instruction splits
+  > — **the design and the no-API residue are recorded now**, in `docs/DAY-ONE.md`, and **the
+  > assertion runs at the earliest moment it can exist**: immediately after `sources` applies and
+  > before `backfill` is dispatched. The prior wording stays per doctrine rule 4, and the delta is
+  > the finding: *a sentence naming when a check happens is an assertion about what the system does,
+  > and this one names a moment at which its two endpoints do not exist.*
 - `sources/` stands up the real Postgres playing the ERP. `backfill` seeds it with eight months;
   the **driver** changes it during `run`: a mid-day cost change, a product entering the regulated
   basket, a retroactive supplier term, an added column, a deactivated SKU.
