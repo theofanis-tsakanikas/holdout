@@ -716,8 +716,33 @@ stop_at       When mutation 07 runs in its siblings' band on CI, published as a 
               beside the five observations of its expensive form: 528 / 747 / 779 / 806 / 826
               and one killed at 900.
 review        yes
-status        open
+status        open   <- the measurement below is in; the branch is not merged
 ```
+
+**The measurement, on run 33621267184.** `07` ran in **58s**, `bit`, against the five observations
+of its expensive form -- `528 / 747 / 779 / 806 / 826` and one killed at `900`.
+
+**It is the median of its siblings, not merely nearer them.** The eight now read
+`34 / 55 / 58 / 58 / 60 / 66 / 70 / 93`, and `07` is no longer the slowest mutation in claim 2 --
+that is `the-power-check-is-judged-on-the-variance-the-design-assumed` at **93s, 10% of the 900s
+budget**. *Nearer* would have been consistent with the fix merely helping; the median is consistent
+with the anomaly being gone.
+
+**One observation, and it says nothing about spread.** Five of the six figures it replaces came
+from separate runs; this is one. The day's whole lesson is that 1.09x of margin over a single
+high-water mark was never margin, so a second high-water mark is not a distribution either. Spread
+needs `workflow_dispatch` re-runs on this sha and none were taken.
+
+**The job-level figure is deliberately not the measurement**: `claim-2 combine` went 47m04s ->
+37m19s across two runs on two runners with different cache states, a difference of ~585s where the
+mutation alone accounts for 748s. That is spread in everything else. The clean number is the
+per-mutation one, taken by the same instrument on both sides.
+
+**And one property worth recording because it is the first of its kind today.** The two follow-up
+commits on this branch -- the attribution correction and the parent finding -- cost it **one** CI
+run rather than the ~1.25 every other branch has paid, because the coin toss they would have faced
+is the thing this branch removed. **It is the first change today that made the next change cheaper
+rather than more expensive.**
 
 ```
 id            T00K
@@ -748,9 +773,26 @@ status        open
 > `T00L` fixes. Stated as seconds rather than as a ratio, because the ratio misleads here and did:
 > serial the phase is ~1213s and perfectly sharded it is ~806s, so sharding saves **~407s today**
 > and **~373s after T00L** -- the *ratio* improves 1.5x to 5.3x while the *wall clock saved falls*,
-> and CI bills minutes. **Which leaves a question this entry now carries openly: after `T00L`, is
-> `T00K` worth its own review for about six minutes?** Nobody has decided that, and a task whose
-> value halves under a change about to land should say so before somebody builds it from momentum.
+> and CI bills minutes.
+>
+> **Which leaves a question this entry now carries openly, and T00L's own run sharpened it from
+> a projection into a measurement.** On run 33621267184, with T00L landed:
+>
+> ```
+> make claim-2-combine                    2229s   37m09s
+>   the eval, --combine                   1432s   23m52s   64%
+>   gate-proof --claim 2                   797s   13m17s   36%
+>     of which the eight mutations         494s    8m14s   22% of the job
+>   T00K saves at most                     401s    6m41s   18% of the job
+> ```
+>
+> **So: is `T00K` worth its own review for a measured 6m41s, against an unmeasured 23m52s
+> sitting beside it?** Nothing has been done to the `--combine` phase and nobody has measured
+> what is inside it. Sharding the mutations now optimises the smaller half -- **which is the
+> error this entry's own `closes` records the laptop nearly making about which half to shard**,
+> arriving a second time because the two halves swapped places when T00L landed. Nobody has
+> decided it, and a task whose value is now the smaller of two numbers should say so before
+> somebody builds it from momentum.
 
 **And the reason this is a separate atom rather than part of T00H.** The two halves have different
 mechanisms and different failure modes, and folding them together would mean one branch in which

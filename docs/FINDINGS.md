@@ -1946,7 +1946,23 @@ sentences — those are fixed here — but that nothing checks a cross-reference
 in this repository, and there is no gate proposed for it
 *Status:* open
 
-**The register cannot anchor a finding about itself** · found 2026-09-02 · by T00L, by trying it
+**The register cannot anchor a finding about itself** · found 2026-09-02 · **recorded first by the
+session that wrote `One anchoring rule, two populations`, as a parenthetical**, then met again from
+scratch by T00L four hours later
+**Attribution corrected before anything else, because getting it wrong here would be the finding
+happening a third time.** This entry first read *found by T00L, by trying it*. It was recorded
+hours earlier, on `main`, inside another entry: *"(And the rule cannot anchor to itself. A
+`*Site:*` naming `docs/FINDINGS.md` quotes the fragment on the site line, which is then a second
+occurrence in the same file …)"*. T00L met it fresh and paid the full cost — three attempts and a
+correction — **and the session that had recorded it hit it again on its own branch the same day.**
+
+> **The evidence for this limit is not only that it fires. It is that it fired on somebody who had
+> already written it down.**
+
+That is why it is filed as a limit in its own right rather than left where it was: **a limit
+recorded inside another finding is not a limit anybody searches for.** It is one instance of
+*Write discipline, and no read discipline* below, which is the general form.
+
 **A limit of the instrument, in the register of language this repository's other limits use.** A
 finding declares a `*Site:*` whose fragment must occur **exactly once** in the file it names. When
 the file named is `docs/FINDINGS.md`, **the `*Site:*` line is itself a second occurrence of the
@@ -1990,6 +2006,52 @@ its cost, and a third has not been found. It closes if somebody finds a way to l
 examine itself **without** teaching the anchor rule to ignore an occurrence or to survive a move.
 Recorded so the next session that hits `AMBIGUOUS` on a finding about this file knows in one search
 that it is the instrument and not their entry
+*Status:* open
+
+**Write discipline, and no read discipline** · found 2026-09-02 · by `projects-0a`, from four
+instances in one day — three of them its own or T00L's
+**Four things were correct, written down, and not found.**
+**Every mechanism in this repository verifies that something is *recorded*. Nothing verifies that a
+recorded thing is *retrievable*.** Anchors, restatement, dispositions, `*Now:*` lines, the refusal
+of silence, `make expiry`, `make findings`, `make figures` — each one asks *was this written down,
+and is it still true*. **None asks whether anybody can find it.** Every gate here would pass on a
+register nobody can retrieve anything from.
+
+**Four instances, one day, and all four were correct when written:**
+
+| | what was written | what happened |
+|---|---|---|
+| 1 | the `TIMEOUT_SECONDS` entry's *"which is T00K's territory"* | followed by nobody; **two sessions designed against it for two hours** without opening `TASKS.md`, where T00K is *Shard claim 2's mutations* and cannot fix that flake at all |
+| 2 | *the rule cannot anchor to itself*, a parenthetical inside another finding | **rediscovered from scratch four hours later at full cost**, and hit again by the session that wrote it |
+| 3 | `CLAUDE.md` withdrawing the *100 stores* figure on 2026-08-29 | `TASKS.md` went on carrying it |
+| 4 | `TASKS.md`'s heading: *Phase 2 — … (local)* | **the author was told for three days that phase 2 was Terraform and AWS**, by a session that had never opened the file |
+
+**Three of the four were caught by somebody noticing mid-edit. The fourth ran for three days into
+what the author was told.** That is the cost, and it is the honest half: **the register's
+retrievability is currently enforced by attention.**
+
+**It is the same shape as the write-side hole `T00G` closed**, one layer out: it fails safe on the
+side that is checked, so nothing goes red. A cross-reference that is correct and unfollowed, a
+limit that is recorded and unsearchable, a withdrawal that is published and uncarried — none of
+them is a *defect* by any gate's definition, and all four cost real work.
+
+**And this reaches the thesis rather than the housekeeping.** This project's claim is that a number
+nobody can check is worth nothing. **A methodology that is correct and unretrievable is worth what
+an uplift number without a holdout is worth** — the reader cannot get to the thing that would let
+them check. That is the reason this is filed against the project and not against tidiness.
+
+**No gate is proposed, deliberately.** Nobody here knows what would check retrievability, and a
+mechanism invented in the same hour as the finding is exactly how the four confident sentences
+above got written. The instances stay recorded and the general form stays unnamed until somebody
+has a mechanism that is not a fifth confident sentence.
+
+*Site:* `TASKS.md` :: `## Phase 2 — pipelines, the metric contract's three consumers, the model (local)`
+*Site:* `CLAUDE.md` :: `> are not measurements. It is withdrawn rather than corrected: **1,200 stores is the scenario the`
+*Site:* `ops/findings.py` :: `* a site whose fragment does **not occur exactly once** in the file it names. Zero means the line`
+*Disposition:* **none — and it is not work.** It closes when somebody proposes a mechanism for
+retrievability that survives the objection above, or when the author decides the cost of attention
+is acceptable and says so. Both are decisions. The child entry
+*The register cannot anchor a finding about itself* is one instance of it and says so
 *Status:* open
 
 ---
