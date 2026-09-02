@@ -1486,7 +1486,11 @@ here against 1421 · 1432 · 1421 · 1455 · 1351s on `main` — bounds it witho
 **Measured once the seconds existed: 747s, 83% of the budget, while the other seven sat between
 32s and 86s.** And the two runs are *not* a spread — the tree changed between them, because
 `COPIED` carries `.worlds` and `claim-2-tests` had moved out of the combine — so there is one
-observation and no variance estimate. The variance of the job it lives in is measured and wide:
+observation and no variance estimate. **The second arrived on the very next run — 826s, 92% —
+which is the point: the sentence claiming one observation was written one run before there were
+two, and the seconds are what made the second free.** 747 and 826 under the same arrangement are
+1.11x apart and both under 900, with the later one 74 seconds from the limit. The variance of
+the job they live in is measured and wider:
 paired on `headSha` over the 200 runs before `#39` removed the doubling, 33 trees ran `claim-2`
 twice, widest same-tree pair **1.69x**, median **1.09x**, and 1931s to 4698s end to end. The
 comment beside `TIMEOUT_SECONDS` carries it, and nothing there proposes a number.

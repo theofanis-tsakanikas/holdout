@@ -131,21 +131,28 @@ COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 #: that crossed 900 had ~11 MB of machinery worlds in it that the next run did not, because
 #: `claim-2-tests` had moved to its own job. Before and after a change is not variance.
 #:
-#: So there is **one** observation of this mutation under the current arrangement and **no**
-#: variance estimate for it. What is measured is the variance of the job it lives in, and it is
-#: wide. Every `ci` run of one tree, paired on `headSha` across the 200 runs before `#39`
-#: removed the doubling — 33 shas with two successful `claim-2` jobs each:
+#: These two lines read *there is **one** observation and **no** variance estimate* for exactly
+#: one run. **The second arrived on the next one: 826s, 92% of the budget**, same arrangement,
+#: same tree. So under the current arrangement:
+#:
+#:     747s (83%)  ·  826s (92%)      two observations, 1.11x apart, both under 900
+#:
+#: The prior sentence stays because the delta *is* the argument: it was written to say that one
+#: observation at 83% is not evidence of headroom, and the very next observation was **higher**.
+#:
+#: The variance of the job this step lives in is wider still, measured rather than assumed —
+#: every `ci` run of one tree, paired on `headSha` across the 200 runs before `#39` removed the
+#: doubling, 33 shas with two successful `claim-2` jobs each:
 #:
 #:     widest same-tree pair   1.69x     median same-tree pair   1.09x
 #:     fastest 1931s · slowest 4698s over 66 observations — 2.43x end to end
 #:
-#: At the median ratio 747s becomes 814s and fits. At the widest it becomes 1262s and does not.
-#: **Applying a whole-job ratio to one step inside it is an assumption and is written down as
-#: one** — but it is the only variance anybody has, and it says a single observation at 83% is
-#: not evidence of headroom.
+#: At the median ratio 826s becomes 900s exactly. At the widest, 1396s. **Applying a whole-job
+#: ratio to one step inside it is an assumption and is written down as one** — but the two
+#: direct observations point the same way and the second is 74 seconds from the limit.
 #:
 #: Nothing here proposes a number. Every future run prints the seconds and the percentage,
-#: which is what makes the second and third observations free; the budget gets set from them.
+#: which is what made the second observation free; the budget gets set from them.
 TIMEOUT_SECONDS = 900
 
 
