@@ -1935,19 +1935,61 @@ near-equality that does not hold. After T00L the spread is **32-87s, about 2.7x*
 and is **still not near-equal**; the entry is restated with both spreads rather than with a claim
 that T00L makes the sentence true.
 
-**And the register cannot anchor this to its own half, which is worth one line.** The wrong
-sentence lives in *this file*, and a `*Site:*` naming a line of `docs/FINDINGS.md` is itself a
-second occurrence of that line — so the exactly-once rule refuses it, correctly and permanently.
-Measured rather than reasoned: the anchor was tried and `make findings` reported it **AMBIGUOUS at
-3 occurrences**, then at 2 after the sentence was corrected. **A finding about the register anchors
-outside the register or not at all.** The half that can be anchored is below; the other half is
-corrected in place with its prior wording kept.
+**The half of this that lives in `docs/FINDINGS.md` could not be anchored at all**, and that is
+its own entry below rather than a note here. The half that can be anchored is `TASKS.md`'s; the
+other is corrected in place with its prior wording kept.
 
 *Site:* `TASKS.md` :: `> It is 25x. The prior wording stays per doctrine rule 4 and the delta is the finding: **a`
 *Disposition:* the cross-reference is corrected on `evals/the-digest-cannot-tell-collect-from-window-mean`
 along with `T00K`'s `closes`; **the entry is left open** because what it records is not the two
 sentences — those are fixed here — but that nothing checks a cross-reference between two documents
 in this repository, and there is no gate proposed for it
+*Status:* open
+
+**The register cannot anchor a finding about itself** · found 2026-09-02 · by T00L, by trying it
+**A limit of the instrument, in the register of language this repository's other limits use.** A
+finding declares a `*Site:*` whose fragment must occur **exactly once** in the file it names. When
+the file named is `docs/FINDINGS.md`, **the `*Site:*` line is itself a second occurrence of the
+line it points at.** The rule then refuses the anchor — correctly, by its own terms, and
+permanently.
+
+**Measured, not reasoned.** Writing the cross-reference finding above, the anchor was tried and
+`make findings` reported `AMBIGUOUS  the anchor occurs 3 times`; after the quoted sentence was
+corrected it reported **2**, which is the floor: the defect line and the `*Site:*` line naming it.
+It never reaches 1.
+
+**Why this matters more than a quirk.** A defect *in the register* disarms every finding the
+register carries, so it is the class most worth catching — and it is the one class the register
+structurally cannot hold. **Every other instrument here has been hardened against exactly this
+shape**: `ops/figures.py` raises rather than returning a smaller number, a `DEPENDS_ON` entry
+naming nothing raises rather than being skipped, `gather` refuses a partial set rather than
+averaging it. This one has the property inverted — it cannot examine itself — and it took writing
+a finding about it to find that out.
+
+**What made this one findable does not generalise.** It had a second half living in `TASKS.md`, so
+the entry above anchors there. **A defect purely internal to `docs/FINDINGS.md` has nowhere to
+go.**
+
+**No fix is proposed, and the reason is the rule's own load-bearing property.** Both escapes
+weaken it:
+
+- *exclude the `*Site:*` line from its own count* — a rule that can be told to ignore one
+  occurrence can be told to ignore the wrong one, and which occurrence is "its own" is a judgment
+  the parser would have to make;
+- *anchor by digest rather than by quoted text* — this discards the property the whole mechanism
+  rests on, that **a moved line breaks its anchor**. An anchor that survives the line moving is not
+  an anchor.
+
+**And the cost, which is the honest half:** while this stands, **the register's own defects are
+found by somebody noticing, not by `make findings`.** Today that was a session mid-edit, by
+accident, while writing about something else.
+
+*Site:* `ops/findings.py` :: `* a site whose fragment does **not occur exactly once** in the file it names. Zero means the line`
+*Disposition:* **none — and stated as a limit rather than as work.** Neither escape above is worth
+its cost, and a third has not been found. It closes if somebody finds a way to let the register
+examine itself **without** teaching the anchor rule to ignore an occurrence or to survive a move.
+Recorded so the next session that hits `AMBIGUOUS` on a finding about this file knows in one search
+that it is the instrument and not their entry
 *Status:* open
 
 ---
