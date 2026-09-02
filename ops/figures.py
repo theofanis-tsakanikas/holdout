@@ -25,8 +25,8 @@ though it had looked at everything. Over-coverage is a tool doing *more* than it
 that is not a lie about what exists.
 
 The distinction was measured rather than reasoned. Measured 2026-08-30, on ruff 0.16.4:
-`ruff format --check` reported 190 files over the six directories `PYTHON_DIRS` names, and an
-independent count of `*.py` in the same six gave 182. The eight are Markdown -- ruff formats
+`ruff format --check` reported 190 files over the directories `PYTHON_DIRS` names, and an
+independent count of `*.py` in the same directories gave 182. The eight are Markdown -- ruff formats
 Python inside fenced blocks, and has since some version nobody here chose. A gate that froze 190
 would have gone red on that upgrade for a reason that is not a defect, and a gate that froze 182
 would have gone red when ruff stopped. Only the direction matters, and only one direction is a
@@ -82,7 +82,7 @@ from ops import expiry, findings, language
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-#: The six directories the Makefile lints and type-checks. Read from the Makefile rather than
+#: The directories the Makefile lints and type-checks. Read from the Makefile rather than
 #: repeated here, so this module cannot disagree with the thing it is measuring.
 PYTHON_DIRS_LINE = re.compile(r"^PYTHON_DIRS\s*:=\s*(?P<dirs>.+)$", re.MULTILINE)
 
@@ -280,7 +280,7 @@ def check_ids_that_exist() -> int:
     """Every distinct `Check(...)` id in the tree, walked from PYTHON_DIRS.
 
     The **population** side of the newest gate. `ledger.declared_checks` walks `CHECK_SOURCES`
-    and matches the literal word `Check`; this walks the six directories the Makefile already
+    and matches the literal word `Check`; this walks the directories the Makefile already
     lints and resolves whatever name `Check` was imported under in each file. Two different
     starting points and two different matchers, so narrowing `CHECK_SOURCES` to a subtree, or
     importing `Check` under an alias, shows up here as under-coverage instead of quietly
@@ -291,7 +291,7 @@ def check_ids_that_exist() -> int:
     four-check shortfall that is not one.
 
     **The two populations are deliberately asymmetric, and this one is the broader.** The ledger
-    walks `CHECK_SOURCES`, which is `evals/`; this walks all six directories `PYTHON_DIRS` names.
+    walks `CHECK_SOURCES`, which is `evals/`; this walks every directory `PYTHON_DIRS` names.
     So a `Check(...)` constructed anywhere outside `evals/` is counted here and not there, and
     this gate goes red at 68 against 67.
 
@@ -630,7 +630,7 @@ def tests_a_claim_target_runs() -> int:
 COVERAGE: tuple[Coverage, ...] = (
     Coverage(
         "lint",
-        "*.py under the six directories PYTHON_DIRS names",
+        "*.py under the directories PYTHON_DIRS names",
         python_files,
         ruff_examined,
         "ruff also formats Python inside Markdown, so it examines more than this enumerates. "
@@ -638,7 +638,7 @@ COVERAGE: tuple[Coverage, ...] = (
     ),
     Coverage(
         "typecheck",
-        "*.py under the six directories PYTHON_DIRS names",
+        "*.py under the directories PYTHON_DIRS names",
         python_files,
         mypy_examined,
         "mypy's own file list is PYTHON_DIRS, declared twice — in pyproject.toml and in the "
@@ -678,7 +678,7 @@ COVERAGE: tuple[Coverage, ...] = (
     ),
     Coverage(
         "armed-or-says-why",
-        "every distinct Check(...) id under the six directories PYTHON_DIRS names",
+        "every distinct Check(...) id under the directories PYTHON_DIRS names",
         check_ids_that_exist,
         check_ids_the_ledger_declares,
         "the newest gate sorts a population into armed, un-armable and unarmed — and a "
