@@ -1547,6 +1547,52 @@ exists. It is a note against the next reading of those durations, so that a cold
 inherited as though it described the steady state
 *Status:* open
 
+**Claim 2's rounding mutation is expected to cross its budget, and that red is not a gate**
+· found 2026-09-02 · by three runs of the combine job, filed before the red rather than after it
+
+**If you are reading this because `make claim-2-combine` went red on that mutation with
+`CRASHED`, stop here: nothing is wrong with the gate it names.** The mutated eval was killed at
+`TIMEOUT_SECONDS`. No gate was asked, `U10.truth-implementations-agree` has not gone quiet, and
+the fix is not to widen an assertion.
+
+Measured, printed by `gate-proof` on every run since the seconds were added:
+
+    33571168520   killed at 900s   — a different arrangement; `.worlds` carried ~11 MB more
+    33577549272   747s   83% of the budget
+    33581480860   826s   92% of the budget
+
+The last two are the same arrangement and the same tree. **1.11x apart, trending up, and the
+later one is 74 seconds from the limit.** The seven other mutations in that claim sit between
+32s and 86s, so this is not a slow suite — it is one mutation, and `engine.py` says why beside
+`TIMEOUT_SECONDS`: it edits `evals/uplift/outcomes.py`, which is in `cache.py`'s `DEPENDS_ON`,
+so its run legitimately regenerates every world it needs. That is the design working.
+
+**Two observations are not a distribution.** What they are enough for is this: the next red on
+this mutation is more likely to be the budget than a gate. And the variance of the job it lives
+in is measured — paired on `headSha` over the 200 runs before `#39` removed the doubling, 33
+trees ran `claim-2` twice, widest same-tree pair **1.69x**, median **1.09x**. At the median,
+826s is 900s exactly.
+
+**Filed before it happens, which this repository has not managed before.** Every previous
+instance of *a correct red that surprises its reader* was written after somebody had already
+been surprised — and one of them, this same mutation at the old 300s budget, is why the budget
+is 900. The whole content of the entry is that the search a person will run when they meet the
+red should land here.
+
+**Not fixed here, and the two candidate fixes are named so nobody has to re-derive them.**
+Raising `TIMEOUT_SECONDS` a third time is the reflex the deferral beside `ci.yml`'s
+`timeout-minutes` argues against, and it would be set from two observations. The other is to
+stop the mutation paying for a regeneration that is not what it tests, which is **T00K's**
+territory — the same 826s sits on the critical path of the whole run, so the two arrive
+together and neither is opened here.
+
+*Site:* `evals/gate_proof/engine.py` :: `#:     747s (83%)  ·  826s (92%)      two observations, 1.11x apart, both under 900`
+*Site:* `evals/gate_proof/mutations/claim-2/07-the-grouped-path-rounds-like-a-price-not-like-the-contract.yaml` :: `eval_module: evals.uplift.machinery`
+*Disposition:* none — it is a prediction with a search term attached, not work. It closes when
+`TIMEOUT_SECONDS` is set from a measurement or when T00K removes the regeneration, and either
+of those is a decision rather than an edit
+*Status:* open
+
 ---
 
 ## Closed

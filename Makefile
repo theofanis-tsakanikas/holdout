@@ -192,6 +192,25 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: interleaved shards at 38 43 39 42 37 40 43 41 seconds, max over min **1.16**, against 270s
 #: unsharded. The balance is what interleaving buys — a contiguous split would put W1's 200
 #: draws on one machine at 4.8s each and a handful of W2's on another at 0.45s.
+#:
+#: **And `max over min` is two things added together, which the line above reads as one.** In
+#: CI, warm, over two runs:
+#:
+#:     33577549272   237 240 244 247 254 259 262 274     max/min 1.156
+#:     33581480860   147 229 229 238 242 256 258 264     max/min 1.796
+#:
+#: Nothing about the split changed between them. The second run drew one runner that finished
+#: in 147s; its **other seven span 229-264, which is 1.15**, and the first run's eight span
+#: 1.156. So the interleaving's balance is the seven-leg figure and it reproduces the laptop's
+#: 1.16 on CI hardware; the max over min is that **plus whatever the fastest machine did**, and
+#: over eight legs one lucky draw is enough to double it.
+#:
+#: The 1.16 above is a warm laptop measurement and stands as one. What it is not is a figure a
+#: CI run can be compared against directly, and a session reading 1.796 off a green run should
+#: not conclude the split has degraded — it should look at the seven.
+#:
+#: *(The first sharded CI run gave 490-973 and 1.99, and that was neither of these: every shard
+#: key was cold and each leg paid its own world generation. `docs/FINDINGS.md` carries it.)*
 CLAIM_2_SHARDS := 8
 
 #: Where a shard leaves its draws and where the combine step looks for them. Never committed —
