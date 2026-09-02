@@ -1590,8 +1590,8 @@ red should land here.
 **Not fixed here, and the two candidate fixes are named so nobody has to re-derive them.**
 Raising `TIMEOUT_SECONDS` a third time is the reflex the deferral beside `ci.yml`'s
 `timeout-minutes` argues against, and it would be set from two observations. The other is to
-stop the mutation paying for a regeneration that is not what it tests, which is **T00K's**
-territory — the same 826s sits on the critical path of the whole run, so the two arrive
+stop the mutation paying for a regeneration that is not what it tests, which is **T00L's**
+territory (this read `T00K's` until 2026-09-02; T00K is sharding and cannot fix it) — the same 826s sits on the critical path of the whole run, so the two arrive
 together and neither is opened here.
 
 > **The prediction landed, 2026-09-02, and it is a measurement now.** This entry called itself
@@ -1850,6 +1850,104 @@ the obvious repair — teach the regex to find `-C` too — is a second enumerat
 memory, which is the defect this file has already had three times. The workaround for the refusing
 direction costs nothing and is written down here: pass the message as a file,
 `git -C <worktree> commit -F <path>`, with no heredoc on the line
+*Status:* open
+
+**`U10` compares two implementations and is armed from one side of the comparison** · found
+2026-09-02 · by T015, while measuring what became T00L
+**It is not an unarmed check, and saying so first is the point.** The arming unit in this
+repository is the *check*, and `make gate-proof` classifies all 67 of them — **37 armed · 23
+declared un-armable · 7 unarmed**. `U10.truth-implementations-agree` is in the armed 37: mutation
+`07-the-grouped-path-rounds-like-a-price-not-like-the-contract` bites it on every run. So this does
+**not** belong in the *21 of 57* family that `#30` closed, and filing it there would have been a
+finding invented out of the wrong unit.
+
+**What is true is narrower and is about which side.** `U10` exists to compare two implementations
+of one metric definition — `evals/uplift/outcomes.py`, the grouped path, and
+`evals/uplift/reference.py`, the deliberately slow one that *"may not share a line with it"*.
+Measured over all eight of claim 2's mutations: **one is planted on the grouped path and none on
+the reference path.** So what is demonstrated is that `U10` catches a defect introduced on the side
+the production code will become; nothing has been shown about a defect on the side the comparison
+is anchored to.
+
+**Why that asymmetry is worth a line rather than a shrug.** The reference implementation is not a
+test helper — it is the independence claim 2's `U10` rests on, and `CLAUDE.md` says the pair
+*"doubles as a fourth, independent check of claim 5"*. A defect planted there and **not** caught
+would say something quite different from the same defect on the grouped path: it would mean the
+comparison can be anchored to a wrong number. Nobody has asked.
+
+**And there is a cost reason it may have gone unwritten, which is not an excuse but is a fact.**
+`reference.py` is one of the five entries in `evals/uplift/cache.py`'s `DEPENDS_ON`, so a mutation
+planted on it invalidates the world cache exactly as mutation 07 does — measured on run
+33600284036, that is **806s against its seven siblings' 32–87s, roughly 90% of it world
+regeneration**. A mutation nobody wrote because it would cost twelve minutes is a mutation whose
+absence was decided by a budget rather than by an argument. **T00L removes that cost — but only for the consumers.** A mutation planted on
+`by_unit_week` or `window_mean` becomes cheap; one planted on **`compute`**, this path's
+producer, still invalidates the cache and still pays the rebuild, correctly. So T00L does
+not unblock this entry: it unblocks the cheaper half of it, which is exactly the half that
+tests less.
+
+*Site:* `evals/uplift/reference.py` :: `is the other implementation, and **it may not share a line with it**. It`
+*Site:* `evals/uplift/agreement.py` :: `        id="U10.truth-implementations-agree",`
+**Two options, and they are not the same kind of thing — which `23 declared un-armable` will
+otherwise disguise.**
+
+- **Plant a mutation on `reference.py`.** Cheap once T00K lands, and until then it costs the 806s
+  above.
+- **Declare it un-armable, with a stated reason.** This is a real option and 23 checks already
+  carry it — **but not for this kind of reason.** Those 23 *cannot* be armed: a property of the
+  corpus, a predicate with no bound, a check that would be a tautology. **This one can be armed
+  and has not been**, and the difference between *impossible* and *unaffordable* is the whole
+  content of this entry. Nor is the subject a helper: `reference.py` is the anchor of the
+  independence claim 2 rests on, so declaring it un-armable is declaring that **the anchor of an
+  independence argument cannot be tested** — a considerably larger sentence than any of the 23
+  carries, and one that should be written out in full by whoever signs it rather than inherited
+  from a count.
+
+*Disposition:* its own branch, unlocked by **T00L landing** — after which planting on a
+consumer costs what planting on any other file costs, while `compute` does not. Not folded into
+T00L: that task is about where a function lives, and this is about which side of a comparison has
+been attacked
+*Status:* open
+
+**A task's identity was taken from a sentence about it, and the sentence named the wrong task** ·
+found 2026-09-02 · by T00L, and by `projects-0a` naming its own half first
+The `TIMEOUT_SECONDS` entry says the second way out of the rounding mutation's budget is *"to
+stop the mutation paying for a regeneration that is not what it tests, which is **T00K's**
+territory"*. **It is not.** `T00K` is *Shard claim 2's mutations* — parallelising nine serial
+runs — and sharding cannot fix that flake at all, because `TIMEOUT_SECONDS` is applied
+**per mutation, to its own subprocess**: `07` would still take ~800s and still be killed at 900s
+on whichever shard drew it.
+
+**Two sessions then spent two hours designing "T00K" without either of them opening `TASKS.md`.**
+The reviewing session named its own half of it first and in the sharper form: *twice now I have
+taken a task's identity from a sentence about it rather than from the task* — the same shape as
+telling the author for three days that phase 2 was Terraform. **A wrong cross-reference that
+nobody follows costs nothing; this one was followed, and cost two hours of design against the
+wrong closing condition.**
+
+It was caught the way the other one was: by opening the file the sentence pointed at, immediately
+before building, rather than by any amount of reasoning about the sentence.
+
+**And `T00K`'s own `closes` carries a second one, measured rather than argued.** It says *"Nine
+near-equal units, so the balance interleaving had to buy for the draws is free here"*. Measured on
+run 33600284036 they span **32-87s against 806s — 25x**, so the balance argument rests on a
+near-equality that does not hold. After T00L the spread is **32-87s, about 2.7x**, which is better
+and is **still not near-equal**; the entry is restated with both spreads rather than with a claim
+that T00L makes the sentence true.
+
+**And the register cannot anchor this to its own half, which is worth one line.** The wrong
+sentence lives in *this file*, and a `*Site:*` naming a line of `docs/FINDINGS.md` is itself a
+second occurrence of that line — so the exactly-once rule refuses it, correctly and permanently.
+Measured rather than reasoned: the anchor was tried and `make findings` reported it **AMBIGUOUS at
+3 occurrences**, then at 2 after the sentence was corrected. **A finding about the register anchors
+outside the register or not at all.** The half that can be anchored is below; the other half is
+corrected in place with its prior wording kept.
+
+*Site:* `TASKS.md` :: `> It is 25x. The prior wording stays per doctrine rule 4 and the delta is the finding: **a`
+*Disposition:* the cross-reference is corrected on `evals/the-digest-cannot-tell-collect-from-window-mean`
+along with `T00K`'s `closes`; **the entry is left open** because what it records is not the two
+sentences — those are fixed here — but that nothing checks a cross-reference between two documents
+in this repository, and there is no gate proposed for it
 *Status:* open
 
 ---

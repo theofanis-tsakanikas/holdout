@@ -33,6 +33,7 @@ from fractions import Fraction
 import pytest
 from corpus.world import alternating, prepare
 from corpus.world.scale import REHEARSAL
+from evals.uplift import grouped_metric
 from evals.uplift import outcomes as grouped
 
 from holdout.contracts.model import ContractSet
@@ -147,8 +148,8 @@ def _corpus_case(contracts: ContractSet) -> Case:
     )
     weeks = ledger.weeks
     units = ledger.units
-    values = grouped.window_mean(
-        grouped.unit_weeks(ledger, metric.rounding),
+    values = grouped_metric.window_mean(
+        grouped_metric.unit_weeks(ledger, metric.rounding),
         units=units,
         weeks=weeks,
         rounding=metric.rounding,

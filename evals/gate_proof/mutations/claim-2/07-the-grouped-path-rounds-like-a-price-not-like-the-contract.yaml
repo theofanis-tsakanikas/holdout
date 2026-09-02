@@ -19,7 +19,7 @@ breaks: >-
   the grouped path rounds half_up where the contract declares half_even, so it disagrees with
   the reference implementation by a cent on the units whose window mean lands on a half.
 
-file: evals/uplift/outcomes.py
+file: evals/uplift/grouped_metric.py
 
 anchor: |
       return {

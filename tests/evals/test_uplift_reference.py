@@ -24,7 +24,7 @@ from types import ModuleType
 import pytest
 from corpus.world import prepare
 from corpus.world.scale import SMOKE
-from evals.uplift import outcomes, reference
+from evals.uplift import grouped_metric, outcomes, reference, walked_metric
 
 from holdout.contracts.model import ContractSet, Metric
 
@@ -46,7 +46,7 @@ def test_the_two_implementations_agree_as_integers(world_id: str, metric: Metric
     have the most room to come apart.
     """
     run = prepare(world_id, seed=SEED, scale=SMOKE)
-    grouped = outcomes.cell_margins(outcomes.collect(run), metric.rounding)
+    grouped = grouped_metric.cell_margins(outcomes.collect(run), metric.rounding)
     walked = reference.compute(run, metric=metric)
     assert grouped.keys() == walked.keys(), (
         f"{world_id}: the two implementations disagree about which cells exist at all"
@@ -69,14 +69,14 @@ def test_they_agree_on_the_window_mean_too(metric: Metric) -> None:
     run = prepare("W6", seed=SEED, scale=SMOKE)
     ledger = outcomes.collect(run)
     weeks, units = ledger.weeks, ledger.units
-    grouped = outcomes.window_mean(
-        outcomes.unit_weeks(ledger, metric.rounding),
+    grouped = grouped_metric.window_mean(
+        grouped_metric.unit_weeks(ledger, metric.rounding),
         units=units,
         weeks=weeks,
         rounding=metric.rounding,
     )
-    walked = reference.window_mean(
-        reference.by_unit_week(reference.compute(run, metric=metric)),
+    walked = walked_metric.window_mean(
+        walked_metric.by_unit_week(reference.compute(run, metric=metric)),
         units=units,
         weeks=weeks,
         metric=metric,

@@ -26,7 +26,7 @@ import pytest
 from corpus.world import Arm, alternating, prepare
 from corpus.world.assignment import Assignment
 from corpus.world.scale import SMOKE
-from evals.uplift import outcomes, potential
+from evals.uplift import grouped_metric, outcomes, potential
 
 from holdout.contracts.model import ContractSet, Rounding
 
@@ -46,7 +46,7 @@ def _observed(world_id: str, rounding: Rounding) -> dict[tuple[str, tuple[int, i
     run = prepare(world_id, seed=SEED, scale=SMOKE)
     mixed = alternating(run.chain)
     generated = prepare(world_id, seed=SEED, scale=SMOKE, assignment=mixed)
-    return outcomes.unit_weeks(outcomes.collect(generated), rounding)
+    return grouped_metric.unit_weeks(outcomes.collect(generated), rounding)
 
 
 @pytest.mark.parametrize("world_id", INDEPENDENT)
@@ -96,13 +96,13 @@ def test_composition_is_wrong_under_interference(rounding: Rounding) -> None:
 
     run = prepare("W2", seed=SEED, scale=SMOKE)
     mixed = alternating(run.chain)
-    control = outcomes.unit_weeks(
+    control = grouped_metric.unit_weeks(
         outcomes.collect(
             prepare("W2", seed=SEED, scale=SMOKE, assignment=_all(mixed, treated=False))
         ),
         rounding,
     )
-    treated = outcomes.unit_weeks(
+    treated = grouped_metric.unit_weeks(
         outcomes.collect(
             prepare("W2", seed=SEED, scale=SMOKE, assignment=_all(mixed, treated=True))
         ),

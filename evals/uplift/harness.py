@@ -45,7 +45,7 @@ from corpus.world import Run, prepare
 from corpus.world.scale import CATEGORIES, Scale
 from corpus.world.worlds import World, world_by_id
 
-from evals.uplift import cache, outcomes, potential
+from evals.uplift import cache, grouped_metric, outcomes, potential
 from evals.uplift import design as design_module
 from holdout.contracts.model import AaHarness, ContractSet
 from holdout.core.design import DesignRefusal, Feasible, assess
@@ -225,7 +225,7 @@ def build_fixture(
     pre_weeks, _period_weeks = design_module.split_weeks(weeks)
     pre = design_module.pre_period(
         control_run,
-        by_unit_week=outcomes.unit_weeks(control_ledger, metric.rounding),
+        by_unit_week=grouped_metric.unit_weeks(control_ledger, metric.rounding),
         revenue_by_unit=_by_unit(control_ledger.revenue_cents, pre_weeks),
         cogs_by_unit=_by_unit(control_ledger.cogs_cents, pre_weeks),
         waste_by_unit=_by_unit(control_ledger.waste_cents, pre_weeks),
@@ -355,7 +355,7 @@ def _close_one(
             ),
             lambda: (outcomes.collect(drawn_run),),
         )
-        by_unit_week = outcomes.unit_weeks(ledger, metric.rounding)
+        by_unit_week = grouped_metric.unit_weeks(ledger, metric.rounding)
         dispatched, acknowledged, delivered_refs = (
             dict(ledger.dispatched),
             dict(ledger.acknowledged),
@@ -363,7 +363,7 @@ def _close_one(
         )
 
     period_weeks = fixture.pre.period_weeks
-    unit_outcomes = outcomes.window_mean(
+    unit_outcomes = grouped_metric.window_mean(
         by_unit_week,
         units=seal.roster,
         weeks=period_weeks,

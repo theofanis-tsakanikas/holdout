@@ -16,14 +16,14 @@ breaks: >-
 file: evals/uplift/harness.py
 
 anchor: |
-    unit_outcomes = outcomes.window_mean(
+    unit_outcomes = grouped_metric.window_mean(
         by_unit_week,
         units=seal.roster,
         weeks=period_weeks,
         rounding=metric.rounding,
     )
 replacement: |
-    unit_outcomes = outcomes.window_mean(
+    unit_outcomes = grouped_metric.window_mean(
         by_unit_week,
         units=seal.roster,
         weeks=period_weeks[:1],
