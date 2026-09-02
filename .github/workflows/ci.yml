@@ -259,6 +259,25 @@ jobs:
                           '{target:$t,shard:$s,slug:$slug,name:$name}')\n"
               done
             fi
+
+            # A claim may own tests that `make test` deselects -- claim 2's are minutes and
+            # generate worlds, so the suite gave them up. They have to run *somewhere CI
+            # invokes*, and for a sharded claim that is never `make <target>`: the matrix runs
+            # `-shard` and `-combine`. Read out of the Makefile the same way the shard count
+            # is, so this file still names no claim.
+            #
+            # **Its own entry rather than a line in the combine**, and that is measured: 1320s
+            # on a four-core runner sitting on a 3369-second serial tail, behind eight shards
+            # that had already finished. Here it is one more parallel leg.
+            #
+            # `slug` is the cache namespace, so this entry does not race `claim-1` and the
+            # other unsharded targets for the un-suffixed key -- it generates ~11 MB of worlds
+            # and `actions/cache` is first-writer-wins.
+            if grep -qE "^${t}-tests:" Makefile; then
+              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \
+                        --arg name "$t tests" \
+                        '{target:$t,shard:"",slug:$slug,name:$name}')\n"
+            fi
           done
           echo "targets=$(printf "$entries" | jq -sc .)" >> "$GITHUB_OUTPUT"
 
@@ -281,6 +300,9 @@ jobs:
                 echo "- \`make $t\` — $n shard(s), then \`make $t-combine\`"
               else
                 echo "- \`make $t\`"
+              fi
+              if grep -qE "^${t}-tests:" Makefile; then
+                echo "  - \`make $t-tests\` — the tests \`make test\` deselects"
               fi
             done
           } >> "$GITHUB_STEP_SUMMARY"

@@ -39,7 +39,11 @@ reserved at run time, which is a fact about the forge that no file in this tree 
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -49,6 +53,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+_MAKEFILE = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
 #: The one expression every world-cache key must contain: the digest `evals/uplift/cache.py`
 #: computes over everything a world is produced by. Named exactly rather than matched loosely,
@@ -374,27 +379,18 @@ def test_the_workflow_derives_the_variable_name_the_same_way_this_does() -> None
 
 
 def test_claim_2_declares_the_shard_count_the_measurements_were_taken_at() -> None:
-    """Eight, and it is chosen by the concurrency ceiling rather than by the work.
+    """Eight, because the balance figures elsewhere were measured at eight.
 
-    A run is `discover + gate + secrets + entries + combines + claims-complete`. With five
-    unsharded targets, eight shards and one combine that is **18** against this account's
-    documented ceiling of 20 — one pull request fits with headroom and two do not, which is the
-    one-branch-at-a-time practice this repository already follows.
+    The `Makefile` and `evals/uplift/checks.py` both publish a spread taken at this count, so a
+    count that moved without them would leave two figures describing a split nobody runs.
 
-    The number is asserted because the balance figures in the `Makefile` and in
-    `evals/uplift/checks.py` were measured **at eight**, and a count that moved without them
-    would leave two published figures describing a split nobody runs.
+    **The job arithmetic that used to live here has moved to
+    `test_the_run_stays_under_the_concurrency_ceiling`, which runs `discover` instead of
+    re-deriving what it would emit.** Written out by hand it said 18 while the matrix said 19,
+    for one entry, and the whole argument of this file is that a second hand-written derivation
+    agrees with itself.
     """
     assert _declared_shards("claim-2") == 8
-
-    unsharded = ("claim-1", "claim-3", "claim-4", "claim-7", "gate-proof")
-    entries = sum(_declared_shards(t) for t in unsharded) + _declared_shards("claim-2")
-    combines = sum(1 for t in (*unsharded, "claim-2") if _declared_shards(t) > 1)
-    jobs = 3 + entries + combines + 1
-    assert jobs <= 20, (
-        f"a run would launch {jobs} jobs against a documented ceiling of 20. Past the ceiling "
-        "the wall clock stops improving and only the flight count grows."
-    )
 
 
 # ---------------------------------- the target CI runs, which is not the target that is named
@@ -403,32 +399,64 @@ def test_claim_2_declares_the_shard_count_the_measurements_were_taken_at() -> No
 #: How a Makefile recipe declares which marks it hands pytest. The same shape `ops/figures.py`
 #: reads, written again here rather than imported, because the two ask different questions of
 #: it: that module asks whether *anything* runs a deselected test, and this one asks whether the
-#: thing that runs it is the target this workflow invokes.
+#: thing that runs it is a target this workflow actually invokes.
 PYTEST_SELECTION = re.compile(r"""pytest\s+-m\s+(?:"(?P<quoted>[^"]+)"|(?P<bare>[\w.-]+))""")
 
+#: `$(MAKE) other-target` inside a recipe. Followed rather than ignored, because `claim-2` runs
+#: its tests that way and a reader that stopped at the recipe would conclude it runs none.
+MAKE_CALL = re.compile(r"^\t\$\(MAKE\)\s+(?P<target>[\w.-]+)\s*$")
 
-def _selection_of(target: str, makefile: str) -> str | None:
+
+def _recipe(target: str, makefile: str) -> list[str]:
     lines = makefile.splitlines()
     for index, line in enumerate(lines):
-        if not line.startswith(f"{target}:"):
-            continue
-        for following in lines[index + 1 :]:
-            if not following.startswith("\t"):
-                break
-            found = PYTEST_SELECTION.search(following)
-            if found is not None:
-                return found.group("quoted") or found.group("bare")
-        return None
-    return None
+        if line.startswith(f"{target}:"):
+            recipe = []
+            for following in lines[index + 1 :]:
+                if not following.startswith("\t"):
+                    break
+                recipe.append(following)
+            return recipe
+    return []
+
+
+def _marks_reachable(target: str, makefile: str, seen: frozenset[str] = frozenset()) -> set[str]:
+    """Every mark expression `make <target>` hands pytest, following `$(MAKE)` one target on."""
+    if target in seen:
+        return set()
+    found: set[str] = set()
+    for line in _recipe(target, makefile):
+        selection = PYTEST_SELECTION.search(line)
+        if selection is not None:
+            found.add(selection.group("quoted") or selection.group("bare"))
+        call = MAKE_CALL.match(line)
+        if call is not None:
+            found |= _marks_reachable(call.group("target"), makefile, seen | {target})
+    return found
+
+
+def _targets_ci_runs_for(target: str, makefile: str) -> list[str]:
+    """What the matrix invokes for one claim target, which for a sharded one is never `make <t>`.
+
+    `discover` emits `<t>-shard` per shard and `<t>-combine` once when `<T>_SHARDS` is above
+    one, and a `<t>-tests` entry wherever the Makefile declares that rule. The plain target is
+    what a laptop runs.
+    """
+    if _declared_shards(target, makefile) <= 1:
+        return [target] + ([f"{target}-tests"] if _recipe(f"{target}-tests", makefile) else [])
+    running = [f"{target}-shard", f"{target}-combine"]
+    if _recipe(f"{target}-tests", makefile):
+        running.append(f"{target}-tests")
+    return running
 
 
 def check_a_sharded_target_s_tests_run_where_ci_runs_them(makefile: str) -> None:
     """For a sharded claim, CI never runs the plain target — so it may not own the tests alone.
 
-    `discover` emits `claim-2` and the matrix turns it into `claim-2-shard` on eight machines
-    and `claim-2-combine` on one. `make claim-2` is what a laptop runs and what CI does not, so
-    a mark selected only there is deselected from the suite by `make test` and selected by
-    nothing on any push.
+    `discover` emits `claim-2` and the matrix turns it into `claim-2-shard` on eight machines,
+    `claim-2-combine` on one, and `claim-2-tests` on one more. `make claim-2` is what a laptop
+    runs and what CI does not, so a mark reachable only from there is deselected from the suite
+    by `make test` and selected by nothing on any push.
 
     `ops/figures.py`'s `suite` row cannot see this: it asks whether *some* `claim-*` target
     selects the mark, and `claim-2` is one. The two gates are the same question at different
@@ -436,38 +464,213 @@ def check_a_sharded_target_s_tests_run_where_ci_runs_them(makefile: str) -> None
     """
     named = re.finditer(r"^(?P<name>claim-\d+):", makefile, re.MULTILINE)
     for target in sorted({match.group("name") for match in named}):
-        if _declared_shards(target, makefile) <= 1:
+        wanted = _marks_reachable(target, makefile)
+        if not wanted:
             continue
-        plain = _selection_of(target, makefile)
-        if plain is None:
-            continue
-        combine = _selection_of(f"{target}-combine", makefile)
-        assert combine == plain, (
-            f"{target} is sharded and selects tests with -m {plain!r}, but "
-            f"{target}-combine selects {combine!r}. CI runs the shards and the combine and "
-            f"never `make {target}`, so those tests would run on no push at all."
+        reached: set[str] = set()
+        for runnable in _targets_ci_runs_for(target, makefile):
+            reached |= _marks_reachable(runnable, makefile)
+        adrift = sorted(wanted - reached)
+        assert not adrift, (
+            f"`make {target}` reaches {adrift}, and none of "
+            f"{_targets_ci_runs_for(target, makefile)} does. CI runs those and never "
+            f"`make {target}`, so those tests would run on no push at all."
         )
 
 
 def test_a_sharded_target_s_tests_run_where_ci_runs_them() -> None:
-    check_a_sharded_target_s_tests_run_where_ci_runs_them(
-        (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    )
+    check_a_sharded_target_s_tests_run_where_ci_runs_them(_MAKEFILE)
 
 
-def test_the_combine_dropping_the_tests_is_refused() -> None:
-    """The attack, in the shape the other checks use: a Makefile with the line removed.
+def test_the_tests_target_running_nowhere_is_refused() -> None:
+    """The attack, as a Makefile with the marked tests reachable only from the plain target.
 
-    It is separate from `ATTACKS` because that mechanism breaks `ci.yml`, and this check reads
+    It is separate from `ATTACKS` because that mechanism breaks `ci.yml` and this check reads
     the `Makefile`. A check with no attack has never been shown to bite and looks identical to
-    one that cannot, so it gets one here rather than none.
+    one that cannot.
     """
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    dropped = makefile.replace(
-        "claim-2-combine:  ## claim 2's checks over every shard's draws, then the mutations\n"
-        "\t$(RUN) pytest -m claim_2\n",
-        "claim-2-combine:  ## claim 2's checks over every shard's draws, then the mutations\n",
-    )
-    assert dropped != makefile, "the combine target no longer carries the line this attack removes"
+    stranded = _MAKEFILE.replace("\t$(MAKE) claim-2-tests\n", "\t$(RUN) pytest -m claim_2\n")
+    stranded = stranded.replace("claim-2-tests:  ##", "claim-2-tests-disabled:  ##")
+    assert stranded != _MAKEFILE, "the anchors this attack rewrites have moved"
     with pytest.raises(AssertionError, match="would run on no push"):
-        check_a_sharded_target_s_tests_run_where_ci_runs_them(dropped)
+        check_a_sharded_target_s_tests_run_where_ci_runs_them(stranded)
+
+
+# ------------------------------------- and `discover` is run rather than read
+
+
+def _discovered(workflow_text: str | None = None) -> list[dict[str, str]]:
+    """`discover`'s own shell, executed against this tree, and its matrix parsed.
+
+    **Run rather than read.** Every other assertion in this file reads `ci.yml` as text or as
+    YAML, which cannot see what the shell actually emits — the class `docs/reviews/phase-1.md`
+    §2d names, where a fact about the forge is assumed from a file. This is the one question
+    that can be taken away from that class cheaply: the step is a shell script with no network
+    and no credentials, so it runs here.
+    """
+    workflow = yaml.safe_load(workflow_text or CI_WORKFLOW.read_text(encoding="utf-8"))
+    steps = [s for s in workflow["jobs"]["discover"]["steps"] if s.get("id") == "read"]
+    assert len(steps) == 1, "the discover step this test runs is no longer identifiable by id"
+    with tempfile.TemporaryDirectory() as scratch:
+        output = Path(scratch) / "output"
+        summary = Path(scratch) / "summary"
+        output.touch()
+        summary.touch()
+        completed = subprocess.run(
+            ["bash", "-c", steps[0]["run"]],
+            cwd=REPO_ROOT,
+            env={
+                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+                "GITHUB_OUTPUT": str(output),
+                "GITHUB_STEP_SUMMARY": str(summary),
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0, (
+            f"discover's own shell exited {completed.returncode}: {completed.stderr.strip()}"
+        )
+        emitted = dict(
+            line.split("=", 1)
+            for line in output.read_text(encoding="utf-8").splitlines()
+            if "=" in line
+        )
+    assert emitted.get("any") == "true", "discover found no claim targets at all"
+    entries: list[dict[str, str]] = json.loads(emitted["targets"])
+    return entries
+
+
+def _tests_entries(workflow_text: str | None = None) -> list[dict[str, str]]:
+    return [e for e in _discovered(workflow_text) if e["target"].endswith("-tests")]
+
+
+def check_every_tests_target_gets_a_job(workflow_text: str | None = None) -> None:
+    """The half `ops/figures.py` cannot reach: a target that exists and no job invokes.
+
+    `figures`' `suite` row is satisfied by `claim-2-tests` existing in the Makefile. If
+    `discover` stopped emitting it, the row would stay green and the tests would run on no
+    push — which is `claim-[1-7]` a third time, at the level of a matrix entry.
+    """
+    declared = sorted(re.findall(r"^(claim-[\w-]*-tests):", _MAKEFILE, re.MULTILINE))
+    assert declared, "no -tests target exists, so this check is asserting nothing"
+    emitted = [entry["target"] for entry in _discovered(workflow_text)]
+    missing = [target for target in declared if target not in emitted]
+    assert not missing, (
+        f"the Makefile declares {missing} and discover emits no job for them, so they run on "
+        "no push. Every other gate would stay green."
+    )
+
+
+def test_discover_emits_a_job_for_every_tests_target_the_makefile_declares() -> None:
+    check_every_tests_target_gets_a_job()
+
+
+def check_every_generating_entry_has_its_own_cache_namespace(
+    workflow_text: str | None = None,
+) -> None:
+    """`actions/cache` is first-writer-wins, so two entries on one key is one of them lost.
+
+    The tests entry generates ~11 MB of worlds and the other unsharded targets generate almost
+    none, so sharing the un-suffixed key means `claim-4` finishing in 92 s takes it and the
+    tests entry never warms.
+    """
+    entries = _discovered(workflow_text)
+    namespaced = [entry["slug"] for entry in entries if entry["slug"]]
+    assert len(namespaced) == len(set(namespaced)), (
+        f"two matrix entries share a cache namespace: {sorted(namespaced)}"
+    )
+    for entry in entries:
+        if entry["target"].endswith("-tests"):
+            assert entry["slug"], (
+                f"{entry['name']} generates worlds and has no cache namespace, so it races the "
+                "unsharded targets for the un-suffixed key and loses to the fastest of them"
+            )
+
+
+def test_every_shard_and_tests_entry_has_its_own_cache_namespace() -> None:
+    check_every_generating_entry_has_its_own_cache_namespace()
+
+
+def test_the_run_stays_under_the_concurrency_ceiling() -> None:
+    """`discover + gate + secrets + entries + combines + claims-complete`, counted by running it.
+
+    Twenty is what this account documents. The count moved from 18 to 19 when the marked tests
+    were given their own entry, and the whole reason to compute it here rather than to write it
+    down is that the next entry will move it again.
+    """
+    entries = _discovered()
+    combines = sum(1 for t in {e["target"] for e in entries} if _declared_shards(t, _MAKEFILE) > 1)
+    jobs = 3 + len(entries) + combines + 1
+    assert jobs <= 20, (
+        f"a run would launch {jobs} jobs against a documented ceiling of 20. Past the ceiling "
+        "the wall clock stops improving and only the flight count grows."
+    )
+
+
+# ------------------------------------- and the two of those get attacks, run the same way
+
+
+#: Attacks on the emission itself. `ATTACKS` above is checked by reading the broken file;
+#: these are checked by **running** it, because what `discover` emits is not visible in the
+#: text — the defect they model is a shell loop that stops emitting, not a key that changed.
+EMISSION_ATTACKS: dict[str, tuple[str, str]] = {
+    "the tests entry no longer emitted": (
+        '            if grep -qE "^${t}-tests:" Makefile; then\n'
+        '              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \\\n',
+        "            if false; then\n"
+        '              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \\\n',
+    ),
+    "the tests entry given no cache namespace": (
+        '--arg t "${t}-tests" --arg slug "tests"',
+        '--arg t "${t}-tests" --arg slug ""',
+    ),
+}
+
+
+#: Each is a function of the workflow text, with two callers: a test that runs it against
+#: `ci.yml`, and an attack that runs it against a copy whose emission has been broken.
+EMISSION_CHECKS: dict[str, Callable[[str | None], None]] = {
+    "every -tests target gets a job": check_every_tests_target_gets_a_job,
+    "every generating entry is namespaced": check_every_generating_entry_has_its_own_cache_namespace,
+}
+
+
+@pytest.mark.parametrize("attack", sorted(EMISSION_ATTACKS))
+def test_each_emission_attack_is_refused(attack: str) -> None:
+    old, new = EMISSION_ATTACKS[attack]
+    text = CI_WORKFLOW.read_text(encoding="utf-8")
+    found = text.count(old)
+    assert found == 1, (
+        f"the attack {attack!r} anchors on text occurring {found} time(s) in ci.yml — the same "
+        "exactly-once rule `_broken` carries, for the same reason"
+    )
+    broken = text.replace(old, new, 1)
+
+    bitten = []
+    for name, check in EMISSION_CHECKS.items():
+        try:
+            check(broken)
+        except AssertionError:
+            bitten.append(name)
+    assert bitten, (
+        f"the attack {attack!r} left every emission check green, so none of them is the guard "
+        "against it — and the attack really did change what discover emits, which is worse "
+        "than an anchor that moved"
+    )
+
+
+def test_every_emission_check_has_an_attack_that_bites_it() -> None:
+    bitten: set[str] = set()
+    for attack, (old, new) in EMISSION_ATTACKS.items():
+        broken = CI_WORKFLOW.read_text(encoding="utf-8").replace(old, new, 1)
+        for name, check in EMISSION_CHECKS.items():
+            try:
+                check(broken)
+            except AssertionError:
+                bitten.add(name)
+        del attack
+    unbitten = sorted(set(EMISSION_CHECKS) - bitten)
+    assert not unbitten, (
+        f"{unbitten} are never made to fail by any emission attack, so nothing shows they bite"
+    )

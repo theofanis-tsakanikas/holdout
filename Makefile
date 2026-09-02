@@ -26,7 +26,7 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
         expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 \
-        claim-2-shard claim-2-combine \
+        claim-2-shard claim-2-combine claim-2-tests \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
 
@@ -161,9 +161,22 @@ claim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
 # mutation changes eval code -- so the ten runs generate the worlds once. What invalidates
 # that is a digest, not a list: see evals/uplift/cache.py.
 claim-2:  ## claim 2 — no uplift without a valid holdout, and A/A holds against alpha
-	$(RUN) pytest -m claim_2
+	$(MAKE) claim-2-tests
 	$(RUN) python -m evals.uplift
 	$(RUN) python -m evals.gate_proof --claim 2
+
+# **Its own target, because in CI it is its own machine.** `ci` emits a `<target>-tests` rule as
+# a separate matrix entry wherever the Makefile declares one, so this runs beside the shards
+# rather than in front of the combine.
+#
+# Measured, which is the whole reason it moved: 1320s on a four-core runner against 306s on the
+# author's laptop -- 4.3x, and the sort of gap `CLAUDE.md` says to expect between the hardware a
+# number is taken on and the hardware it is met on. Sitting in `claim-2-combine` it was 1320
+# seconds of a 3369-second **serial** tail, on the critical path of the whole run, behind eight
+# shards that had already finished. Here it is parallel and costs the run nothing beyond one
+# job of the twenty this account allows.
+claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
+	$(RUN) pytest -m claim_2
 
 #: How many machines claim 2's draws are produced on. **Declared here and nowhere else**, so
 #: `ci` reads it the way it reads the target names — by grepping this file — and the workflow
@@ -193,12 +206,12 @@ claim-2-shard:  ## one slice of claim 2's draws — SHARD=i/N, written to $(SHAR
 # The checks run **once, over every draw**, so sharding cannot change a rate by changing what a
 # denominator is computed over. `gather` refuses a set that is not the whole one rather than
 # averaging over what arrived, because `U1`'s `8/200` computed over 150 draws is still a number.
-# **And it carries `claim-2`'s marked tests, because CI never runs `claim-2` for a sharded
-# target.** The matrix runs `claim-2-shard` on eight machines and this on one, so a test that
-# only the plain target selects would be deselected from the suite and run by nothing on every
-# push. `tests/ops/test_ci_sharding.py` is what makes that structural rather than remembered.
+# **What it deliberately does not carry is `claim-2-tests`.** It did for one run, because CI
+# never invokes `make claim-2` for a sharded target and the marked tests had to be reachable
+# from something CI runs. `claim-2-tests` being its own target and its own matrix entry answers
+# that without putting 1320 seconds on the serial tail; `tests/ops/test_ci_sharding.py` is what
+# keeps the reachability structural rather than remembered.
 claim-2-combine:  ## claim 2's checks over every shard's draws, then the mutations
-	$(RUN) pytest -m claim_2
 	$(RUN) python -m evals.uplift --combine $(SHARD_DIR)/*.pickle
 	$(RUN) python -m evals.gate_proof --claim 2
 

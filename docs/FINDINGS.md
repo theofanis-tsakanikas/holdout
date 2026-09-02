@@ -1461,6 +1461,80 @@ not earn a branch of its own. It is here so the next person who sees `-1d` finds
 instead of taking it for a bug in the arithmetic
 *Status:* open
 
+**A crash and a survival get the same words in `gate-proof`'s red line** · found 2026-09-02 ·
+by run `33571168520`, the first `combine` job this repository has ever run
+
+    FAIL  the-grouped-path-rounds-like-a-price-not-like-the-contract    CRASHED
+          the eval did not finish within 900s
+    mutations planted 8 · bit 7/8 · CRASHED 1
+    RED  1/8 checks failed: the-grouped-path-rounds-like-a-price-not-like-the-contract
+
+**Nothing about a gate is known there, and the last line names a mutation as though a gate had
+gone quiet.** The mutated eval was killed at its budget, so it never produced a verdict and no
+gate was ever asked. `SURVIVED` is the verdict that says a gate did not bite; `CRASHED`,
+`STALE` and `NOT-ARMED` are facts about the harness. `evals/report.py` calls all of them
+`checks failed`, because at that layer a mutation is a check like any other and the wording is
+right for every other eval.
+
+**And the detail line could not be read either.** *did not finish within 900s* is the same
+sentence whether the run needed 902 seconds or four thousand, and those are opposite findings:
+the first says a budget has no headroom on this hardware, the second says the mutation turned
+the eval into a loop, which is what the budget exists to catch. Nobody reading that run could
+tell which had happened, and the arithmetic available from the outside — `gate_proof` at 1391s
+here against 1421 · 1432 · 1421 · 1455 · 1351s on `main` — bounds it without deciding it.
+
+So the engine now prints each mutation's wall clock beside its verdict and publishes
+`slowest mutation — Ns of a 900s budget (N%)` on every run, **including green ones**: the
+headroom is the figure a later session needs in order to size `TIMEOUT_SECONDS` from a
+measurement, and it can only be read while nothing has failed yet. `TIMEOUT_SECONDS` was raised
+from 300 to 900 once already, on a laptop, and this is `CLAUDE.md`'s *assertion wearing a number
+instead of a verb* arriving inside `gate-proof` itself.
+
+**What is not fixed is the red line**, and deliberately: it belongs to `evals/report.py` and is
+correct for the five other evals. What this layer can do is name the difference, so the note now
+says in as many words that a `CRASHED` mutation tells you nothing about the gate it points at.
+
+*Site:* `evals/gate_proof/engine.py` :: `f"killed at the {TIMEOUT_SECONDS}s budget. That is the budget and not a "`
+*Site:* `evals/report.py` :: `f"  RED    {len(failed)}/{len(report.checks)} checks failed: {', '.join(failed)}",`
+*Disposition:* branch `evals/claim-2-sharded` — the timing and the note land with it. What stays
+open is the shared red line, which is one wording for six evals and a decision about the report
+shape rather than about this one
+*Status:* open
+
+---
+
+**A cache that can only warm on success, on a job that is failing because it is cold** · found
+2026-09-02 · by reading the combine job's cache steps
+
+`actions/cache` restores at the start of a job and saves in a post step **that runs only when
+the job succeeds**. Run `33571168520`'s combine job shows both halves:
+
+    Cache not found for input keys: worlds-Linux-d5d27bdca303d9be70f3b07057bee8a7-combine
+    Post Run actions/cache@…  skipped
+
+The key had never been written, because no `combine` job had ever passed — that run was the
+first one to exist at all. And it wrote nothing, because it failed. **Every future combine job
+starts cold for the same reason, and the run is partly slow because it is cold.**
+
+**It is not circular for the mutation that actually failed**, and that distinction is the point
+of filing it rather than blaming it. Mutation 07 edits `evals/uplift/outcomes.py`, which is in
+`cache.py`'s `DEPENDS_ON`, so it moves the digest and regenerates every world it needs whatever
+the cache holds — `engine.py` says so beside `TIMEOUT_SECONDS` and it was equally true on
+`main`. A warm cache would not have saved it.
+
+So the loop is real and it is not the cause here. It is filed because *it will be warm next
+time* reads true and is false, and because the same shape sits under every one of these keys:
+**a first-of-its-kind job cannot inherit a measurement from a job that has never succeeded.**
+The same is true of the eight shard keys, which were all cold on that run — so the 490–973s
+shard durations and the 1.99 max/min are the **cold** case, and the warm case has never been
+measured in this repository.
+
+*Site:* `.github/workflows/ci.yml` :: `key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}-combine`
+*Disposition:* none — nothing here is broken and there is nothing to fix until a warm run
+exists. It is a note against the next reading of those durations, so that a cold number is not
+inherited as though it described the steady state
+*Status:* open
+
 ---
 
 ## Closed
