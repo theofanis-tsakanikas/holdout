@@ -507,6 +507,22 @@ def _discovered(workflow_text: str | None = None) -> list[dict[str, str]]:
     §2d names, where a fact about the forge is assumed from a file. This is the one question
     that can be taken away from that class cheaply: the step is a shell script with no network
     and no credentials, so it runs here.
+
+    **And the limit that arrives with it, declared rather than discovered later: this check
+    executes a shell fragment, so its answer is a property of the shell that runs it.** Reading
+    text is the same everywhere; running `grep`, `jq`, `seq` and `tr` is not. This repository
+    has been bitten three times in four days by an instrument whose answer depended on where it
+    ran — `grep -P`, which BSD grep does not implement and which reported a count of zero from a
+    check that never ran; `_layout_population`, which counted a gitignored directory on a laptop
+    and not on a clean checkout; and the `main_guard` fixture, which assumed a git identity the
+    runner did not have. Each passed where it was written.
+
+    **So it is asserted on two platforms and only two**: `make check` runs it on the author's
+    macOS and CI runs it on Linux, and the two differing is the whole of the coverage. A third
+    shell is not covered, and if the emitted script ever needs a GNU-only flag or a collation
+    order, this check answers differently on the two and the version that passes is the one it
+    was written on. Where that happens the answer is to make the fragment portable or to say
+    which platform this speaks for — not to widen the assertion until the difference fits.
     """
     workflow = yaml.safe_load(workflow_text or CI_WORKFLOW.read_text(encoding="utf-8"))
     steps = [s for s in workflow["jobs"]["discover"]["steps"] if s.get("id") == "read"]
