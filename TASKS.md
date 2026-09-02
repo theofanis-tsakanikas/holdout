@@ -728,10 +728,17 @@ that is `the-power-check-is-judged-on-the-variance-the-design-assumed` at **93s,
 budget**. *Nearer* would have been consistent with the fix merely helping; the median is consistent
 with the anomaly being gone.
 
-**One observation, and it says nothing about spread.** Five of the six figures it replaces came
-from separate runs; this is one. The day's whole lesson is that 1.09x of margin over a single
-high-water mark was never margin, so a second high-water mark is not a distribution either. Spread
-needs `workflow_dispatch` re-runs on this sha and none were taken.
+**Two observations, and two is not a spread.** Run 33621267184 gave **58s** and run 33627230673 --
+the follow-up commits on this branch -- gave **59s**. They are **1.02x apart**, against the
+expensive form's **1.56x across five** completed runs plus a kill.
+
+**That is suggestive and is not evidence.** It is consistent with the variance having lived in the
+regeneration rather than in the mutation's own work, which is what the diagnosis predicts -- and
+**two points cannot establish a distribution**, which is the day's whole lesson arriving on the
+number that closes it. `the-power-check-is-judged-on-the-variance-the-design-assumed` was the
+slowest mutation at **93s in both runs**, which is a second thing that did not move.
+
+Anything stronger needs `workflow_dispatch` re-runs on one sha, and none were taken.
 
 **The job-level figure is deliberately not the measurement**: `claim-2 combine` went 47m04s ->
 37m19s across two runs on two runners with different cache states, a difference of ~585s where the
