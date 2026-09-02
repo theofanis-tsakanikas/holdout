@@ -1583,8 +1583,40 @@ closes        The manual, no-API work recorded rather than silently done — in 
 out_of_scope  Anything that has an API (that is IaC).
 stop_at       Before Phase 3 begins, and specifically before the network path is attempted.
 review        no
-status        open
+status        closed
 ```
+
+**Closed 2026-09-02.** `docs/DAY-ONE.md` exists and says in its first line what it is: **a checklist
+to be run before phase 3, not a record of a verification that happened.** Seven items, ordered by
+what discovering each one late costs rather than by the order they are performed — because a
+checklist read in performance order finds its expensive items last. Every external fact carries the
+URL it came from and the date it was read, and six things that could not be established are in a
+named **Not verified** section, which is `docs/REGULATORY.md`'s discipline applied to a vendor
+instead of to a statute.
+
+**What the task could not do, and why that is the better half of it.** `CLAUDE.md` requires the
+workspace-to-RDS path to be *verified before phase 3, not inside it*. **That is unachievable by
+anybody, funded or not**: the workspace is created by T018 and the RDS by T019, and both are phase
+3. The instruction asks for a measurement between two endpoints that phase 3 is what creates. It
+splits instead — design and residue now, the assertion immediately after `sources` applies and
+before `backfill` is dispatched — which converts an impossible instruction into a possible one
+without weakening what it was protecting. T019's `stop_at`, `PLAN.md`'s phase-3 bullet and the
+deferral in `docs/DECISIONS.md` are each restated rather than overwritten.
+
+**And the task found two things that outrank the document, both filed in `docs/FINDINGS.md` and
+both the author's**, because every route out of either one edits `CLAUDE.md`. The ingestion gateway
+that Lakeflow Connect's Postgres connector requires **runs on classic compute, continuously, at a
+stated minimum of 8 cores** — against *"no always-on cluster anywhere in the design"* and against a
+cost model that argues in as many words that the classic-compute trap does not apply here. And that
+**connector is in Public Preview** while the sources table calls the surface GA, which fires half
+the unlock condition on `make preview-audit` and puts a vendor's enrolment queue on the critical
+path of `backfill`.
+
+**The deferral this closes had said, for three days, that there was nothing to record until there
+was an estate.** Both findings were readable on the vendor's public documentation the whole time.
+The sentence was not wrong about the estate; it was a sentence that made looking feel unnecessary,
+which is `CLAUDE.md`'s eighth form of *a guard tested by its author* wearing a deferral instead of a
+rule.
 
 ```
 id            T016          <- Phase-2 integration session (oversight level 3)
@@ -1641,10 +1673,24 @@ depends_on    T018
 closes        The smallest RDS instance that works, Single-AZ (a declared cost decision), in a
               private subnet, password generated into Secrets Manager.
 out_of_scope  Seeding it (that is backfill) and driving it (that is run).
-stop_at       When sources applies and the workspace-to-RDS path (verified in T015) holds.
+stop_at       When sources applies and the workspace-to-RDS assertion in docs/DAY-ONE.md §6
+              passes — which is the first moment it can be run at all, not a re-check of T015.
 review        yes
 status        open
 ```
+
+> **`stop_at` restated 2026-09-02 by T015.** It read *"When sources applies and the workspace-to-RDS
+> path (verified in T015) holds"*, which asserts that T015 verified the path. **T015's own `stop_at`
+> forbids exactly that** — *before Phase 3 begins, and specifically before the network path is
+> attempted* — so the two lines could not both be true, and nothing in this file checks a pair.
+>
+> **And the reason is structural rather than a slip.** The path's two endpoints are the workspace,
+> created by **T018**, and the RDS, created by **this task** — both in phase 3. No session, funded
+> or not, can verify a path between two things that phase 3 is what creates. So T015 records the
+> design and the no-API residue, and the assertion lands here, at the earliest moment it can exist
+> and **before `backfill` spends anything**. The prior wording stays per doctrine rule 4, and the
+> delta is the finding: *one task's line asserting something about another task, with nothing
+> checking the pair.*
 
 ```
 id            T020
@@ -1852,6 +1898,11 @@ L19 .claude/skills/integration-review/ — oversight level 3 as a versioned proc
     questions and which of them produced a finding, the ruleset question no reading of this tree
     can answer, the three places the phase-1 report was wrong in its own report, and seven holes
     the record cannot fill.                branch skills/integration-review        status closed
+L20 docs/DAY-ONE.md — the no-API residue, ordered by what finding each item late costs, with
+    every vendor fact carrying its URL and read date and six holes named rather than filled.
+    The verification it was asked for is impossible as written (both endpoints are phase 3),
+    so the assertion moves to the earliest moment it can exist. Two findings against
+    CLAUDE.md, both the author's.          branch docs/day-one                    status closed
 ```
 
 **Two of those entries named branches that never existed, and `evals/world-cache-measured` found

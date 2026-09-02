@@ -1601,6 +1601,93 @@ together and neither is opened here.
 of those is a decision rather than an edit
 *Status:* open
 
+**The ingestion gateway Lakeflow Connect requires is classic compute, and it runs continuously** ·
+found 2026-09-02 · by T015, from the vendor's own documentation
+`CLAUDE.md` routes ERP master data and competitor prices through **Lakeflow Connect**, and its
+`backfill` sequence depends on that path. Read 2026-09-02, on two independent pages:
+
+> "The gateway runs on classic compute, and it runs continuously to capture changes before change
+> logs can be truncated in the source."
+> — [Managed database connectors](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview)
+
+> "must run the gateway as a continuous pipeline. This is critical for PostgreSQL to prevent
+> Write-Ahead Log (WAL) bloat … **The minimum requirement is 8 cores**"
+> — [Ingest data from PostgreSQL](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/postgresql-pipeline)
+
+**Three sentences in `CLAUDE.md` are contradicted by that**, and the third is the one that hurts,
+because it is not an omission but an argument that was made and is wrong:
+
+1. *"Serverless only. **No always-on cluster anywhere in the design.**"*
+2. *"there is **no separate EC2 line** — infrastructure is bundled into the serverless DBU rate."*
+3. *"The 'you pay Databricks and you pay AWS' trap applies to classic compute, **which this design
+   does not use**."* — the design does use it, unavoidably, from the moment the ERP path exists.
+
+**The word `gateway` occurs nowhere in repository content** — grepped across all Markdown on
+2026-09-02, excluding gitignored `notes/` and worktrees. The cost table's one classic-shaped line,
+*"jobs compute — silver, gold, training | 10 – 30 USD"*, is scoped to three things the gateway is
+not, and an 8-core cluster standing continuously from `backfill` to `destroy` adds both a classic
+DBU line and the EC2 line sentence 2 says does not exist.
+
+**Three ways out, named because a contradiction presented with two bad options is not a choice.**
+None is taken here.
+
+- **Accept it and restate.** The rule becomes *serverless everywhere except the one path a GA
+  vendor connector does not offer serverless for*, the cost model gains a line, and doctrine rule 4
+  governs the restatement. Honest, and it costs the cleanest sentence in the cost section.
+- **Route ERP master data through the S3 bulk load instead**, which `CLAUDE.md`'s repository map
+  already declares in `pipelines/ingest/` — *"Zerobus driver · Lakeflow Connect · the S3 bulk
+  load"*. **No connector, no gateway, no classic DBU line and no EC2 line.** *And the record
+  carries its own argument against it, which is why this is the author's call and not a session's*:
+  the ERP is deliberately **driven** during `run` — *"costs change mid-day, a product enters the
+  regulated basket, a supplier term changes retroactively, a column is added. A seeded-and-static
+  database gives incremental ingestion nothing to do and proves nothing."* A file drop is a
+  snapshot; whether the driven day still proves what it is there to prove without change capture is
+  the question, and it is a judgment about what the estate is evidence *of*.
+- **Hand-write the ingestion.** Explicitly refused already — the sources table chose Lakeflow
+  Connect for *"no custom ingestion code to maintain"* — and it is listed only so the refusal is
+  visible rather than implicit.
+
+*Site:* `CLAUDE.md` :: `- Serverless only. **No always-on cluster anywhere in the design.**`
+*Site:* `CLAUDE.md` :: `serverless DBU rate. The "you pay Databricks and you pay AWS" trap applies to classic compute,`
+*Disposition:* **the author's.** Every route changes `CLAUDE.md`, which no session may do and no
+two sessions may settle by agreeing. `docs/DAY-ONE.md` §6 records that if the second route is
+taken, five of its seven sections stop applying
+*Status:* open
+
+**Lakeflow Connect is GA; the PostgreSQL connector this estate needs is Public Preview** · found
+2026-09-02 · by T015
+> "The PostgreSQL connector for Lakeflow Connect is in Public Preview. **Reach out to your
+> Databricks account team to enroll in the Public Preview.**"
+> — [PostgreSQL connector limitations](https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/postgresql-limits), read 2026-09-02
+
+`CLAUDE.md`'s sources table says **(GA)**. Lakeflow Connect *is* GA; **this connector is not**, and
+it is the only one the estate's ERP path uses. The two halves of the consequence are different in
+kind and are separated deliberately.
+
+**Mechanical, and a fact rather than an opinion.** `make preview-audit` is deferred on the unlock
+condition *"the first Terraform layer, and the first time a preview surface is considered"*. **A
+preview surface has now been considered.** That half of the condition has fired, and this branch
+records it in `docs/DECISIONS.md` rather than leaving it to be noticed. The connector is the first
+declared entry the inventory will have.
+
+**And the enrolment is the purest item this repository's day-one document can hold** — a
+conversation with a human at a vendor, with a lead time nobody here controls, blocking the entire
+ERP path. It is §1 of `docs/DAY-ONE.md` for that reason.
+
+**Judgment, and it is the author's.** Whether this breaches *"No claim depends on a non-GA
+surface."* **A reading, with its argument, offered rather than concluded:** probably not, because
+all seven claims are provable local with no workspace and no credentials, so the connector sits on
+the *estate* path — where proof is captured — and not on any claim's proof path. The counter is
+that `run`'s evidence is what the README and the article publish, and evidence resting on a preview
+surface is exactly the fragility the rule names. **The two sessions that found this both read it
+the first way, which is precisely why it is not settled here.**
+
+*Site:* `CLAUDE.md` :: `| ERP tables, competitor prices | **Lakeflow Connect** (GA) | pull from a database; no custom ingestion code to maintain |`
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the first Terraform layer, and the first time a preview surface is considered.`
+*Disposition:* the judgment is **the author's**; the mechanical half is recorded on `docs/day-one`
+in `docs/DECISIONS.md`, and the enrolment step is recorded in `docs/DAY-ONE.md` §1
+*Status:* open
+
 ---
 
 ## Closed
