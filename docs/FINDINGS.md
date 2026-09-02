@@ -2401,6 +2401,18 @@ number nobody has re-taken.
 **So the re-measurement is the work, and it comes before any proposal about what to remove.** No
 proposal is made here.
 
+**And there is a structural point that says where a re-measurement should start — it is not a
+third reading.** The comment's prose says the job *"carries a **ten-minute** cold penalty"*, and
+**596s is 9.93 minutes**. Prose and total agree with each other; **only the itemisation disagrees
+with both.** Three of the four numbers tell one consistent story.
+
+That does **not** discriminate between the two readings above — a larger corpus and a slower
+machine both make items exceed an older total, in the same direction. **What it does say is which
+number to distrust first**, and therefore where the cheap work is: **re-measure the itemisation,
+not the total.** If `_truths`, `U11` and `U10` come back summing to at or under a re-measured
+whole, the total was merely stale; if they come back in the same proportions against a much larger
+whole, the comment was assembled from two sittings and presented as one.
+
 *Site:* `.github/workflows/ci.yml` :: `  # Measured on this repository's corpus: a cold combine is 596s against 1s warm, of which`
 *Disposition:* its own branch, unlocked now — the measurement needs only a run with the four
 phases timed, and `T00K` should not be opened against the 23m52s until it exists, because `T00K`'s
