@@ -725,6 +725,121 @@ unlocked by T00G landing — after which the key has one meaning and a widening 
 against it rather than through it
 *Status:* open
 
+**The checks list cannot show a duplicate-context defect, and has hidden two** · found
+2026-09-01 · by T00H, from a count that disagreed with an expectation that happened to exist
+Sharding named eight jobs `claim-2`, so eight check runs shared one context name. `gh pr checks 41`
+reported **nine** checks. The run had **sixteen** jobs.
+
+*That is not a quirk of the tool.* `gh pr checks` answers *which contexts exist and did they
+pass*. It cannot answer *how many runs produced them*, because same-named contexts collapse into
+one row — so **any defect whose shape is a duplicate context name is invisible to it, by
+construction**.
+
+**Both of this repository's context-count defects have had exactly that shape.** `#39`'s doubling —
+every context twice on every pull-request head — took pairing 200 runs on `headSha` to see. This
+one took listing the run's jobs. **Twice, the convenient view was the one that could not show it.**
+
+> **For anything about how many runs or jobs produced a result, the instrument is the jobs API or
+> `/check-runs`. `gh pr checks` is for *did the named things pass*.**
+
+*And the second half is why it was caught at all, which is the less comfortable one.* Nine looks
+like a healthy checks list — five claims, `gate-proof`, `discover`, `gate`, `secrets` — and nothing
+about it invites a second look. It was suspicious only because a matrix had just been **computed at
+sixteen**, five minutes earlier, for an unrelated reason: the concurrency ceiling.
+
+> **When a change alters how many things there should be, compute the expected count before
+> running it, and compare.**
+
+It costs a minute; it was the only thing that would have caught this; and it is available for
+precisely the class of change that is otherwise hardest to verify — one that alters **structure**
+rather than behaviour, where every individual thing still passes and only the arrangement is wrong.
+
+*Neither half is a mechanism and both are habits*, which this repository distrusts on principle —
+nothing goes red if either is forgotten. They are recorded because the failure they catch is
+silent in the way every failure at this site has been, and because the first one is at least
+checkable: a reader who sees `gh pr checks` used to count anything can say so.
+
+*Site:* `.github/workflows/ci.yml` :: `    name: ${{ matrix.name }}`
+*Disposition:* `evals/claim-2-sharded` (T00H) — the fix is in that branch with a guard and an
+attack; this entry is the method, which no guard covers
+*Status:* open
+
+**`make language` enumerates repository content by a hand-written exclusion list** · found
+2026-09-01 · by T00H, when the gate went red on a directory that branch created
+`ops/language.py`'s `content_files` walks the tree and skips a `NOT_CONTENT` set of names —
+`.git`, `.venv`, `.worlds`, `notes`, and now `.shards`. Every entry is generated or ignored
+output, and every one had to be remembered.
+
+*It went red the day sharding landed*, on eight pickle files under `.shards/` — enumerated as
+repository content and not examined, which `make figures` correctly reports as under-coverage.
+That is the list **working**; it is also the fourth time in four days that a hand-maintained list
+has had to be extended by whoever tripped over it.
+
+**The answer is already in the tree, one file away.** `ops/figures.py`'s `_layout_population`
+was rewritten to ask git — `_tracked_paths()` runs `git ls-files`, and its docstring says *what
+git tracks, which is the only defensible answer to what is repository content*. Its own comment
+records that **nothing is excluded by name**, and the defect that produced it is the one where
+`notes/` counted on the author's laptop and not on a clean checkout. `content_files` is the one
+gate that did not get that move.
+
+*So this is not "design a way to enumerate repository content".* It is applying a change that has
+already landed, to the place it did not reach — which is why it is filed with `_layout_population`
+named rather than left as a direction.
+
+*Not taken on T00H*, deliberately: it is a change to a gate, inside a branch about CI wall clock,
+and it costs a full matrix to land. Nothing about it is blocking.
+
+*Site:* `ops/language.py` :: `NOT_CONTENT: frozenset[str] = frozenset(`
+*Disposition:* its own branch — small, and unblocked now rather than by anything
+*Status:* open
+
+**The combine job's worlds are disjoint from every shard's** · found 2026-09-01 · by T00H, from
+measuring a cold combine rather than reasoning about one — so sharding splits the world cache
+along with the phases
+`make claim-2`'s draws now run on eight machines and are judged on one. The judging step is not a
+merge: `report()` calls `_truths()`, which generates **counterfactual** worlds — a control-arm and
+a treatment-arm generation per world seed for W6, W4 and W5 — and the agreement checks, which
+generate and then walk five million events.
+
+*Measured on this repository's corpus:*
+
+```
+warm combine                       1s
+cold combine                     596s     _truths 411s · U11 195s · U10 51s
+whole unsharded harness, warm    270s
+```
+
+**A cold combine costs more than twice the entire run it was meant to speed up.** Both cold and
+warm combines are byte-identical to the unsharded baseline, so nothing is wrong with the
+arithmetic; it is entirely the world cache.
+
+*And the diagnosis is sharper than the one two sessions had reached independently.* We both said
+*the cache is partial* and both proposed per-shard keys. Per-shard keys do not fix this: **no
+shard's cache can contain what the combine needs**, because a shard builds a fixture and draws
+against it while the counterfactual generations are different entries entirely. It is not that the
+cache is partial. **The combine's work is disjoint from every shard's.**
+
+*Today's unsharded run hides it* by doing draws and truths in one process, so `.worlds` ends up
+holding both and the next run restores everything. Splitting the phases splits the cache with them.
+
+*What T00H does, and what it does not.* Two key families with one writer each — per-shard for the
+draw phase, one for the combine, **the same digest in both** — so the tail is **cached rather than
+removed**, paid once per world-source change. `tests/ops/test_ci_sharding.py` drives six attacks
+against those keys.
+
+*What would remove it, with the reason it is safe, so nobody has to rediscover it.* Move the
+counterfactual generations into the shards. That looks unsafe because `_truths` takes its units
+from the **globally-first** record with outcomes, and a shard holds an interleaved subset — a
+different first record, different units, a different truth, and the byte-identical comparison
+gone. **But the expensive half takes no units at all:** `counterfactual_unit_weeks` returns the
+full control and treatment maps and `average_treatment_effect` filters them afterwards. So a shard
+can generate the maps and the combine can still choose the units over the whole set.
+
+*Site:* `.github/workflows/ci.yml` :: `          key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}-combine`
+*Disposition:* its own branch, unlocked by **T00H landing** — after which the key families exist
+and a change that moves work between phases can be measured against them rather than through them
+*Status:* open
+
 **`ci.yml` is entered twice for every branch push** · found 2026-09-01 · by this session, while
 scoping the other three CI items — and the pair was already in this register under another name
 `on: push:` carried no branch filter while `pull_request` was scoped to `main`. A push to a branch
@@ -1231,6 +1346,259 @@ skill had to state which task ids invoke it.
 *Disposition:* none — the reconciliation is an edit to `CLAUDE.md` or to `TASKS.md`'s phase-4 block,
 and which of the two moves is the author's call rather than a session's, so it is filed adrift
 instead of being given a branch it would be the wrong session to open
+*Status:* open
+
+**A guard covered naming exhaustively and the artifact's path not at all** · found 2026-09-02 ·
+by the session sent to fix the run it produced
+
+`tests/ops/test_ci_sharding.py` guards the transport between claim 2's eight shard jobs and the
+one job that judges them. `check_the_draws_travel` asserts the artifact's **name** against the
+download's **pattern**, that a shard producing nothing fails where it knows, and that
+`merge-multiple` is set. Four properties, every one of them about naming.
+
+It never asserted anything about the **path**. `actions/upload-artifact` has filtered every
+path whose name begins with a dot since v4.4, before the glob is judged, and the directory is
+`.shards/`. So run `33483742285` ran `make claim-2 N/8` to success on all eight machines,
+uploaded nothing on any of them, and failed at the last step of each — eleven to sixteen
+minutes of runner time per shard, discarded. The combine, which needs the shards, never ran.
+
+**This is not *a guard tested by its author*, and the difference is the finding.** That defect is
+an author testing their own assumption, in the shape their assumption already handles. Here the
+author was not testing an assumption at all: the session that wrote this check had, in the
+change immediately before it, fixed a defect where eight shards reported under one context
+**name**. Naming was the topic in front of them. The guard they wrote covers naming exhaustively
+and covers the path not at all — not because the path was assumed safe, but because it was not
+the subject. **A guard covers the topic its author had in mind, and the topic is set by whatever
+they were just doing.**
+
+It is why the fix is stated generally — *any* path component beginning with a dot requires
+`include-hidden-files` — rather than as a rule about `.shards`. A check written to the instance
+would be the same defect a third time, scoped to the case that produced it, which is the reason
+`CLAUDE.md` gives for not writing a rule at three instances.
+
+*Site:* `tests/ops/test_ci_sharding.py` :: `def check_the_draws_travel(path: Path) -> None:`
+*Site:* `.github/workflows/ci.yml` :: `include-hidden-files: true`
+*Disposition:* branch `evals/claim-2-sharded` — the check and its attack land with the one-line
+fix, and the entry closes when that branch merges with the sharded run green, which is also the
+first evidence that the upload works at all
+*Status:* open
+
+---
+
+**One anchoring rule, two populations, and only one of them had it** · found 2026-09-02 · by
+the same session, one command later
+
+This file requires every `*Site:*` fragment to occur in its file **exactly once**. The section
+above says why in as many words: *zero means the line moved or was fixed; two means the anchor
+is ambiguous and proves nothing about which line was meant.* It has been enforced since the
+registry existed.
+
+`tests/ops/test_ci_sharding.py`'s attacks anchor the same way — each names a fragment of
+`ci.yml` and replaces it — and the rule had never been carried across. `_broken` asserted the
+fragment was `in` the file and replaced the **first** occurrence.
+
+**What that costs was demonstrated rather than argued, by accident.** The change above added a
+comment over the upload step explaining why `if-no-files-found` is set to `error`, quoting the
+setting. The attack that flips it then edited the comment, left the step exactly as it was, and
+every check passed — so `test_each_attack_is_refused_by_some_check` reported *no guard exists
+for this attack* against a guard that was working perfectly.
+
+**It failed loudly only by luck of direction.** An attack that starts editing prose reports a
+missing guard, which is noisy and false. The same mis-anchoring one step further along — an
+anchor whose second occurrence is another *step* rather than a comment — reports that the guard
+bit, on a file where the step under attack was never touched. That is `gate-proof` switched
+off, printing green. Any of the seven attacks could have been in that state and nothing would
+have said so.
+
+**The generalisation is the entry, not the fix.** The fix is `== 1`. The finding is that a rule
+argued once, in the file that invented it, does not travel to the next thing that anchors — and
+this repository now has two populations that anchor a fragment to a file and one more (`Now:`)
+in the same document. The next one will need the same sentence, and nothing enumerates the
+populations that anchor.
+
+*(And the rule cannot anchor to itself. A `*Site:*` naming `docs/FINDINGS.md` quotes the
+fragment on the site line, which is then a second occurrence in the same file, so the gate calls
+it ambiguous — driven, not deduced: this entry tried it and went red. The rule is therefore
+cited by section here rather than anchored, and the limit is small but it is real.)*
+
+*Site:* `tests/ops/test_ci_sharding.py` :: `f"the attack {attack!r} anchors on text occurring {found} time(s) in ci.yml. Zero means "`
+*Disposition:* branch `evals/claim-2-sharded` — the `== 1` half is fixed in the change that
+produced it; what stays open is that nothing enumerates which populations anchor a fragment to a
+file, so the third one will arrive the same way
+*Status:* open
+
+---
+
+**`make expiry` judges in UTC against dates written in the author's local day** · found
+2026-09-02 · by the same session, from an age column reading `-1d`
+
+`ops/expiry.py` and `ops/findings.py` both compute today as `datetime.now(UTC).date()`. The
+dates in `docs/DECISIONS.md` and in this file are written by the author, in Athens, on the
+author's calendar. For part of every local day the two disagree, and `is_expired` compares
+`expires <= as_of` against the UTC one.
+
+**Measured across every hour of 2026 rather than reasoned from the offset**, DST included:
+
+    hours where the local date and the UTC date differ:  940 of 8,760  (10.7%)
+    largest lag between the local day starting and UTC agreeing:  3:00:00
+    ever a whole day:  no
+    ever early:  no — Athens is never behind UTC, so the gate cannot fire before its date
+
+**So this is hours, not a day, and that is the whole of why it is filed low rather than fixed.**
+A deferral that expires on the 2nd goes red at 03:00 local rather than at 00:00; a finding filed
+at 01:00 prints its age as `-1d`. CI runs in UTC throughout, so the two never disagree with each
+other — only with the calendar the dates were written on.
+
+It is recorded because the direction was not obvious before it was measured. A gate that fires
+**late** is a different object from one that fires **early**, and only one of the two would have
+been worth stopping for; nothing in either module says which it is.
+
+*Site:* `ops/expiry.py` :: `as_of = args.as_of or datetime.now(tz=UTC).date()`
+*Site:* `ops/findings.py` :: `today = as_of or datetime.now(UTC).date()`
+*Disposition:* none — the fix is a timezone the repository would have to declare, which is a
+decision about whose calendar the dates are in rather than an edit, and at three hours it does
+not earn a branch of its own. It is here so the next person who sees `-1d` finds the measurement
+instead of taking it for a bug in the arithmetic
+*Status:* open
+
+**A crash and a survival get the same words in `gate-proof`'s red line** · found 2026-09-02 ·
+by run `33571168520`, the first `combine` job this repository has ever run
+
+    FAIL  the-grouped-path-rounds-like-a-price-not-like-the-contract    CRASHED
+          the eval did not finish within 900s
+    mutations planted 8 · bit 7/8 · CRASHED 1
+    RED  1/8 checks failed: the-grouped-path-rounds-like-a-price-not-like-the-contract
+
+**Nothing about a gate is known there, and the last line names a mutation as though a gate had
+gone quiet.** The mutated eval was killed at its budget, so it never produced a verdict and no
+gate was ever asked. `SURVIVED` is the verdict that says a gate did not bite; `CRASHED`,
+`STALE` and `NOT-ARMED` are facts about the harness. `evals/report.py` calls all of them
+`checks failed`, because at that layer a mutation is a check like any other and the wording is
+right for every other eval.
+
+**And the detail line could not be read either.** *did not finish within 900s* is the same
+sentence whether the run needed 902 seconds or four thousand, and those are opposite findings:
+the first says a budget has no headroom on this hardware, the second says the mutation turned
+the eval into a loop, which is what the budget exists to catch. Nobody reading that run could
+tell which had happened, and the arithmetic available from the outside — `gate_proof` at 1391s
+here against 1421 · 1432 · 1421 · 1455 · 1351s on `main` — bounds it without deciding it.
+
+**Measured once the seconds existed: 747s, 83% of the budget, while the other seven sat between
+32s and 86s.** And the two runs are *not* a spread — the tree changed between them, because
+`COPIED` carries `.worlds` and `claim-2-tests` had moved out of the combine — so there is one
+observation and no variance estimate. **The second arrived on the very next run — 826s, 92% —
+which is the point: the sentence claiming one observation was written one run before there were
+two, and the seconds are what made the second free.** 747 and 826 under the same arrangement are
+1.11x apart and both under 900, with the later one 74 seconds from the limit. The variance of
+the job they live in is measured and wider:
+paired on `headSha` over the 200 runs before `#39` removed the doubling, 33 trees ran `claim-2`
+twice, widest same-tree pair **1.69x**, median **1.09x**, and 1931s to 4698s end to end. The
+comment beside `TIMEOUT_SECONDS` carries it, and nothing there proposes a number.
+
+So the engine now prints each mutation's wall clock beside its verdict and publishes
+`slowest mutation — Ns of a 900s budget (N%)` on every run, **including green ones**: the
+headroom is the figure a later session needs in order to size `TIMEOUT_SECONDS` from a
+measurement, and it can only be read while nothing has failed yet. `TIMEOUT_SECONDS` was raised
+from 300 to 900 once already, on a laptop, and this is `CLAUDE.md`'s *assertion wearing a number
+instead of a verb* arriving inside `gate-proof` itself.
+
+**What is not fixed is the red line**, and deliberately: it belongs to `evals/report.py` and is
+correct for the five other evals. What this layer can do is name the difference, so the note now
+says in as many words that a `CRASHED` mutation tells you nothing about the gate it points at.
+
+*Site:* `evals/gate_proof/engine.py` :: `f"killed at the {TIMEOUT_SECONDS}s budget. That is the budget and not a "`
+*Site:* `evals/report.py` :: `f"  RED    {len(failed)}/{len(report.checks)} checks failed: {', '.join(failed)}",`
+*Disposition:* branch `evals/claim-2-sharded` — the timing and the note land with it. What stays
+open is the shared red line, which is one wording for six evals and a decision about the report
+shape rather than about this one
+*Status:* open
+
+---
+
+**A cache that can only warm on success, on a job that is failing because it is cold** · found
+2026-09-02 · by reading the combine job's cache steps
+
+`actions/cache` restores at the start of a job and saves in a post step **that runs only when
+the job succeeds**. Run `33571168520`'s combine job shows both halves:
+
+    Cache not found for input keys: worlds-Linux-d5d27bdca303d9be70f3b07057bee8a7-combine
+    Post Run actions/cache@…  skipped
+
+The key had never been written, because no `combine` job had ever passed — that run was the
+first one to exist at all. And it wrote nothing, because it failed. **Every future combine job
+starts cold for the same reason, and the run is partly slow because it is cold.**
+
+**It is not circular for the mutation that actually failed**, and that distinction is the point
+of filing it rather than blaming it. Mutation 07 edits `evals/uplift/outcomes.py`, which is in
+`cache.py`'s `DEPENDS_ON`, so it moves the digest and regenerates every world it needs whatever
+the cache holds — `engine.py` says so beside `TIMEOUT_SECONDS` and it was equally true on
+`main`. A warm cache would not have saved it.
+
+So the loop is real and it is not the cause here. It is filed because *it will be warm next
+time* reads true and is false, and because the same shape sits under every one of these keys:
+**a first-of-its-kind job cannot inherit a measurement from a job that has never succeeded.**
+The same is true of the eight shard keys, which were all cold on that run — so the 490–973s
+shard durations and the 1.99 max/min are the **cold** case, and the warm case has never been
+measured in this repository.
+
+*Site:* `.github/workflows/ci.yml` :: `key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}-combine`
+*Disposition:* none — nothing here is broken and there is nothing to fix until a warm run
+exists. It is a note against the next reading of those durations, so that a cold number is not
+inherited as though it described the steady state
+*Status:* open
+
+**Claim 2's rounding mutation is expected to cross its budget, and that red is not a gate**
+· found 2026-09-02 · by three runs of the combine job, filed before the red rather than after it
+
+**If you are reading this because `make claim-2-combine` went red on that mutation with
+`CRASHED`, stop here: nothing is wrong with the gate it names.** The mutated eval was killed at
+`TIMEOUT_SECONDS`. No gate was asked, `U10.truth-implementations-agree` has not gone quiet, and
+the fix is not to widen an assertion.
+
+Measured, printed by `gate-proof` on every run since the seconds were added:
+
+    33571168520   killed at 900s   — a different arrangement; `.worlds` carried ~11 MB more
+    33577549272   747s   83% of the budget
+    33581480860   826s   92% of the budget
+    33584456101   528s   59% of the budget
+
+**This entry was filed after the first three lines and said *1.11x apart, trending up*. The
+fourth line arrived on the next run and there is no trend — there is a range.** 528 · 747 · 826,
+**1.56x across three**, none of them over 900. The prior wording stays per doctrine rule 4 and
+the delta is the finding, for the second time in the same paragraph: reading a direction off two
+points is the same defect as reading a spread off two incomparable ones, which is what produced
+this entry in the first place. **Three is not a distribution either.**
+
+What survives all three is the shape rather than the direction. The seven other mutations in
+that claim sit between 32s and 86s, so this is not a slow suite — it is one mutation, and
+`engine.py` says why beside `TIMEOUT_SECONDS`: it edits `evals/uplift/outcomes.py`, which is in
+`cache.py`'s `DEPENDS_ON`, so its run legitimately regenerates every world it needs. That is the
+design working. **Whatever crosses first will be this one**, and the entry's first sentence is
+what it is for.
+
+The variance of the job it lives in is measured too — paired on `headSha` over the 200 runs
+before `#39` removed the doubling, 33 trees ran `claim-2` twice, widest same-tree pair **1.69x**,
+median **1.09x**. At the median, 826s is 900s exactly; at 1.56x from the highest observation it
+is 1289s.
+
+**Filed before it happens, which this repository has not managed before.** Every previous
+instance of *a correct red that surprises its reader* was written after somebody had already
+been surprised — and one of them, this same mutation at the old 300s budget, is why the budget
+is 900. The whole content of the entry is that the search a person will run when they meet the
+red should land here.
+
+**Not fixed here, and the two candidate fixes are named so nobody has to re-derive them.**
+Raising `TIMEOUT_SECONDS` a third time is the reflex the deferral beside `ci.yml`'s
+`timeout-minutes` argues against, and it would be set from two observations. The other is to
+stop the mutation paying for a regeneration that is not what it tests, which is **T00K's**
+territory — the same 826s sits on the critical path of the whole run, so the two arrive
+together and neither is opened here.
+
+*Site:* `evals/gate_proof/engine.py` :: `#:     747s (83%)  ·  826s (92%)      two observations, 1.11x apart, both under 900`
+*Site:* `evals/gate_proof/mutations/claim-2/07-the-grouped-path-rounds-like-a-price-not-like-the-contract.yaml` :: `eval_module: evals.uplift.machinery`
+*Disposition:* none — it is a prediction with a search term attached, not work. It closes when
+`TIMEOUT_SECONDS` is set from a measurement or when T00K removes the regeneration, and either
+of those is a decision rather than an edit
 *Status:* open
 
 ---

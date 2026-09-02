@@ -142,6 +142,16 @@ jobs:
     # runner fits. T003's `stop_at` said the answer was to split the claim targets into their
     # own jobs rather than to raise it a third time, and that is what happened. The deferral
     # in `docs/DECISIONS.md` that carried the 25 is closed in this change.
+    #
+    # **And it was cancelled at 15 once, with this number correct and the suite wrong.** The
+    # branch that sharded claim 2 put `tests/evals/test_uplift_shards.py` into `make check`:
+    # measured on one machine, cold, that took the suite from 1m36s to 8m14s, of which ~200s is
+    # generating machinery worlds this job caches nowhere. Run 33483742285 cancelled `make
+    # check` at 907s with the whole shard matrix already green. Raising the budget would have
+    # been the third raise, and the second one that hid a suite doing work the target's own
+    # closing line says it does not do; the file is marked `claim_2` and runs behind claim 2
+    # instead, and `make check` came back to 1m32s. The number is unchanged and is now measured
+    # against a suite that fits it.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -185,6 +195,8 @@ jobs:
     outputs:
       targets: ${{ steps.read.outputs.targets }}
       any: ${{ steps.read.outputs.any }}
+      combines: ${{ steps.read.outputs.combines }}
+      any_combine: ${{ steps.read.outputs.any_combine }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: read
@@ -219,11 +231,80 @@ jobs:
             exit 0
           fi
           echo "any=true" >> "$GITHUB_OUTPUT"
-          echo "targets=$(printf '%s\n' $targets | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+          # How many machines each target's work is produced on, read out of the **Makefile**
+          # the same way the target names are. The variable name is derived mechanically from
+          # the target -- `claim-2` -> `CLAIM_2_SHARDS` -- so this file still names no claim and
+          # no shard count. A target with no such variable runs whole, as every target did
+          # before sharding existed.
+          #
+          # The alternative was declaring the count here, which would be a second registry of
+          # which claims are sharded, kept by hand, in the file `discover` exists so that
+          # nobody has to keep one.
+          entries=""
+          combines=""
+          for t in $targets; do
+            var="$(printf '%s' "$t" | tr 'a-z-' 'A-Z_')_SHARDS"
+            n="$(grep -oE "^${var}[[:space:]]*:=[[:space:]]*[0-9]+" Makefile \
+                 | grep -oE '[0-9]+$' || true)"
+            n="${n:-1}"
+            if [ "$n" -le 1 ]; then
+              entries="$entries$(jq -nc --arg t "$t" \
+                        '{target:$t,shard:"",slug:"",name:$t}')\n"
+            else
+              combines="$combines $t"
+              for i in $(seq 1 "$n"); do
+                entries="$entries$(jq -nc --arg t "$t" --arg s "$i/$n" \
+                          --arg slug "$i-of-$n" --arg name "$t $i/$n" \
+                          '{target:$t,shard:$s,slug:$slug,name:$name}')\n"
+              done
+            fi
+
+            # A claim may own tests that `make test` deselects -- claim 2's are minutes and
+            # generate worlds, so the suite gave them up. They have to run *somewhere CI
+            # invokes*, and for a sharded claim that is never `make <target>`: the matrix runs
+            # `-shard` and `-combine`. Read out of the Makefile the same way the shard count
+            # is, so this file still names no claim.
+            #
+            # **Its own entry rather than a line in the combine**, and that is measured: 1320s
+            # on a four-core runner sitting on a 3369-second serial tail, behind eight shards
+            # that had already finished. Here it is one more parallel leg.
+            #
+            # `slug` is the cache namespace, so this entry does not race `claim-1` and the
+            # other unsharded targets for the un-suffixed key -- it generates ~11 MB of worlds
+            # and `actions/cache` is first-writer-wins.
+            if grep -qE "^${t}-tests:" Makefile; then
+              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \
+                        --arg name "$t tests" \
+                        '{target:$t,shard:"",slug:$slug,name:$name}')\n"
+            fi
+          done
+          echo "targets=$(printf "$entries" | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$combines" ]; then
+            echo "any_combine=false" >> "$GITHUB_OUTPUT"
+            echo "combines=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_combine=true" >> "$GITHUB_OUTPUT"
+            echo "combines=$(printf '%s\n' $combines | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+          fi
+
           {
             echo "### Claim targets"
             echo ""
-            for t in $targets; do echo "- \`make $t\`"; done
+            for t in $targets; do
+              var="$(printf '%s' "$t" | tr 'a-z-' 'A-Z_')_SHARDS"
+              n="$(grep -oE "^${var}[[:space:]]*:=[[:space:]]*[0-9]+" Makefile \
+                   | grep -oE '[0-9]+$' || true)"
+              if [ -n "$n" ] && [ "$n" -gt 1 ]; then
+                echo "- \`make $t\` — $n shard(s), then \`make $t-combine\`"
+              else
+                echo "- \`make $t\`"
+              fi
+              if grep -qE "^${t}-tests:" Makefile; then
+                echo "  - \`make $t-tests\` — the tests \`make test\` deselects"
+              fi
+            done
           } >> "$GITHUB_STEP_SUMMARY"
 
   # One runner per claim, which is what makes claim 2 possible at all: it runs the whole
@@ -234,7 +315,13 @@ jobs:
   # separate assertions about separate machinery and one failing tells you nothing about
   # the other.
   claims:
-    name: ${{ matrix.target }}
+    # **`matrix.name`, not `matrix.target`.** The job name is the check-run context name, so
+    # eight shards under `${{ matrix.target }}` would put **eight contexts called `claim-2`** on
+    # one sha — which is precisely the duplication `#39` removed, reintroduced by this change at
+    # eight times the count. It was found by reading the first sharded run's job list rather
+    # than the checks list, which collapses same-named contexts and showed nine where there
+    # were sixteen.
+    name: ${{ matrix.name }}
     needs: [discover]
     if: needs.discover.outputs.any == 'true'
     runs-on: ubuntu-latest
@@ -288,7 +375,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(needs.discover.outputs.targets) }}
+        include: ${{ fromJSON(needs.discover.outputs.targets) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -311,13 +398,114 @@ jobs:
         id: worlds
         run: echo "digest=$(uv run python -c 'from evals.uplift import cache; print(cache.source_digest())')" >> "$GITHUB_OUTPUT"
 
+      # **One writer per key, by construction rather than by accident.**
+      #
+      # Until sharding there was exactly one job that generated worlds, so one key had one
+      # writer and nobody had to say so. `actions/cache` is first-writer-wins — it reserves a
+      # key and a later job that finds it taken skips saving, which is visible in run
+      # 33457341968 where `claim-2` saved at 01:59:34 and `claim-3` ended at 01:13:25 having
+      # saved nothing. With N shards on one key, the first shard to finish would take it with
+      # its own partial slice and the complete set would never be written at all.
+      #
+      # So a shard's cache is namespaced by its slug. **The digest is the same one** the
+      # unsharded key uses and the combine key uses: same invalidation, different namespace. A
+      # combine key derived from anything narrower would let a world-source change move the
+      # shard keys while leaving the combine restoring counterfactual worlds built by the
+      # previous generator — not a slow run, a **wrong answer with no red**, which is the
+      # failure T00G's narrowing warning names, in the key this change adds.
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .worlds
-          key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}
+          key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}${{ matrix.slug && format('-shard-{0}', matrix.slug) || '' }}
 
-      - name: make ${{ matrix.target }}
-        run: make ${{ matrix.target }}
+      - name: make ${{ matrix.name }}
+        run: |
+          set -euo pipefail
+          if [ -n "${{ matrix.shard }}" ]; then
+            make ${{ matrix.target }}-shard SHARD=${{ matrix.shard }}
+          else
+            make ${{ matrix.target }}
+          fi
+
+      # A shard's draws, on their way to whatever combines them. Named by the slug so the
+      # combine step can take every one of them and `gather` can refuse a set that is not the
+      # whole — which is the shape this matrix produces whenever one leg fails.
+      #
+      # **`include-hidden-files`, because `.shards` is a hidden directory.** Since v4.4 this
+      # action filters every path whose name begins with a dot *before* the glob is judged, so
+      # the first sharded run wrote `.shards/uplift-1-of-8.pickle` on all eight machines, saw
+      # the flag default to false in its own printed inputs, and reported `No files were found
+      # with the provided path`. Eight runners spent eleven to sixteen minutes each and the
+      # work was discarded at the last step. The `error` setting one line below is what made it
+      # a red run rather than a combine over nothing, and it stays.
+      #
+      # The alternative was renaming the directory. The flag is local to the one step that
+      # needs it; the rename would have touched the Makefile, `.gitignore`, two docstrings and
+      # the tests, and dropped the convention `.worlds/` already sets.
+      - if: matrix.shard != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: draws-${{ matrix.target }}-${{ matrix.slug }}
+          path: .shards/
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+  # Where a sharded target's checks actually run: **once, over every draw**. The split moves
+  # where draws are produced and nothing else, so no rate is ever computed over a denominator
+  # that a shard boundary changed.
+  #
+  # `evals/uplift/checks.py`'s `gather` refuses a set that is not the whole one rather than
+  # averaging over what arrived, because `U1`'s `8/200` computed over 150 draws is still a
+  # number and nothing downstream would know. That refusal is what makes a failed shard a red
+  # run rather than a smaller experiment reported as the whole one.
+  #
+  # **This job carries a ten-minute cold penalty and it is cached rather than removed.**
+  # Measured on this repository's corpus: a cold combine is 596s against 1s warm, of which
+  # `_truths` — the counterfactual generations, which no draw shard produces — is 411s, `U11`
+  # 195s and `U10` 51s. It is paid once per world-source change. Removing it means moving the
+  # counterfactual generations into the shards, which `docs/FINDINGS.md` records as its own
+  # branch together with the reason it is safe to do.
+  combine:
+    name: ${{ matrix.target }} combine
+    needs: [discover, claims]
+    if: needs.discover.outputs.any_combine == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.combines) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+
+      - name: install exactly what uv.lock pins
+        run: make setup-locked
+
+      - name: the digest claim 2's world cache is keyed on
+        id: worlds
+        run: echo "digest=$(uv run python -c 'from evals.uplift import cache; print(cache.source_digest())')" >> "$GITHUB_OUTPUT"
+
+      # The same digest as every shard key, a different namespace. See the note on the shard
+      # cache above: the contents differ, the dependency does not.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .worlds
+          key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}-combine
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: draws-${{ matrix.target }}-*
+          path: .shards/
+          merge-multiple: true
+
+      - name: make ${{ matrix.target }}-combine
+        run: make ${{ matrix.target }}-combine
 
   # The one job the ruleset requires on behalf of every claim, and it exists because the
   # ruleset could not require the matrix itself.
@@ -355,17 +543,42 @@ jobs:
   # notice. It cannot be noticed by reading.
   claims-complete:
     name: claims-complete
-    needs: [claims]
+    needs: [discover, claims, combine]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # **Both matrices, and `skipped` refused on both.** A sharded target proves nothing until
+      # its combine job has run: the shards produce draws and judge nothing, deliberately, so a
+      # green `claims` matrix with no `combine` is eight jobs that wrote files and checked no
+      # claim. That is the same silence `skipped` carries one job along, and it is refused here
+      # for the same reason.
+      #
+      # `combine` is legitimately skipped when no target declares shards — `any_combine` is
+      # then false — so that one case is admitted by name rather than by treating `skipped` as
+      # acceptable in general.
       - name: every claim target ran, and every one of them passed
         env:
           RESULT: ${{ needs.claims.result }}
+          COMBINE: ${{ needs.combine.result }}
+          ANY_COMBINE: ${{ needs.discover.outputs.any_combine }}
         run: |
           set -euo pipefail
-          echo "claims matrix result: ${RESULT}"
+          echo "claims matrix result:  ${RESULT}"
+          echo "combine matrix result: ${COMBINE} (any_combine=${ANY_COMBINE})"
+          if [ "${COMBINE}" != "success" ]; then
+            if [ "${ANY_COMBINE}" = "true" ] || [ "${COMBINE}" != "skipped" ]; then
+              {
+                echo "### claims-complete FAILED"
+                echo ""
+                echo "The \`combine\` matrix result was \`${COMBINE}\`, and a sharded target"
+                echo "proves nothing until it has run: the shards produce draws and judge"
+                echo "nothing. A green shard matrix with no combine is jobs that wrote files"
+                echo "and checked no claim."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+          fi
           if [ "${RESULT}" = "success" ]; then
             echo "OK      every discovered claim target ran and passed" >> "$GITHUB_STEP_SUMMARY"
             exit 0

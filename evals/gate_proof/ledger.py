@@ -124,9 +124,56 @@ def targets(makefile: str | None = None) -> tuple[Target, ...]:
     return tuple(found)
 
 
+#: Suffixes that make a target one **arrangement** of another rather than a second target.
+#: `claim-2-shard` produces a slice of claim 2's draws and `claim-2-combine` judges them; a
+#: laptop runs `claim-2` whole and CI runs the sharded pair. They are alternative routes through
+#: one claim's evidence, never two owners of it.
+#:
+#: **This list is closed, and narrowing it is the safe direction.** A suffix added here collapses
+#: two names into one owner, which is exactly what the duplicate check exists to refuse — so a
+#: new one belongs here only when the target really is the same claim's work rearranged, and
+#: `tests/evals/test_ledger.py` drives the case where a *different* claim's target runs these
+#: mutations and must still be refused.
+#:
+#: **And it is a hand-maintained list that is not the fifth instance of a bad pattern, because it
+#: fails loudly.** `_TAKES_A_VALUE`, `_NAMES_A_REPOSITORY`, `DEPENDS_ON` and the layout population
+#: were lists of things that **exist in the world** — flags git accepts, ways to name a
+#: repository, files that produce a world — and incompleteness there meant something real was not
+#: seen, silently: a commit allowed, a stale world served, a directory unchecked.
+#:
+#: This is a list of **conventions we chose**, and incompleteness fails the other way. Add a
+#: `claim-2-parallel` target without adding `-parallel` here and `owner_name` returns the name
+#: unchanged, the stem differs from `claim-2`, the mutation has two owners, and the duplicate
+#: check **fires** — a red at the moment the new arrangement is written, by whoever wrote it.
+ARRANGEMENTS: tuple[str, ...] = ("-shard", "-combine")
+
+
+def owner_name(target: str) -> str:
+    """The target a name is an arrangement of — `claim-2-combine` -> `claim-2`."""
+    for suffix in ARRANGEMENTS:
+        if target.endswith(suffix):
+            return target[: -len(suffix)]
+    return target
+
+
 def owners_of(mutation: Mutation, all_targets: Sequence[Target]) -> tuple[str, ...]:
-    """Every Makefile target that would execute this mutation."""
-    return tuple(target.name for target in all_targets if mutation.claim in target.executes)
+    """Every claim target that would execute this mutation, counted once per target.
+
+    Sharding gave one claim two Makefile routes to the same mutations, and the accountant's
+    question is *which claim owns this*, not *how many recipes mention it*. So the names are
+    reduced to what they are an arrangement of before being counted — otherwise landing the
+    sharded path would report claim 2's eight mutations as duplicated, and the fix would have
+    been to widen the assertion rather than to answer it.
+
+    **What is unchanged is the thing the check is for:** a target belonging to a *different*
+    claim that runs these mutations is still two owners, because `owner_name` collapses only a
+    declared suffix and never a different stem.
+    """
+    return tuple(
+        sorted(
+            {owner_name(target.name) for target in all_targets if mutation.claim in target.executes}
+        )
+    )
 
 
 # --------------------------------------------------------------------------------- checks

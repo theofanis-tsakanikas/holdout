@@ -346,6 +346,75 @@ def test_the_widened_regex_sees_the_eighth_claim(monkeypatch: pytest.MonkeyPatch
     assert figures.claim_targets_discover_finds() == 7
 
 
+# ------------------------------------- a test the suite gave up and no claim target picked up
+
+
+def test_a_deselected_test_that_no_claim_target_runs_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`make test` deselects the mark and every claim target stops selecting it.
+
+    This is `claim-[1-7]` with tests as its population: seventeen of them exist, none of them
+    runs on any push, and every target involved is green. The suite is *smaller* than it was,
+    which is the direction that reads as an improvement.
+    """
+    makefile = (figures.REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    abandoned = makefile.replace("\t$(RUN) pytest -m claim_2\n", "")
+    assert abandoned != makefile, "no claim target selects a mark, so there is nothing to remove"
+    monkeypatch.setattr(figures, "_makefile", lambda: abandoned)
+
+    assert figures.suite_selection() == "not claim_2"
+    assert figures.claim_selection() is None
+    assert figures.tests_the_suite_deselects() > 0
+    assert figures.tests_a_claim_target_runs() == 0
+
+    code, output = _run()
+    assert code == 1
+    assert "suite" in output
+    assert "never looked at" in output
+
+
+def test_a_claim_target_that_runs_other_tests_does_not_cover_these(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The reason the second count is an intersection rather than a second population.
+
+    A claim target that selects *some* mark would make the two counts equal if they were taken
+    apart from each other -- seventeen deselected, seventeen selected, and not the same
+    seventeen. Here the claim targets select a mark no test carries, so the intersection is
+    empty and the row is red while a union would have been green.
+    """
+    makefile = (figures.REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    elsewhere = makefile.replace("$(RUN) pytest -m claim_2", "$(RUN) pytest -m not_a_real_mark")
+    assert elsewhere != makefile
+    monkeypatch.setattr(figures, "_makefile", lambda: elsewhere)
+
+    assert figures.claim_selection() == "(not_a_real_mark)"
+    assert figures.tests_a_claim_target_runs() == 0
+
+    code, output = _run()
+    assert code == 1
+    assert "suite" in output
+
+
+def test_a_suite_that_deselects_nothing_is_covered_by_nothing_and_passes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The state `main` is in: no mark, nothing given up, and the row is a true zero.
+
+    It is here because zero is the answer this row must give when the mechanism is unused, and
+    a gate that cannot tell *unused* from *broken* is the `grep -P` shape one file over.
+    """
+    makefile = (figures.REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    plain = makefile.replace('$(RUN) pytest -m "not claim_2"', "$(RUN) pytest")
+    assert plain != makefile
+    monkeypatch.setattr(figures, "_makefile", lambda: plain)
+
+    assert figures.suite_selection() is None
+    assert figures.tests_the_suite_deselects() == 0
+    assert figures.tests_a_claim_target_runs() == 0
+
+
 # ------------------------------------------------------- the instrument may not answer zero
 
 
@@ -360,6 +429,22 @@ def test_a_population_that_cannot_be_enumerated_is_not_a_zero(
     code, output = _run()
     assert code == 1
     assert "could not answer, which is not a count of zero" in output
+
+
+def test_a_makefile_with_no_test_target_is_not_a_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A tree whose suite cannot be read has an unknowable deselection, not an empty one."""
+    monkeypatch.setattr(figures, "_makefile", lambda: "# nothing this module can read\n")
+    with pytest.raises(figures.InstrumentMissingError):
+        figures.suite_selection()
+
+
+def test_a_collect_that_prints_no_count_is_not_a_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The `grep -P` shape again, at the one gate whose population pytest itself enumerates."""
+    figures._collected.cache_clear()
+    monkeypatch.setattr(figures, "_tool_output", lambda _command: "unexpected output\n")
+    with pytest.raises(figures.InstrumentMissingError):
+        figures._collected("claim_2")
+    figures._collected.cache_clear()
 
 
 def test_a_tool_that_prints_no_count_is_not_a_zero(monkeypatch: pytest.MonkeyPatch) -> None:

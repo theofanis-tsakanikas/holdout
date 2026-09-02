@@ -88,10 +88,22 @@ NOT_CONTENT: frozenset[str] = frozenset(
         ".pytest_cache",
         ".ruff_cache",
         ".worlds",
+        # Draws on their way from a shard to whatever combines them — `make claim-2-shard`
+        # writes here. Generated, gitignored, and pickle rather than text, so it is the same
+        # class as `.worlds` one directory along.
+        ".shards",
         "notes",
         "uv.lock",
     }
 )
+
+#: **This list is kept by hand, and that is the shape this repository has been wrong about four
+#: times.** It went red on `.shards/` the day sharding landed, which is the list working — an
+#: unreadable file is *enumerated and not examined*, and `make figures` reports that as
+#: under-coverage rather than letting it pass. The population it ought to be computed from is
+#: what git tracks, which would need no entry here at all; that is recorded rather than done,
+#: because changing how this gate enumerates is a change to the gate and not to the branch that
+#: tripped over it.
 
 
 @dataclass(frozen=True, slots=True)

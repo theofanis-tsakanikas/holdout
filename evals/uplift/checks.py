@@ -33,8 +33,8 @@ structural: `close()` never sees a potential outcome.
 from __future__ import annotations
 
 import tempfile
-from collections.abc import Sequence
-from dataclasses import dataclass, field
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, field, replace
 from fractions import Fraction
 from pathlib import Path
 
@@ -196,8 +196,133 @@ def _truths(
     return window, first_week
 
 
-def run(configuration: Configuration, *, contracts: ContractSet | None = None) -> Report:
-    """Every draw, then every check. The seals are opened between the two and nowhere else."""
+@dataclass(frozen=True, slots=True)
+class Shard:
+    """One slice of the draws, and how many slices there are."""
+
+    index: int
+    count: int
+
+    @classmethod
+    def parse(cls, text: str) -> Shard:
+        """`i/N`, one-based on the left so `1/8` is the first of eight and `0/8` is refused."""
+        try:
+            left, right = text.split("/", 1)
+            index, count = int(left), int(right)
+        except ValueError:
+            raise ShardError(f"{text!r} is not a shard in the form i/N") from None
+        if count < 1 or not 1 <= index <= count:
+            raise ShardError(f"shard {index} of {count} does not exist")
+        return cls(index - 1, count)
+
+
+class ShardError(Exception):
+    """A shard that cannot be run, or a set of shards that is not the whole."""
+
+
+def _expanded(configuration: Configuration) -> list[tuple[int, str]]:
+    """`(task index, lottery seed)` per draw, in the order `report` pairs records against.
+
+    The list position **is** the draw's identity. Everything about sharding rests on it: a
+    shard carries the positions it ran, and `gather` puts them back in this order before any
+    check sees them.
+    """
+    return [
+        (task_index, seed)
+        for task_index, task in enumerate(_tasks(configuration))
+        for seed in task.lottery_seeds
+    ]
+
+
+def shard_draws(configuration: Configuration, shard: Shard) -> list[tuple[int, DrawRecord]]:
+    """The draws belonging to one shard, each carrying its position in the whole.
+
+    **The slices are interleaved, not contiguous, and that is a measurement rather than a
+    preference.** The expanded list is ordered by task, and per-draw cost varies about tenfold
+    across tasks — W1's heaviest at 4.8s a draw against W2's lightest at 0.45s, measured on
+    this repository's own corpus. A contiguous slice of a list ordered that way is the worst
+    distribution available: one shard would take W1's 200 draws and another a handful of W2's.
+    Wall clock is the slowest shard, so contiguous slicing would build the whole mechanism and
+    keep most of the imbalance.
+
+    Interleaving costs nothing, because `gather` restores order by position and the assignment
+    order is therefore free. Cost-aware packing would be better still and needs a per-draw
+    estimate for the machine that will run it, which nobody has.
+
+    Draws are regrouped by task before running, so a task's world is built once per shard
+    rather than once per draw.
+    """
+    tasks = _tasks(configuration)
+    grouped: dict[int, list[tuple[int, str]]] = {}
+    for position, (task_index, seed) in enumerate(_expanded(configuration)):
+        if position % shard.count == shard.index:
+            grouped.setdefault(task_index, []).append((position, seed))
+
+    slices: list[parallel.Task] = []
+    positions: list[int] = []
+    for task_index in sorted(grouped):
+        pairs = grouped[task_index]
+        slices.append(replace(tasks[task_index], lottery_seeds=tuple(seed for _, seed in pairs)))
+        positions.extend(position for position, _ in pairs)
+
+    records = parallel.run(slices, workers=configuration.workers)
+    return list(zip(positions, records, strict=True))
+
+
+def gather(
+    parts: Iterable[Iterable[tuple[int, DrawRecord]]], configuration: Configuration
+) -> list[DrawRecord]:
+    """Every shard's draws, back in the order `report` requires — or a refusal.
+
+    **This is where completeness is guaranteed, because `report` cannot do it.** A missing
+    shard would otherwise produce a smaller denominator and a plausible rate: `U1`'s
+    `8/200` computed over 150 draws is still a number, and nothing downstream would know. So a
+    position that appears twice, or a position that never appears, is refused by name rather
+    than averaged over.
+    """
+    seen: dict[int, DrawRecord] = {}
+    for part in parts:
+        for position, record in part:
+            if position in seen:
+                raise ShardError(f"draw {position} was delivered by more than one shard")
+            seen[position] = record
+    expected = len(_expanded(configuration))
+    missing = [position for position in range(expected) if position not in seen]
+    if missing:
+        raise ShardError(
+            f"{len(missing)} of {expected} draw(s) were not delivered by any shard — first "
+            f"missing is {missing[0]}. Every rate here has the number of draws as its "
+            "denominator, so a partial set produces a plausible number rather than an error."
+        )
+    return [seen[position] for position in range(expected)]
+
+
+def draws(configuration: Configuration) -> list[DrawRecord]:
+    """Every draw the configuration declares, in the order `_tasks` produces them.
+
+    Split out from `run` so that producing the draws and judging them are separate operations
+    on separate machines. `parallel.run` already restores task order for a reason its own
+    docstring gives — *a published list of draws that reshuffles itself between runs is one
+    nobody can diff* — and everything downstream depends on that order holding, because
+    `report` pairs records with tasks positionally.
+    """
+    return parallel.run(_tasks(configuration), workers=configuration.workers)
+
+
+def report(
+    records: Sequence[DrawRecord],
+    configuration: Configuration,
+    *,
+    contracts: ContractSet | None = None,
+) -> Report:
+    """Every check, over draws that already exist.
+
+    Takes the records rather than producing them, so the same judgment runs whether they came
+    from one machine or were gathered from several. It **cannot** verify that it was handed
+    every draw the configuration declares — the count is published in `numbers` and the caller
+    is what guarantees completeness, which is the same obligation `close` carries about the
+    window it is handed.
+    """
     resolved = contracts if contracts is not None else load()
     harness = resolved.aa_harness
     alpha = Fraction(resolved.inference.alpha)
@@ -205,7 +330,6 @@ def run(configuration: Configuration, *, contracts: ContractSet | None = None) -
     metric = resolved.metric_versions("category_margin_per_store_week")[-1]
     scale = scale_by_name(configuration.scale)
 
-    records = parallel.run(_tasks(configuration), workers=configuration.workers)
     by_world: dict[str, list[DrawRecord]] = {world: [] for world in sorted(WORLDS)}
     withheld: list[DrawRecord] = []
     for task, record in zip(
@@ -310,3 +434,8 @@ def run(configuration: Configuration, *, contracts: ContractSet | None = None) -
             "this path, and the deferral that says so names phase 2 as its unlock",
         ),
     )
+
+
+def run(configuration: Configuration, *, contracts: ContractSet | None = None) -> Report:
+    """Every draw, then every check. The seals are opened between the two and nowhere else."""
+    return report(draws(configuration), configuration, contracts=contracts)

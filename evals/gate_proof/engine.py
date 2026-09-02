@@ -65,6 +65,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -119,6 +120,55 @@ COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 #: corpus and generates nothing at all, and under it the rounding mutation reported CRASHED —
 #: a gate recorded as broken because the guard against hanging fired on work that was doing
 #: exactly what it was asked to.
+#:
+#: **And what nobody had until the seconds were printed: 747s of this, once.** Run 33577549272
+#: measured `the-grouped-path-rounds-like-a-price-not-like-the-contract` at **747s — 83% of the
+#: budget** — while the other seven sat between 32s and 86s. One run earlier the same mutation
+#: was killed at 900s.
+#:
+#: **Those two are not a spread, and reading them as one would be the mistake this comment
+#: exists to stop.** The tree changed between them: `COPIED` includes `.worlds`, and the run
+#: that crossed 900 had ~11 MB of machinery worlds in it that the next run did not, because
+#: `claim-2-tests` had moved to its own job. Before and after a change is not variance.
+#:
+#: These two lines read *there is **one** observation and **no** variance estimate* for exactly
+#: one run. **The second arrived on the next one: 826s, 92% of the budget**, same arrangement,
+#: same tree. So under the current arrangement:
+#:
+#:     747s (83%)  ·  826s (92%)      two observations, 1.11x apart, both under 900
+#:
+#: The prior sentence stays because the delta *is* the argument: it was written to say that one
+#: observation at 83% is not evidence of headroom, and the very next observation was **higher**.
+#:
+#: **And then the third arrived and killed the trend those two looked like.** Run 33584456101,
+#: same arrangement again: **528s, 59%**. So:
+#:
+#:     528s (59%)  ·  747s (83%)  ·  826s (92%)      1.56x across three, none over 900
+#:
+#: Two points made a direction and the third made a range. That is the same defect as *747
+#: versus >900*, one layer along and in the other direction: **two observations are not a
+#: distribution, and reading a trend off them is what asserting a spread off two incomparable
+#: numbers already cost this file once.** The prior wording stays per doctrine rule 4 because it
+#: was written one run before the observation that corrects it, and the correction is the point.
+#:
+#: What survives all three is the shape rather than the direction: **one mutation at 59-92% of
+#: the budget while the other seven sit between 32s and 86s**, so whatever crosses first will be
+#: this one, and a red on it is the budget rather than a gate.
+#:
+#: The variance of the job this step lives in is wider still, measured rather than assumed —
+#: every `ci` run of one tree, paired on `headSha` across the 200 runs before `#39` removed the
+#: doubling, 33 shas with two successful `claim-2` jobs each:
+#:
+#:     widest same-tree pair   1.69x     median same-tree pair   1.09x
+#:     fastest 1931s · slowest 4698s over 66 observations — 2.43x end to end
+#:
+#: At the median ratio 826s becomes 900s exactly. At the widest, 1396s. **Applying a whole-job
+#: ratio to one step inside it is an assumption and is written down as one** — and it is no
+#: longer the only variance available: the three direct observations span 1.56x on their own,
+#: which is wider than the job's median pair ratio and narrower than its widest.
+#:
+#: Nothing here proposes a number. Every future run prints the seconds and the percentage,
+#: which is what made the second observation free; the budget gets set from them.
 TIMEOUT_SECONDS = 900
 
 
@@ -154,6 +204,10 @@ class Result:
     detail: str
     tripped: tuple[str, ...] = ()
     also_fell: tuple[str, ...] = ()
+    #: Wall clock of the mutated run. Zero where no run happened -- a STALE anchor or an
+    #: un-armed eval never reaches a subprocess -- and a zero is therefore *no run*, never a
+    #: run that took no time.
+    seconds: float = 0.0
 
 
 def load_mutations(claim: int | None = None) -> tuple[Mutation, ...]:
@@ -198,8 +252,15 @@ def _workspace(into: Path) -> Path:
     return workspace
 
 
-def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str]:
-    """Run one eval inside the workspace and parse its JSON. `None` means it did not finish.
+def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str, float]:
+    """Run one eval inside the workspace, parse its JSON, and say how long it took.
+
+    **The seconds are returned because without them a timeout is unreadable.** `CRASHED · did
+    not finish within 900s` is the same sentence whether the run needed 902 seconds or four
+    thousand, and those are opposite findings: the first says a budget has no headroom on this
+    hardware, the second says the mutation turned the eval into a loop, which is what the
+    budget exists to catch. Run 33571168520 produced exactly that sentence and nobody could
+    tell which had happened.
 
     `PYTHONPATH` puts the workspace ahead of the editable install, so the subprocess imports
     the **mutated** `holdout` rather than the one in the working tree.
@@ -217,6 +278,7 @@ def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str]
         "PYTHONHASHSEED": "0",
         "HOME": str(workspace),
     }
+    started = time.monotonic()
     try:
         completed = subprocess.run(
             [sys.executable, "-m", module, "--json"],
@@ -228,15 +290,21 @@ def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str]
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return None, f"the eval did not finish within {TIMEOUT_SECONDS}s"
+        return (
+            None,
+            f"killed at the {TIMEOUT_SECONDS}s budget. That is the budget and not a "
+            "measurement of what this mutation needs — what it needs is unknown and larger",
+            time.monotonic() - started,
+        )
+    elapsed = time.monotonic() - started
     if completed.returncode not in (0, 1):
         tail = (completed.stderr or completed.stdout).strip().splitlines()[-3:]
-        return None, f"exit {completed.returncode}: {' / '.join(tail)}"
+        return None, f"exit {completed.returncode}: {' / '.join(tail)}", elapsed
     try:
-        return json.loads(completed.stdout), ""
+        return json.loads(completed.stdout), "", elapsed
     except json.JSONDecodeError:
         tail = (completed.stderr or completed.stdout).strip().splitlines()[-3:]
-        return None, f"no JSON on stdout: {' / '.join(tail)}"
+        return None, f"no JSON on stdout: {' / '.join(tail)}", elapsed
 
 
 def _states(payload: dict[str, Any]) -> dict[str, bool]:
@@ -367,7 +435,7 @@ def run(claim: int) -> Report:
         baselines: dict[str, dict[str, bool] | None] = {}
         baseline_errors: dict[str, str] = {}
         for module in sorted({m.eval_module for m in mutations}):
-            payload, error = _run_eval(workspace, module)
+            payload, error, _ = _run_eval(workspace, module)
             baselines[module] = _states(payload) if payload else None
             baseline_errors[module] = error
 
@@ -427,19 +495,22 @@ def _judge(
             "the code it was written against has moved",
         )
     try:
-        payload, error = _run_eval(workspace, mutation.eval_module)
+        payload, error, seconds = _run_eval(workspace, mutation.eval_module)
     finally:
         _restore(workspace, mutation, original)
 
     if payload is None:
         # Rule 2: something went red, and it was not the gate.
-        return Result(mutation, Verdict.CRASHED, error)
+        return Result(mutation, Verdict.CRASHED, error, seconds=seconds)
 
     states = _states(payload)
     missing = [target for target in mutation.targets if target not in states]
     if missing:
         return Result(
-            mutation, Verdict.CRASHED, f"{', '.join(missing)} vanished from the mutated run"
+            mutation,
+            Verdict.CRASHED,
+            f"{', '.join(missing)} vanished from the mutated run",
+            seconds=seconds,
         )
     survived = [target for target in mutation.targets if states[target]]
     if survived:
@@ -447,22 +518,33 @@ def _judge(
             mutation,
             Verdict.SURVIVED,
             f"{', '.join(survived)} stayed green with the gate broken",
+            seconds=seconds,
         )
     also = tuple(
         check for check, passed in states.items() if not passed and check not in mutation.targets
     )
-    return Result(mutation, Verdict.BIT, "", tripped=mutation.targets, also_fell=also)
+    return Result(
+        mutation, Verdict.BIT, "", tripped=mutation.targets, also_fell=also, seconds=seconds
+    )
 
 
 def _report(claim: int, results: list[Result]) -> Report:
     checks: list[Check] = []
     for result in results:
         bit = result.verdict is Verdict.BIT
-        figure = result.verdict.value
+        # **The seconds are on every row that ran, not only on the slow one.** A budget is
+        # judged by the distance between the slowest mutation and the limit, and that distance
+        # is invisible while the only run with a number beside it is the one that already
+        # exceeded it. `TIMEOUT_SECONDS` was raised once from a laptop measurement and killed a
+        # mutation on a four-core runner, which is `CLAUDE.md`'s *assertion wearing a number*
+        # arriving inside `gate-proof` itself.
+        clock = f" · {result.seconds:.0f}s" if result.seconds else ""
+        figure = f"{result.verdict.value}{clock}"
         if bit:
             figure = f"bit · {', '.join(result.tripped)}"
             if result.also_fell:
                 figure += f" (also {len(result.also_fell)} more)"
+            figure += clock
         checks.append(
             Check(
                 id=result.mutation.id,
@@ -477,6 +559,37 @@ def _report(claim: int, results: list[Result]) -> Report:
             )
         )
     bit_count = sum(1 for r in results if r.verdict is Verdict.BIT)
+    ran = [r for r in results if r.seconds]
+    # **Published on every run, not only when something exceeds the budget.** The headroom is
+    # the figure a later session needs in order to size `TIMEOUT_SECONDS` from a measurement
+    # rather than from a projection, and it can only be read while nothing has failed yet.
+    budget: tuple[tuple[str, str], ...] = ()
+    if ran:
+        slowest = max(ran, key=lambda r: r.seconds)
+        budget = (
+            (
+                "slowest mutation",
+                f"{slowest.seconds:.0f}s of a {TIMEOUT_SECONDS}s budget "
+                f"({slowest.seconds / TIMEOUT_SECONDS:.0%}) · {slowest.mutation.id}",
+            ),
+        )
+    # A crash is a fact about the harness and a survival is a fact about a gate, and the shared
+    # report line calls both of them `checks failed`. Naming the difference is the only thing
+    # this layer can do about it, and it is worth more than the wording: `bit 7/8` beside a
+    # crash does **not** mean a gate went quiet.
+    crashed = [
+        r for r in results if r.verdict is not Verdict.BIT and r.verdict is not Verdict.SURVIVED
+    ]
+    harness = (
+        (
+            "that anything is known about the gates a CRASHED, STALE or NOT-ARMED mutation "
+            "names: the mutated eval never produced a verdict, so no gate was asked. Only "
+            "SURVIVED says a gate did not bite, and the red line above calls both of them "
+            "`checks failed`",
+        )
+        if crashed
+        else ()
+    )
     return Report(
         claim=claim,
         title=f"gate-proof — every gate bites, or it is not a gate ({bit_count}/{len(results)})",
@@ -489,11 +602,13 @@ def _report(claim: int, results: list[Result]) -> Report:
                 for verdict in Verdict
                 if verdict is not Verdict.BIT and any(r.verdict is verdict for r in results)
             ),
+            *budget,
         ),
         notes=(
             "that every gate bites on every possible mutation — this is the set of breaks we "
             "thought of, which is the same honest limit the six adversarial worlds carry",
             "that a surviving mutation is harmless; SURVIVED means a gate did not bite and is "
             "a finding, never something to widen an assertion around",
+            *harness,
         ),
     )

@@ -26,6 +26,7 @@ PYTHON_DIRS := src tests evals corpus ops .claude/hooks
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
         expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 \
+        claim-2-shard claim-2-combine claim-2-tests \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
 
@@ -56,8 +57,30 @@ format:  ## ruff, rewriting
 typecheck:  ## mypy, strict
 	$(RUN) mypy
 
-test:  ## the suite
-	$(RUN) pytest
+# **`-m "not claim_2"`, and the deselection is a gate rather than a convenience.**
+#
+# `tests/evals/test_uplift_shards.py` proves that sharding moves where claim 2's draws are
+# produced and not a single number, byte for byte at three shard counts. That property is claim
+# 2's evidence and it costs what claim 2's evidence costs: measured on one machine, cold, the
+# suite went from **1m36s to 8m14s** and every second of the difference was that one file, of
+# which ~200s is generating the machinery worlds the `gate` job caches nowhere. In CI it took
+# `make check` past the fifteen-minute budget it had just been given, and the run was cancelled
+# with the whole shard matrix already green.
+#
+# So it runs where claim 2 runs, which is what the line at the bottom of `check` has always
+# said: the claim targets are not in the suite because they take minutes.
+#
+# **What that buys has to be paid for**, and it is, in two places — because a test deselected
+# from the suite and run by nothing looks exactly like one that is covered, which is `claim-[1-7]`
+# with a different population:
+#
+#   * `ops/figures.py`'s `suite` row: every test `make test` deselects must be selected by some
+#     `claim-*` target, counted by asking pytest itself rather than by reading a list.
+#   * `tests/ops/test_ci_sharding.py`: for a **sharded** target CI never runs the plain target at
+#     all — it runs `-shard` on N machines and `-combine` on one — so whatever `claim-2` selects,
+#     `claim-2-combine` must select too, or CI runs none of it.
+test:  ## the suite, minus what a claim target owns
+	$(RUN) pytest -m "not claim_2"
 
 contracts:  ## validate every contract and refuse a stale or hand-edited generated artefact
 	$(RUN) holdout-contracts check
@@ -138,7 +161,83 @@ claim-1:  ## claim 1 — no price reaches a shelf without the guardrail set
 # mutation changes eval code -- so the ten runs generate the worlds once. What invalidates
 # that is a digest, not a list: see evals/uplift/cache.py.
 claim-2:  ## claim 2 — no uplift without a valid holdout, and A/A holds against alpha
+	$(MAKE) claim-2-tests
 	$(RUN) python -m evals.uplift
+	$(RUN) python -m evals.gate_proof --claim 2
+
+# **Its own target, because in CI it is its own machine.** `ci` emits a `<target>-tests` rule as
+# a separate matrix entry wherever the Makefile declares one, so this runs beside the shards
+# rather than in front of the combine.
+#
+# Measured, which is the whole reason it moved: 1320s on a four-core runner against 306s on the
+# author's laptop -- 4.3x, and the sort of gap `CLAUDE.md` says to expect between the hardware a
+# number is taken on and the hardware it is met on. Sitting in `claim-2-combine` it was 1320
+# seconds of a 3369-second **serial** tail, on the critical path of the whole run, behind eight
+# shards that had already finished. Here it is parallel and costs the run nothing beyond one
+# job of the twenty this account allows.
+claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
+	$(RUN) pytest -m claim_2
+
+#: How many machines claim 2's draws are produced on. **Declared here and nowhere else**, so
+#: `ci` reads it the way it reads the target names — by grepping this file — and the workflow
+#: goes on naming no claim. A second registry of which claims are sharded, kept by hand in a
+#: file no test can see, is the shape `discover` exists to refuse.
+#:
+#: Eight, and the number is chosen by the concurrency ceiling rather than by the work: a run is
+#: ten jobs today, sharding makes it `9 + N + 1`, and this account's documented ceiling is
+#: twenty. Eight fits one pull request with headroom and two do not, which matches the
+#: one-branch-at-a-time practice this repository already follows.
+#:
+#: What it buys, measured on this repository's own corpus rather than projected: eight
+#: interleaved shards at 38 43 39 42 37 40 43 41 seconds, max over min **1.16**, against 270s
+#: unsharded. The balance is what interleaving buys — a contiguous split would put W1's 200
+#: draws on one machine at 4.8s each and a handful of W2's on another at 0.45s.
+#:
+#: **And `max over min` is two things added together, which the line above reads as one.** In
+#: CI, warm, over three runs of the identical split:
+#:
+#:     33577549272   237 240 244 247 254 259 262 274     max/min 1.156
+#:     33581480860   147 229 229 238 242 256 258 264     max/min 1.796
+#:     33584456101   186 187 225 233 235 241 261 266     max/min 1.430
+#:
+#: Nothing about the split changed across any of them, and the ratio moved by 55%. **Read the
+#: two ends separately and it is obvious which half moves:**
+#:
+#:     slowest leg   274 · 264 · 266     a 3.8% spread — this is the one that costs wall clock
+#:     fastest leg   237 · 147 · 186     a 61% spread — this one costs nothing at all
+#:
+#: So `max over min` is dominated by its **minimum**, which is the leg that finished early and
+#: went home. The number that decides the critical path is the maximum, and it is stable to
+#: within four percent across three runs. **The ratio is the least useful of the three figures
+#: and it is the one that was published.**
+#:
+#: The 1.16 above is a warm laptop measurement and stands as one. What it is not is a figure a
+#: CI run can be compared against directly, and a session reading 1.796 off a green run should
+#: not conclude the split has degraded — it should read the slowest leg.
+#:
+#: *(The first sharded CI run gave 490-973 and 1.99, and that was neither of these: every shard
+#: key was cold and each leg paid its own world generation. `docs/FINDINGS.md` carries it.)*
+CLAIM_2_SHARDS := 8
+
+#: Where a shard leaves its draws and where the combine step looks for them. Never committed —
+#: `.gitignore` carries it — and it holds draws rather than worlds, so it is not the world
+#: cache and is not keyed like one.
+SHARD_DIR ?= .shards
+
+claim-2-shard:  ## one slice of claim 2's draws — SHARD=i/N, written to $(SHARD_DIR)
+	@test -n "$(SHARD)" || { echo "claim-2-shard needs SHARD=i/N, e.g. SHARD=3/8"; exit 2; }
+	$(RUN) python -m evals.uplift --shard $(SHARD) --out $(SHARD_DIR)/uplift-$(subst /,-of-,$(SHARD)).pickle
+
+# The checks run **once, over every draw**, so sharding cannot change a rate by changing what a
+# denominator is computed over. `gather` refuses a set that is not the whole one rather than
+# averaging over what arrived, because `U1`'s `8/200` computed over 150 draws is still a number.
+# **What it deliberately does not carry is `claim-2-tests`.** It did for one run, because CI
+# never invokes `make claim-2` for a sharded target and the marked tests had to be reachable
+# from something CI runs. `claim-2-tests` being its own target and its own matrix entry answers
+# that without putting 1320 seconds on the serial tail; `tests/ops/test_ci_sharding.py` is what
+# keeps the reachability structural rather than remembered.
+claim-2-combine:  ## claim 2's checks over every shard's draws, then the mutations
+	$(RUN) python -m evals.uplift --combine $(SHARD_DIR)/*.pickle
 	$(RUN) python -m evals.gate_proof --claim 2
 
 # Claim 3 is the one door with no key. The eval is seconds rather than minutes -- a chain is
