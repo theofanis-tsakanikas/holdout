@@ -140,6 +140,21 @@ COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 #: The prior sentence stays because the delta *is* the argument: it was written to say that one
 #: observation at 83% is not evidence of headroom, and the very next observation was **higher**.
 #:
+#: **And then the third arrived and killed the trend those two looked like.** Run 33584456101,
+#: same arrangement again: **528s, 59%**. So:
+#:
+#:     528s (59%)  ·  747s (83%)  ·  826s (92%)      1.56x across three, none over 900
+#:
+#: Two points made a direction and the third made a range. That is the same defect as *747
+#: versus >900*, one layer along and in the other direction: **two observations are not a
+#: distribution, and reading a trend off them is what asserting a spread off two incomparable
+#: numbers already cost this file once.** The prior wording stays per doctrine rule 4 because it
+#: was written one run before the observation that corrects it, and the correction is the point.
+#:
+#: What survives all three is the shape rather than the direction: **one mutation at 59-92% of
+#: the budget while the other seven sit between 32s and 86s**, so whatever crosses first will be
+#: this one, and a red on it is the budget rather than a gate.
+#:
 #: The variance of the job this step lives in is wider still, measured rather than assumed —
 #: every `ci` run of one tree, paired on `headSha` across the 200 runs before `#39` removed the
 #: doubling, 33 shas with two successful `claim-2` jobs each:
@@ -148,8 +163,9 @@ COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
 #:     fastest 1931s · slowest 4698s over 66 observations — 2.43x end to end
 #:
 #: At the median ratio 826s becomes 900s exactly. At the widest, 1396s. **Applying a whole-job
-#: ratio to one step inside it is an assumption and is written down as one** — but the two
-#: direct observations point the same way and the second is 74 seconds from the limit.
+#: ratio to one step inside it is an assumption and is written down as one** — and it is no
+#: longer the only variance available: the three direct observations span 1.56x on their own,
+#: which is wider than the job's median pair ratio and narrower than its widest.
 #:
 #: Nothing here proposes a number. Every future run prints the seconds and the percentage,
 #: which is what made the second observation free; the budget gets set from them.

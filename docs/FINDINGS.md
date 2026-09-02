@@ -1560,18 +1560,26 @@ Measured, printed by `gate-proof` on every run since the seconds were added:
     33571168520   killed at 900s   — a different arrangement; `.worlds` carried ~11 MB more
     33577549272   747s   83% of the budget
     33581480860   826s   92% of the budget
+    33584456101   528s   59% of the budget
 
-The last two are the same arrangement and the same tree. **1.11x apart, trending up, and the
-later one is 74 seconds from the limit.** The seven other mutations in that claim sit between
-32s and 86s, so this is not a slow suite — it is one mutation, and `engine.py` says why beside
-`TIMEOUT_SECONDS`: it edits `evals/uplift/outcomes.py`, which is in `cache.py`'s `DEPENDS_ON`,
-so its run legitimately regenerates every world it needs. That is the design working.
+**This entry was filed after the first three lines and said *1.11x apart, trending up*. The
+fourth line arrived on the next run and there is no trend — there is a range.** 528 · 747 · 826,
+**1.56x across three**, none of them over 900. The prior wording stays per doctrine rule 4 and
+the delta is the finding, for the second time in the same paragraph: reading a direction off two
+points is the same defect as reading a spread off two incomparable ones, which is what produced
+this entry in the first place. **Three is not a distribution either.**
 
-**Two observations are not a distribution.** What they are enough for is this: the next red on
-this mutation is more likely to be the budget than a gate. And the variance of the job it lives
-in is measured — paired on `headSha` over the 200 runs before `#39` removed the doubling, 33
-trees ran `claim-2` twice, widest same-tree pair **1.69x**, median **1.09x**. At the median,
-826s is 900s exactly.
+What survives all three is the shape rather than the direction. The seven other mutations in
+that claim sit between 32s and 86s, so this is not a slow suite — it is one mutation, and
+`engine.py` says why beside `TIMEOUT_SECONDS`: it edits `evals/uplift/outcomes.py`, which is in
+`cache.py`'s `DEPENDS_ON`, so its run legitimately regenerates every world it needs. That is the
+design working. **Whatever crosses first will be this one**, and the entry's first sentence is
+what it is for.
+
+The variance of the job it lives in is measured too — paired on `headSha` over the 200 runs
+before `#39` removed the doubling, 33 trees ran `claim-2` twice, widest same-tree pair **1.69x**,
+median **1.09x**. At the median, 826s is 900s exactly; at 1.56x from the highest observation it
+is 1289s.
 
 **Filed before it happens, which this repository has not managed before.** Every previous
 instance of *a correct red that surprises its reader* was written after somebody had already

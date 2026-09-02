@@ -194,20 +194,26 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: draws on one machine at 4.8s each and a handful of W2's on another at 0.45s.
 #:
 #: **And `max over min` is two things added together, which the line above reads as one.** In
-#: CI, warm, over two runs:
+#: CI, warm, over three runs of the identical split:
 #:
 #:     33577549272   237 240 244 247 254 259 262 274     max/min 1.156
 #:     33581480860   147 229 229 238 242 256 258 264     max/min 1.796
+#:     33584456101   186 187 225 233 235 241 261 266     max/min 1.430
 #:
-#: Nothing about the split changed between them. The second run drew one runner that finished
-#: in 147s; its **other seven span 229-264, which is 1.15**, and the first run's eight span
-#: 1.156. So the interleaving's balance is the seven-leg figure and it reproduces the laptop's
-#: 1.16 on CI hardware; the max over min is that **plus whatever the fastest machine did**, and
-#: over eight legs one lucky draw is enough to double it.
+#: Nothing about the split changed across any of them, and the ratio moved by 55%. **Read the
+#: two ends separately and it is obvious which half moves:**
+#:
+#:     slowest leg   274 · 264 · 266     a 3.8% spread — this is the one that costs wall clock
+#:     fastest leg   237 · 147 · 186     a 61% spread — this one costs nothing at all
+#:
+#: So `max over min` is dominated by its **minimum**, which is the leg that finished early and
+#: went home. The number that decides the critical path is the maximum, and it is stable to
+#: within four percent across three runs. **The ratio is the least useful of the three figures
+#: and it is the one that was published.**
 #:
 #: The 1.16 above is a warm laptop measurement and stands as one. What it is not is a figure a
 #: CI run can be compared against directly, and a session reading 1.796 off a green run should
-#: not conclude the split has degraded — it should look at the seven.
+#: not conclude the split has degraded — it should read the slowest leg.
 #:
 #: *(The first sharded CI run gave 490-973 and 1.99, and that was neither of these: every shard
 #: key was cold and each leg paid its own world generation. `docs/FINDINGS.md` carries it.)*
