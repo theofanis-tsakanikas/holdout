@@ -1688,6 +1688,47 @@ the first way, which is precisely why it is not settled here.**
 in `docs/DECISIONS.md`, and the enrolment step is recorded in `docs/DAY-ONE.md` §1
 *Status:* open
 
+**When the guard cannot tokenise a command it judges a repository the command did not name** ·
+found 2026-09-02 · by T015, by being refused four times
+`main_guard` falls back to a regex when a command will not lex, and the fallback answers
+`[None]` — *judge the session's own directory*. **It does not carry over the `-C <path>` that is
+sitting in plain sight in the command it just failed to parse**, so a commit explicitly aimed at
+another repository is judged against the shared checkout, which is on `main`. Measured: four
+consecutive refusals of `git -C <worktree> commit`, on a branch, from a session whose every file
+was in that worktree.
+
+**The trigger is an ordinary English commit message.** The file knows this and says so — *"a
+heredoc with an apostrophe in it is exactly what unbalances the lexer and sends us here"* — and the
+message that produced these four refusals contains six apostrophes, which is unremarkable for
+English prose about somebody's connector and somebody else's design.
+
+**The docstring's cost model is the part that does not hold.** It reasons that on an unparsable
+command *"guessing wrong in the safe direction costs a retry and guessing wrong in the other costs
+the branch"*, and the asymmetry is right. What is wrong is *safe*: **`[None]` is only the
+conservative answer for a session sitting in the repository it is committing to.** For a session in
+a worktree — which is this repository's mandated practice whenever a peer session is live in the
+shared checkout — `[None]` names a **different repository than the command does**, and being
+conservative about the wrong repository is not conservatism. It is the same sentence the file
+already carries about the `-C` defect it fixed: *judging there refused a safe commit into a
+worktree*. The fix closed that door in the tokenising path and left it open in the path taken when
+tokenising fails.
+
+**Not a hole in the protection, and that is worth stating plainly**: every observed outcome was a
+**refusal**, never a permitted commit, and `_COARSE` was deliberately tightened so prose in a
+heredoc no longer matches. The cost is friction, and friction is what the file's own last line
+warns about — *"a guard that gets switched off"*. It is filed rather than fixed because
+`.claude/hooks/` is the author's, because `CLAUDE.md` records that **nothing catches this class for
+hooks**, and because the obvious fix — teach the regex to find `-C` too — is a second enumeration
+kept in step by memory, which is precisely the defect this file has already had three times.
+
+*Site:* `.claude/hooks/main_guard.py` :: `    return [None] if _COARSE.search(command) else None`
+*Site:* `.claude/hooks/main_guard.py` :: `#: prose inside a heredoc, and a heredoc with an apostrophe in it is exactly what unbalances`
+*Disposition:* **the author's** — a hook enforces a rule he reserved to himself, and the harness
+applies it whether a session consents or not. The workaround costs nothing and is written down
+here: pass the message as a file, `git -C <worktree> commit -F <path>`, with no heredoc on the
+line
+*Status:* open
+
 ---
 
 ## Closed
