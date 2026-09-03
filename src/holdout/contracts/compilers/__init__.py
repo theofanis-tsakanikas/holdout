@@ -65,7 +65,13 @@ def compile_all(contracts: ContractSet) -> dict[str, str]:
     artefacts: dict[str, str] = {}
     for metric in in_force_metrics(contracts):
         stem = f"{metric.id}.v{metric.version}"
-        artefacts[f"generated/dbt/models/metrics/{stem}.sql"] = compile_dbt_model(metric)
+        # **The dbt artefact is the one whose file name is an identifier**, so it is the one
+        # that cannot carry the dot the other three carry. dbt takes a model's relation name
+        # from its file name, and `x.v3.sql` reaches the engine as `schema`.`x`.`v3`. See
+        # `Metric.identifier`, which carries the measurement and the ruling that allowed it.
+        artefacts[f"generated/dbt/models/metrics/{metric.identifier}.sql"] = compile_dbt_model(
+            metric
+        )
         artefacts[f"generated/sql/functions/{stem}.sql"] = compile_sql_function(metric)
         artefacts[f"generated/agent_tools/{stem}.json"] = compile_agent_tool(metric)
         artefacts[f"generated/readout/{stem}.sql"] = compile_readout(metric)
