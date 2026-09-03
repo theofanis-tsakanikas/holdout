@@ -28,7 +28,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-from corpus.world import Run, prepare
+from corpus.world import STREAMS, Run, prepare
 from pipelines.ingest import bulk, erp
 
 SEED = "holdout-w-0001"
@@ -121,6 +121,7 @@ def test_the_schema_is_the_declared_columns_then_the_provenance(tmp_path: Path) 
     landing, bronze = _landed(tmp_path)
     result = bulk.load(landing, bronze, arrived_at=ARRIVED)
 
+    examined = 0
     for entry in result.loaded:
         if entry.mode != "materialised":
             continue
@@ -135,6 +136,8 @@ def test_the_schema_is_the_declared_columns_then_the_provenance(tmp_path: Path) 
             field = schema.field(column["name"])
             assert _TYPES[column["type"]](field.type), (column, field.type)
             assert field.nullable is column["optional"], column
+        examined += 1
+    assert examined == len(erp.EXPORTED) * len(erp.DECLARED.hours)
 
 
 def test_the_provenance_is_the_drop_it_came_from_and_the_moment_it_arrived(
@@ -152,6 +155,7 @@ def test_the_provenance_is_the_drop_it_came_from_and_the_moment_it_arrived(
         drop.name: json.loads((drop / erp.MANIFEST).read_text(encoding="utf-8"))["exported_at"]
         for drop in erp.drop_directories(landing)
     }
+    assert result.files == len(erp.EXPORTED) * len(erp.DECLARED.hours)
     for entry in result.loaded:
         columns = pq.read_table(bronze / entry.part).to_pydict()
         drop = entry.source.split("/")[0]
@@ -184,12 +188,15 @@ def test_the_seal_and_the_reference_tables_of_the_history_are_not_sources(
     (landing / erp.HISTORY / "not_declared.parquet").write_bytes(b"PAR1 not a real file")
     result = bulk.load(landing, bronze, arrived_at=ARRIVED)
     sources = {entry.source for entry in result.loaded}
+    # Every assertion below is a negative, and a negative over an empty set is not evidence.
+    assert len(sources) == len(erp.EXPORTED) * len(erp.DECLARED.hours) + len(STREAMS)
     assert not [source for source in sources if source.endswith("not_declared.parquet")]
     assert not [source for source in sources if "truth.sealed" in source]
     assert not (bronze / "store_master" / "history-store_master.parquet").exists()
-    for entry in result.loaded:
-        if entry.table == "store_master":
-            assert "arm" not in pq.read_schema(bronze / entry.part).names
+    masters = [entry for entry in result.loaded if entry.table == "store_master"]
+    assert len(masters) == len(erp.DECLARED.hours)
+    for entry in masters:
+        assert "arm" not in pq.read_schema(bronze / entry.part).names
 
 
 # --------------------------------------------------------------- incremental
@@ -199,6 +206,8 @@ def test_a_second_load_moves_nothing(tmp_path: Path) -> None:
     landing, bronze = _landed(tmp_path)
     first = bulk.load(landing, bronze, arrived_at=ARRIVED)
     before = _tree(bronze)
+    # "A second load moves nothing" is trivially true of a landing area that held nothing.
+    assert first.files > 0 and first.rows > 0
 
     again = bulk.load(landing, bronze, arrived_at=datetime(2026, 9, 4, 9, 0))  # noqa: DTZ001
     assert again.files == 0

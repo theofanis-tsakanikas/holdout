@@ -88,11 +88,14 @@ def test_every_value_is_the_value_the_corpus_produced(tmp_path: Path) -> None:
         read_back = [
             tuple(columns[name][index] for name in names) for index in range(table.num_rows)
         ]
+        # Two empty lists are equal, so the comparison says nothing until this does.
+        assert produced[stream], f"{stream} produced no records to compare against"
         assert read_back == produced[stream], stream
 
 
 def test_the_schema_is_the_dataclass(tmp_path: Path) -> None:
     _written(tmp_path)
+    checked = 0
     for stream in STREAMS:
         record_type = STREAM_TYPES[stream]
         schema = pq.read_schema(tmp_path / f"{stream}.parquet")
@@ -100,6 +103,12 @@ def test_the_schema_is_the_dataclass(tmp_path: Path) -> None:
         for column in columns_for(record_type):
             field = schema.field(column.name)
             assert field.nullable is column.optional, f"{stream}.{column.name}"
+            checked += 1
+    # The population as a rule rather than a frozen count: a count written here is an
+    # assertion needing its own measurement, and it goes stale the day a dataclass gains a
+    # field. What it has to refuse is the loop that ran over nothing.
+    expected = sum(len(field_names(STREAM_TYPES[stream])) for stream in STREAMS)
+    assert checked == expected > 0, f"{checked} columns checked, {expected} exist"
 
 
 def test_a_timestamp_is_a_timestamp_and_it_is_naive(tmp_path: Path) -> None:
