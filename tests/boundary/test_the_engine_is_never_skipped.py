@@ -14,6 +14,16 @@ second is `CLAUDE.md`'s own defect — *a declared thing that never runs* — ar
 missing package rather than a missing target. A skipped test looks exactly like a passing one in
 `1251 passed`, and nobody reads the skip count.
 
+**The property is red-rather-than-green, not import-at-module-scope**, and CI taught the
+difference the hard way. `tests/pipelines/test_silver.py` first imported the engine at the top,
+and `gate` went red with `ModuleNotFoundError` at **collection** — because pytest collects every
+module before it applies a mark expression, so `make test` could not run at all on a machine
+without the extra. The engine's imports moved inside the functions that need them, which keeps
+an absent engine an **error at the first test that asks for it** and lets the suite collect. That
+is the property intact; a `skipif` there would not be. Verified on this machine with the extra
+removed: `make check` green, `make silver` red with `ModuleNotFoundError: No module named
+'delta'`.
+
 **So this is the guard, and it is written before the tests it guards exist.** A guard added after
 them is a guard whose absence was never demonstrated: with silver already written and passing on
 a machine that has Spark, nothing distinguishes *the guard works* from *nobody has skipped yet*.

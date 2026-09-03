@@ -9,6 +9,15 @@ after `uv sync --extra spark` — 713 MB and a Java runtime that thirteen CI job
 like a passing one in a summary line, and an engine in an optional group is precisely the
 condition under which somebody reaches for a skip.
 
+**And every engine import is inside the function that needs it, which is a red CI run rather
+than a preference.** pytest **collects every module before it applies a mark expression**, so a
+top-level `import pyspark` here makes `make test` fail on any machine without the extra — which
+is every machine except the one job that installs it, and is the whole arrangement `T010`
+exists to create. The first version of this file did exactly that and `gate` went red with
+`ModuleNotFoundError: No module named 'pyspark'` at collection. **Deferring the import is not a
+skip and must never become one**: an absent engine still fails at the first test that asks for
+it, with an `ImportError` rather than a green run and a skip count nobody reads.
+
 **One session for the file.** Bringing Spark up is 3.6s warm and 50.9s the first time on a
 machine whose Ivy cache is empty, measured on macOS arm64 with Java 17; a session per test would
 pay that per test and buy nothing, because nothing here mutates the session.
@@ -41,9 +50,6 @@ from corpus.world import events as world_events
 from corpus.world import prepare
 from corpus.world.events import PosLine, ShelfDay
 from pipelines.ingest import bulk, erp
-from pipelines.silver import expectations, session, tables
-from pipelines.silver.build import BronzeMissingError, build, read_bronze
-from pyspark.sql import functions as sf
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -58,6 +64,8 @@ DAY = "2025-09-02"
 
 @pytest.fixture(scope="module")
 def spark() -> Iterator[SparkSession]:
+    from pipelines.silver import session
+
     yield from session.sessions("holdout-silver-tests")
 
 
@@ -79,6 +87,8 @@ def bronze(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def silver(spark: SparkSession, bronze: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    from pipelines.silver.build import build
+
     out = tmp_path_factory.mktemp("silver")
     counts = build(spark, bronze, out)
     assert counts["sales"] > 0
@@ -115,6 +125,8 @@ def test_spark_reads_the_parquet_this_repository_wrote_by_hand(
 
 def test_a_bronze_table_that_is_not_there_is_refused(spark: SparkSession, tmp_path: Path) -> None:
     """An absent table is not an empty one: it would build a clean silver and report success."""
+    from pipelines.silver.build import BronzeMissingError, read_bronze
+
     with pytest.raises(BronzeMissingError, match="pos_lines"):
         read_bronze(spark, tmp_path)
 
@@ -131,6 +143,8 @@ def test_planted_bad_rows_are_quarantined_by_name_and_absent_from_the_table(
     file — which is what a real bad batch looks like: it arrives beside the good ones rather
     than replacing them.
     """
+    from pipelines.silver.build import build
+
     lines = spark.read.parquet(str(bronze / "pos_lines"))
     good = lines.limit(1).collect()[0].asDict()
 
@@ -191,6 +205,9 @@ def test_a_row_whose_condition_is_null_is_quarantined_rather_than_lost(
     This is the one place the mechanism could lose exactly the rows it exists to keep, so it is
     tested on a frame built for it rather than on the corpus, which offers no nulls.
     """
+    from pipelines.silver import expectations
+    from pyspark.sql import functions as sf
+
     frame = spark.createDataFrame([("a", 5), ("b", None)], "id string, qty int")
     kept, quarantined = expectations.apply(
         frame,
@@ -206,6 +223,8 @@ def test_a_row_whose_condition_is_null_is_quarantined_rather_than_lost(
 
 def test_a_table_with_no_expectations_is_refused(spark: SparkSession) -> None:
     """A quarantine that could never be non-empty is a health metric that reports health."""
+    from pipelines.silver import expectations
+
     frame = spark.createDataFrame([("a",)], "id string")
     with pytest.raises(ValueError, match="declares no expectations"):
         expectations.apply(frame, [], table="probe", business_key=("id",))
@@ -337,6 +356,8 @@ def test_a_cost_is_never_joined_before_the_erp_published_it(
     it. `known_from` exists only because the ERP dropped its master data several times during
     the day and the loader stamped each row with the drop that carried it.
     """
+    from pipelines.silver import tables
+
     sales = _rows(spark, silver / "sales")
     reference = _rows(spark, silver / "reference")
     priced = tables.cost_as_of(reference, sales, "event_ts")
@@ -349,6 +370,8 @@ def test_a_sale_with_no_published_cost_keeps_a_null_rather_than_borrowing_one(
     spark: SparkSession, silver: Path
 ) -> None:
     """Doctrine rule 3 at a join: nothing is invented, so a row with no answer says so."""
+    from pipelines.silver import tables
+
     reference = _rows(spark, silver / "reference")
     before_everything = spark.createDataFrame(
         [("SKU-nothing-knows", datetime(2020, 1, 1, 12, 0))],  # noqa: DTZ001
