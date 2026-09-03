@@ -62,6 +62,7 @@ from __future__ import annotations
 import csv
 import gzip
 import hashlib
+import io
 import json
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -220,14 +221,27 @@ def _write_csv(
     The lakehouse's own format is written by `corpus/world/parquet.py` and loaded by the other
     half of `bulk.py`; master data arrives as text with no types at all, which is exactly why
     the manifest declares them.
+
+    **`mtime=0`, and it is the difference between a digest of the content and a digest of the
+    second it was written in.** `gzip.open` stamps the current time into the header, so exporting
+    the same rows twice produces different bytes — and `bulk.load` refuses a path whose bytes
+    changed, on the grounds that a drop is immutable. Two exports a second apart therefore looked
+    like a **rewritten** drop rather than an identical one. It passed on a fast machine, where
+    both landed in the same second, and CI failed on run `33739596010` where they did not.
+    With the timestamp fixed, a drop's digest describes what is in it, and *a drop is immutable*
+    is true by construction rather than by how quickly the exporter ran.
     """
-    with gzip.open(path, "wt", newline="", encoding="utf-8") as handle:
+    with (
+        path.open("wb") as raw,
+        gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as compressed,
+        io.TextIOWrapper(compressed, encoding="utf-8", newline="") as handle,
+    ):
         out = csv.writer(handle)
         out.writerow([column.name for column in columns])
         for row in rows:
             out.writerow([_cell(value) for value in row])
-    raw = path.read_bytes()
-    return hashlib.sha256(raw).hexdigest(), len(raw)
+    written = path.read_bytes()
+    return hashlib.sha256(written).hexdigest(), len(written)
 
 
 def cost_steps_on(run: Run, day: date) -> tuple[datetime, ...]:

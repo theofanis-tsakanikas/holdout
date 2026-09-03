@@ -142,6 +142,27 @@ def test_the_optional_column_is_declared_optional(tmp_path: Path) -> None:
     assert columns["sku_id"] is False
 
 
+def test_exporting_the_same_drop_twice_produces_the_same_bytes(tmp_path: Path) -> None:
+    """A digest must describe the content, not the second the file was written in.
+
+    `gzip.open` stamps the current time into the header, so two exports of identical rows a
+    second apart differ in bytes — and `bulk.load` refuses a path whose bytes changed, because a
+    drop is immutable. **That passed on a fast machine and failed on a slow one**: CI run
+    `33739596010` went red on `test_the_load_log_records_every_file_and_never_rewrites_one`, a
+    test that had been green locally and on three earlier runs. The exporter now writes with
+    `mtime=0`; this is the assertion that keeps it that way.
+    """
+    run = _run()
+    first = erp.export(run, tmp_path / "a", day=DAY)
+    second = erp.export(run, tmp_path / "b", day=DAY)
+    for left, right in zip(first, second, strict=True):
+        assert [f.digest for f in left.files] == [f.digest for f in right.files]
+        for file in left.files:
+            a = (left.directory / file.filename).read_bytes()
+            b = (right.directory / file.filename).read_bytes()
+            assert a == b, file.filename
+
+
 def test_a_day_outside_the_corpus_is_refused(tmp_path: Path) -> None:
     run = _run()
     outside = run.scale.start_date + timedelta(days=run.scale.days)
