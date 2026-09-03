@@ -387,22 +387,25 @@ sources → bronze (10) → silver (5) → gold (4 families) → decision → ex
 | source | via | why |
 |---|---|---|
 | POS lines, scale labels, **ESL acknowledgements** | **Zerobus Ingest** (GA) | events from every store, no message bus to operate — **the live day only** |
-| ERP tables, competitor prices | **Lakeflow Connect** (GA) | pull from a database; no custom ingestion code to maintain |
+| ERP tables, competitor prices | **bulk load from files on S3** | several drops during the day rather than one: master data changes while the day runs, and no connector, no gateway and no ingestion code to maintain |
 | **eight months of transaction history** | **bulk load from files on S3** | streaming eight months through Zerobus would be slow and costly, and no real deployment does it: backfill from files, then stream |
 
 The **ESL acknowledgement is a first-class source, not a log.** It is the only evidence that a
 price reached the shelf. Without it every experiment measures intentions instead of actions.
 
-The ERP is a **real Postgres** stood up by the `sources` layer, seeded with eight months of
-history in `backfill` and then **driven** during `run` — costs change mid-day, a product enters the
-regulated basket, a supplier term changes retroactively, a column is added. A seeded-and-static
-database gives incremental ingestion nothing to do and proves nothing.
+The ERP's master data arrives as **files, dropped several times during `run`** — costs change
+mid-day, a product enters the regulated basket, a supplier term changes retroactively, a column is
+added. The argument the previous wording made stands and is what forces the several drops: a
+single static snapshot gives incremental ingestion nothing to do and proves nothing. **What is
+demonstrated is incremental load of successive drops, not change capture against a live source** —
+a smaller claim, made deliberately, because the connector that would have made the larger one runs
+a continuous classic-compute gateway.
 
 ### Bronze — one table per source, in the source's shape
 
 ```
 Zerobus:            pos_lines · scale_labels · esl_acks
-Lakeflow Connect:   product_master · cost_ledger · supplier_terms ·
+S3 bulk load:       product_master · cost_ledger · supplier_terms ·
                     regulated_basket · store_master · planogram · competitor_prices
 ```
 
@@ -767,11 +770,11 @@ the present tense beside directories that do. That is the same defect as a parag
 production path through dbt while the only two implementations are Python.
 
 ```
-pipelines/ingest/      Zerobus driver · Lakeflow Connect · the S3 bulk load
+pipelines/ingest/      Zerobus driver · the S3 bulk load (the ERP path)
 pipelines/silver/      Spark Declarative Pipelines
 pipelines/gold/        dbt
 pipelines/ml/          training, evaluation, promotion
-infra/                 bootstrap · foundation · sources · lakehouse · pipelines · ml · serving
+infra/                 bootstrap · foundation · lakehouse · pipelines · ml · serving
 experiments/           one YAML per experiment, in git, with its full history
 ```
 
@@ -835,14 +838,13 @@ commodity half, deliberately not where the work went.
 Terraform muscle memory already exist across three projects. A second cloud would divide attention
 without proving anything more about Databricks.
 
-Seven layers. Each earns its place by passing at least two of: **different lifetime · its own
+Six layers. Each earns its place by passing at least two of: **different lifetime · its own
 blast radius · consumes only from below · expensive or slow to apply.**
 
 | layer | applied | holds |
 |---|---|---|
 | `bootstrap` | **locally, once** | state bucket + KMS, OIDC provider, deploy role, **the budget and its alerts**, published parameters |
 | `foundation` | `deploy` | VPC, keys, S3 zones, the workspace, metastore attachment, **TTL reaper** |
-| `sources` | `deploy` | **RDS PostgreSQL playing the ERP** + private networking |
 | `lakehouse` | `deploy` | catalogs, schemas, grants, external locations, Lakebase, the two AI/BI dashboards |
 | `pipelines` | `deploy` | SDP pipelines, dbt jobs, Lakeflow Jobs, Zerobus endpoints, bulk-load jobs |
 | `ml` | `deploy` | training job, evaluation, promotion gates, MLflow — **no endpoint** |
@@ -855,22 +857,17 @@ yet, and a version exists only after `backfill` has trained one. The agent runti
 — it is the same lifetime, the same blast radius and the same billing shape, and two layers that
 always deploy together and never independently are one layer wearing two names.
 
-**The RDS is the smallest instance that works, Single-AZ, in a private subnet, with its password
-generated into Secrets Manager.** Single-AZ is a declared cost decision for an estate that lives
-one day, not an oversight. **The network path from the workspace to RDS that Lakeflow Connect's
-database connectors need is verified before phase 3, not inside it** — see `docs/DAY-ONE.md`.
-
 **Cross-layer references go `outputs` → SSM parameter → `data`. Never a remote state read** — that
 creates hidden coupling and destroys the isolation the layers exist for.
 
 ### The order the estate comes up in
 
 ```
-deploy     apply foundation · sources · lakehouse · pipelines · ml
+deploy     apply foundation · lakehouse · pipelines · ml
            no model, no endpoint
 
 backfill   eight months of history:
-             ERP master data  → Lakeflow Connect from RDS
+             ERP master data  → files on S3, dropped again during run
              transaction history → files on S3, bulk-loaded into bronze
                (streaming eight months through Zerobus would be slow, costly,
                 and nobody does it; real deployments backfill then stream)
@@ -931,7 +928,6 @@ console time, `destroy` ~15 min.
 | serverless SQL for dbt and queries | 5 – 15 USD |
 | model serving, small CPU endpoint | 1 – 5 USD |
 | Lakebase | 2 – 8 USD |
-| RDS `db.t4g.small`, six hours | ~0.20 USD |
 | S3 and transfer | 1 – 3 USD |
 | **one cycle** | **~20 – 60 USD** |
 

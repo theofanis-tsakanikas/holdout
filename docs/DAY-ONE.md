@@ -17,6 +17,36 @@ which sentence was read where and when.
 
 ---
 
+## SUPERSEDED 2026-09-02, IN SIX OF ITS SEVEN SECTIONS — read this before anything below it
+
+**The author ruled that the ERP's master data arrives as files on S3, dropped several times
+during `run`, rather than through Lakeflow Connect.** The connector is not used, so **§1, §3, §4,
+§5, §6 and §7 describe work that will not be done**: the Public Preview enrolment, the
+`rds.logical_replication` parameter and its reboot, the in-database SQL, the Unity Catalog
+connection, the workspace-to-RDS network path, and the replication slot that outlives the
+pipeline. There is no RDS: `T019` closed *not built* on the same ruling.
+
+**They are kept rather than deleted**, per doctrine rule 4 — a correction never erases what was
+previously stated. What each of them cost to establish is the argument for the ruling, and a
+reader who wants to know why the estate does not use a managed connector will find the answer in
+the six sections describing what using one would have required.
+
+**§2 survives, and it survives untouched.** Its subject is the region, and its own text gives the
+reason: *the binding constraint is Zerobus rather than the connector*, whose availability list was
+the wider of the two. Removing the connector removes nothing from that intersection. **It is the
+only section here that was never about the connector**, which is why it is the only one left.
+
+> **Six of seven, not five.** `#43`'s finding said *five of its seven sections stop applying* —
+> counted against the document it is six, and the miscount is recorded in `docs/FINDINGS.md`
+> rather than silently corrected.
+
+**What replaces them is not yet written.** The S3 bulk-load path has its own day-one work — a
+bucket, a drop schedule, whatever `backfill` needs to read files it did not write — and none of it
+has been established. It arrives with `pipelines/ingest-bulk-load`, and until then this document
+is honest about describing a path the estate no longer takes.
+
+---
+
 ## Why this file cannot be a record of verification, and what replaces it
 
 `CLAUDE.md` requires one verification to happen before phase 3:

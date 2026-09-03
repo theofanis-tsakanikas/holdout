@@ -1783,7 +1783,7 @@ Everything that needs data at scale, an engine, or a workspace.
 
 - `pipelines/ingest/` — the Zerobus driver that writes as the corpus's 100 stores would: correct
   distribution over time, late arrivals, duplicates, a store that drops for two hours and then
-  sends everything at once. The Lakeflow Connect definitions.
+  sends everything at once. The S3 bulk load, which is the ERP path.
 - `pipelines/silver/` — Spark Declarative Pipelines, with expectations routing to quarantine and
   the as-of reference dimension.
 - `pipelines/gold/` — dbt. The metric contract compiles into a Delta view, the agent tool
@@ -1830,7 +1830,7 @@ The only phase that costs money. It is entered with every locally provable claim
   budget posture — **1,000 USD with alerts at 50/80/100% and no stop action**, a stop action only
   at 150%. A budget that halts a run mid-way costs more than it saves. Enforcement is the TTL
   reaper in `foundation`, not the budget.
-- `infra/foundation/`, `sources/`, `lakehouse/`, `pipelines/`, `ml/` applied by `deploy`;
+- `infra/foundation/`, `lakehouse/`, `pipelines/`, `ml/` applied by `deploy`;
   `infra/serving/` applied by `backfill`, once a model version exists. CI only. Layer boundaries follow lifetime, blast radius, dependency direction and apply cost.
 - **Before this phase begins**, not inside it: verify the network path from the Databricks
   workspace to RDS that Lakeflow Connect's database connectors require, and record whatever has
@@ -1847,11 +1847,21 @@ The only phase that costs money. It is entered with every locally provable claim
   > before `backfill` is dispatched. The prior wording stays per doctrine rule 4, and the delta is
   > the finding: *a sentence naming when a check happens is an assertion about what the system does,
   > and this one names a moment at which its two endpoints do not exist.*
-- `sources/` stands up the real Postgres playing the ERP. `backfill` seeds it with eight months;
-  the **driver** changes it during `run`: a mid-day cost change, a product entering the regulated
-  basket, a retroactive supplier term, an added column, a deactivated SKU.
+
+  > **And restated again 2026-09-02, one day later, by the ruling that removed the endpoints
+  > altogether.** The author ruled the ERP's master data arrives as files on S3, so there is no
+  > connector, no gateway and **no RDS** — `T019` closed *not built*. The bullet above and the
+  > restatement under it both describe a verification of a path between two things, one of which
+  > will never exist. Both stay per doctrine rule 4, and the pair is worth reading together: the
+  > first restatement moved *when* the check runs, the second removes *what it was checking*.
+  > **A sentence can be corrected onto ground that is itself about to go.**
+- The ERP's master data arrives as files on S3. `backfill` loads eight months of it;
+  further drops change it during `run`: a mid-day cost change, a product entering the regulated
+  basket, a retroactive supplier term, an added column, a deactivated SKU. **What that
+  demonstrates is incremental load of successive drops, not change capture against a live
+  source** — the smaller claim the ruling bought in exchange for *serverless only*.
 - Five workflows: `ci`, `deploy`, `backfill`, `run`, `destroy`.
-- **`backfill`** — eight months of history: ERP master data through Lakeflow Connect from RDS,
+- **`backfill`** — eight months of history: ERP master data bulk-loaded from files on S3,
   transaction history bulk-loaded from files on S3 (streaming eight months through Zerobus is slow,
   costly and nobody does it). Then silver, gold, training on the estate, the gates, a registered
   version — and only then the `serving` apply, because an endpoint cannot point at a version that

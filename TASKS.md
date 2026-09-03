@@ -1605,6 +1605,24 @@ closes        A driver that writes as the corpus's 100 stores would: correct dis
               `scenario` scale, claim 2 runs at `harness`, and the size that decides anything is
               the surviving roster rather than the store count. The driver takes a scale like
               everything else and reads it off `corpus/world/scale.py`.
+              --
+              RESTATED 2026-09-03. The fourth restatement of this task, and the first that is
+              not a session re-reading it: a named human ruled, and closure-by-transition is
+              what the register's rule is for. The other three were sessions.
+              The author took the second of the three routes `#43` named for the gateway
+              finding, so the ERP's master data arrives as files on S3. The Lakeflow Connect
+              definitions in the first line above do not move to a later task -- they stop
+              existing. The S3 bulk load stops being the third thing under `pipelines/ingest/`
+              and becomes the ERP path.
+              Several drops during `run` rather than one, because a single static snapshot
+              leaves the declared decision path for "a cost change in the ERP that moved the
+              floor" with nothing to fire on -- a declared thing that never runs, which is the
+              defect this repository spent 2026-09-02 finding four instances of.
+              What is demonstrated is incremental load of successive drops, not change capture
+              against a live source. That is a smaller claim and it is written as one.
+              The prior wording stays per doctrine rule 4, and so does `title`: neither was
+              wrong when written. What was wrong was the design they described, and the design
+              moved. `T019` closes NOT BUILT on the same ruling.
 out_of_scope  Any apply to a workspace (Phase 3).
 stop_at       When the driver produces a stream with the declared pathologies, and the bulk load
               writes what the lakehouse reads.
@@ -1771,7 +1789,11 @@ depends_on    T017
 closes        The foundation layer, including the TTL reaper — the scheduled job that destroys
               anything tagged and older than N hours whatever happened. The real net; depends on no
               workflow's control flow.
-out_of_scope  Sources, lakehouse, pipelines, ml.
+out_of_scope  Lakehouse, pipelines, ml.
+              -- 
+              RESTATED 2026-09-02 by the route-2 ruling. It read "Sources, lakehouse, pipelines,
+              ml"; there is no sources layer to be out of scope of. The VPC stays -- the workspace
+              needs it -- and the private networking that existed for the RDS does not.
 stop_at       When foundation applies via deploy and the reaper is scheduled.
 review        yes
 status        open
@@ -1788,7 +1810,26 @@ out_of_scope  Seeding it (that is backfill) and driving it (that is run).
 stop_at       When sources applies and the workspace-to-RDS assertion in docs/DAY-ONE.md §6
               passes — which is the first moment it can be run at all, not a re-check of T015.
 review        yes
-status        open
+status        CLOSED 2026-09-02 — NOT BUILT, and this is the reason.
+
+              The author ruled that the ERP's master data arrives as files on S3, dropped several
+              times during `run`, rather than through Lakeflow Connect. `#43` established that the
+              connector's gateway is classic compute running continuously, contradicting three
+              sentences of `CLAUDE.md`, and that its PostgreSQL connector is Public Preview.
+
+              Measured on the tree before the ruling: **Lakeflow Connect was the only reader of
+              the Postgres.** Not a claim, not an eval, not a pipeline, not a `run` step — even
+              the decision path's "a cost change in the ERP that moved the floor" reaches a
+              decision through silver's `reference`, built from the bronze tables that connector
+              filled, which is the same reader rather than a second one.
+
+              So removing it leaves a database with a writer and no reader, and this layer's whole
+              content is that database. It is not deferred and it is not blocked: there is nothing
+              left for it to hold. T020 now depends on T018.
+
+              What goes with it, named so nobody looks for it later: the RDS instance, the
+              Secrets Manager password, the private subnet, `T018`'s `+ private networking`, and
+              six of `docs/DAY-ONE.md`'s seven sections.
 ```
 
 > **`stop_at` restated 2026-09-02 by T015.** It read *"When sources applies and the workspace-to-RDS
@@ -1808,7 +1849,7 @@ status        open
 id            T020
 title         infra/lakehouse — catalogs, schemas, grants, Lakebase, the dashboards
 branch        infra/lakehouse
-depends_on    T019, T013
+depends_on    T018, T013     <- was T019, which closed not built on 2026-09-02
 closes        Catalogs, schemas, grants, external locations, Lakebase, and the two AI/BI dashboards
               (T013) applied.
 out_of_scope  Pipelines and ml (separate layers, edited constantly).

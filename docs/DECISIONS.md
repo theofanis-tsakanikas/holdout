@@ -177,6 +177,62 @@ obtained from gitleaks.io and added as a secret.
 
 ---
 
+
+**The ERP path is files on S3, not a managed connector.** · 2026-09-02
+`CLAUDE.md` routed ERP master data and competitor prices through **Lakeflow Connect**. T015 read
+the vendor's documentation and established two things: the gateway that connector requires **runs
+on classic compute, continuously, at a minimum of 8 cores** — contradicting *"Serverless only. No
+always-on cluster anywhere in the design"* and the cost section's claim that this design does not
+use classic compute — and the **PostgreSQL connector is Public Preview** while the sources table
+said *(GA)*.
+
+Three routes were named and none taken by a session, because every one of them changes `CLAUDE.md`
+and that is the author's alone. He chose the second: **the ERP's master data arrives as files on
+S3, dropped several times during `run`.**
+
+*What decided it.* A measurement rather than an argument. Grepped across the tree, **Lakeflow
+Connect was the only reader of the Postgres** — not a claim, not an eval, not a pipeline, not a
+`run` step; even the decision path's *"a cost change in the ERP that moved the floor"* arrives
+through silver's `reference`, built from the bronze tables that connector filled. Removing it
+leaves a database with a writer and nothing to read it, so `infra/sources` has no content and
+`T019` closes **not built**.
+
+*Several drops rather than one, and why that is not the refused route.* A single snapshot would
+make the estate's own declared decision path — a cost change mid-day moving a floor — **a
+declared thing that never fires**, which is the failure this repository spends its time hunting.
+Several drops keep it firing. And they clear the sentence the sources table chose the connector
+for, *"no custom ingestion code to maintain"*: an exporter reading a live Postgres would be
+hand-written ingestion and is route 3, already refused; a generator emitting files is the same
+category as the Zerobus driver, which produces a source rather than consuming one.
+
+*The price, stated as a price.* **The estate now demonstrates incremental load of successive
+drops, not change capture against a live source.** That is a smaller claim than the one
+`CLAUDE.md` made, it was put to the author as smaller, and it is written here so that whoever
+writes the article meets it before the temptation does: *a real Postgres, driven mid-day* is the
+better story, and it is the one this repository can no longer make.
+
+*What moves with it,* so nobody looks for it later: `T019` closed not built · `T018` loses its
+private networking · `T020` depends on `T018` · six of `docs/DAY-ONE.md`'s seven sections
+superseded, §2 surviving because its constraint was always Zerobus · eleven sites in `CLAUDE.md`
+· `PLAN.md` and `docs/SCENARIO.md` restated · both Lakeflow findings closed by transition.
+
+*One consequence is deliberately absent from this change and is sequenced instead.* **`T009`'s
+`closes` still names the Lakeflow Connect definitions**, and it is wrong from the moment this
+lands. It is not corrected here because a second open branch restates the same field for a
+different reason, and two branches restating one field is the case a union resolves wrongly. The
+first draft of this change carried a note inside the block telling whoever merged second to
+reconcile — **which is a parenthetical addressed to a future reader, the exact shape this
+repository spent 2026-09-02 cataloguing.** So the order is set rather than annotated: the other
+branch lands its restatement, this one rebases onto it, and `T009` is restated once more on ground
+that exists. The gap is real, it is short, and it is named here rather than left to be found.
+
+*Where this entry sits, and it was in the wrong place first.* It was appended to the end of the
+file, which is **Deliberately deferred**, and `make expiry` refused it: *these look like entry
+headers and were not read as entries.* A decision is not a deferral and the section's header shape
+is what said so. It belongs in **Technology**, beside the other choices about what this estate is
+built out of. The work it creates is `pipelines/ingest-bulk-load`, which `TASKS.md` carries under
+T009.
+
 ## Method
 
 **Claims first.** · 2026-08-24
