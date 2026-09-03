@@ -26,6 +26,7 @@ from corpus.world import (
     REFERENCE_TABLES,
     STREAMS,
     Format,
+    Run,
     count,
     events,
     prepare,
@@ -44,7 +45,7 @@ from corpus.world.parquet import (
 SEED = "parquet"
 
 
-def _written(tmp_path: Path, world: str = "W6") -> tuple[object, dict[str, int]]:
+def _written(tmp_path: Path, world: str = "W6") -> tuple[Run, dict[str, int]]:
     run = prepare(world, seed=SEED, scale="smoke")
     counts = write(run, tmp_path, fmt=Format.PARQUET)
     return run, counts
@@ -221,7 +222,8 @@ def test_both_codecs_read_back_identically(tmp_path: Path, compress: bool) -> No
     ]
     rows = [
         (
-            f"γάλα {index}" if index % 2 else "",
+            # A multibyte value on purpose: a BYTE_ARRAY length is bytes, not characters.
+            f"caf\u00e9 {index}" if index % 2 else "",
             -index,
             index / 3,
             index % 3 == 0,
