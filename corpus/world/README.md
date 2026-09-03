@@ -382,6 +382,12 @@ is not a size win here and the numbers say so plainly:
 | `product_master` | 9 | 244 | 838 | **3.43x** |
 | `cost_ledger` | 35 | 349 | 675 | **1.93x** |
 
+**At rehearsal scale, once, the four streams look better and the writing is faster**: 430,649
+records, six row groups on `pos_lines`, 4,420,531 bytes against 4,483,401 as gzipped CSV
+(0.99x) and 0.23x to 0.62x on the other three — written in **4.1s against 5.8s** for the CSV
+target. One run, on one machine, on one world; the three reference tables at that scale are the
+same nine and twenty rows they are at smoke, so their penalty does not move.
+
 The three reference tables are **larger**, by up to 3.4x, because a footer describing ten
 columns costs more than ten rows of data — and `pos_lines` barely wins because this writer has
 no dictionary encoding, so a store id repeated thirty thousand times is written out thirty

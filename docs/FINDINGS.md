@@ -2482,6 +2482,70 @@ own grammar rather than an edit
 
 ---
 
+**A source enumerated by a glob carried the injected corpus's own tables into bronze** · found
+2026-09-03 · by running the bulk load rather than by reading it
+
+`pipelines/ingest/bulk.py`'s first version took its history sources as *every `*.parquet` in the
+landing area*. `corpus/world/`'s Parquet target writes the three reference tables beside the four
+event streams — **`store_master` among them, carrying the `arm` column the ERP export deliberately
+withholds** — so the eight months of history registered the ERP's own tables into bronze by a
+second route. **Twenty-two files loaded where nineteen was right**, and the extra three were the
+three a downstream join could have taken a store's arm from instead of from the assignment written
+before the period opened.
+
+**The barrier that exists for this does not watch this direction.** `ops/isolation.py` polices
+*imports*: no module under `corpus/` may reach the system. This was not an import. It was a
+directory listing, in the other direction, from a pipeline into the corpus's own output — and the
+same listing would have taken `truth.sealed.json` if the seal had been a `.parquet`.
+
+**Fixed on the branch that found it**, by replacing the population rather than by filtering it: a
+source is now **a file some manifest names** — each drop's `_manifest.json`, then each stream each
+`run.json` counts. Nothing else is a source, an undeclared `.parquet` planted by hand is a test,
+and the seal is declared by nothing at all.
+
+**The generalisable half is a rule and not a patch**: *enumerate by declaration, never by glob.* A
+glob answers *what is in this directory*, which is a question about a filesystem; every ingestion
+path is asking *what did somebody hand me*, which is a question about a manifest. The two agree
+until something else writes into the same directory, and then the difference is silent.
+
+*Site:* `pipelines/ingest/bulk.py` :: `    for run_manifest in _history_manifests(landing):`
+*Site:* `pipelines/ingest/erp.py` :: `WITHHELD: dict[str, tuple[str, ...]] = {"store_master": ("arm",)}`
+*Disposition:* `pipelines/ingest-bulk-load` — the code is fixed there and the tests are
+`test_the_seal_and_the_reference_tables_of_the_history_are_not_sources` and
+`test_the_export_withholds_the_arm`. **Left open rather than closed by its own author**: closure is
+a transition, and the transition here is that branch landing
+*Status:* open
+
+---
+
+**The world-cache digest hashes a directory, and the dependency is a file** · found 2026-09-03 · by
+adding a module to `corpus/world/` that cannot change a world
+
+`evals/uplift/cache.py`'s `DEPENDS_ON` names `corpus/world`, and `_source_files` hashes **every**
+`.py` under it. `corpus/world/parquet.py` is a file writer: nothing the A/A harness calls imports
+it, and no world's data can differ because of it. Adding it invalidated every cached world anyway,
+so `pipelines/ingest-bulk-load`'s CI run pays cold world generation in every claim-2 shard.
+
+**This is `T00L` one level out, and nobody has written that the two are the same shape.** That task
+closed *the digest hashes a file, and the dependency is a function* — a key too coarse **inside** a
+file. This is a key too coarse **across** files: same defect, one granularity out, and the cost has
+the same sign in both — spurious invalidation, never a stale world.
+
+**No proposal, and that is deliberate.** The coarse key is the safe direction and it was chosen
+knowingly: `_source_files` raises rather than returning a shorter list precisely because a digest
+that misses a dependency reports `SURVIVED` for a mutation that never ran. Narrowing it to a
+reasoned subset would put a judgment about which corpus modules can affect a world into the one
+place this repository refuses to guess — and a branch narrowing claim 2's instrument for its own
+convenience is the trade `T00G` refuses in the other direction. **What is filed is the instance and
+its cost, not a fix.**
+
+*Site:* `evals/uplift/cache.py` :: `    "corpus/world",`
+*Disposition:* none — the key is deliberate, the cost is paid knowingly, and the entry exists so
+that the next branch adding a file to `corpus/world/` reads the price before its CI run does
+*Status:* open
+
+---
+
 ## Closed
 
 An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact, and a `*Now:*`
