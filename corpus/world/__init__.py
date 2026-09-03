@@ -33,6 +33,9 @@ What is in here
 `events`           one dataclass per bronze table, in the source's shape
 `generate`         the simulation, store-major
 `seal`             the injected truth, shut until the readout has been written
+`parquet`          a Parquet writer, stdlib, so `write` has a second target — the format
+                   the lakehouse reads, checked by pyarrow in the dev group and by nothing
+                   written here
 =================  ==========================================================================
 
 The API
