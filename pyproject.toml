@@ -13,6 +13,21 @@ contracts = [
     "PyYAML>=6.0.2",
     "jsonschema>=4.23.0",
 ]
+# The engine `pipelines/silver/` runs on, and **not in the dev group**, which is the
+# whole point: `uv sync` installs the dev group and does not install an extra, so this
+# lands on the one CI job that runs silver's tests rather than on the thirteen that call
+# `make setup-locked`. Measured before it was chosen: 429.3 MiB downloaded and **713 MB
+# installed** on macOS arm64 (pyspark 471 MB, pyarrow 122 MB, pandas 40 MB, grpc 38 MB),
+# plus a JVM — against pyarrow's 122 MB, which was the number that made pyarrow worth a
+# paragraph of its own.
+#
+# **A test that cannot import this is a red run, never a skip**, and that is not left to
+# discipline: `tests/boundary/test_the_engine_is_never_skipped.py` refuses the two
+# spellings that would turn an absent engine into a green one.
+spark = [
+    "pyspark[pipelines]>=4.1.0",
+    "delta-spark>=4.0.0",
+]
 
 [project.scripts]
 holdout-contracts = "holdout.contracts.cli:main"
@@ -107,7 +122,7 @@ disallow_untyped_defs = true
 no_implicit_reexport = false
 
 [[tool.mypy.overrides]]
-module = ["jsonschema.*", "pyarrow.*"]
+module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -120,6 +135,7 @@ pythonpath = ["src"]
 # What stops that being a hole is `ops/figures.py`'s `suite` row, which requires every test
 # `make test` deselects to be selected by some `claim-*` target.
 markers = [
+  "silver: needs the `spark` extra — the engine `pipelines/silver/` runs on, which `uv sync` does not install. Run by `make silver`, and by the one CI job that syncs the extra.",
   "claim_2: claim 2's own evidence — minutes, and it generates worlds. Run by `make claim-2` and by `make claim-2-combine`, which is the one CI runs for a sharded target.",
 ]
 
