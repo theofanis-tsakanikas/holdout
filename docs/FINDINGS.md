@@ -2360,6 +2360,67 @@ and nothing mechanical can tell those apart. The procedure above is the mitigati
 `make findings` is the check
 *Status:* open
 
+**The cold-combine figure justifying a CI job does not match the job, or itself** · found
+2026-09-02 · by T00L measuring where its own 37 minutes went, and by `projects-0a` reading the
+comment against it
+`ci.yml`'s `combine` job carries a comment explaining why a ten-minute penalty is cached rather
+than removed:
+
+> *"Measured on this repository's corpus: a cold combine is **596s** against 1s warm, of which
+> `_truths` — the counterfactual generations, which no draw shard produces — is **411s**, `U11`
+> **195s** and `U10` **51s**."*
+
+**Two things are wrong with it and they are independent.**
+
+**First, it does not agree with itself.** `411 + 195 + 51 = ` **657s**, against a declared total of
+**596s** — **61s over**. Whatever the parts are, they cannot be parts of that whole, so at least
+one of the four numbers was taken at a different moment from the others and they are presented as
+one decomposition. **This needs no comparison with anything to be a defect**, and it is visible in
+the comment as written.
+
+**Second, it does not agree with the job.** Measured on run 33621267184, `make claim-2-combine` is
+**2229s**, of which the eval's `--combine` phase is **1432s** — and that run *was* cold, because
+T00L changed two files in `evals/uplift/cache.py`'s `DEPENDS_ON` and moved the digest. **1432s
+against a recorded 596s is 2.4x.**
+
+**Two readings, and neither is chosen here because neither has been checked:**
+
+- **the corpus grew and nobody re-measured** — the figure was true and went stale;
+- **596s is a laptop number in a comment about runner behaviour** — which is `CLAUDE.md`'s rule that
+  *where a number will be met on hardware that is not the author's, the measurement is taken there*,
+  and it would be the **third** time this repository has hit that shape in one direction. `T00H`'s
+  entry records the laptop nearly making the same error about which half to shard, and `ci.yml`'s
+  own `timeout-minutes: 45` was a fourteen-core projection onto a four-core runner.
+
+**Why it matters more than a stale comment, and this is the operative half.** Anybody opening the
+23m52s that `--combine` now costs would start from the itemisation: *`_truths` is 411 of 596, so
+attack `_truths`.* **That share is currently unverifiable.** If `_truths` is 411s of **1432s** it is
+**29%**, not 69%, and the obvious target is the wrong one — a twenty-minute optimisation aimed by a
+number nobody has re-taken.
+
+**So the re-measurement is the work, and it comes before any proposal about what to remove.** No
+proposal is made here.
+
+**And there is a structural point that says where a re-measurement should start — it is not a
+third reading.** The comment's prose says the job *"carries a **ten-minute** cold penalty"*, and
+**596s is 9.93 minutes**. Prose and total agree with each other; **only the itemisation disagrees
+with both.** Three of the four numbers tell one consistent story.
+
+That does **not** discriminate between the two readings above — a larger corpus and a slower
+machine both make items exceed an older total, in the same direction. **What it does say is which
+number to distrust first**, and therefore where the cheap work is: **re-measure the itemisation,
+not the total.** If `_truths`, `U11` and `U10` come back summing to at or under a re-measured
+whole, the total was merely stale; if they come back in the same proportions against a much larger
+whole, the comment was assembled from two sittings and presented as one.
+
+*Site:* `.github/workflows/ci.yml` :: `  # Measured on this repository's corpus: a cold combine is 596s against 1s warm, of which`
+*Disposition:* its own branch, unlocked now — the measurement needs only a run with the four
+phases timed, and `T00K` should not be opened against the 23m52s until it exists, because `T00K`'s
+own value is already the smaller of two numbers and the larger one is the one in question. **Not
+folded into T00L**: that branch is finished work about a cache digest, and this is a figure in a
+workflow comment
+*Status:* open
+
 ---
 
 ## Closed
