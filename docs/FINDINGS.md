@@ -2546,6 +2546,57 @@ that the next branch adding a file to `corpus/world/` reads the price before its
 
 ---
 
+**Four tests passed over an empty population, and reading them did not show it** · found
+2026-09-03 · by planting an empty landing area, after the same defect had already appeared in a
+verification of the same branch
+
+`tests/pipelines/test_bulk_load.py` asserts things about what a load produced by iterating
+`result.loaded` and by asserting negatives over the set of sources. **Four of those tests were
+true of a landing area that held nothing**: a loop over an empty list checks nothing, a negative
+over an empty set is satisfied, and *a second load moves nothing* is trivially true when the
+first load moved nothing either. Every one of them read as a real assertion.
+
+**It was found by planting, not by reading.** With `erp.export` replaced by a `mkdir`, nine of
+the fourteen tests in that file go red; with the history removed as well, twelve do — and the
+four in question are the difference between what the guards catch and what the assertions alone
+did. They now state the population they examined, **as a rule and never as a frozen count**,
+which is `ops/figures.py`'s doctrine applied one layer down: a count written into a test is an
+assertion needing its own measurement, and it goes stale the day a dataclass gains a field.
+
+**Third instance of one family, recorded and unnamed.** The tree already carries two, and both
+are about an *instrument* rather than a comparison:
+
+- `ops/figures.py` — *an instrument that cannot answer raises rather than returning a smaller
+  number*;
+- `evals/uplift/cache.py`'s `DEPENDS_ON` — an entry naming nothing **raises**, where it used to
+  be skipped in silence.
+
+This one is a **check reporting success over an empty population**, and it is the first where
+nobody noticed by reading. **No rule is written over the three.** `CLAUDE.md`'s own precedent
+governs — *a rule generalised at three instances is scoped to the shapes those three happened to
+wear* — and these three wear an instrument, a dependency list and a test. The fourth, in a form
+none of them wears, is the moment.
+
+**And the instance that is not filed belongs in the same paragraph as the one that is.** The
+branch's own verification that the CSV target is byte-identical first ran with store ids this
+corpus does not use, so the restriction matched nothing, both sides generated an empty world,
+and it reported **7 of 7 files identical over 35 data rows** — a green comparison of two
+nothings, caught by reading the row count rather than the verdict. It has no `*Site:*` because it
+is a scratch-directory comparison rather than a line in this tree, and inventing an anchor for it
+would be worse than recording it here.
+
+> **The failing shape and the vacuous shape print the same word.**
+
+*Site:* `tests/pipelines/test_bulk_load.py` :: `    assert first.files > 0 and first.rows > 0`
+*Site:* `tests/pipelines/test_bulk_load.py` :: `    assert examined == len(erp.EXPORTED) * len(erp.DECLARED.hours)`
+*Site:* `tests/corpus/test_world_parquet.py` :: `    expected = sum(len(field_names(STREAM_TYPES[stream])) for stream in STREAMS)`
+*Disposition:* `pipelines/ingest-bulk-load` — the four are guarded on that branch and the guards
+are proved by planting. **Left open rather than closed by its own author**: closure is a
+transition, and the transition is that branch landing
+*Status:* open
+
+---
+
 ## Closed
 
 An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact, and a `*Now:*`
