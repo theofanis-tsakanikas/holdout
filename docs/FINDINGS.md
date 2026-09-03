@@ -2668,6 +2668,51 @@ only way to know the change works. **Not closed by the branch that filed it**
 
 ---
 
+**A drop's digest described the second it was written in** · found 2026-09-03 · by CI run
+`33739596010`, on a test that had been green locally and on three earlier runs
+
+`pipelines/ingest/erp.py` wrote each extract with `gzip.open`, **which stamps the current time
+into the gzip header**. So exporting the same rows twice produced different bytes, and
+`bulk.load` — correctly, by its own rule — refused the second as a path whose content had
+changed:
+
+    BulkLoadError: drop=000/store_master.csv.gz was loaded with digest 459e13a631a0
+                   and now has 97a46722ae7f. A drop is immutable …
+
+**Two exports inside one second are byte-identical; two a second apart are not.** On this laptop
+they landed in the same second every time. On a slower runner they did not, and `make check`
+went red on `tests/pipelines/test_bulk_load.py::test_the_load_log_records_every_file_and_never_rewrites_one`.
+
+**It passed locally and on three earlier CI runs by timing**, which is worth stating in those
+words: *three green runs* is exactly the evidence a reader would otherwise take as proof that
+the code was fine. It was on `main` from `#49` and every branch's `make check` was exposed to it.
+
+**The loader was right on every one of those runs.** What was wrong is that a drop's digest
+described **when** it was written as well as **what** was in it. The fix is at the source rather
+than in the test: the exporter writes with `mtime=0`, so the digest is a function of the content
+and *a drop is immutable* is true by construction rather than by how fast the machine was.
+
+**And the check written to verify the fix was itself wrong first.** It compared `a.gz` against
+`b.gz` and reported that `mtime=0` also differed — because gzip writes the **basename** into the
+header too, and the real scenario is one basename in two directories. Re-measured correctly:
+
+    gzip.open,  same name, 1.1s apart:  64ff41fcabb9 vs acc429423d6d -> DIFFERENT
+    mtime=0,    same name, 1.1s apart:  c41065fad480 vs c41065fad480 -> same
+
+A comparison that varied two things and attributed the difference to one, inside the
+verification of a timing defect. **It cost one command, because the result was implausible
+enough to re-read** — which is not a gate and is the only thing that caught it.
+
+*Site:* `pipelines/ingest/erp.py` :: `        gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as compressed,`
+*Site:* `tests/pipelines/test_erp_drops.py` :: `def test_exporting_the_same_drop_twice_produces_the_same_bytes(tmp_path: Path) -> None:`
+*Disposition:* `pipelines/a-drop-digest-is-its-content`, which is this branch — **split out of
+`T010` deliberately**: the flake is on `main` and taxes every branch, and *we shipped a latent
+flake and this is the fix* is a record that belongs in its own pull request rather than inside a
+six-commit argument about Spark. **Left open rather than closed by its own author**
+*Status:* open
+
+---
+
 ## Closed
 
 An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact, and a `*Now:*`
