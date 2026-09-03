@@ -59,6 +59,10 @@ ENGINES: tuple[str, ...] = ("pyspark", "delta", "deltalake")
 #: The two spellings pytest offers for turning an absent import into a green run.
 SKIP_CALLS: tuple[str, ...] = ("importorskip", "skipif", "skip")
 
+#: The guard `if TYPE_CHECKING:` puts around an import that never executes. An engine imported
+#: there costs nothing at collection and is the one module-level spelling that is safe.
+TYPE_ONLY = "TYPE_CHECKING"
+
 
 def _mentions_engine(text: str) -> bool:
     return any(engine in text for engine in ENGINES)
@@ -92,6 +96,65 @@ def offences(source: str, filename: str) -> list[str]:
         if _mentions_engine(segment):
             found.append(f"line {node.lineno}: {name}(...) naming an engine")
     return found
+
+
+def _module_level(tree: ast.Module) -> list[ast.stmt]:
+    """Every statement that runs when the module is imported, function bodies excluded.
+
+    Class bodies **are** included: they execute at import time like any other top-level code.
+    A `if TYPE_CHECKING:` block is excluded, because it never executes at all — which is the
+    one module-level spelling of an engine import that costs nothing at collection, and the
+    one this repository's own silver tests use for their type annotations.
+    """
+    found: list[ast.stmt] = []
+
+    def walk(body: list[ast.stmt]) -> None:
+        for node in body:
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            if isinstance(node, ast.If) and TYPE_ONLY in ast.dump(node.test):
+                continue
+            found.append(node)
+            for field in ("body", "orelse", "finalbody"):
+                nested = getattr(node, field, None)
+                if isinstance(nested, list):
+                    walk([item for item in nested if isinstance(item, ast.stmt)])
+
+    walk(tree.body)
+    return found
+
+
+def imported_at_module_scope(source: str, filename: str) -> list[str]:
+    """Every engine imported where **collection** will run it, which is the other direction.
+
+    **The guard above refuses a silent green; this refuses a loud red in the wrong place.**
+    pytest imports every test module before it applies a mark expression, so a mark cannot
+    isolate an environment — only an import site can. A module-level `import pyspark` here makes
+    `make test` fail on every machine without the `spark` extra, which is every machine except
+    the one CI job that installs it: measured, on run `33737357923`, as
+    `ModuleNotFoundError: No module named 'pyspark'` at collection with `gate` red.
+
+    **Same boundary, two directions, and only one of them was guarded first.** The skip
+    direction had a story behind it — an engine in an optional group is exactly where somebody
+    reaches for `importorskip` — so it was written before silver existed. This direction had no
+    story, and the failure lay along it.
+    """
+    tree = ast.parse(source, filename=filename)
+    found: list[str] = []
+    for node in _module_level(tree):
+        if isinstance(node, ast.Import):
+            found += [
+                f"line {node.lineno}: import {alias.name} at module scope"
+                for alias in node.names
+                if _is_engine(alias.name)
+            ]
+        elif isinstance(node, ast.ImportFrom) and node.module and _is_engine(node.module):
+            found.append(f"line {node.lineno}: from {node.module} import ... at module scope")
+    return found
+
+
+def _is_engine(module: str) -> bool:
+    return any(module == engine or module.startswith(f"{engine}.") for engine in ENGINES)
 
 
 def _modules() -> list[Path]:
@@ -141,6 +204,44 @@ def test_the_detector_leaves_an_ordinary_skip_alone() -> None:
         "<clean>",
     )
     assert not offences("import pyspark\n\n\ndef test_x() -> None:\n    pass\n", "<import>")
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param("import pyspark\n", id="plain"),
+        pytest.param("from pyspark.sql import functions as sf\n", id="from"),
+        pytest.param("import delta\n\n\ndef test_x() -> None:\n    pass\n", id="beside a test"),
+        pytest.param(
+            "try:\n    import pyspark\nexcept ImportError:\n    pyspark = None\n", id="in a try"
+        ),
+        pytest.param("class Fixtures:\n    import pyspark\n", id="in a class body"),
+    ],
+)
+def test_the_module_scope_detector_fires(source: str) -> None:
+    assert imported_at_module_scope(source, "<planted>"), source
+
+
+def test_an_import_that_never_executes_is_left_alone() -> None:
+    """`if TYPE_CHECKING:` costs nothing at collection, and silver's own tests rely on it."""
+    assert not imported_at_module_scope(
+        "from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n"
+        "    from pyspark.sql import DataFrame\n",
+        "<clean>",
+    )
+    assert not imported_at_module_scope(
+        "def test_x() -> None:\n    import pyspark\n\n    assert pyspark\n", "<inside>"
+    )
+
+
+@pytest.mark.parametrize("module", _modules(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
+def test_no_test_imports_an_engine_where_collection_will_run_it(module: Path) -> None:
+    broken = imported_at_module_scope(module.read_text(encoding="utf-8"), str(module))
+    assert not broken, (
+        f"{module.relative_to(REPO_ROOT)}: {broken}. pytest imports every module before it "
+        "applies a mark expression, so this breaks `make test` on every machine without the "
+        "`spark` extra — which is every machine except the one CI job that installs it."
+    )
 
 
 @pytest.mark.parametrize("module", _modules(), ids=lambda p: str(p.relative_to(REPO_ROOT)))

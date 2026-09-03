@@ -2657,6 +2657,59 @@ enough to re-read** — which is not a gate and is the only thing that caught it
 `T010` deliberately**: the flake is on `main` and taxes every branch, and *we shipped a latent
 flake and this is the fix* is a record that belongs in its own pull request rather than inside a
 six-commit argument about Spark. **Left open rather than closed by its own author**
+**A mark cannot isolate an environment; only an import site can** · found 2026-09-03 · by CI,
+on a branch whose author had run the full gate locally and seen it green
+
+`T010` puts Spark in an optional dependency group so that **one CI job of twenty** installs 713
+MB and a JVM. `make test` deselects `-m silver`; `make silver` and one workflow job run it.
+**That arrangement was broken by a single import line**, and every machine a developer works on
+is a machine where the break is invisible — because it is the machine that installed the extra.
+
+    tests/pipelines/test_silver.py    import pyspark        (module scope)
+    gate, run 33737357923             ModuleNotFoundError: No module named 'pyspark'
+                                      at collection, `make check` Error 2
+
+**pytest imports every test module before it applies a mark expression.** So a mark can decide
+what *runs*; it cannot decide what is *imported*, and an environment can only be isolated at the
+import site. The fix is that every engine import in that file now lives inside the function that
+needs it — **which is not a skip and must not become one**: an absent engine still fails at the
+first test that asks for it.
+
+**Verified in the environment rather than reasoned about**, by removing the extra from the
+worktree:
+
+    uv sync --locked      pyspark absent
+    make check            OK, all eight gates
+    make silver           ModuleNotFoundError: No module named 'delta'
+                          from pipelines/silver/session.py:27 — not a skip
+
+**Same boundary, two directions, and only one was guarded.**
+`tests/boundary/test_the_engine_is_never_skipped.py` was written **before** silver existed and
+refuses `importorskip`, `skipif` and `skip` naming an engine — the **silent-green** direction,
+which had a story behind it: an engine in an optional group is exactly where somebody reaches
+for a skip. The failure came along the other axis — **loud red in a target that has nothing to
+do with silver** — and nobody had imagined a failure there. **The incompleteness lay exactly
+where there was no story**, which is `a guard tested by its author` with the author's
+imagination as the population.
+
+**Closed by the same tool, one more visitor.** The AST walk that already reads every `*.py`
+under `tests/` now also refuses a **module-level** engine import, with `if TYPE_CHECKING:`
+exempted because it never executes — the one module-level spelling that costs nothing at
+collection, and the one silver's own tests use for their annotations. Proved by planting the
+exact line CI caught and watching that file's parametrised case go red.
+
+**And the class is wider than this repository's version of it.** `CLAUDE.md` records that a
+number measured on the author's hardware must be re-measured where it will be met — cores, wall
+clocks, timeouts. **Nobody had written the same rule for what is *installed*.** A laptop cannot
+reproduce a runner's environment by being careful, because the laptop is the machine that
+installs everything; `uv sync --locked` with no extra before pushing is a practice, and a gate
+cannot make a laptop forget what it has.
+
+*Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def imported_at_module_scope(source: str, filename: str) -> list[str]:`
+*Site:* `pyproject.toml` :: `spark = [`
+*Disposition:* `pipelines/silver` — the gate is on that branch and bites the line that caused
+it. **Left open rather than closed by its own author**: closure is a transition, and the
+transition is that branch landing
 *Status:* open
 
 ---
