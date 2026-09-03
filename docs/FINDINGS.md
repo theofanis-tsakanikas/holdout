@@ -2597,49 +2597,49 @@ transition, and the transition is that branch landing
 
 ---
 
-**Two lists of one population, disagreeing in both directions** · found 2026-09-03 · by
-pricing `T010`, before writing any of it
+**A gate's population is defined by a name prefix, and nothing requires the name** · found
+2026-09-03 · by pricing `T010`, and corrected before it landed by reading the twenty lines above
+the one it was about
 
-The population is *the targets CI runs*, and it is enumerated twice.
+`ops/figures.py`'s `suite` row asks that every test `make test` deselects is selected by some
+target CI runs, and it finds those targets by **name**:
 
-The two rules do not agree:
+    ops/figures.py:532   CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)
 
-    .github/workflows/ci.yml:205   grep -oE '^(claim-[0-9]+|gate-proof|preview-audit):' Makefile
-    ops/figures.py:532             ^(?P<name>claim-[\w-]*):
+**Nothing requires a target that owns deselected tests to be called `claim-something`.** The
+docstring above that line justifies the rule's **breadth** — `claim-` rather than `claim-[0-9]`,
+so that `claim-2-shard` and `claim-2-combine` are visible — and says nothing about its
+**narrowness**. A target with any other name hands pytest a mark expression that this rule
+cannot see, its tests are deselected from the suite, and the row reports them as run by nothing.
 
-**Neither is wrong, and that is why nobody looked.** They answer different questions —
-`discover` wants the entry points CI must invoke, and `claim_selection` wants the targets that
-hand pytest a mark expression, so that `figures`' `suite` row can ask whether every test the
-suite deselects is run by something. **What is missing is anything that compares them.**
+**That is the row refusing correctly rather than a gate going quietly wrong**, and it is worth
+recording only because of *when* it fires: the first target this repository writes that is not
+named `claim-*` and does own marked tests. `T010`'s silver — its tests deselected from the suite,
+its work run by a job of its own — is that target, and the row would go red on a branch whose CI
+is provably running them.
 
-They differ **in both directions**:
+**What this entry said first, and why the correction is the more useful half.** It read *"two
+lists of one population, disagreeing in both directions, and nothing compares them"*, naming
+`ci.yml`'s `discover` grep and the line above. **That was false.** `ops/figures.py:98` carries
+`ANY_CLAIM_TARGET`, which is `discover`'s pattern arrived at independently, and
+`claim_targets_discover_finds` **reads `ci.yml`'s own pattern out of `ci.yml`** and applies it to
+the Makefile — so the two enumerations of *the targets CI must invoke* are compared, on every
+run, by the `discover` row. The pair I named was not one population enumerated twice: it was two
+different questions, and the second one already has the comparison I said was missing.
 
-- `discover` sees `gate-proof` and `preview-audit`; `figures.py` does not, because neither
-  begins `claim-`;
-- `figures.py` sees `claim-2-shard`, `claim-2-combine` and `claim-2-tests`; `discover`'s
-  `claim-[0-9]+:` does not match those names at all — it **derives** them from the Makefile's
-  `CLAIM_2_SHARDS`, which is a second correct answer arrived at a second way.
+> **It was written after reading line 532 and line 205, and not the twenty lines above line
+> 532.** A claim about what a file does not do, made from the part of it that was open.
 
-**Nothing has gone red because the disagreement has never been exercised.** `gate-proof` runs
-`python -m evals.gate_proof` and hands pytest nothing, so `_selection_of` returns `None` for it
-and it contributes no mark; `preview-audit` does not exist yet. **The first target that is
-neither `claim-*` nor mark-free is the one that breaks the tie** — and `T010`'s silver is
-exactly that shape: a `silver:` target whose tests `make test` would deselect, invisible to
-`figures.py`'s rule and visible to `discover`'s, so the `suite` row would go red for a job that
-CI is provably running.
+The prior wording is recorded here rather than in the file's history because it is an instance of
+the family this branch has been counting all day — **a value used without being read off its
+source** — and because a finding that was corrected before it landed is worth more as a record of
+the correction than as a tidy entry.
 
-**This is `make figures`' own subject, one layer up.** That gate exists because *a population
-enumerated once is a population nobody checked*, and here the repository enumerates one
-population twice with two rules and checks neither against the other. The honest reading is not
-that `figures.py` is too narrow: it is that **two lists of one population exist and their
-agreement is assumed.**
-
-*Site:* `.github/workflows/ci.yml` :: `          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit):' Makefile \`
 *Site:* `ops/figures.py` :: `CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)`
-*Disposition:* **`T010`'s branch if the author takes the shape that gives silver its own target**
-— it is that branch's first red run, and reconciling the two rules there is one edit with an
-exercise behind it. If he takes a shape with no new target, the entry stands unscoped and true:
-it is a fact about `main` today, filed with no branch open and no shape chosen
+*Site:* `ops/figures.py` :: `#: Every target whose recipe may own tests the suite has given up. `
+*Disposition:* `T010`'s branch, which is the first thing to exercise it — the rule has to learn
+about targets it cannot name in advance, and doing that on a branch with a red row to fix is the
+only way to know the change works. **Not closed by the branch that filed it**
 *Status:* open
 
 ---
