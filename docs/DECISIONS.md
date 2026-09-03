@@ -98,6 +98,44 @@ layer reads YAML and hands core frozen dataclasses over plain data. A test block
 `jsonschema` from `sys.modules` and imports every core module anyway. This is the only reason the
 claims are provable on a laptop with no account.
 
+**Parquet is written by hand; pyarrow is in the dev group and reads it back.** · 2026-09-03
+`corpus/world/parquet.py` writes Parquet out of the standard library — thrift compact, `PLAIN`
+values, `RLE` definition levels, GZIP through `zlib`. The library was priced rather than assumed:
+**122 MB installed**, from a wheel of 34.2 MiB on the author's macOS arm64 and **47.8 MiB on
+CI's linux-x86_64**, against a runtime dependency set that is empty and a
+corpus that is stdlib-only apart from one `yaml.safe_load`. What that buys is not size — measured
+on W6 at smoke scale, the three reference tables come out **1.9x to 3.4x larger** than the same
+tables as gzipped CSV, because a footer costs more than nine rows — it is a schema and a type: a
+`date` that is a date, and an absent value that is null rather than an empty cell.
+**pyarrow is a development dependency and nothing else**, and it is the reason the writer is
+allowed to be ours: every assertion about a file this repository writes is made by an
+implementation nobody here wrote. It earned that on its first run — the `LogicalType` union member
+for a timestamp is 8, the writer said 7, and 7 is `TIME`. The file was valid Parquet,
+self-consistent and wrong, and a reader written here would have agreed with it.
+`tests/boundary/test_pyarrow_stays_in_the_tests.py` is what keeps the arrangement true: no module
+under `src/`, `corpus/`, `evals/`, `ops/`, `pipelines/` or `.claude/hooks` may import it.
+**What this costs CI was taken from the runner rather than projected, and it is below the
+resolution the runner reports.** Run `33716314756`, this branch's first, missed the uv cache
+outright — its key is the lockfile's, and the lockfile changed — so its `gate` job downloaded all
+23 packages including **pyarrow at 47.8 MiB** and reported *Prepared 23 packages in 617 ms,
+Installed 23 packages in 40 ms*. Against `main`'s last run `33711399115`, which restored the
+cache and downloaded nothing:
+
+| | setup-uv | install step | `make check` |
+|---|---|---|---|
+| this branch, cache **missed**, pyarrow downloaded | 1s | 0s | 227s |
+| `main` `33711399115`, cache **hit** | 3s | 1s | 228s |
+
+**The cold run with the new dependency was faster than the warm run without it**, which is not a
+claim that pyarrow is free — it is the honest reading that whatever it costs is smaller than the
+second-level granularity these steps are reported at and smaller than the variance between two
+runners. A laptop figure (**0.166 s** for a cold `.venv` against a warm uv cache) is recorded
+here as a laptop figure and forecasts nothing about a runner.
+
+**What is not measured:** the cache *archive* is larger by pyarrow's unpacked size on every job
+that restores it, and no run so far separates that from the rest of the restore. It is named
+rather than estimated.
+
 **Money is integer euro cents, with three roundings.** · 2026-08-27
 Never a binary float. `as_price` is half-even, the metric contract's declared mode; `as_lower_bound`
 rounds **up** and `as_upper_bound` rounds **down**, because a bound that rounds toward what it
@@ -1474,6 +1512,21 @@ Adding a Parquet engine to `corpus/` — which is stdlib-only apart from one `ya
 write files nothing in this phase reads would be a dependency bought for a screenshot.
 *Unlock condition:* the S3 bulk load in T009, which is the first thing that needs files on disk in
 the format the lakehouse reads. The writer gains a Parquet target there, beside the CSV one.
+> *Closed:* 2026-09-03 — by `pipelines/ingest-bulk-load`, through the unlock condition rather
+> than around it: `pipelines/ingest/bulk.py` reads the drops and writes bronze in that format,
+> and `corpus/world/write` gained `fmt=Format.PARQUET` beside the CSV target, which is untouched
+> and still the default. Its seven files are byte-identical before and after the refactor that
+> made room for the second one.
+>
+> **The dependency the deferral was avoiding was not bought.** The engine is stdlib — see the
+> entry in **Technology** — and pyarrow entered the dev group as the reader instead. So the
+> deferral's own argument survives its closure: nothing in `corpus/` imports a Parquet library,
+> and a boundary test refuses the first module that tries.
+>
+> **What did not close with it.** The estate's *"a few GB of Parquet"* is still a scenario-scale
+> figure nobody has produced; the largest thing measured here is a smoke world, where Parquet is
+> **larger** than gzipped CSV for the three reference tables. A size claim about the corpus is
+> not among the things this branch establishes.
 
 **The scenario scale is measured by hand, not by a gate** · deferred 2026-08-27
 `make check` and CI run the smoke scale, where a whole world is generated in well under a second.

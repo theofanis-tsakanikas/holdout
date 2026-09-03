@@ -18,6 +18,13 @@ contracts = [
 holdout-contracts = "holdout.contracts.cli:main"
 
 [dependency-groups]
+# `pyarrow` is here and nowhere else, and it is read rather than written with: it is the
+# independent reader `corpus/world/parquet.py` is checked by. That writer is stdlib, so no
+# runtime path in this repository imports pyarrow -- `tests/corpus/test_world_parquet.py` and
+# `tests/pipelines/test_bulk_load.py` do, and they are the only ones. The rule it serves is
+# CLAUDE.md's: a guard tested by its author is tested in the shape the guard already handles,
+# and a round-trip through our own reader would have agreed with our own writer about a
+# timestamp column that pyarrow read as `time64[us]`.
 dev = [
     "holdout[contracts]",
     "pytest>=8.3.0",
@@ -25,6 +32,7 @@ dev = [
     "ruff>=0.7.0",
     "mypy>=1.13.0",
     "types-PyYAML>=6.0.12",
+    "pyarrow>=21.0.0",
 ]
 
 [build-system]
@@ -99,7 +107,7 @@ disallow_untyped_defs = true
 no_implicit_reexport = false
 
 [[tool.mypy.overrides]]
-module = ["jsonschema.*"]
+module = ["jsonschema.*", "pyarrow.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

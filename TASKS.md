@@ -1627,8 +1627,66 @@ out_of_scope  Any apply to a workspace (Phase 3).
 stop_at       When the driver produces a stream with the declared pathologies, and the bulk load
               writes what the lakehouse reads.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed, in two branches, and the second one is the ruling's.** `pipelines/ingest` closed
+the driver — when a record arrives, and how many times. `pipelines/ingest-bulk-load` closed the S3
+bulk load, which the fourth restatement makes **the ERP path** rather than a third item under the
+same directory, and `corpus/world/`'s Parquet target, which is the other half of one deferral.
+
+**The Parquet target, and the dependency that was not bought.** `corpus/world/parquet.py` writes
+Parquet out of the standard library — thrift compact, `PLAIN` values, `RLE` definition levels, GZIP
+through `zlib`. pyarrow was priced at **122 MB installed**, from a wheel of 34.2 MiB on the
+author's laptop and **47.8 MiB on the runner**, and went into the
+**dev group only**, as the reader every assertion is made through, with
+`tests/boundary/test_pyarrow_stays_in_the_tests.py` refusing the first runtime module that imports
+it. **It earned its place on the first run**: the `LogicalType` union member for a timestamp is 8,
+the writer said 7, and 7 is `TIME` — a file that was valid Parquet, self-consistent and wrong, and
+that a reader written here would have agreed with. The CSV target is untouched and still the
+default; its seven files are byte-identical before and after the refactor that made room for the
+second one.
+
+**What makes two drops differ is the corpus.** `chain._build_costs` gives every SKU one to four
+cost steps whose `effective_from` carries an hour, so the export rule is the honest one — *the
+extract at `T` holds every step with `effective_from <= T`* — and nothing is injected. Measured on
+W6, seed `holdout-w-0001`, at smoke scale, on 2025-09-02: **three cost steps on the day**, at
+08:00, 09:00 and 17:00; five drops carrying **30, 32, 32, 33, 33** ledger rows and declaring **0,
+2, 0, 1, 0** newly visible. The load then took **19 files** — fifteen materialised from the drops
+and four registered from the history — **30,201 rows**, and a second load over the same landing
+area took **0 files and rewrote nothing**.
+
+**The number that argues against it, and it decides a question nobody has asked yet.** A day with
+no cost step is a real day, and how often that happens is a fact about the scale rather than about
+this module: at `smoke` **9 of 21 days** carry a step inside trading hours, at `scenario` **126 of
+244**, and at `harness` **11 of 112 — nine days in ten have nothing for a drop to carry.** So the
+driven day at `harness` is picked rather than found. The table is in `pipelines/ingest/erp.py`,
+which is the file somebody reads when choosing one, and `--day` prints what that day actually
+carries before anything is written.
+
+**Four sentences about what this is not.** It demonstrates *incremental load of successive drops*
+and not change capture: no row-level delta, no before-image, no delete detection, and the loader
+never compares two snapshots — what became newly visible is the exporter's own statement, because
+the exporter is what applied the rule. **Four of the seven bronze ERP tables have no source in this
+corpus** and are named as absent rather than invented, `regulated_basket` among them because it is
+a contract. **Of the five intra-day changes `PLAN.md` names for `run`** — a cost change, a product
+entering the regulated basket, a retroactive supplier term, an added column, a deactivated SKU —
+**this corpus supports the first.** And the estate's *"a few GB of Parquet"* stays unmeasured: the
+largest thing written here is a smoke world, where the three reference tables come out **1.9x to
+3.4x larger** as Parquet than as gzipped CSV, because a footer costs more than nine rows.
+
+**The `arm` column is withheld from the export**, and that is the one place this ingestion path is
+load-bearing for a claim. An ERP does not know which stores are in a control group; a bronze
+master-data table that carried the arm would let a join take it from there rather than from the
+assignment written before the period opened. `bulk.load` reads each drop's manifest rather than
+globbing for `*.parquet`, which is what stops the history's own reference tables — `arm` and all —
+entering bronze by a second route, and what stops the seal entering it at all.
+
+**The suite is 1,268 collected against 1,094 on `main`**, and the arithmetic is written out because
+a count that is not re-derived is the defect this repository files most often: 17 for the Parquet
+target, 13 for the drops, 14 for the load, 129 for the new boundary test — which is parametrised
+per policed module — and **one** more in the corpus barrier, which is parametrised per corpus
+module and gained `parquet.py`.
 
 ```
 id            T010
@@ -2056,6 +2114,12 @@ L20 docs/DAY-ONE.md — the no-API residue, ordered by what finding each item la
     The verification it was asked for is impossible as written (both endpoints are phase 3),
     so the assertion moves to the earliest moment it can exist. Two findings against
     CLAUDE.md, both the author's.          branch docs/day-one                    status closed
+L21 pipelines/ingest/ — the driver (when a record arrives, and how many times) and the S3 bulk
+    load the route-2 ruling made the ERP path: successive drops that differ because the corpus's
+    cost ledger steps during the day, loaded once each against a declared schema. Parquet
+    written out of the standard library, checked by pyarrow in the dev group.
+                                           branches pipelines/ingest ·
+                                           pipelines/ingest-bulk-load      status closed
 ```
 
 **Two of those entries named branches that never existed, and `evals/world-cache-measured` found

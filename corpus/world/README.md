@@ -346,6 +346,7 @@ make world                                    all six, at smoke scale, counted
 make roster                                   how much of the estate survives the exclusions
 python -m corpus.world count --world W6 --scale scenario
 python -m corpus.world write --world W2 --scale rehearsal --out .worlds/W2
+python -m corpus.world write --world W2 --scale smoke --out .worlds/pq --format parquet
 python -m corpus.world seal .worlds/W2        the header and the ledger — never the payload
 ```
 
@@ -360,11 +361,40 @@ where the data is committed and digest-checked precisely because it *cannot* be 
 those prices were written down by hand in shops by people who have never seen this repository.
 Two corpora, two opposite rules, one reason each.
 
-`write` produces gzipped CSV. `CLAUDE.md` describes the scenario corpus as *"a few GB of
-Parquet"*, and on the estate it will be — the S3 bulk load in phase 3 is what writes those
-files. Here the product is a **stream**, consumed in process by the A/A harness, and adding a
-Parquet engine to `corpus/` to write files nothing in phase 1 reads would be a dependency
-bought for a screenshot. `docs/DECISIONS.md` records it with the condition that unlocks it.
+`write` produces gzipped CSV by default and Parquet on request. The deferral that kept it to
+one target — *"adding a Parquet engine to `corpus/` … to write files nothing in this phase
+reads would be a dependency bought for a screenshot"* — named the moment it ends: **the S3
+bulk load in T009, the first thing that needs files on disk in the format the lakehouse
+reads.** `corpus/world/parquet.py` is that engine, written out of the standard library, and
+the file that says why the check on it comes from pyarrow in the dev group rather than from a
+reader written here.
+
+**What the second target costs, measured on W6 at smoke scale rather than assumed.** Parquet
+is not a size win here and the numbers say so plainly:
+
+| table | rows | `.csv.gz` | `.parquet` | |
+|---|---:|---:|---:|---|
+| `pos_lines` | 32,858 | 366,231 | 361,262 | 0.99x |
+| `shelf_days` | 2,268 | 16,406 | 11,199 | 0.68x |
+| `esl_acks` | 916 | 4,616 | 3,421 | 0.74x |
+| `price_decisions` | 916 | 4,740 | 3,399 | 0.72x |
+| `store_master` | 12 | 484 | 1,449 | **2.99x** |
+| `product_master` | 9 | 244 | 838 | **3.43x** |
+| `cost_ledger` | 35 | 349 | 675 | **1.93x** |
+
+**At rehearsal scale, once, the four streams look better and the writing is faster**: 430,649
+records, six row groups on `pos_lines`, 4,420,531 bytes against 4,483,401 as gzipped CSV
+(0.99x) and 0.23x to 0.62x on the other three — written in **4.1s against 5.8s** for the CSV
+target. One run, on one machine, on one world; the three reference tables at that scale are the
+same nine and twenty rows they are at smoke, so their penalty does not move.
+
+The three reference tables are **larger**, by up to 3.4x, because a footer describing ten
+columns costs more than ten rows of data — and `pos_lines` barely wins because this writer has
+no dictionary encoding, so a store id repeated thirty thousand times is written out thirty
+thousand times and only gzip notices. **The reason to write Parquet here is that it carries a
+schema and a type, not that it is smaller**: a `date` is a date and an absent substitute is a
+null rather than an empty cell, which is what the loader in `pipelines/ingest/` is handed
+instead of a guess. Measured at one scale, on one world, and reported as such.
 
 ---
 

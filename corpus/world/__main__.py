@@ -5,7 +5,8 @@ Three subcommands, and the split between them is the point:
 ``count``   how many records of each kind, keeping none of them. This is what produced the
             scenario figure in `README.md`, and it is a command anybody can re-run.
 ``write``   materialise a world to a directory: four event streams, three reference tables,
-            the run's manifest and the seal.
+            the run's manifest and the seal. ``--format parquet`` writes what the lakehouse
+            reads; the default stays gzipped CSV, which is what an ERP extract arrives as.
 ``seal``    the seal's header and its ledger of openings. Never the payload — opening it
             takes a readout, and a readout is not something a command line hands over by
             accident.
@@ -23,7 +24,7 @@ import json
 import sys
 from pathlib import Path
 
-from corpus.world import count, prepare, write
+from corpus.world import FORMATS, Format, count, prepare, write
 from corpus.world.scale import SCALES
 from corpus.world.seal import SEAL_FILENAME, header
 from corpus.world.worlds import WORLDS
@@ -55,6 +56,12 @@ def main(argv: list[str] | None = None) -> int:
     writer = sub.add_parser("write", help="materialise a world into a directory")
     _common(writer)
     writer.add_argument("--out", required=True, type=Path, help="where to write it")
+    writer.add_argument(
+        "--format",
+        default=Format.CSV.value,
+        choices=sorted(FORMATS),
+        help="gzipped CSV to look at, Parquet for what reads the lakehouse's format",
+    )
 
     reader = sub.add_parser("seal", help="a seal's header and its ledger — never its payload")
     reader.add_argument(
@@ -85,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"        restricted to {len(only)} stores — a window, not a total", file=sys.stderr)
 
     counts = (
-        write(run, args.out, only_stores=only)
+        write(run, args.out, fmt=args.format, only_stores=only)
         if args.command == "write"
         else count(run, only_stores=only)
     )
@@ -93,7 +100,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{stream:>16}  {number:>12,}")
     print(f"{'total':>16}  {sum(counts.values()):>12,}")
     if args.command == "write":
-        print(f"\nwritten to {args.out} · truth sealed in {args.out / SEAL_FILENAME}")
+        print(
+            f"\nwritten to {args.out} as {args.format} · truth sealed in {args.out / SEAL_FILENAME}"
+        )
     return 0
 
 
