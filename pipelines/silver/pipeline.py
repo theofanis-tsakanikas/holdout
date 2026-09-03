@@ -17,12 +17,17 @@ What this file is evidence of, and what it is not
 layer, the framework is open source from Spark 4.1, and these declarations are portable to
 Lakeflow without an edit.
 
-**It is not executed by this repository's suite.** `tests/pipelines/test_silver.py` exercises
-`build.py`, which calls the same functions against local Delta — that is `TASKS.md`'s `stop_at`,
-and it is honest about which half it proves. Running `spark-pipelines run` locally needs a
-pipeline spec, a catalog and a warehouse directory, and none of it is written here: **the
-declarations are checked by being read, not by being run**, and that is a smaller claim than the
-one this file's existence might suggest.
+**And it is executed by this repository's suite**, which is the half a reviewer asked for before
+it existed. `tests/pipelines/test_silver.py` writes a pipeline spec, copies this file into it and
+runs `spark-pipelines run`, then asserts that all four flows reach `COMPLETED` — the engine
+building the graph, ordering it and materialising it, rather than a reader agreeing that the
+decorators look right. `build.py` exercises the same functions directly, because a transformation
+that can only be reached through a pipeline run is a transformation no unit test can hold.
+
+**Bronze arrives as a configured path rather than a catalog table.** On the estate these read
+`bronze.pos_lines` from Unity Catalog; locally there is no catalog, so the root comes from
+`spark.conf` and the file says so rather than pretending the two are the same call. What is
+identical either way is everything below the read: the transformations are `tables.py`'s, whole.
 
 **And the expectations are missing on purpose.** On Databricks each of these would carry the
 constraints `expectations.py` applies by hand, because Lakeflow has them and the open-source
@@ -31,34 +36,44 @@ framework does not. `pipelines/silver/__init__.py` carries the measurement.
 
 from __future__ import annotations
 
-import pyspark.pipelines as dp
-from pyspark.sql import SparkSession
+from pyspark import pipelines as dp
 
 from pipelines.silver import tables
 
-spark = SparkSession.active()
+#: The Spark configuration key the spec sets to say where bronze is. There is no default: a
+#: pipeline that fell back to a path would build silver out of whatever happened to be there,
+#: which is doctrine rule 3 with a directory instead of a value.
+BRONZE_ROOT = "holdout.bronze"
+
+
+def _bronze(table: str):  # type: ignore[no-untyped-def]
+    """One bronze table, from the root the spec configured. `spark` is injected by the engine."""
+    root = spark.conf.get(BRONZE_ROOT)  # type: ignore[name-defined]  # noqa: F821
+    if not root:
+        raise ValueError(f"{BRONZE_ROOT} is not set, so this pipeline has no bronze to read")
+    return spark.read.parquet(f"{root}/{table}")  # type: ignore[name-defined]  # noqa: F821
 
 
 @dp.materialized_view(name="sales", comment="Receipt lines, deduplicated on the business key")
 def sales_view():  # type: ignore[no-untyped-def]
-    kept, _ = tables.sales(spark.read.table("bronze.pos_lines"))
+    kept, _ = tables.sales(_bronze("pos_lines"))
     return kept
 
 
 @dp.materialized_view(name="price_displayed", comment="What the shelf showed, from the ack")
 def price_displayed_view():  # type: ignore[no-untyped-def]
-    kept, _ = tables.price_displayed(spark.read.table("bronze.esl_acks"))
+    kept, _ = tables.price_displayed(_bronze("esl_acks"))
     return kept
 
 
 @dp.materialized_view(name="shelf_state", comment="Whether the shelf emptied, from movements")
 def shelf_state_view():  # type: ignore[no-untyped-def]
-    sold, _ = tables.sales(spark.read.table("bronze.pos_lines"))
-    kept, _ = tables.shelf_state(spark.read.table("bronze.shelf_days"), sold)
+    sold, _ = tables.sales(_bronze("pos_lines"))
+    kept, _ = tables.shelf_state(_bronze("shelf_days"), sold)
     return kept
 
 
 @dp.materialized_view(name="reference", comment="Cost by effective_from and known_from")
 def reference_view():  # type: ignore[no-untyped-def]
-    kept, _ = tables.reference(spark.read.table("bronze.cost_ledger"))
+    kept, _ = tables.reference(_bronze("cost_ledger"))
     return kept

@@ -27,7 +27,10 @@ happened.
 
 from __future__ import annotations
 
+import os
 import shutil
+import subprocess
+import sys
 from collections import Counter
 from datetime import date, datetime
 from pathlib import Path
@@ -258,6 +261,68 @@ def test_the_derived_hour_is_a_lower_bound_and_the_gap_is_published(
     for gap, count in sorted(gaps.items()):
         print(f"    +{gap}h  {count}")
     assert gaps[0] > 0, "the bound is never tight, which would mean it is measuring something else"
+
+
+# ------------------------------------------- the declarations, run by the engine
+
+
+def test_the_declarations_are_run_by_the_engine_not_only_read(bronze: Path, tmp_path: Path) -> None:
+    """`spark-pipelines run` over `pipeline.py`, and all four flows must reach COMPLETED.
+
+    **This test exists because a reviewer asked which of two things was true** — that the
+    declarations cannot be run locally, or that they can and nobody had. It was the second. The
+    engine builds the graph, orders it, and materialises every view; nothing here reads the
+    decorators and agrees they look right.
+
+    **The module is copied by path and never imported.** `pipeline.py` raises
+    `GRAPH_ELEMENT_DEFINED_OUTSIDE_OF_DECLARATIVE_PIPELINE` on import, so a test that reached it
+    through `import` could not exist — which is the same fact the file's own docstring carries.
+
+    A pipeline spec's `configuration:` block sets **runtime** config only. `spark.sql.extensions`
+    is static and is refused there with `CANNOT_MODIFY_STATIC_CONFIG`, so this spec sets neither
+    it nor the Delta catalog: the engine writes its own storage, and the Delta configuration
+    `build.py` needs is a property of *our* session rather than of a pipeline run.
+    """
+    project = tmp_path / "project"
+    (project / "transformations").mkdir(parents=True)
+    declarations = Path(__file__).resolve().parents[2] / "pipelines" / "silver" / "pipeline.py"
+    shutil.copyfile(declarations, project / "transformations" / "pipeline.py")
+    (project / "spark-pipeline.yml").write_text(
+        "\n".join(
+            [
+                "name: holdout-silver",
+                f"storage: file://{project / 'storage'}",
+                "configuration:",
+                f'  holdout.bronze: "{bronze}"',
+                "libraries:",
+                "  - glob:",
+                "      include: transformations/**",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = str(Path(__file__).resolve().parents[2])
+    # **The console script, not `python -m pyspark.pipelines.cli`.** The module entry point
+    # reaches the CLI without the launcher that starts a Spark Connect server, and the run dies
+    # with `ONLY_SUPPORTED_WITH_SPARK_CONNECT` — measured, after the module form was tried first.
+    cli = Path(sys.executable).parent / "spark-pipelines"
+    assert cli.is_file(), f"{cli} is not there, so this test would be asserting about nothing"
+    finished = subprocess.run(
+        [str(cli), "run"],
+        cwd=project,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=900,
+        check=False,
+    )
+    output = finished.stdout + finished.stderr
+    for flow in ("sales", "price_displayed", "shelf_state", "reference"):
+        assert f"{flow} has COMPLETED" in output, output[-2000:]
+    assert "Run is COMPLETED" in output
+    assert finished.returncode == 0
 
 
 # --------------------------------------------------- as of, on both of its axes

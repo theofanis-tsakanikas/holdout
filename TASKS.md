@@ -1744,13 +1744,27 @@ being the earliest ERP drop that carried the row. A sale with no published cost 
 rather than borrowing the nearest one. **`known_from` exists only because T009's ruling made the
 ERP drop several times during the day.**
 
-**Two limits, stated rather than discovered.** `pipeline.py` carries the SDP declarations and
-**cannot be imported outside `spark-pipelines run`** — measured: the decorator raises
-`GRAPH_ELEMENT_DEFINED_OUTSIDE_OF_DECLARATIVE_PIPELINE` — so the logic lives in `tables.py` and
-the declarations are checked by being read rather than by being run. And `CLAUDE.md`'s layout
-still lists `pipelines/silver/` as *not yet built*, as it has listed `pipelines/ingest/` since
-`#45`: the finding that predicted this crossing is restated in `docs/FINDINGS.md`, and the edit
-is the author's.
+**The declarations are run by the engine, and that half arrived because a reviewer asked which
+of two things was true.** `pipeline.py` **cannot be imported outside `spark-pipelines run`** —
+the decorator raises `GRAPH_ELEMENT_DEFINED_OUTSIDE_OF_DECLARATIVE_PIPELINE` — so the logic lives
+in `tables.py`. This branch first said the declarations were *"checked by being read, not by
+being run"*, and the question put back was: **can they not be run locally, or were they simply
+not run?** They can. `spark-pipelines run` over a generated spec builds the graph and takes all
+four flows to `COMPLETED`, and `tests/pipelines/test_silver.py` is what asserts it.
+
+**And the claim that grew still names what it does not cover.** The sources are bound **by
+path**, because there is no catalog locally; on the estate they are `bronze.pos_lines` in Unity
+Catalog. So what is exercised here is the **mechanism** — the graph built, ordered and
+materialised by the engine that will run it — and what is **not** exercised is the catalog
+binding. Everything below the read is identical either way, and the difference is written in
+`pipeline.py` rather than left for a reader to notice. **The
+distinction mattered to what the author bought**: shape 2 was refused partly because *the engine
+claim stays unproved locally*, and had the declarations only ever been read, that half would have
+been unproved here too.
+
+**One limit remains, and it is the author's edit rather than a gap in the work.** `CLAUDE.md`'s
+layout still lists `pipelines/silver/` as *not yet built*, as it has listed `pipelines/ingest/`
+since `#45`; the finding that predicted this crossing is restated in `docs/FINDINGS.md`.
 
 **`#50`'s finding closes here rather than where it was filed.** The coverage rule that found
 mark-owning targets **by name** now reads recipes, so `silver` entered the population by
