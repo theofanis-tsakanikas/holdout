@@ -1,7 +1,7 @@
 """The chain itself: stores, products and the cost ledger behind them.
 
 Everything here is static for a given `(seed, scale)` — it is what a real deployment would
-have pulled from the ERP through Lakeflow Connect before any transaction was ever recorded,
+have loaded from the ERP's file drops before any transaction was ever recorded,
 and it is generated once and reused by every world. Two worlds built on the same seed and
 scale sell the same products in the same shops; only what *happens* differs.
 

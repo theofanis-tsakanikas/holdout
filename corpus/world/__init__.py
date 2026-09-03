@@ -323,7 +323,7 @@ def _cell(value: object) -> object:
 
 
 def _write_reference(run: Run, directory: Path, only_stores: Sequence[str] | None) -> None:
-    """The three tables Lakeflow Connect would pull from the ERP, not the till.
+    """The three tables the ERP's file drops carry, not the till.
 
     They are written whole even under a store restriction — a product master truncated to the
     stores you happened to generate is not a product master, and the cost ledger is what makes

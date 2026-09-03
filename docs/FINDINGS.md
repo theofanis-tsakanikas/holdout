@@ -1970,6 +1970,28 @@ mechanism invented in the same hour as the finding is exactly how the four confi
 above got written. The instances stay recorded and the general form stays unnamed until somebody
 has a mechanism that is not a fifth confident sentence.
 
+**RESTATED 2026-09-03 — a fifth instance, and it is not a fifth of the same thing.** The route-2
+ruling removed `Lakeflow Connect` from `CLAUDE.md` at eleven sites. **`projects-0a` had written to
+a build session, an hour earlier, that the method is to grep the name of the thing being *deleted*
+rather than the names of the things it touches** — and then scoped its own sweep to `CLAUDE.md`.
+Three present-tense mentions stood in `corpus/world/README.md`, `corpus/world/__init__.py` and
+`corpus/world/chain.py`, describing a connector that had stopped existing the day before. They
+were found by the next build session reading its own task's neighbours, not by a gate and not by
+the sweep that was meant to be exhaustive.
+
+**And a sixth, on the same day and from the same sweep, which is sharper than the fifth.**
+`PLAN.md`'s phase-2 bullet opened *"the Zerobus driver that writes as the corpus's 100 stores
+would"* — the figure `CLAUDE.md` withdrew on 2026-08-29 and `TASKS.md` restated for this very task.
+**`#47` rewrote the line immediately below it** and left that one standing. So this is not a site a
+sweep failed to reach: **it is a sentence its author edited, with the defect two lines above the
+words being typed.** Found by the same build session, in the same reading.
+
+**The four above are sentences that were written and not read. The fifth is a method that was
+written, sent to somebody else, and not applied by its author in the next message** — so
+retrievability was not the failure. The fact was retrieved, restated, transmitted, and still not
+used. **A countermeasure that its own author does not apply is weaker evidence for the general
+form than any of the four, and stronger evidence that no gate here is watching.**
+
 *Site:* `TASKS.md` :: `## Phase 2 — pipelines, the metric contract's three consumers, the model (local)`
 *Site:* `CLAUDE.md` :: `> are not measurements. It is withdrawn rather than corrected: **1,200 stores is the scenario the`
 *Site:* `ops/findings.py` :: `* a site whose fragment does **not occur exactly once** in the file it names. Zero means the line`

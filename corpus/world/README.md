@@ -168,8 +168,8 @@ this package asserts away.**
 
 ## What it emits
 
-Four event streams, in the source's shape, plus the three reference tables Lakeflow Connect
-would pull from the ERP:
+Four event streams, in the source's shape, plus the three reference tables the ERP's file
+drops carry:
 
 ```
 pos_lines · esl_acks · shelf_days · price_decisions

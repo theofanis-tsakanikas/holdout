@@ -1781,9 +1781,10 @@ Everything that needs data at scale, an engine, or a workspace.
 
 ### Work
 
-- `pipelines/ingest/` — the Zerobus driver that writes as the corpus's 100 stores would: correct
-  distribution over time, late arrivals, duplicates, a store that drops for two hours and then
-  sends everything at once. The S3 bulk load, which is the ERP path.
+- `pipelines/ingest/` — the Zerobus driver that writes as the corpus's stores would, at whatever
+  scale `corpus/world/scale.py` declares: correct distribution over time, late arrivals,
+  duplicates, a store that drops for two hours and then sends everything at once. The S3 bulk
+  load, which is the ERP path.
 - `pipelines/silver/` — Spark Declarative Pipelines, with expectations routing to quarantine and
   the as-of reference dimension.
 - `pipelines/gold/` — dbt. The metric contract compiles into a Delta view, the agent tool
