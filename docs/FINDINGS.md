@@ -1979,7 +1979,14 @@ Three present-tense mentions stood in `corpus/world/README.md`, `corpus/world/__
 were found by the next build session reading its own task's neighbours, not by a gate and not by
 the sweep that was meant to be exhaustive.
 
-**The four above are sentences that were written and not read. This one is a method that was
+**And a sixth, on the same day and from the same sweep, which is sharper than the fifth.**
+`PLAN.md`'s phase-2 bullet opened *"the Zerobus driver that writes as the corpus's 100 stores
+would"* — the figure `CLAUDE.md` withdrew on 2026-08-29 and `TASKS.md` restated for this very task.
+**`#47` rewrote the line immediately below it** and left that one standing. So this is not a site a
+sweep failed to reach: **it is a sentence its author edited, with the defect two lines above the
+words being typed.** Found by the same build session, in the same reading.
+
+**The four above are sentences that were written and not read. The fifth is a method that was
 written, sent to somebody else, and not applied by its author in the next message** — so
 retrievability was not the failure. The fact was retrieved, restated, transmitted, and still not
 used. **A countermeasure that its own author does not apply is weaker evidence for the general
