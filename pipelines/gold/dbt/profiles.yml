@@ -1,0 +1,17 @@
+# `method: session` drives the SparkSession the caller already started, which is how the
+# generated models reach a session this repository configured with Delta rather than one dbt
+# built for itself. `pipelines/gold/models.py` starts it first and invokes dbt in-process.
+#
+# `host` is required by the adapter's schema and is unused by the session method.
+#
+# **`file_format` is deliberately absent here.** It is a model config and belongs in
+# `dbt_project.yml`; written in this block it is accepted, ignored, and the tables come out
+# parquet on a green run.
+holdout_gold:
+  target: local
+  outputs:
+    local:
+      type: spark
+      method: session
+      schema: gold
+      host: NA

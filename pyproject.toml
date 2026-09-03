@@ -28,6 +28,26 @@ spark = [
     "pyspark[pipelines]>=4.1.0",
     "delta-spark>=4.0.0",
 ]
+# The engine `pipelines/gold/` runs on, and it **contains** `spark` rather than sitting
+# beside it: dbt-spark's `session` method drives the SparkSession this repository already
+# starts, so a tree that asked for dbt and not for Spark could not run a single model.
+#
+# Measured before it was chosen, on macOS arm64 / CPython 3.12.13, on top of a tree that
+# already has `spark` — so pyspark, pyarrow and pandas are excluded from the figure:
+# **45 packages and 196.1 MiB installed**, the largest being babel 33 MB (pulled by
+# metricflow), networkx 8 MB and dbt 6 MB. dbt-core 1.12.3, dbt-spark 1.11.0. The Linux
+# figure this repository's CI actually pays is in this branch's pull request rather than
+# projected here.
+#
+# **It is not a new architectural choice and it is not an escape from one.** `CLAUDE.md`
+# names dbt as the silver -> gold engine, and `docs/DECISIONS.md` scheduled the generated
+# SQL's first execution for the moment gold was built. What is new is one number, and it
+# lands on **one CI job of twenty** — the same arrangement `spark` already has.
+dbt = [
+    "holdout[spark]",
+    "dbt-core>=1.12.3",
+    "dbt-spark[session]>=1.11.0",
+]
 
 [project.scripts]
 holdout-contracts = "holdout.contracts.cli:main"
