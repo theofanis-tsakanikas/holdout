@@ -457,6 +457,11 @@ def test_the_storage_refuses_three_of_the_four_ways_to_change_an_arm(
     append, is not — and it is the one `verify` exists for. `CLAUDE.md`'s doctrine 7 restatement
     says unopenability arrives in phase 3 with Unity Catalog grants, and nothing here claims it
     early: what is claimed is three refusals and a detection.
+
+    **This is the half of a pair that asserts the guard is on**, and it is independent of
+    `test_a_unit_erased_from_the_table_is_caught_as_well`, which turns the guard off in order to
+    reach the layer behind it. Neither test is enough alone: without this one, `appendOnly`
+    appears in the suite only where it is disabled.
     """
     from pipelines.gold import assignment
 
@@ -510,21 +515,45 @@ def test_a_unit_erased_from_the_table_is_caught_as_well(
 ) -> None:
     """The other direction, and it is a different sentence from a unit holding the wrong arm.
 
-    `delete` is refused by the storage, so an erasure has to arrive by rebuilding the table —
-    which is what this does, deliberately, with `appendOnly` turned off first. **That is the
-    coordinated route `CLAUDE.md` says is not closed**, and it is exercised here to show what
-    survives it: the digest still refuses, because it was recomputed over the strata rather than
-    over the rows.
+    **This test disarms `appendOnly` on purpose, and it is one half of a pair.** The other half
+    is `test_the_storage_refuses_three_of_the_four_ways_to_change_an_arm`, which asserts the
+    property is **on** in ordinary operation and that the storage refuses `update`, `delete` and
+    `insert overwrite`. Read alone, this file would eventually teach somebody that `appendOnly`
+    is not load-bearing, because the only place they saw it named was where it was switched off.
+
+    **The disarm exists *because* the outer layer works.** `delete` is refused by the storage, so
+    an erasure cannot be produced any other way — and the digest's erasure case is the inner
+    layer. An inner layer nobody has seen fire is a declared thing that never runs, which is the
+    defect this repository files most; defence in depth is untestable without reaching past the
+    outer layer, and untested depth is decoration.
+
+    **It is not the `importorskip` shape.** That one makes a test silently *not run*. This one
+    runs, against a configuration it weakened in the open and restores at the end — the last two
+    assertions are that the guard is back on and biting, because a test that turns something off
+    is a test that can leave it off.
+
+    What survives the coordinated route — the one `CLAUDE.md` says is **not** closed — is the
+    digest, because it is recomputed over the committed strata rather than over the rows.
     """
     from pipelines.gold import assignment
 
     seal, schema = assigned
     table = f"{schema}.{assignment.TABLE}"
+    assert assignment.is_append_only(spark, schema=schema), (
+        "the guard was already off before this test disarmed it, so what follows would prove "
+        "nothing about the layer behind it"
+    )
+
     spark.sql(f"alter table {table} set tblproperties ({assignment.APPEND_ONLY} = false)")
     erased = spark.sql(f"select store_id from {table} limit 1").collect()[0]["store_id"]
     spark.sql(f"delete from {table} where store_id = '{erased}'")
     with pytest.raises(assignment.AssignmentTamperedError, match="drawn and absent"):
         assignment.verify(spark, seal, schema=schema)
+
+    spark.sql(f"alter table {table} set tblproperties ({assignment.APPEND_ONLY} = true)")
+    assert assignment.is_append_only(spark, schema=schema)
+    with pytest.raises(Exception, match="APPEND_ONLY"):
+        spark.sql(f"delete from {table} where store_id = '{erased}'")
 
 
 # ------------------------------------------------------ the readout, and the pin it carries

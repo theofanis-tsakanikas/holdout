@@ -3019,11 +3019,18 @@ directories are caller-chosen. And `.gitignore` entries as a **second** line of 
 than the first, because relying on one flag to keep a UUID out of a public repository is relying
 on a flag.
 
-**What has no layer at all is the general case.** Nothing enumerates what a new dependency writes
-into the tree, and the only reason this was caught is that `git status` was read before the
-commit. The Spark instance of it — `spark-warehouse/`, `metastore_db/`, `derby.log` in the working
-directory — is in `pipelines/gold/session.py`'s docstring and was found the same way, by seeing an
-untracked directory appear in a worktree.
+**What has no layer at all is the general case, and the gates that could have seen it were each
+looking for something else.** `make figures`' layout rows enumerate directories the map
+**declares** — an untracked one a tool created is in neither the map nor the population. The
+`secrets` job looks for credentials, and a machine UUID is not one. `make language` reads
+repository content, and this was not content yet. **Three gates ran and none of them was pointed
+at this**, which is a stronger statement than *nothing checks*: something would have had to be
+built for it, and nothing was.
+
+Two instances now, and **both were caught by a person reading `git status`** — this one, and
+Spark's `spark-warehouse/`, `metastore_db/` and `derby.log` landing in the working directory,
+which is recorded in `pipelines/gold/session.py`'s docstring and was found the same way, by
+noticing an untracked directory appear in a worktree.
 
 *Site:* `pipelines/gold/dbt/dbt_project.yml` :: `  send_anonymous_usage_stats: false`
 *Site:* `pipelines/gold/models.py` :: `            "--log-path",`

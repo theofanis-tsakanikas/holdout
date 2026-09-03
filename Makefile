@@ -249,6 +249,15 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: balanced, and the paragraph above measures `max over min` moving 55% across three runs of an
 #: identical split. What it also measures is that the movement is all in the *minimum* — the
 #: slowest leg was stable to 3.8% — and the slowest leg is the one this argument rests on.
+#:
+#: **And it is a projection, written down before the run rather than after it.** The eight-way
+#: figures come from a real CI run; the seven-way figure is arithmetic on them. `CLAUDE.md`'s
+#: fourth form of *a guard tested by its author* is precisely a number set from a projection
+#: instead of from a measurement of the thing that will run, on the hardware that will run it —
+#: and this is one. **The first run of this branch is the measurement.** If the slowest shard leg
+#: comes in above `claim-2-tests`, this paragraph was wrong in the direction that rule warns
+#: about, and it is here in advance so that would be a falsified prediction rather than a
+#: defence written afterwards.
 CLAIM_2_SHARDS := 7
 
 #: Where a shard leaves its draws and where the combine step looks for them. Never committed —
