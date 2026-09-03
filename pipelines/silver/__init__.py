@@ -7,8 +7,10 @@ sale is both revenue and an inventory movement.
 
 The quarantine is written by hand, and that is a finding rather than a preference
 --------------------------------------------------------------------------------
-`CLAUDE.md`'s engine table chose Spark Declarative Pipelines for this layer because *"streaming,
-out-of-order, expectations and quarantine are native"*. **Expectations are native to Databricks
+`CLAUDE.md`'s engine table chose Spark Declarative Pipelines for this layer because — in the
+wording that stood until this branch — *"streaming, out-of-order, expectations and quarantine are
+native"*. **That row is restated by this branch**, so the quotation is of what it said when this
+file was written and the measurement below is why it no longer says it. **Expectations are native to Databricks
 Lakeflow, which extends the open-source framework. They are not in the framework this repository
 runs.** Measured by printing the installed package rather than by reading a page about it:
 

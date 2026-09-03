@@ -2166,6 +2166,19 @@ rediscover that no gate noticed
 > above the edited line was false about the line being edited.
 >
 > Both `CLAUDE.md` edits are the author's and are with him.
+>
+> **Restated again 2026-09-03: the edits have landed, and the entry does not close with them.**
+> The author delegated both to the integration session. `pipelines/ingest/` and `pipelines/silver/`
+> are in the built map, and the engine row names what the OSS framework actually has. **Two
+> instances were corrected by hand and no check was added** — which is the thing this entry has
+> asked for since it was filed. What changed is the state it described, not the gate. It stays open.
+>
+> **And the anchor survived the edit for a reason worth recording.** This entry's `*Site:*` quotes
+> the block's **heading**, not a line inside it, so moving two directories out of the block did not
+> move it. An entry anchored to the contents would have gone red on the very change that resolved
+> its instances, and would have had to be restated under a red gate. **That was luck rather than
+> design when it was written**, and it is the argument for anchoring a finding about a container to
+> the container rather than to what is in it.
 
 **The mutation budget was a lottery that had not been drawn, and then it was** · found
 2026-09-02 · by run `33610996234`, ninety minutes after a branch asserted it had never been

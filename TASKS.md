@@ -1766,6 +1766,11 @@ been unproved here too.
 layout still lists `pipelines/silver/` as *not yet built*, as it has listed `pipelines/ingest/`
 since `#45`; the finding that predicted this crossing is restated in `docs/FINDINGS.md`.
 
+**RESTATED 2026-09-03 — it does not, as of this branch.** The author delegated the two `CLAUDE.md`
+edits and both directories now sit in the built map. **The finding does not close with them.** It
+names the absence of a check, and moving two entries by hand adds none: what changed is the state
+it described, not the gate it asked for.
+
 **`#50`'s finding closes here rather than where it was filed.** The coverage rule that found
 mark-owning targets **by name** now reads recipes, so `silver` entered the population by
 existing; the flip side — a mark-owning target CI never invokes — is asserted with both sides
