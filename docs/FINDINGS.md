@@ -2148,6 +2148,25 @@ the author's. Filed so the first branch that creates one of those directories do
 rediscover that no gate noticed
 *Status:* open
 
+> **Restated 2026-09-03 by `pipelines/silver`, which is the crossing this entry was filed
+> against — and it is the second, not the first.** `pipelines/ingest/` was created by `#45` on
+> 2026-09-02 and has been listed under *"Declared and not yet built"* ever since; `T010` now adds
+> `pipelines/silver/`. **Of the six entries in that block, two are built and the block says none
+> of them is**, and the row stayed green at `22 = 22` through both, exactly as predicted.
+>
+> **The prediction was forward-only, which is the part worth keeping.** *"Filed so the first
+> branch that creates one of those directories does not have to rediscover that no gate
+> noticed"* was written on the day after the first branch had already landed: the entry looked
+> ahead for a crossing that had happened the day before. A population enumerated in one
+> direction, in a finding about a check that enumerates in one direction — and the entry's own
+> author is not the one who noticed, which is the only reason it is recorded rather than argued.
+>
+> **`#47` then edited a line inside that block**, changing what `pipelines/ingest/` is described
+> as doing, on a branch rebased onto a `main` that already contained the directory. The heading
+> above the edited line was false about the line being edited.
+>
+> Both `CLAUDE.md` edits are the author's and are with him.
+
 **The mutation budget was a lottery that had not been drawn, and then it was** · found
 2026-09-02 · by run `33610996234`, ninety minutes after a branch asserted it had never been
 crossed

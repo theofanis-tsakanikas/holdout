@@ -369,8 +369,14 @@ def test_a_deselected_test_that_no_claim_target_runs_is_refused(
 
     assert figures.suite_selection() == "not claim_2 and not silver"
     assert figures.claim_selection() == "(silver)"
-    assert figures.tests_the_suite_deselects() > 0
-    assert figures.tests_a_claim_target_runs() == 0
+
+    # **A difference rather than a zero.** `silver` still owns its own tests, so the covered
+    # count is not zero and never will be again; what the row refuses is the *gap* — the
+    # claim_2 tests the suite gave up and nothing now runs. Asserting zero here was true only
+    # while one target owned every deselected test, which stopped being so in this branch.
+    deselected = figures.tests_the_suite_deselects()
+    covered = figures.tests_a_claim_target_runs()
+    assert 0 < covered < deselected, f"{covered} of {deselected} covered"
 
     code, output = _run()
     assert code == 1

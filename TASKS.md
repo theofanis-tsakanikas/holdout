@@ -1698,8 +1698,64 @@ closes        Expectations routing to quarantine, the as-of reference dimension,
 out_of_scope  —
 stop_at       When silver builds against local Delta with quarantine non-empty on planted bad data.
 review        yes
-status        open
+status        closed
 ```
+
+**What it landed, and the first thing it found was that the engine's own justification is wrong
+here.** `CLAUDE.md` chose Spark Declarative Pipelines for this layer because *"expectations and
+quarantine are native"*. **They are native to Databricks Lakeflow, which extends the open-source
+framework. They are not in the framework that runs locally**, and this repository proves things
+locally. Measured by printing the installed package rather than by reading a page about it:
+`pyspark.pipelines` 4.2.0 exposes `table`, `materialized_view`, `create_streaming_table`,
+`append_flow` and six more, **none of which takes a constraint argument**, and the only file in
+the distribution matching *expectations* is `pyspark/pandas/frame.py`. So
+`pipelines/silver/expectations.py` is eleven lines of predicate written by hand, and it says why
+in its own docstring rather than presenting itself as a design choice. **The `CLAUDE.md` row is
+the author's and is with him.**
+
+**The engine is in its own extra, which is the shape the author chose from four.**
+`uv sync` installs the dev group and never an extra, so **713 MB and a JVM land on one CI job of
+twenty** rather than on the thirteen that call `make setup-locked` — measured before the choice
+rather than after: 429.3 MiB downloaded, 713 MB installed on macOS arm64, against 122 MB for
+pyarrow. A Spark session costs **50.9s the first time** on a machine whose Ivy cache is empty and
+**3.6s** after that; the ten silver tests run in about 30s once it is warm.
+
+**A test that cannot import the engine fails; it may never skip**, and that is a gate rather than
+a discipline. `tests/boundary/test_the_engine_is_never_skipped.py` was written **before** silver
+existed, because a guard added afterwards is one whose absence was never demonstrated: measured
+on a machine with no Spark, a plain import errors the collection at exit 2 and `importorskip`
+turns the same absence into a green run.
+
+**Silver builds against local Delta**, which is `stop_at`: `sales` 25,869 · `price_displayed` 952
+· `shelf_state` 2,268 · `reference` 12 · `quarantine` **0 on a clean corpus and at least 4 on
+planted bad data**, each refused by the expectation named in advance and absent from the table it
+was refused from.
+
+**The stock-out is derived, never copied.** Silver marks a store-day emptied when it closed at
+zero and never reads the corpus's own `stocked_out_from_hour`; the two answers agree on **549 of
+549** marked store-days out of 2,268, computed by two paths sharing nothing but the events. The
+derived hour is a **lower bound** — the last unit can leave without a sale — and the gap is
+published rather than argued away: **+0h 282 · +1h 161 · +2h 58 · +3h 21 · +4h 17 · +5h 4 ·
++6h 3 · +7h 2 · +8h 1**.
+
+**The as-of join carries both of its axes**, which a single static snapshot could never have
+tested: a cost applies only where `effective_from <= t` **and** `known_from <= t`, the second
+being the earliest ERP drop that carried the row. A sale with no published cost keeps a **null**
+rather than borrowing the nearest one. **`known_from` exists only because T009's ruling made the
+ERP drop several times during the day.**
+
+**Two limits, stated rather than discovered.** `pipeline.py` carries the SDP declarations and
+**cannot be imported outside `spark-pipelines run`** — measured: the decorator raises
+`GRAPH_ELEMENT_DEFINED_OUTSIDE_OF_DECLARATIVE_PIPELINE` — so the logic lives in `tables.py` and
+the declarations are checked by being read rather than by being run. And `CLAUDE.md`'s layout
+still lists `pipelines/silver/` as *not yet built*, as it has listed `pipelines/ingest/` since
+`#45`: the finding that predicted this crossing is restated in `docs/FINDINGS.md`, and the edit
+is the author's.
+
+**`#50`'s finding closes here rather than where it was filed.** The coverage rule that found
+mark-owning targets **by name** now reads recipes, so `silver` entered the population by
+existing; the flip side — a mark-owning target CI never invokes — is asserted with both sides
+derived and an empty left side raising rather than passing.
 
 ```
 id            T011
@@ -2120,6 +2176,12 @@ L21 pipelines/ingest/ — the driver (when a record arrives, and how many times)
     written out of the standard library, checked by pyarrow in the dev group.
                                            branches pipelines/ingest ·
                                            pipelines/ingest-bulk-load      status closed
+L22 pipelines/silver/ — five tables built against local Delta, with the quarantine written by
+    hand because the open-source declarative framework has no expectations. The engine in its
+    own extra, on one CI job of twenty; a guard that refuses to let an absent engine become a
+    skip; the stock-out derived from movements and agreeing 549 of 549 with the corpus's own
+    marking; the as-of join on both of its time axes.
+                                           branch pipelines/silver          status closed
 ```
 
 **Two of those entries named branches that never existed, and `evals/world-cache-measured` found
