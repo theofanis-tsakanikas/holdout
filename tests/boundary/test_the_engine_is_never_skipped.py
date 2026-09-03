@@ -53,8 +53,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 POLICED = "tests"
 
 #: The engines an optional group may withhold. `delta` is `delta-spark`'s import name, which is
-#: not its package name — a rule written from `pyproject.toml` would have missed it.
-ENGINES: tuple[str, ...] = ("pyspark", "delta", "deltalake")
+#: not its package name — a rule written from `pyproject.toml` would have missed it, and `dbt`
+#: makes the point twice: `dbt-core` and `dbt-spark` both import as `dbt`.
+#:
+#: **`dbt` arrived here after `gate` went red for the module it names.** `T011` put dbt in an
+#: optional extra and this list did not learn about it, so the two spellings below were policed
+#: for three engines and not for the fourth. Nothing had used either spelling, so nothing was
+#: broken — the guard was simply blind, which is the state that looks most like coverage.
+ENGINES: tuple[str, ...] = ("pyspark", "delta", "deltalake", "dbt")
 
 #: The two spellings pytest offers for turning an absent import into a green run.
 SKIP_CALLS: tuple[str, ...] = ("importorskip", "skipif", "skip")
@@ -189,6 +195,9 @@ def test_there_are_tests_to_police() -> None:
             'import pytest\n\n\ndef test_x() -> None:\n    pytest.skip("no pyspark here")\n',
             id="an outright skip",
         ),
+        # The fourth engine, planted the day it entered `ENGINES`. A list that grew without a
+        # case proving the new entry is policed is a list somebody widened on paper.
+        pytest.param('import pytest\npytest.importorskip("dbt")\n', id="dbt importorskip"),
     ],
 )
 def test_the_detector_fires_on_the_thing_it_is_looking_for(source: str) -> None:
@@ -216,6 +225,7 @@ def test_the_detector_leaves_an_ordinary_skip_alone() -> None:
             "try:\n    import pyspark\nexcept ImportError:\n    pyspark = None\n", id="in a try"
         ),
         pytest.param("class Fixtures:\n    import pyspark\n", id="in a class body"),
+        pytest.param("from dbt.cli.main import dbtRunner\n", id="dbt at module scope"),
     ],
 )
 def test_the_module_scope_detector_fires(source: str) -> None:
@@ -251,4 +261,53 @@ def test_no_test_turns_an_absent_engine_into_a_skip(module: Path) -> None:
         f"{module.relative_to(REPO_ROOT)}: {broken}. An engine this repository declares in an "
         "optional group must be absent loudly — a plain import errors the collection, and that "
         "is the behaviour these two spellings would turn into a green run."
+    )
+
+
+def _mypy_ignored_modules() -> set[str]:
+    """Every module `pyproject.toml` tells mypy it may not find, as bare import names.
+
+    Read out of the file rather than restated here, for the reason `ops/figures.py` gives about
+    `ci.yml`'s discovery pattern: a second copy would agree with itself on the day it was
+    written.
+    """
+    import tomllib
+
+    settings = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    ignored: set[str] = set()
+    for override in settings["tool"]["mypy"]["overrides"]:
+        if not override.get("ignore_missing_imports"):
+            continue
+        modules = override["module"]
+        ignored.update(
+            m.removesuffix(".*") for m in ([modules] if isinstance(modules, str) else modules)
+        )
+    return ignored
+
+
+def test_every_engine_is_ignorable_by_mypy() -> None:
+    """**The third list, and it is the one that went red on a runner.**
+
+    Three hand-kept lists name the packages this tree may not have: the extras in
+    `pyproject.toml`, `ENGINES` above, and mypy's `ignore_missing_imports` overrides. `T011`
+    added a fourth engine and had to edit all three; **only the third said anything, and it said
+    it on CI after a green local `make check`** — because both extras were installed on the
+    laptop, which is the one environment where a missing override cannot fail.
+
+    mypy resolves imports **statically**, so it needs the package or an override. Without one,
+    `make typecheck` fails on every machine that has not installed the extra, which is every
+    machine except the single CI job that does.
+
+    **This compares the second list against the third, which is the direction that needs no
+    package-to-module mapping.** Deriving either from the extras is what `ENGINES`' own comment
+    refuses: `delta-spark` imports as `delta` and both dbt distributions import as `dbt`, so a
+    rule written from the packaging would be wrong about three of four names.
+    """
+    ignored = _mypy_ignored_modules()
+    assert ignored, "pyproject.toml declares no ignorable modules, so this compares against nothing"
+    missing = sorted(engine for engine in ENGINES if engine not in ignored)
+    assert not missing, (
+        f"{missing} may be withheld by an optional extra and mypy is not told to ignore it, so "
+        "`make typecheck` fails on every machine without that extra — which is every machine "
+        "except the one CI job that installs it. Add it to [[tool.mypy.overrides]]."
     )

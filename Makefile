@@ -25,7 +25,7 @@ RUN := $(UV) run
 PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
 
 .DEFAULT_GOAL := help
-.PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
+.PHONY: help setup setup-locked check check-locked test lint format typecheck contracts contracts-write \
         expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 silver \
         gold \
         claim-2-shard claim-2-combine claim-2-tests \
@@ -41,6 +41,27 @@ setup:  ## create the virtualenv and install everything
 
 setup-locked:  ## install exactly what uv.lock pins — what CI runs, and what refuses a drifted lock
 	$(UV) sync --locked
+
+# **The environment `gate` has, which is the one a session working on an engine never has.**
+# `uv sync --locked` installs the dev group and no extra, so this is `make check` on a tree
+# without pyspark, without delta and without dbt — every machine except the one CI job per
+# extra.
+#
+# It exists because a stated procedure that is not run is the same shape as a guard that is not
+# armed. `T011` said after one runner failure that it would run this two-step check before
+# pushing, did not, and `gate` went red on `mypy` resolving `dbt.cli.main` — **on a branch whose
+# every local green had been taken with both extras installed, which is the one environment
+# where that error cannot occur.** One command with a name is not a gate and does not pretend to
+# be one; what it changes is that *did you run `make check-locked`* has an answer and *did you
+# remember the two-step thing* does not.
+#
+# **It uninstalls your extras.** That is the point, and getting back is `uv sync --extra dbt`.
+check-locked:  ## make check in the environment CI's `gate` job has — NO extras, uninstalls yours
+	$(UV) sync --locked
+	$(MAKE) check
+	@echo ""
+	@echo "OK      the gate's own environment, with no extra installed"
+	@echo "        your extras are gone: 'uv sync --extra dbt' puts them back"
 
 check: lint typecheck contracts language findings expiry figures test  ## the whole local gate, in the order that fails fastest
 	@echo ""

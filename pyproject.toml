@@ -141,8 +141,18 @@ warn_return_any = true
 disallow_untyped_defs = true
 no_implicit_reexport = false
 
+# **Every engine an optional extra may withhold has to be here, or `make typecheck` fails on
+# any machine that does not have it** — which is every machine except the one CI job per extra.
+# mypy resolves imports statically, so it is a different consumer of an absent package from the
+# runtime guard in `tests/boundary/test_the_engine_is_never_skipped.py`: that one keeps an
+# absent engine loud at *run* time, and this keeps it quiet at *type* time.
+#
+# **`dbt` was missing and `gate` found it, on a runner, after a green local `make check`.** Both
+# extras had been installed on the laptop, which is the one environment where the error cannot
+# occur. `test_every_engine_is_ignorable_by_mypy` now compares this list against `ENGINES` so
+# the two cannot fall out of step again silently.
 [[tool.mypy.overrides]]
-module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*"]
+module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

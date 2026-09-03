@@ -3059,6 +3059,78 @@ its own author**
 *Status:* open
 
 ---
+**Three lists name the packages this tree may not have, and only one of them said so** ·
+found 2026-09-04 · by `gate` going red on `#54` after a green local `make check`
+
+`make typecheck` failed on CI with:
+
+    pipelines/gold/models.py:69: error: Cannot find implementation or library stub
+                                        for module named "dbt.cli.main"  [import-not-found]
+
+**Not a collection failure and not the runtime guard's shape.** `lint` passed, the engine imports
+are inside the functions that need them, and `make test` deselects `-m gold` cleanly. **mypy
+resolves imports statically**, so it is a different consumer of the same absence: it fails on code
+nothing runs, and it needs either the package or an entry in `[[tool.mypy.overrides]]`. `dbt` had
+none.
+
+**Three hand-kept lists name this set, and `T011` had to edit all three:**
+
+    pyproject.toml        [project.optional-dependencies]      spark = […]  dbt = […]
+    tests/boundary/…      ENGINES = ("pyspark", "delta", "deltalake")
+    pyproject.toml        [[tool.mypy.overrides]] module = […, "pyspark.*", "delta.*"]
+
+**Only the third said anything, and it said it on a runner.** The other two are silent by
+construction: an override list that is short resolves fewer modules on a machine that has them
+all, and a short `ENGINES` polices fewer names. `dbt` was missing from **both** the second and the
+third — so today the guard would have refused neither an `importorskip("dbt")` nor a module-scope
+`import dbt`, the two spellings it exists to refuse. Nothing had used either, so nothing was
+broken; **the guard was simply blind, which is the state that looks most like coverage.**
+
+**The second and third are now compared**, by `test_every_engine_is_ignorable_by_mypy` — the
+direction that needs no package-to-module mapping. **It fired on its first run against a gap that
+predates this branch**: `deltalake` had been in `ENGINES` since `T010` and was never in the
+overrides. Nothing imports it, so mypy never had to resolve it and nothing went red. **The drift
+was already two names wide before `dbt` made it three.**
+
+**Nothing links the first list to the second, and that is where both drifts came from.** The
+reason is in `ENGINES`' own comment — *"`delta` is `delta-spark`'s import name, which is not its
+package name"* — and `dbt` makes the point twice over, since `dbt-core` and `dbt-spark` both
+import as `dbt`.
+
+**Measured rather than assumed to be impossible.** `importlib.metadata.packages_distributions()`
+does invert it: `delta <- ['delta_spark']`, `dbt <- ['dbt-core', 'dbt-adapters', 'dbt-spark']`. So
+the mapping exists. **A derivation over it still does not**, for three reasons that are all naming
+and one that is not:
+
+    deltalake  ->  None          an engine listed defensively and installed nowhere is invisible
+    delta-spark vs delta_spark   distribution names normalise (PEP 503) and the two lists do not
+    dbt extra declares holdout[spark]   a self-referential extra hides its own contents
+    and it can only answer where the packages exist, which is not `gate`
+
+So the gap is named and left open rather than closed badly: **the answer is available in the job
+that has the packages and useless in the job that needs it.**
+
+**And the generalisation is the line worth keeping.** Every local green on this branch was taken
+with both extras installed, which is the one environment where this error cannot occur: **the
+machine that builds the thing is the machine least able to see what its absence does.**
+
+**What was already stated and not done.** After the previous runner failure this session said
+`uv sync --locked && make check` was a thing it would run before pushing. It did not. **A stated
+procedure that is not run is the same shape as a guard that is not armed**, and the answer is not
+resolve — it is `make check-locked`, one command with a name, which is not a gate and does not
+pretend to be one. What it changes is that *did you run `make check-locked`* has an answer and
+*did you remember the two-step thing* does not.
+
+*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*"]`
+*Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def test_every_engine_is_ignorable_by_mypy() -> None:`
+*Site:* `Makefile` :: `check-locked:  ## make check in the environment CI's`
+*Disposition:* `pipelines/gold`, which is this branch, for the two lists that can be compared and
+for the named target. **What stays open is the first linkage** — extras to `ENGINES` — which is
+measured above as available only where the packages are installed, and that is not the job it
+would protect. **Left open rather than closed by its own author**
+*Status:* open
+
+---
 
 ## Closed
 
