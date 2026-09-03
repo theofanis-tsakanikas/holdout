@@ -50,9 +50,11 @@ import csv
 import gzip
 import json
 from collections import Counter
-from collections.abc import Iterator, Sequence
-from contextlib import ExitStack
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass
+from datetime import date, datetime
+from enum import Enum
 from pathlib import Path
 
 from corpus.world import chain as chain_module
@@ -61,8 +63,9 @@ from corpus.world import policy as policy_module
 from corpus.world import seal as seal_module
 from corpus.world.assignment import Arm, Assignment, all_control, alternating
 from corpus.world.chain import Chain
-from corpus.world.events import STREAMS, Event, field_names, stream_of
+from corpus.world.events import STREAM_TYPES, STREAMS, Event, field_names, stream_of
 from corpus.world.generate import StoreExposure
+from corpus.world.parquet import Column, Kind, ParquetWriter, columns_for
 from corpus.world.policy import MarkdownPolicy
 from corpus.world.scale import (
     CATEGORIES,
@@ -79,6 +82,7 @@ from corpus.world.worlds import WORLDS, World, world_by_id
 
 __all__ = [
     "CATEGORIES",
+    "FORMATS",
     "HARNESS",
     "REHEARSAL",
     "SCALES",
@@ -91,6 +95,7 @@ __all__ = [
     "Assignment",
     "Chain",
     "Event",
+    "Format",
     "MarkdownPolicy",
     "Run",
     "Scale",
@@ -105,6 +110,25 @@ __all__ = [
     "world_by_id",
     "write",
 ]
+
+
+class Format(Enum):
+    """What `write` materialises a world as. Two, and both of them are read by something.
+
+    `CSV` is what this package has always written: gzipped text, produced so a world can be
+    **looked at**, and the format the ERP's own extract arrives in on the estate.
+
+    `PARQUET` arrives with T009's bulk load, which is the first thing that needs files on disk
+    in the format the lakehouse reads — the condition `docs/DECISIONS.md` deferred it on.
+    `corpus/world/parquet.py` is the engine, stdlib and ours, and says why it is not a library.
+    """
+
+    CSV = "csv"
+    PARQUET = "parquet"
+
+
+#: The declared formats, by name, for a command line and for anything that validates one.
+FORMATS: dict[str, Format] = {fmt.value: fmt for fmt in Format}
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,37 +284,42 @@ def count(run: Run, *, only_stores: Sequence[str] | None = None) -> dict[str, in
     return {stream: tally.get(stream, 0) for stream in STREAMS}
 
 
-def write(run: Run, directory: Path, *, only_stores: Sequence[str] | None = None) -> dict[str, int]:
+def write(
+    run: Run,
+    directory: Path,
+    *,
+    fmt: Format | str = Format.CSV,
+    only_stores: Sequence[str] | None = None,
+) -> dict[str, int]:
     """Materialise a world: four event streams, three reference tables, and the seal.
 
-    Gzipped CSV rather than Parquet. `CLAUDE.md` describes the scenario corpus as *"a few GB of
-    Parquet"*, and on the estate it will be — the S3 bulk load in phase 3 is what writes those
-    files. Here the product is a **stream**, consumed in process by the A/A harness, and adding
-    a Parquet engine to `corpus/` to write files nothing in phase 1 reads would be a dependency
-    bought for a screenshot. `docs/DECISIONS.md` records it with the condition that unlocks it.
+    **Two targets, and the second one arrived with the thing that reads it.** Gzipped CSV is
+    what this package has written since it existed, and it stays the default: the product of
+    this package is a **stream**, consumed in process by the A/A harness, and `write` is how a
+    world is looked at. `docs/DECISIONS.md` deferred Parquet on exactly that argument —
+    *"adding a Parquet engine to `corpus/` … to write files nothing in this phase reads would
+    be a dependency bought for a screenshot"* — and named the unlock: **the S3 bulk load in
+    T009, the first thing that needs files on disk in the format the lakehouse reads.**
+
+    So `fmt=Format.PARQUET` is that target, and `corpus/world/parquet.py` is the engine. What
+    it is not is a second definition of anything: the event streams take their columns from
+    the same dataclasses the CSV header comes from, and the reference tables from the one
+    declaration in `REFERENCE_TABLES` below.
+
+    The seal, the manifest and the counts do not move with the format.
     """
+    target = as_format(fmt)
     directory.mkdir(parents=True, exist_ok=True)
     tally: Counter[str] = Counter()
     # All four files open at once, because the generator emits one interleaved stream and
     # writing them one at a time would mean generating the world four times.
-    with ExitStack() as open_files:
-        writers = {
-            stream: csv.writer(
-                open_files.enter_context(
-                    gzip.open(directory / f"{stream}.csv.gz", "wt", newline="", encoding="utf-8")
-                )
-            )
-            for stream in STREAMS
-        }
-        headers_written: set[str] = set()
+    streams = _parquet_streams if target is Format.PARQUET else _csv_streams
+    with streams(directory) as deliver:
         for event in events(run, seal_into=directory, only_stores=only_stores):
             stream = stream_of(event)
-            if stream not in headers_written:
-                writers[stream].writerow(field_names(event))
-                headers_written.add(stream)
-            writers[stream].writerow(_row(event))
+            deliver(stream, event)
             tally[stream] += 1
-    _write_reference(run, directory, only_stores)
+    _write_reference(run, directory, only_stores, target)
     (directory / "run.json").write_text(
         json.dumps(
             {
@@ -298,6 +327,7 @@ def write(run: Run, directory: Path, *, only_stores: Sequence[str] | None = None
                 "title": run.world.title,
                 "seed": run.seed,
                 "scale": run.scale.name,
+                "format": target.value,
                 "stores": len(run.chain.stores),
                 "skus": len(run.chain.products),
                 "days": run.scale.days,
@@ -314,6 +344,63 @@ def write(run: Run, directory: Path, *, only_stores: Sequence[str] | None = None
     return {stream: tally.get(stream, 0) for stream in STREAMS}
 
 
+def as_format(fmt: Format | str) -> Format:
+    """A declared format, or a refusal naming the declared ones. Never a silent default."""
+    if isinstance(fmt, Format):
+        return fmt
+    try:
+        return FORMATS[fmt]
+    except KeyError:
+        raise ValueError(
+            f"unknown format {fmt!r}; declared formats are {sorted(FORMATS)}"
+        ) from None
+
+
+@contextmanager
+def _csv_streams(directory: Path) -> Iterator[Callable[[str, Event], None]]:
+    """One gzipped CSV per stream, header written when that stream's first record arrives."""
+    with ExitStack() as open_files:
+        writers = {
+            stream: csv.writer(
+                open_files.enter_context(
+                    gzip.open(directory / f"{stream}.csv.gz", "wt", newline="", encoding="utf-8")
+                )
+            )
+            for stream in STREAMS
+        }
+        headers_written: set[str] = set()
+
+        def deliver(stream: str, event: Event) -> None:
+            if stream not in headers_written:
+                writers[stream].writerow(field_names(event))
+                headers_written.add(stream)
+            writers[stream].writerow(_row(event))
+
+        yield deliver
+
+
+@contextmanager
+def _parquet_streams(directory: Path) -> Iterator[Callable[[str, Event], None]]:
+    """One Parquet file per stream, the schema taken from the dataclass behind it.
+
+    A Parquet file carries its schema in the footer whether or not a row was ever written, so
+    there is no lazy header here and an empty stream is an empty table rather than an empty
+    file — which is the one thing this target does that the CSV one cannot.
+    """
+    with ExitStack() as open_files:
+        writers = {
+            stream: open_files.enter_context(
+                ParquetWriter(directory / f"{stream}.parquet", columns_for(STREAM_TYPES[stream]))
+            )
+            for stream in STREAMS
+        }
+
+        def deliver(stream: str, event: Event) -> None:
+            writers[stream].write(list(asdict(event).values()))
+
+        yield deliver
+
+
 def _row(event: Event) -> list[object]:
     return [_cell(value) for value in asdict(event).values()]
 
@@ -322,7 +409,126 @@ def _cell(value: object) -> object:
     return "" if value is None else value
 
 
-def _write_reference(run: Run, directory: Path, only_stores: Sequence[str] | None) -> None:
+def _reference_cell(value: object) -> object:
+    """A reference table's CSV cell, exactly as this package has always written one.
+
+    It is not `_cell`: the event streams stringify a `datetime` the way `str()` does, with a
+    space, and the reference tables call `isoformat()`, with a `T`. **The two have differed
+    since both were written and this branch does not unify them** — changing either rewrites
+    the bytes of files something already reads, which is a restatement rather than a format.
+    """
+    if isinstance(value, datetime | date):
+        return value.isoformat()
+    return "" if value is None else value
+
+
+@dataclass(frozen=True, slots=True)
+class ReferenceTable:
+    """One ERP table, declared once and rendered into whichever format was asked for.
+
+    The columns are the Parquet schema **and** the CSV header, for the reason
+    `events.field_names` gives about the event streams one file over: a header list written
+    out by hand beside a column list is a second definition of the same table, and the day
+    somebody inserts a column the two stop agreeing without a word.
+    """
+
+    name: str
+    columns: tuple[Column, ...]
+    rows: Callable[[Run, set[str] | None], Iterator[tuple[object, ...]]]
+
+    @property
+    def header(self) -> tuple[str, ...]:
+        return tuple(column.name for column in self.columns)
+
+
+def _store_rows(run: Run, wanted: set[str] | None) -> Iterator[tuple[object, ...]]:
+    for store in run.chain.stores:
+        if wanted is not None and store.store_id not in wanted:
+            continue
+        yield (
+            store.store_id,
+            store.town,
+            store.x_m,
+            store.y_m,
+            store.store_format,
+            store.size_index,
+            store.size_band,
+            store.pricing_zone,
+            store.opened_on,
+            run.assignment[store.store_id].value,
+        )
+
+
+def _product_rows(run: Run, wanted: set[str] | None) -> Iterator[tuple[object, ...]]:
+    del wanted  # a product master is not restricted; see `_write_reference`
+    for product in run.chain.products:
+        yield (
+            product.sku_id,
+            product.category,
+            product.name,
+            product.base_price_cents,
+            product.shelf_life_days,
+            product.substitute_of,
+        )
+
+
+def _cost_rows(run: Run, wanted: set[str] | None) -> Iterator[tuple[object, ...]]:
+    del wanted  # nor is the ledger: an as-of join needs every step, whoever sold the item
+    for product in run.chain.products:
+        for step in run.chain.cost_steps(product.sku_id):
+            yield (step.sku_id, step.effective_from, step.unit_cost_cents)
+
+
+#: The three tables the ERP hands over rather than the till. Declared here in one place, so
+#: `pipelines/ingest/` can export a drop and load it back without a second opinion about what
+#: a column is called or what type it holds.
+REFERENCE_TABLES: tuple[ReferenceTable, ...] = (
+    ReferenceTable(
+        name="store_master",
+        columns=(
+            Column("store_id", Kind.STRING),
+            Column("town", Kind.STRING),
+            Column("x_m", Kind.INT64),
+            Column("y_m", Kind.INT64),
+            Column("store_format", Kind.STRING),
+            Column("size_index", Kind.DOUBLE),
+            Column("size_band", Kind.STRING),
+            Column("pricing_zone", Kind.STRING),
+            Column("opened_on", Kind.DATE),
+            Column("arm", Kind.STRING),
+        ),
+        rows=_store_rows,
+    ),
+    ReferenceTable(
+        name="product_master",
+        columns=(
+            Column("sku_id", Kind.STRING),
+            Column("category", Kind.STRING),
+            Column("name", Kind.STRING),
+            Column("base_price_cents", Kind.INT64),
+            Column("shelf_life_days", Kind.INT64),
+            # A SKU that substitutes nothing is absent rather than empty. In the CSV it is
+            # written as `''` and cannot be told from a blank name; the Parquet column says
+            # null, which is why the loader is handed a type per column rather than guessing.
+            Column("substitute_of", Kind.STRING, optional=True),
+        ),
+        rows=_product_rows,
+    ),
+    ReferenceTable(
+        name="cost_ledger",
+        columns=(
+            Column("sku_id", Kind.STRING),
+            Column("effective_from", Kind.TIMESTAMP),
+            Column("unit_cost_cents", Kind.INT64),
+        ),
+        rows=_cost_rows,
+    ),
+)
+
+
+def _write_reference(
+    run: Run, directory: Path, only_stores: Sequence[str] | None, fmt: Format
+) -> None:
     """The three tables the ERP's file drops carry, not the till.
 
     They are written whole even under a store restriction — a product master truncated to the
@@ -330,60 +536,15 @@ def _write_reference(run: Run, directory: Path, only_stores: Sequence[str] | Non
     an as-of join possible at all.
     """
     wanted = set(only_stores) if only_stores is not None else None
-    with gzip.open(directory / "store_master.csv.gz", "wt", newline="", encoding="utf-8") as fh:
-        writer = csv.writer(fh)
-        writer.writerow(
-            [
-                "store_id",
-                "town",
-                "x_m",
-                "y_m",
-                "store_format",
-                "size_index",
-                "size_band",
-                "pricing_zone",
-                "opened_on",
-                "arm",
-            ]
-        )
-        for store in run.chain.stores:
-            if wanted is not None and store.store_id not in wanted:
-                continue
-            writer.writerow(
-                [
-                    store.store_id,
-                    store.town,
-                    store.x_m,
-                    store.y_m,
-                    store.store_format,
-                    store.size_index,
-                    store.size_band,
-                    store.pricing_zone,
-                    store.opened_on.isoformat(),
-                    run.assignment[store.store_id].value,
-                ]
-            )
-    with gzip.open(directory / "product_master.csv.gz", "wt", newline="", encoding="utf-8") as fh:
-        writer = csv.writer(fh)
-        writer.writerow(
-            ["sku_id", "category", "name", "base_price_cents", "shelf_life_days", "substitute_of"]
-        )
-        for product in run.chain.products:
-            writer.writerow(
-                [
-                    product.sku_id,
-                    product.category,
-                    product.name,
-                    product.base_price_cents,
-                    product.shelf_life_days,
-                    product.substitute_of or "",
-                ]
-            )
-    with gzip.open(directory / "cost_ledger.csv.gz", "wt", newline="", encoding="utf-8") as fh:
-        writer = csv.writer(fh)
-        writer.writerow(["sku_id", "effective_from", "unit_cost_cents"])
-        for product in run.chain.products:
-            for step in run.chain.cost_steps(product.sku_id):
-                writer.writerow(
-                    [step.sku_id, step.effective_from.isoformat(), step.unit_cost_cents]
-                )
+    for table in REFERENCE_TABLES:
+        if fmt is Format.PARQUET:
+            with ParquetWriter(directory / f"{table.name}.parquet", table.columns) as writer:
+                writer.write_rows(table.rows(run, wanted))
+            continue
+        with gzip.open(
+            directory / f"{table.name}.csv.gz", "wt", newline="", encoding="utf-8"
+        ) as handle:
+            out = csv.writer(handle)
+            out.writerow(table.header)
+            for row in table.rows(run, wanted):
+                out.writerow([_reference_cell(value) for value in row])

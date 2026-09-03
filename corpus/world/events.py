@@ -142,6 +142,11 @@ _STREAM_OF: dict[type, str] = {
     PriceDecision: "price_decisions",
 }
 
+#: The dataclass behind each stream. Derived from the mapping above rather than written out
+#: again, and it is what `corpus/world/parquet.py` takes a column list from: a Parquet schema
+#: and a CSV header must not be two separate opinions about the same table.
+STREAM_TYPES: dict[str, type] = {stream: record for record, stream in _STREAM_OF.items()}
+
 
 def stream_of(event: Event) -> str:
     return _STREAM_OF[type(event)]
