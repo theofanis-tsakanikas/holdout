@@ -164,8 +164,56 @@ def shelf_state(shelf_days: DataFrame, sold: DataFrame) -> tuple[DataFrame, Data
     )
 
 
-def reference(cost_ledger: DataFrame) -> tuple[DataFrame, DataFrame]:
-    """The cost dimension, on **both** of its time axes, from the ERP's successive drops.
+#: The `product_master` columns the dimension carries. **`name` is deliberately not among
+#: them.** It is display text that no metric, no feature and no guardrail reads, and
+#: `docs/DECISIONS.md` names `pipelines/` as a route `evals/oversight/` does not yet scan — so a
+#: column literally called `name` entering a table on the decision path, ahead of the scan that
+#: would police it, is a thing to do deliberately rather than by copying the source's shape.
+#: Bronze keeps it, in the source's shape, which is what bronze is for.
+PRODUCT_COLUMNS: tuple[str, ...] = (
+    "sku_id",
+    "category",
+    "base_price_cents",
+    "shelf_life_days",
+    "substitute_of",
+)
+
+
+def _latest_product(product_master: DataFrame) -> DataFrame:
+    """One row per sku: the attributes the **latest** drop published, and when it was first seen.
+
+    **The latest drop wins, and that is a retroactive rewrite with no way to avoid it.**
+    `CLAUDE.md` warns that joining to the current cost table *"silently rewrites every historical
+    margin"*, and the cost ledger escapes it by carrying `effective_from` and `known_from`.
+    `product_master` carries neither — `pipelines/ingest/erp.py` says *"`store_master` and
+    `product_master` have no time"* — so when a drop changes a product's category there is no
+    date to apply the change from, and it applies to all of history. That is the source's
+    limitation and it is recorded here rather than papered over: a dimension cannot invent a
+    time axis its source does not publish, and doctrine rule 3 forbids inventing one.
+
+    What is kept is the evidence that it moved: `product_known_from` is the first drop that
+    carried the sku and `product_drops_carrying_it` is how many did, so a product whose
+    attributes changed mid-day is visible as a row seen in several drops rather than as nothing.
+
+    Measured at smoke scale on this corpus: **45 rows, 9 skus, 5 drops each, and 0 skus whose
+    category differed across them** — so the tie-break is unexercised by the data and is planted
+    in `tests/pipelines/test_silver.py`.
+    """
+    newest = Window.partitionBy("sku_id").orderBy(sf.col("_exported_at").desc())
+    first_seen = product_master.groupBy("sku_id").agg(
+        sf.min("_exported_at").alias("product_known_from"),
+        sf.countDistinct("_source_file").alias("product_drops_carrying_it"),
+    )
+    latest = (
+        product_master.withColumn("_rank", sf.row_number().over(newest))
+        .filter(sf.col("_rank") == 1)
+        .select(*PRODUCT_COLUMNS)
+    )
+    return latest.join(first_seen, on="sku_id", how="inner")
+
+
+def reference(cost_ledger: DataFrame, product_master: DataFrame) -> tuple[DataFrame, DataFrame]:
+    """The ERP dimension: the cost on **both** of its time axes, and the product on neither.
 
     A cost step has two moments and confusing them is the defect `CLAUDE.md` warns about:
 
@@ -177,13 +225,50 @@ def reference(cost_ledger: DataFrame) -> tuple[DataFrame, DataFrame]:
     it would be one nobody could have computed on the day. `known_from` exists because
     `pipelines/ingest/bulk.py` stamps every materialised row with the drop's `_exported_at`; a
     single static snapshot would have made this column a constant and the distinction unaskable.
+
+    Half of this dimension is as-of and half of it is not, which is the limit to read first
+    ------------------------------------------------------------------------------------------
+    **`product_master` has no time axis**, so a product's `category` is a fact with a key and no
+    date, and it is resolved by **key** rather than as-of. `cost_as_of` carries that split, in
+    two joins rather than one, and `_latest_product` carries what the missing axis costs.
+
+    So *as-of queryable* is true of the cost columns and false of the product columns, and the
+    phrase is not allowed to travel unqualified now that both are in one table. What one table
+    buys is that there is one ERP dimension rather than two, which is what `CLAUDE.md`
+    describes; what it costs is this paragraph.
+
+    Why the product dimension is here at all
+    ----------------------------------------
+    **Every metric contract declares `grain: [store_id, iso_week, category]`**, and `category` is
+    a `product_master` column. Until this branch silver read four of the seven tables `bulk.load`
+    writes to bronze and none of them carried it, so no gold table could be built at the grain
+    its own contract declares. `CLAUDE.md` said `reference` *"collapses six bronze tables into
+    one as-of queryable dimension"* and this function collapsed one. The gap was invisible for
+    exactly as long as nothing downstream of silver existed to need it.
+
+    **`store_master` is still unread**, and is named here rather than left to be discovered: no
+    metric's grain needs a store attribute and `store_id` passes through the events unchanged.
+    It enters when something asks for it.
+
+    The join has two failure directions and only one of them is a refusal
+    --------------------------------------------------------------------
+    A **cost step naming a product silver does not have** is quarantined: it prices something
+    that is not in the catalogue, and letting it through would put a row in the dimension with a
+    cost and no category, which is a null in every metric's grain.
+
+    A **product with no cost step is kept**, with null cost columns. That is not a defect — it is
+    the same state as a sale before its product's first published cost, and doctrine rule 3 says
+    a missing cost is a null rather than a borrowed neighbour.
+
+    Measured at smoke scale on this corpus: **9 products, 9 skus with a cost step, 0 in either
+    direction.** Both branches are unexercised by the data, so both are planted in
+    `tests/pipelines/test_silver.py` rather than asserted from a clean run.
     """
-    earliest = cost_ledger.groupBy("sku_id", "effective_from", "unit_cost_cents").agg(
-        sf.min("_exported_at").alias("known_from"),
-        sf.countDistinct("_source_file").alias("drops_carrying_it"),
-    )
-    return apply(
-        earliest,
+    costs, costs_bad = apply(
+        cost_ledger.groupBy("sku_id", "effective_from", "unit_cost_cents").agg(
+            sf.min("_exported_at").alias("known_from"),
+            sf.countDistinct("_source_file").alias("drops_carrying_it"),
+        ),
         [
             Expectation(
                 "cost_positive",
@@ -200,32 +285,93 @@ def reference(cost_ledger: DataFrame) -> tuple[DataFrame, DataFrame]:
         table="reference",
         business_key=("sku_id", "effective_from"),
     )
+    products, products_bad = apply(
+        _latest_product(product_master),
+        [
+            Expectation(
+                "category_present",
+                sf.length(sf.col("category")) > 0,
+                "every metric contract's grain is (store_id, iso_week, category), so a product "
+                "with no category makes a metric row nobody can attribute",
+            ),
+        ],
+        table="reference",
+        business_key=("sku_id",),
+    )
+    joined = products.join(
+        costs.withColumnRenamed("sku_id", "_cost_sku"),
+        products["sku_id"] == sf.col("_cost_sku"),
+        "full_outer",
+    )
+    kept, orphaned = apply(
+        joined,
+        [
+            Expectation(
+                "cost_step_names_a_known_product",
+                sf.col("sku_id").isNotNull(),
+                "a cost step prices a sku that is not in the product master, so it would enter "
+                "the dimension with a cost and no category — a null in every metric's grain",
+            ),
+        ],
+        table="reference",
+        business_key=("_cost_sku", "effective_from"),
+    )
+    return kept.drop("_cost_sku"), costs_bad.union(products_bad).union(orphaned)
+
+
+#: The cost columns, which are the ones with a time axis and the only ones resolved as-of.
+COST_COLUMNS: tuple[str, ...] = ("sku_id", "effective_from", "unit_cost_cents", "known_from")
+
+#: The product columns, which have no time axis and are therefore resolved by key. See
+#: `reference`: half of that dimension is as-of and half of it is not.
+UNTIMED_COLUMNS: tuple[str, ...] = tuple(c for c in PRODUCT_COLUMNS if c != "sku_id")
 
 
 def cost_as_of(reference_table: DataFrame, frame: DataFrame, moment: str) -> DataFrame:
-    """Join `frame` to the cost **as it was known at** `moment`. There is no other join here.
+    """Join `frame` to the ERP dimension: the cost **as it was known at** `moment`, the product
+    by its key.
 
-    Two conditions, and dropping either one is a different bug: `effective_from <= moment`
-    because a future price is not this sale's cost, and `known_from <= moment` because a cost
-    the ERP had not yet published could not have been used. The latest surviving step wins, and
-    a row with no surviving step keeps a null cost rather than borrowing the nearest one —
+    Two conditions on the cost, and dropping either one is a different bug: `effective_from <=
+    moment` because a future price is not this sale's cost, and `known_from <= moment` because a
+    cost the ERP had not yet published could not have been used. The latest surviving step wins,
+    and a row with no surviving step keeps a null cost rather than borrowing the nearest one —
     `Chain.cost_as_of` refuses the same case one repository over, and inventing a cost is
     doctrine rule 3.
+
+    **Two joins, and the second one is not an optimisation.** The product columns carry no time
+    axis, so they are resolved by key before the as-of pick runs. Resolving them through the
+    as-of join instead would look identical on almost every row — a product's category is the
+    same on every one of its cost steps, so whichever step wins carries the right one — and would
+    be wrong on exactly the rows where **no step survives**: those keep a null cost, correctly,
+    and would take a null category with it.
+
+    That is not a corner. Measured on this corpus at smoke scale: **1,418 of 35,695 receipt
+    lines have no cost known at the moment of the sale**, because the ERP's first drop lands on
+    the first trading day and the corpus sells before it. Through one join those 1,418 lines
+    would enter gold with a null in the `category` position of every metric's declared grain,
+    and the number would still be a number.
     """
-    candidates = frame.join(
-        reference_table.withColumnRenamed("sku_id", "_ref_sku"),
-        (frame["sku_id"] == sf.col("_ref_sku"))
+    attributes = reference_table.select("sku_id", *UNTIMED_COLUMNS).distinct()
+    identified = frame.join(
+        attributes.withColumnRenamed("sku_id", "_attr_sku"),
+        frame["sku_id"] == sf.col("_attr_sku"),
+        "left",
+    ).drop("_attr_sku")
+    steps = reference_table.select(*COST_COLUMNS).filter(sf.col("effective_from").isNotNull())
+    candidates = identified.join(
+        steps.withColumnRenamed("sku_id", "_ref_sku"),
+        (identified["sku_id"] == sf.col("_ref_sku"))
         & (sf.col("effective_from") <= sf.col(moment))
         & (sf.col("known_from") <= sf.col(moment)),
         "left",
     )
-    latest = Window.partitionBy(*[frame[column] for column in frame.columns]).orderBy(
+    latest = Window.partitionBy(*[identified[column] for column in identified.columns]).orderBy(
         sf.col("effective_from").desc_nulls_last(), sf.col("known_from").desc_nulls_last()
     )
     return (
         candidates.withColumn("_rank", sf.row_number().over(latest))
         .filter(sf.col("_rank") == 1)
-        .drop("_rank", "_ref_sku", "drops_carrying_it")
+        .drop("_rank", "_ref_sku")
         .withColumnRenamed("unit_cost_cents", "unit_cost_as_of")
         .withColumnRenamed("effective_from", "cost_effective_from")
         .withColumnRenamed("known_from", "cost_known_from")

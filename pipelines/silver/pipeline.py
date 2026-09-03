@@ -73,7 +73,10 @@ def shelf_state_view():  # type: ignore[no-untyped-def]
     return kept
 
 
-@dp.materialized_view(name="reference", comment="Cost by effective_from and known_from")
+@dp.materialized_view(
+    name="reference",
+    comment="Cost by effective_from and known_from; the product by its key, which has neither",
+)
 def reference_view():  # type: ignore[no-untyped-def]
-    kept, _ = tables.reference(_bronze("cost_ledger"))
+    kept, _ = tables.reference(_bronze("cost_ledger"), _bronze("product_master"))
     return kept

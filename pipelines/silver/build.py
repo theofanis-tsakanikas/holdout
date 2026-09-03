@@ -25,7 +25,13 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame, SparkSession
 
 #: What silver reads. Bronze is one directory per table, which is what `bulk.load` wrote.
-BRONZE_TABLES: tuple[str, ...] = ("pos_lines", "esl_acks", "shelf_days", "cost_ledger")
+BRONZE_TABLES: tuple[str, ...] = (
+    "pos_lines",
+    "esl_acks",
+    "shelf_days",
+    "cost_ledger",
+    "product_master",
+)
 
 #: What silver writes. `quarantine` is one table for every source, because its size is a health
 #: metric and a metric split five ways is five metrics nobody adds up.
@@ -66,7 +72,7 @@ def build(spark: SparkSession, bronze: Path, silver: Path) -> dict[str, int]:
     sales, sales_bad = tables.sales(frames["pos_lines"])
     displayed, displayed_bad = tables.price_displayed(frames["esl_acks"])
     shelf, shelf_bad = tables.shelf_state(frames["shelf_days"], sales)
-    costs, costs_bad = tables.reference(frames["cost_ledger"])
+    costs, costs_bad = tables.reference(frames["cost_ledger"], frames["product_master"])
 
     written: dict[str, int] = {}
     for name, frame in (

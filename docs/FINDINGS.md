@@ -1473,6 +1473,26 @@ not earn a branch of its own. It is here so the next person who sees `-1d` finds
 instead of taking it for a bug in the arithmetic
 *Status:* open
 
+> **Restated 2026-09-04 by `pipelines/silver-reference-carries-the-product-dimension`, which is
+> the `-1d` this entry predicted, arriving.** A finding filed at 01:30 local — 22:30 UTC — printed
+> its age as `-1d`, exactly as the paragraph above says it would, and `make findings` stayed
+> **green**: the age is reported, never asserted on, so this prints oddly and gates nothing.
+>
+> **What is new is not the symptom. It is what the symptom nearly did to the record.** The first
+> response to `-1d` was to date the entry `2026-09-03` — the day the *instrument* is in — which
+> would have made the row read `0d` and left a finding filed on the 4th recorded as the 3rd.
+> **That is adjusting the record until the measurement agrees with it**, by the session that had
+> just measured the instrument to be the thing that was wrong. It was caught by a reviewer, not
+> by the author, and not by anything mechanical: nothing here can tell a date written a day early
+> from a date written correctly.
+>
+> So the entry gains one line rather than a fix: **when the age column and the calendar disagree,
+> the calendar is the record and the column is the symptom.** The prior wording stays per doctrine
+> rule 4, and it needed no correction — it already named `ops/findings.py` beside `ops/expiry.py`
+> and already named `-1d` as the shape. **It was right, and it was read after the mistake rather
+> than before it**, which is the only reason this restatement is about a near-miss instead of a
+> defect on `main`.
+
 **A crash and a survival get the same words in `gate-proof`'s red line** · found 2026-09-02 ·
 by run `33571168520`, the first `combine` job this repository has ever run
 
@@ -2723,6 +2743,66 @@ cannot make a laptop forget what it has.
 *Disposition:* `pipelines/silver` — the gate is on that branch and bites the line that caused
 it. **Left open rather than closed by its own author**: closure is a transition, and the
 transition is that branch landing
+*Status:* open
+
+---
+**Silver read four of seven bronze tables and none of them carried the grain's third column** ·
+found 2026-09-04 · by `T011` asking which silver table supplies `category`, before writing any
+gold
+
+Every metric contract declares `grain: [store_id, iso_week, category]`. `category` is a
+`product_master` column. **`pipelines/silver/build.py`'s `BRONZE_TABLES` did not read
+`product_master`**, so there was no silver table carrying it and **no gold table could have been
+built at the grain its own contract declares.**
+
+Measured rather than read off the code — a smoke W6 bronze through `erp.export`, `erp.history`
+and `bulk.load`, 19 files and 38,168 rows:
+
+    bronze holds   cost_ledger  esl_acks  pos_lines  price_decisions
+                   product_master  shelf_days  store_master        7 tables
+    silver read    pos_lines  esl_acks  shelf_days  cost_ledger     4 tables
+
+**Two documents were already ahead of the code.** `CLAUDE.md` says `reference` *"collapses six
+bronze tables into one as-of queryable dimension"*; `pipelines/silver/__init__.py` said it
+*"collapses the ERP's tables"*. `tables.reference` took one argument and collapsed one table.
+Same family as the six-worlds table and as W3's row — **a sentence describing a function that
+does less than it says** — and it survived because nothing downstream of silver existed to need
+the difference. `T010`'s own `stop_at` was *quarantine non-empty on planted bad data*, which four
+tables satisfy as well as five.
+
+**The half that is not a naming defect.** Putting the product columns in `reference` makes half
+the dimension as-of and half of it not: `cost_ledger` publishes `effective_from` and the loader
+stamps `known_from`, while `product_master` publishes **no time at all** —
+`pipelines/ingest/erp.py` says so in as many words. So a product attribute is resolved by **key**,
+and a change to one applies to all of history because there is no date to apply it from. That is
+`CLAUDE.md`'s own *"joining to the current cost table silently rewrites every historical margin"*
+arriving in a dimension that cannot avoid it, and it is written down rather than smoothed.
+
+**And the second join earns its place by a number, not by an argument.** Resolving the product
+columns through the as-of pick instead would be right on almost every row — a category is the
+same on all of a sku's cost steps, so whichever step wins carries the right one — and wrong on
+exactly the rows where **no step survives**. Measured on this corpus, both branches run:
+
+    receipt lines with no cost known at the moment of the sale     1,418 of 35,695
+    of those, lines that lose their category through one join      1,418
+    of those, lines that lose their category through two joins         0
+
+Through one join those 1,418 would have entered gold with a null in the `category` position of
+every metric's declared grain, **and the number would still have been a number.**
+
+**`store_master` and `price_decisions` are still unread**, and are named in `tables.reference`
+rather than left to be discovered the same way. No metric's grain needs a store attribute and
+`store_id` passes through the events unchanged; `price_decisions` is the corpus's analogue of
+`gold.decisions`, which is family D and is not built.
+
+*Site:* `pipelines/silver/tables.py` :: `def reference(cost_ledger: DataFrame, product_master: DataFrame) -> tuple[DataFrame, DataFrame]:`
+*Site:* `pipelines/silver/build.py` :: `    "product_master",`
+*Site:* `tests/pipelines/test_silver.py` :: `def test_the_category_survives_a_sale_the_cost_join_cannot_answer(`
+*Disposition:* `pipelines/silver-reference-carries-the-product-dimension`, which is this branch —
+**split out of `T011` deliberately**, on `#52`'s precedent: this is a defect in work that landed
+the day before, found by the branch downstream of it, and *silver shipped missing the one
+dimension every metric's grain requires* is a record a reader should find on a silver branch
+rather than in commit four of a gold one. **Left open rather than closed by its own author**
 *Status:* open
 
 ---
