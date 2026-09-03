@@ -2982,8 +2982,25 @@ more shards to give at this price.** The levers left are:
     put an engine's tests in `gate`       exactly what `T010` kept silver out of, on the job
                                           that runs on every push
 
-The second and third are refused above rather than left unconsidered; the first is not a session's
-to take.
+The second and third are refused above rather than left unconsidered.
+
+**The first was taken to the author on 2026-09-04 and declined, on grounds worth recording because
+they are not about the shard count.** The ceiling is **not a correctness limit** — beyond twenty,
+jobs queue, so it costs wall clock and not truth. Raising it is a **recurring subscription**, paid
+from a budget earmarked for AWS, to solve a design question; seven is measured, free and
+reversible, and its cost is one published figure becoming history. He kept seven.
+
+**And shaving a shard buys exactly one task.** `T012` is a claim target and will want a job;
+`T014` probably will. **There is no second cheap shard** — the sharding still earns the slots it
+has, measured: 1,896s of draws against a 264s slowest leg.
+
+**The structural question underneath belongs to `T016` and is deliberately not answered here.**
+Three tasks each want an engine job and all three want the **same** installation: silver has one,
+gold took a second, `pipelines/ml` will ask for a third — three slots for one dependency set. One
+job for every engine test would cost one slot instead of three. **That is a question about the
+whole**, which is what the phase-2 integration session exists for and exactly the kind of thing
+answered badly one branch at a time; and when it is answered it is to be answered by **measuring**
+what a combined job costs, not by projecting it.
 
 *Site:* `tests/ops/test_ci_sharding.py` :: `def test_the_run_stays_under_the_concurrency_ceiling() -> None:`
 *Site:* `Makefile` :: `CLAIM_2_SHARDS := 7`
