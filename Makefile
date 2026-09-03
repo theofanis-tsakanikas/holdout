@@ -27,6 +27,7 @@ PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
         expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 silver \
+        gold \
         claim-2-shard claim-2-combine claim-2-tests \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
@@ -81,7 +82,7 @@ typecheck:  ## mypy, strict
 #     all — it runs `-shard` on N machines and `-combine` on one — so whatever `claim-2` selects,
 #     `claim-2-combine` must select too, or CI runs none of it.
 test:  ## the suite, minus what a claim target owns
-	$(RUN) pytest -m "not claim_2 and not silver"
+	$(RUN) pytest -m "not claim_2 and not silver and not gold"
 
 contracts:  ## validate every contract and refuse a stale or hand-edited generated artefact
 	$(RUN) holdout-contracts check
@@ -189,6 +190,10 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: twenty. Eight fits one pull request with headroom and two do not, which matches the
 #: one-branch-at-a-time practice this repository already follows.
 #:
+#: **Every figure below was taken over an EIGHT-way split and is kept per doctrine rule 4.** It
+#: describes the split this repository ran until 2026-09-04; the restatement under
+#: `CLAIM_2_SHARDS` says why it is seven now and what that costs.
+#:
 #: What it buys, measured on this repository's own corpus rather than projected: eight
 #: interleaved shards at 38 43 39 42 37 40 43 41 seconds, max over min **1.16**, against 270s
 #: unsharded. The balance is what interleaving buys — a contiguous split would put W1's 200
@@ -218,7 +223,33 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #:
 #: *(The first sharded CI run gave 490-973 and 1.99, and that was neither of these: every shard
 #: key was cold and each leg paid its own world generation. `docs/FINDINGS.md` carries it.)*
-CLAIM_2_SHARDS := 8
+#: **Restated 2026-09-04 by `T011`: eight became seven. Seven is not better than eight — it is
+#: what fits under a ceiling.** `gold` is the twenty-first job against a documented limit of
+#: twenty, `tests/ops/test_ci_sharding.py` computes `3 + entries + combines + 1` and refused at
+#: **21**, and a new entry has to come out of somewhere. The paragraph above is still the whole
+#: argument for why this number is set by the ceiling and not by the work.
+#:
+#: **The measurement below says the change is acceptable. It does not say it is right**, and a
+#: reader who finds `7` with figures beside it should not conclude anybody chose seven on the
+#: merits. The constraint chose it; the measurement only established that the wall clock does
+#: not move.
+#:
+#: **What it costs, measured rather than projected: nothing on the critical path.** From run
+#: `33813980838`, the eight shards and the marked tests beside them:
+#:
+#:     shards        264 263 192 191 256 240 236 254 s      max 264, sum 1896
+#:     claim-2-tests                             446 s      the longest leg of the matrix
+#:
+#: **The shards are not the critical path; `claim-2-tests` is.** Redistributing the same work
+#: over seven legs raises the average to 271s, and even a full one-seventh increase on the
+#: slowest leg lands at ~302s — still **144s below** the leg that actually decides the run. The
+#: shard leg would have to grow by 69% before it mattered.
+#:
+#: **The number that argues against it:** that projection assumes the interleaved split stays
+#: balanced, and the paragraph above measures `max over min` moving 55% across three runs of an
+#: identical split. What it also measures is that the movement is all in the *minimum* — the
+#: slowest leg was stable to 3.8% — and the slowest leg is the one this argument rests on.
+CLAIM_2_SHARDS := 7
 
 #: Where a shard leaves its draws and where the combine step looks for them. Never committed —
 #: `.gitignore` carries it — and it holds draws rather than worlds, so it is not the world
@@ -306,6 +337,22 @@ eval-oversight:  ## just claim 7's eval, without the mutations — about four se
 # refuses below went 6 to 7 with it.
 silver:  ## silver's tests — needs `uv sync --extra spark` (713 MB and a JVM)
 	$(RUN) pytest -m silver
+
+# **Gold's tests, and the extra they need contains silver's.** `dbt-spark[session]` drives the
+# SparkSession this repository starts, so a tree with dbt and no Spark could not run a model:
+# the `dbt` extra declares `holdout[spark]` and `uv sync --extra dbt` installs both.
+#
+# Measured before it was chosen, macOS arm64 / CPython 3.12.13, on top of a tree that already
+# has `spark`: **45 packages and 196.1 MiB**. It lands on one CI job of twenty, the same
+# arrangement `spark` has.
+#
+# **It runs at `rehearsal` and not at `smoke`, and that is a measurement.** At smoke this corpus
+# throws nothing away — 0 store-days of 2,268, on W1 and W6 — so `category_margin`'s third term
+# would be a sum over an empty table and `waste_value_per_store_week` a table with no rows, on a
+# green run. At rehearsal it is 1,329 store-days and 16,370 units. What that costs, warm, on
+# this laptop: ingest 3.1s, silver 14.4s, gold 25.2s, plus two Spark sessions.
+gold:  ## gold's tests — needs `uv sync --extra dbt` (196 MiB on top of the spark extra)
+	$(RUN) pytest -m gold
 
 # The ledger, not the executor. Each claim target plants its own mutations, so this one
 # runs nothing and instead checks the arrangement: every mutation owned by exactly one

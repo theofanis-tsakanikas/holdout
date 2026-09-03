@@ -19,6 +19,15 @@ version: '1.0.0'
 config-version: 2
 profile: holdout_gold
 
+# **dbt phones home by default and writes a per-machine UUID beside this file.** Left on, a
+# `dbt run` creates `.user.yml` holding an anonymous id and posts usage events to Snowplow.
+# This repository is public and every commit is a publication at the moment it is made, so a
+# per-machine identifier written by a tool introduced in this branch is exactly the thing that
+# must not be able to land — and a `.gitignore` entry is a second line of defence rather than
+# the first. Measured: with this false, no `.user.yml` is written at all.
+flags:
+  send_anonymous_usage_stats: false
+
 model-paths: ["models", "../../../generated/dbt/models"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]

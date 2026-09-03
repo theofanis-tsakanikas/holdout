@@ -47,8 +47,9 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from datetime import datetime
 
-    from holdout.core.experiment.assignment import SealedAssignment
     from pyspark.sql import SparkSession
+
+    from holdout.core.experiment.assignment import SealedAssignment
 
 #: The table `generated/readout/*.sql` names. Not a preference: the compiled query reads
 #: `gold.experiment_assignment` by hand, so a different name here makes the artefact unrunnable.
@@ -119,7 +120,7 @@ def write(
         )
     create(spark, schema=schema)
     existing = spark.sql(
-        f"select count(*) as n from {_qualified(schema)} where experiment_id = '{seal.experiment_id}'"  # noqa: E501
+        f"select count(*) as n from {_qualified(schema)} where experiment_id = '{seal.experiment_id}'"
     ).collect()[0]["n"]
     if existing:
         raise AssignmentWriteError(
@@ -161,12 +162,18 @@ def _iso_week_of(moment: datetime) -> str:
     return f"{year:04d}-W{week:02d}"
 
 
-def read_arms(spark: SparkSession, *, schema: str, experiment_id: str) -> dict[str, str]:
-    """Every (store, arm) the table holds for one experiment, as it comes back out."""
+def read_rows(spark: SparkSession, *, schema: str, experiment_id: str) -> list[tuple[str, str]]:
+    """Every (store, arm) row the table holds for one experiment, **duplicates included**.
+
+    A list rather than a mapping, and that is the whole of it: an append is the one edit the
+    storage permits, and an appended row gives a unit a second arm. Read into a `dict` the second
+    row would silently overwrite the first and the tamper would be invisible exactly where it is
+    possible.
+    """
     rows = spark.sql(
         f"select store_id, arm from {_qualified(schema)} where experiment_id = '{experiment_id}'"
     ).collect()
-    return {row["store_id"]: row["arm"] for row in rows}
+    return [(row["store_id"], row["arm"]) for row in rows]
 
 
 def verify(spark: SparkSession, seal: SealedAssignment, *, schema: str) -> None:
@@ -180,8 +187,15 @@ def verify(spark: SparkSession, seal: SealedAssignment, *, schema: str) -> None:
     A digest recomputed over an edited roster does not match the recorded one, whichever
     direction the edit went: a unit added, a unit removed, or a unit's arm changed.
     """
-    from_table = read_arms(spark, schema=schema, experiment_id=seal.experiment_id)
-    arms: dict[str, Arm] = {unit: Arm(value) for unit, value in from_table.items()}
+    rows = read_rows(spark, schema=schema, experiment_id=seal.experiment_id)
+    duplicated = sorted({unit for unit, _ in rows if [u for u, _ in rows].count(unit) > 1})
+    if duplicated:
+        raise AssignmentTamperedError(
+            f"{seal.experiment_id}: {len(duplicated)} unit(s) have more than one row — "
+            f"{duplicated[:5]}. An append is the one edit `{APPEND_ONLY}` permits, and this is "
+            "what it looks like: the unit now holds two arms and nothing in the storage refused."
+        )
+    arms: dict[str, Arm] = {unit: Arm(value) for unit, value in rows}
     recomputed = digest_for(
         experiment_id=seal.experiment_id,
         seed=seal.seed,
@@ -204,9 +218,7 @@ def verify(spark: SparkSession, seal: SealedAssignment, *, schema: str) -> None:
 def is_append_only(spark: SparkSession, *, schema: str) -> bool:
     """Whether the storage is the thing refusing, rather than a comment saying it would."""
     properties = spark.sql(f"show tblproperties {_qualified(schema)}").collect()
-    return any(
-        row["key"] == APPEND_ONLY and row["value"].lower() == "true" for row in properties
-    )
+    return any(row["key"] == APPEND_ONLY and row["value"].lower() == "true" for row in properties)
 
 
 def arms_of(seal: SealedAssignment) -> Mapping[str, Arm]:

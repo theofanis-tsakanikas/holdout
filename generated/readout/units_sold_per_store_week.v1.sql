@@ -10,8 +10,14 @@
 --
 -- parameters
 --   :experiment_id  the experiment whose assignment is read
---   :data_version   the Delta version every source is pinned to, so the number is
---                   reproducible after late data has arrived
+--   :data_version_gold_decision_economics
+--                   the Delta version gold.decision_economics is pinned to. **One parameter
+--                   per relation**: a Delta version counter is per table, so one
+--                   number cannot index two of them. Without the pin, re-running
+--                   last month's readout returns a different number as late data
+--                   arrives.
+--   :data_version_gold_experiment_assignment
+--                   the Delta version gold.experiment_assignment is pinned to.
 --   :period_start   inclusive, the declared opening of the comparison window
 --   :period_end     exclusive, the declared close. Reading before it is blocked by the
 --                   engine, not by this query.
@@ -22,7 +28,7 @@ with s as (
         iso_week,
         category,
         sum(cast(qty as decimal(38, 6))) as term_0
-    from gold.decision_economics version as of :data_version
+    from gold.decision_economics version as of :data_version_gold_decision_economics
     group by store_id, iso_week, category
 ),
 
@@ -43,7 +49,7 @@ assignment as (
         arm,
         assigned_at,
         seed
-    from gold.experiment_assignment version as of :data_version
+    from gold.experiment_assignment version as of :data_version_gold_experiment_assignment
     where experiment_id = :experiment_id
 )
 

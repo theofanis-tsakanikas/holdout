@@ -20,9 +20,11 @@ the only definition check this layer needs**: there is no second copy that could
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from pyspark.sql import SparkSession
 
 #: The dbt project, beside this module. `dbt_project.yml`'s `model-paths` reaches out of it to
@@ -46,6 +48,16 @@ class DbtRunError(RuntimeError):
     """dbt reported a failure, or reported success over fewer models than the project has."""
 
 
+def missing(built: Sequence[str]) -> list[str]:
+    """Which declared models a run did not build. A pure function so it can be tested cheaply.
+
+    Separated from `run` because the interesting case — dbt succeeding over a **short** model
+    list — costs a full build to reach through `run` and costs nothing to reach here. A check
+    that is only exercised by the expensive path is a check nobody exercises.
+    """
+    return [name for name in EXPECTED_MODELS if name not in set(built)]
+
+
 def run(spark: SparkSession, *, target_root: Path) -> tuple[str, ...]:
     """Build every model and return their names, or raise naming what went wrong.
 
@@ -56,7 +68,7 @@ def run(spark: SparkSession, *, target_root: Path) -> tuple[str, ...]:
     """
     from dbt.cli.main import dbtRunner
 
-    assert spark is not None  # noqa: S101 — the precondition above, not a test assertion
+    assert spark is not None
     invocation = dbtRunner().invoke(
         [
             "run",
@@ -66,19 +78,27 @@ def run(spark: SparkSession, *, target_root: Path) -> tuple[str, ...]:
             str(PROJECT),
             "--target-path",
             str(target_root / "dbt-target"),
+            # **Both of dbt's output directories are caller-chosen**, for the reason
+            # `pipelines/gold/session.py` gives about Spark's: left to their defaults they are
+            # created *inside the project*, which here is a tracked package. `logs/` and
+            # `target/` under `pipelines/gold/dbt/` are a build writing into the tree it is
+            # built from.
+            "--log-path",
+            str(target_root / "dbt-logs"),
         ]
     )
     if not invocation.success:
         raise DbtRunError(f"dbt run failed: {invocation.exception or invocation.result}")
 
-    built = tuple(
-        result.node.name
-        for result in invocation.result  # type: ignore[union-attr]
-    )
-    missing = [name for name in EXPECTED_MODELS if name not in built]
-    if missing:
+    # `invocation.result` is dbt's own `RunExecutionResult` for a `run`, and its type is a
+    # union across every command the runner accepts — hence the cast rather than an assertion
+    # about a library's internals. What is *not* trusted is its content: `missing` below is
+    # what turns a short list into a refusal.
+    built = tuple(str(result.node.name) for result in cast("Iterable[Any]", invocation.result))
+    absent = missing(built)
+    if absent:
         raise DbtRunError(
-            f"dbt reported success having built {list(built)}, which is missing {missing}. "
+            f"dbt reported success having built {list(built)}, which is missing {absent}. "
             "A run that resolves no models exits 0, so success alone says nothing about "
             "whether the generated metric models were found — `model-paths` reaching "
             "`generated/dbt/models` is what puts them in the project, and this is where that "

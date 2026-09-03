@@ -96,12 +96,16 @@ DISCOVER_FLOOR = re.compile(r"^\s*FLOOR=(?P<floor>\d+)\s*$", re.MULTILINE)
 #: What a target CI must run looks like when nobody is trying to keep the list short.
 #: `discover` must find every one of these; if it finds fewer, a gate exists that never runs.
 #:
-#: **`silver` is here and is not a claim.** `T010` put the engine it needs in an optional
-#: dependency group, so its tests are deselected from the suite and run by one job — which is
-#: exactly the shape that must not be discoverable by accident. Written out here independently
-#: of `ci.yml`, which is the whole mechanism: `claim_targets_discover_finds` reads that file's
-#: own pattern out of it, and the two are compared rather than shared.
-ANY_CLAIM_TARGET = re.compile(r"^(claim-[0-9]+|gate-proof|preview-audit|silver):", re.MULTILINE)
+#: **`silver` and `gold` are here and neither is a claim.** `T010` put the engine silver needs
+#: in an optional dependency group and `T011` did the same for dbt, so both sets of tests are
+#: deselected from the suite and run by one job each — which is exactly the shape that must not
+#: be discoverable by accident. Written out here independently of `ci.yml`, which is the whole
+#: mechanism: `claim_targets_discover_finds` reads that file's own pattern out of it, and the
+#: two are compared rather than shared. **Adding a target therefore means editing this line and
+#: `ci.yml`'s grep and the floor**, and the three disagreeing is the failure this row reports.
+ANY_CLAIM_TARGET = re.compile(
+    r"^(claim-[0-9]+|gate-proof|preview-audit|silver|gold):", re.MULTILINE
+)
 
 
 class InstrumentMissingError(RuntimeError):
@@ -741,7 +745,7 @@ COVERAGE: tuple[Coverage, ...] = (
     ),
     Coverage(
         "discover",
-        "every claim-N, gate-proof, preview-audit and silver target in the Makefile",
+        "every claim-N, gate-proof, preview-audit, silver and gold target in the Makefile",
         claim_targets_that_exist,
         claim_targets_discover_finds,
         "the one that was already lying: claim-[1-7] cannot see a claim-8, and claims-complete "

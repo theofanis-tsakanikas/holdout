@@ -71,8 +71,13 @@ def build(root: Path, *, name: str = "holdout-gold", cores: int = LOCAL_CORES) -
         .config("spark.ui.enabled", "false")
         .config("spark.sql.shuffle.partitions", str(cores))
         .config("spark.sql.warehouse.dir", str(warehouse))
+        # **`spark.hadoop.` prefixed, and the prefix is the whole of it.** Spark passes
+        # `spark.hadoop.*` through to the Hadoop configuration the Hive metastore reads and
+        # warns on anything else: written bare, this prints `Ignoring non-Spark config
+        # property: javax.jdo.option.ConnectionURL` and the metastore lands in the working
+        # directory anyway. A warning on stderr among a hundred Spark lines is not a refusal.
         .config(
-            "javax.jdo.option.ConnectionURL",
+            "spark.hadoop.javax.jdo.option.ConnectionURL",
             f"jdbc:derby:;databaseName={metastore};create=true",
         )
     )

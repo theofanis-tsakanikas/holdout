@@ -63,14 +63,25 @@ READOUT_DIR = REPO_ROOT / "generated" / "readout"
 #: Every parameter marker the compiler emits, in the artefact's own spelling.
 PARAMETER = re.compile(r":(?P<name>[a-z_]+)")
 
+#: One pinned relation, read out of the artefact rather than derived from its parameter name.
+#: **The derivation does not go the other way**: `data_version_gold_decision_economics` could be
+#: `gold.decision_economics` or `gold.decision.economics`, and a binder that guessed would be
+#: inventing a table name. The query already says which relation each parameter pins, so this
+#: reads it there.
+PINNED_RELATION = re.compile(r"from (?P<relation>[\w.]+) version as of :(?P<parameter>[a-z_]+)")
+
 
 class ParameterError(ValueError):
     """A marker in the artefact has no value, or a value was supplied for no marker."""
 
 
-def artefact(metric_identifier: str) -> Path:
-    """The compiled readout for one metric, by the identifier the compilers file it under."""
-    path = READOUT_DIR / f"{metric_identifier}.sql"
+def artefact(metric_stem: str) -> Path:
+    """The compiled readout for one metric, by the stem the compilers file it under.
+
+    That stem is `{id}.v{version}` and it carries a dot, unlike the dbt model's — see
+    `Metric.identifier`. Only the dbt artefact takes its file name as an identifier.
+    """
+    path = READOUT_DIR / f"{metric_stem}.sql"
     if not path.is_file():
         raise FileNotFoundError(
             f"{path} does not exist. The readout is compiled from a metric contract by "
@@ -166,12 +177,47 @@ def bind(text: str, parameters: Mapping[str, object]) -> Bound:
     return Bound(tuple(fixed), tuple(names), tuple(literals))
 
 
+def pins(text: str) -> dict[str, str]:
+    """Relation -> the parameter that pins it, read out of the compiled query.
+
+    **One per relation, because a Delta version counter is per table.** The artefact emitted one
+    `:data_version` for all of them until this branch executed it: `gold.decision_economics` and
+    `gold.waste` sat at version 0 while `gold.experiment_assignment` was at 1, and a readout
+    pinned at 0 read the assignment table's empty `CREATE` and returned nothing at all.
+    """
+    found = {m.group("relation"): m.group("parameter") for m in PINNED_RELATION.finditer(text)}
+    if not found:
+        raise ParameterError(
+            "this readout pins no relation, so re-running it after late data has arrived would "
+            "return a different number. Either the artefact changed shape or this pattern no "
+            "longer matches it, and neither may be reported as nothing to do."
+        )
+    return found
+
+
+def pin_now(spark: SparkSession, text: str) -> dict[str, int]:
+    """Each pinned relation at its **current** version — a readout taken today, reproducibly.
+
+    Reproducing an old one means supplying the versions that were recorded with it, which is why
+    `run` takes a mapping rather than calling this itself: a readout that pinned at *now* every
+    time it ran would pin nothing.
+    """
+    return {
+        relation: int(
+            spark.sql(f"describe history {relation}")
+            .selectExpr("max(version) as version")
+            .collect()[0]["version"]
+        )
+        for relation in pins(text)
+    }
+
+
 def run(
     spark: SparkSession,
-    metric_identifier: str,
+    metric_stem: str,
     *,
     experiment_id: str,
-    data_version: int,
+    versions: Mapping[str, int],
     period_start: str,
     period_end: str,
 ) -> tuple[DataFrame, Bound]:
@@ -181,14 +227,19 @@ def run(
     the file from the same spans the executed text was built from, so a caller — or a test — can
     compare it against the file on disk and see that nothing outside a marker moved.
     """
-    path = artefact(metric_identifier)
-    bound = bind(
-        path.read_text(encoding="utf-8"),
-        {
-            "experiment_id": experiment_id,
-            "data_version": data_version,
-            "period_start": period_start,
-            "period_end": period_end,
-        },
-    )
+    text = artefact(metric_stem).read_text(encoding="utf-8")
+    parameters: dict[str, object] = {
+        "experiment_id": experiment_id,
+        "period_start": period_start,
+        "period_end": period_end,
+    }
+    for relation, parameter in pins(text).items():
+        if relation not in versions:
+            raise ParameterError(
+                f"{relation} is pinned by this readout and no version was given for it. Every "
+                "relation carries its own parameter because a Delta version counter is per "
+                "table; supplying one number for all of them is what this replaced."
+            )
+        parameters[parameter] = versions[relation]
+    bound = bind(text, parameters)
     return spark.sql(bound.executed), bound

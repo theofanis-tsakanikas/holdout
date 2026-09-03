@@ -367,8 +367,8 @@ def test_a_deselected_test_that_no_claim_target_runs_is_refused(
     assert abandoned != makefile, "no claim target selects a mark, so there is nothing to remove"
     monkeypatch.setattr(figures, "_makefile", lambda: abandoned)
 
-    assert figures.suite_selection() == "not claim_2 and not silver"
-    assert figures.claim_selection() == "(silver)"
+    assert figures.suite_selection() == "not claim_2 and not silver and not gold"
+    assert figures.claim_selection() == "(gold) or (silver)"
 
     # **A difference rather than a zero.** `silver` still owns its own tests, so the covered
     # count is not zero and never will be again; what the row refuses is the *gap* — the
@@ -399,7 +399,7 @@ def test_a_claim_target_that_runs_other_tests_does_not_cover_these(
     # leaving the others intact would let this test pass for the wrong reason the day another
     # target's own tests happen to cover the deselected set.
     elsewhere = makefile
-    for real in ("claim_2", "silver"):
+    for real in ("claim_2", "silver", "gold"):
         elsewhere = elsewhere.replace(
             f"$(RUN) pytest -m {real}", "$(RUN) pytest -m not_a_real_mark"
         )
@@ -423,7 +423,9 @@ def test_a_suite_that_deselects_nothing_is_covered_by_nothing_and_passes(
     a gate that cannot tell *unused* from *broken* is the `grep -P` shape one file over.
     """
     makefile = (figures.REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    plain = makefile.replace('$(RUN) pytest -m "not claim_2 and not silver"', "$(RUN) pytest")
+    plain = makefile.replace(
+        '$(RUN) pytest -m "not claim_2 and not silver and not gold"', "$(RUN) pytest"
+    )
     assert plain != makefile
     monkeypatch.setattr(figures, "_makefile", lambda: plain)
 
@@ -516,8 +518,8 @@ def test_a_left_side_with_nothing_in_it_is_not_a_pass(monkeypatch: pytest.Monkey
 
 
 def test_every_target_that_owns_marked_tests_runs_in_ci_today() -> None:
-    """Two of them, and the second arrived with the change that wrote this assertion."""
-    assert figures.mark_owning_targets() == ["claim-2-tests", "silver"]
+    """Three of them now, and each arrived with the change that put an engine in an extra."""
+    assert figures.mark_owning_targets() == ["claim-2-tests", "gold", "silver"]
     failures, missing = figures.unrun_target_failures()
     assert missing == []
     assert failures == []

@@ -156,6 +156,7 @@ pythonpath = ["src"]
 # `make test` deselects to be selected by some `claim-*` target.
 markers = [
   "silver: needs the `spark` extra — the engine `pipelines/silver/` runs on, which `uv sync` does not install. Run by `make silver`, and by the one CI job that syncs the extra.",
+  "gold: needs the `dbt` extra — dbt-core and dbt-spark[session], which contain the `spark` extra. Run by `make gold`, and by the one CI job that syncs it.",
   "claim_2: claim 2's own evidence — minutes, and it generates worlds. Run by `make claim-2` and by `make claim-2-combine`, which is the one CI runs for a sharded target.",
 ]
 

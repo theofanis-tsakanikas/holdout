@@ -1804,6 +1804,20 @@ Everything that needs data at scale, an engine, or a workspace.
   the day. See T010's landing note in `TASKS.md`.*
 - `pipelines/gold/` — dbt. The metric contract compiles into a Delta view, the agent tool
   definition and the readout query.
+  *Landed 2026-09-04. Families A and C only, and the four tables that are absent are named with
+  their reasons rather than built empty. dbt runs in-process against the SparkSession this
+  repository configures, and reaches `generated/dbt/models` through `model-paths` rather than
+  copying it — so no copy of a compiled artefact exists under `pipelines/` and `make contracts`
+  is the only definition check gold needs. Python owns the as-of join, because silver's
+  `cost_as_of` already is it; dbt owns everything downstream. The tests run at `rehearsal` and
+  not at `smoke`, because at smoke this corpus throws nothing away and the primary metric's third
+  term would be a sum over an empty table on a green run.*
+
+  *Executing the artefacts for the first time found three defects in them and the contracts moved
+  each time, which is what `docs/DECISIONS.md` ruled in advance: a dbt file name that is an
+  identifier no engine can parse, a single version parameter applied to three tables whose Delta
+  counters are independent, and — this branch's own — `file_format` in a dbt profile, accepted,
+  ignored, and green over five parquet tables. See `T011`'s landing note in `TASKS.md`.*
 - The two AI/BI dashboards as `databricks_dashboard` resources — experiment readout and decision
   monitor. The second is required by doctrine rule 2: without it, a fallback is not visible to the
   end. Both consume the metric contract, so both are claim 5 evidence.

@@ -74,6 +74,15 @@ def priced_sales(sales: DataFrame, reference: DataFrame) -> DataFrame:
 def priced_waste(shelf_state: DataFrame, reference: DataFrame) -> DataFrame:
     """Every store-day that threw something away, priced at the end of the day it happened on.
 
+    **`shelf_state.unit_cost_cents` is dropped before the join, and that is the point of the
+    join.** Silver copies the ERP's cost onto each shelf-day, so a `waste` table could be valued
+    from a column that is already sitting there — and it would be the **current** cost rather
+    than the one known on the day, which is `CLAUDE.md`'s *"joining to the current cost table
+    silently rewrites every historical margin"* available two feet away and needing no join at
+    all. Dropping it is also what stops the rename colliding: `cost_as_of` produces
+    `unit_cost_as_of` from the reference's own column, and two of them is
+    `[COLUMN_ALREADY_EXISTS]` rather than a silent pick.
+
     `shelf_state` carries one row per store, sku and business date, and `wasted_qty` is zero on
     most of them. The rows that disposed of nothing are dropped **here rather than in the metric**
     — a `waste` table full of zero-quantity rows would make the metric's full outer join produce
@@ -84,11 +93,16 @@ def priced_waste(shelf_state: DataFrame, reference: DataFrame) -> DataFrame:
 
     from pipelines.silver import tables
 
-    disposals = shelf_state.filter(sf.col("wasted_qty") > 0).withColumn(
-        # The last instant of the business date. `business_date` is a string in the corpus's own
-        # shape, so it is cast here rather than assumed to be a date already.
-        "disposed_at",
-        sf.to_timestamp(sf.to_date(sf.col("business_date"))) + sf.expr("INTERVAL 1 DAY - INTERVAL 1 SECOND"),
+    disposals = (
+        shelf_state.filter(sf.col("wasted_qty") > 0)
+        .drop("unit_cost_cents")
+        .withColumn(
+            # The last instant of the business date. `business_date` is a string in the corpus's own
+            # shape, so it is cast here rather than assumed to be a date already.
+            "disposed_at",
+            sf.to_timestamp(sf.to_date(sf.col("business_date")))
+            + sf.expr("INTERVAL 1 DAY - INTERVAL 1 SECOND"),
+        )
     )
     return tables.cost_as_of(reference, disposals, "disposed_at")
 
@@ -102,8 +116,8 @@ def write(spark: SparkSession, silver: Path, *, schema: str) -> dict[str, int]:
         ("priced_sales", priced_sales(frames["sales"], frames["reference"])),
         ("priced_waste", priced_waste(frames["shelf_state"], frames["reference"])),
     ):
-        frame.write.format("delta").mode("overwrite").option(
-            "overwriteSchema", "true"
-        ).saveAsTable(f"{schema}.{name}")
+        frame.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(
+            f"{schema}.{name}"
+        )
         written[name] = spark.table(f"{schema}.{name}").count()
     return written

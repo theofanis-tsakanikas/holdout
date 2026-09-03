@@ -39,6 +39,16 @@ htmlcov/
 # `make claim-2-combine` reads it.
 .shards/
 
+# dbt writes both of these **inside its project directory** unless told otherwise, and that
+# directory is a tracked package. `pipelines/gold/models.py` passes `--target-path` and
+# `--log-path` so they land under a caller-chosen root, and `dbt_project.yml` turns off the
+# anonymous usage stats that create `.user.yml` at all. These two lines are the second line of
+# defence: this repository is public and a per-machine UUID is not something to rely on one
+# flag to keep out.
+pipelines/gold/dbt/logs/
+pipelines/gold/dbt/target/
+pipelines/gold/dbt/.user.yml
+
 # Editors / OS
 .DS_Store
 .idea/

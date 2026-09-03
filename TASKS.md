@@ -1776,6 +1776,113 @@ mark-owning targets **by name** now reads recipes, so `silver` entered the popul
 existing; the flip side — a mark-owning target CI never invokes — is asserted with both sides
 derived and an empty left side raising rather than passing.
 
+**What it landed, and every defect it found was found by running an artefact rather than by
+reading one.** `docs/DECISIONS.md` deferred *"The generated SQL has never been executed"* to the
+moment gold was built and ruled in advance that **if gold does not match, the contracts move —
+not the other way round.** It paid out three times in one day.
+
+**One — the dbt artefact's file name is an identifier and the dot was not one.** dbt derives a
+model's relation name from its file name, so `category_margin_per_store_week.v3.sql` reached the
+engine as `gold`.`category_margin_per_store_week`.`v3` and every metric model failed with
+`REQUIRES_SINGLE_PART_NAMESPACE`. **Not a local artefact**: on Databricks the same name resolves
+to four parts and is invalid there too. `Metric.identifier` is the name where a name is parsed
+rather than read; the SQL table function, which already built `{id}_v{version}` inline, now takes
+it from the same place and its output is byte-identical. Only the three dbt paths moved.
+
+**Two — the compiled readout pinned three tables with one integer.** It emitted
+`version as of :data_version` on every relation and described it as *"the Delta version every
+source is pinned to"*, which cannot be true of Delta: each table's counter starts at 0 and
+advances on its own writes. Measured on a gold build, `gold.decision_economics` and `gold.waste`
+at version 0 while `gold.experiment_assignment` was at 1 — and a readout pinned at 0 read the
+assignment table's **empty `CREATE`** and returned no rows at all. It is structural rather than
+accidental: the assignment table is written once before the period opens and never again, so it
+is by design the one relation that will not advance with the others. The compiler now emits
+`:data_version_<relation>` per relation. **The alternative — dropping the pin from the assignment
+only — was refused**, because *the digest protects it anyway* is the argument that would let
+somebody drop the pin from a fact table next.
+
+**Three — `file_format` in a dbt profile is accepted, ignored, and green.** The first version put
+it under `outputs:` in `profiles.yml`; `dbt run` reported `PASS=5 ERROR=0` and every table was
+**parquet**, with `version as of` raising `UNSUPPORTED_FEATURE.TIME_TRAVEL`. It is a *model*
+config. `CLAUDE.md`'s `grep -P` at one remove, and worse in one respect: `grep` exited 1 and dbt
+exited **0**. `tests/pipelines/test_gold.py` now asserts the **provider of every built table**
+rather than the config that was meant to set it.
+
+**The dbt project reaches `generated/dbt/models` through `model-paths`, so no copy exists.**
+Measured: dbt resolves a model path outside its own directory. That makes `stop_at`'s *"the
+compiled consumers match byte-for-byte"* an arrangement rather than an equality somebody
+maintains — there is nothing to go stale, and `make contracts` is the only definition check gold
+needs. The test asserts the **absence**: no file under `pipelines/` is byte-identical to one
+under `generated/`.
+
+**dbt is load-bearing and it runs in-process.** `method: session` drives the SparkSession this
+repository starts, verified by application id before and after, so the generated models reach a
+session configured with Delta rather than one dbt built for itself. **Priced before it was
+chosen**, macOS arm64 / CPython 3.12.13, on top of a tree that already has `spark`: **45 packages
+and 196.1 MiB**, on one CI job of twenty. The Linux figure is in this branch's own run.
+
+**Families A and C, and the four that are absent are absent with a reason.** `store_day` has no
+consumer; `demand_features` belongs to `T014`, where point-in-time correctness has something to
+be correct for; `exposure` and `outcomes` are collected by a running experiment, which is phase 3;
+`decisions` is written at decision time into Lakebase by a decision path this corpus never ran.
+Building an empty table to satisfy an expectation about the word *gold* is worse than an absence.
+
+**Python owns the as-of join and dbt owns everything downstream of it.** *"A sale at 14:00 joins
+to the cost as it was known at 14:00"* is already implemented in `pipelines/silver/tables.py`,
+and writing it again in SQL would be one rule in two implementations. **Gold is that function's
+first production caller** — until now it was written in silver, tested in silver, and invoked by
+nothing outside its own tests.
+
+**The tests run at `rehearsal`, and that is a measurement rather than a preference.** At `smoke`
+this corpus throws **nothing** away — 0 store-days of 2,268, on W1 and W6 — so
+`category_margin_per_store_week`'s third term would be a sum over an empty table,
+`waste_value_per_store_week` a table with no rows, and the primary metric would quietly be
+revenue less cost of goods **on a green run**. At rehearsal it is 1,329 store-days and 16,370
+units. What that costs, warm, on the author's laptop: ingest 3.1s, silver 14.4s, gold 25.2s.
+
+**What gold builds**, at rehearsal on W6: `priced_sales` 301,421 · `priced_waste` 1,329 ·
+`decision_economics` 296,900 · `waste` 1,329 · `category_margin_per_store_week_v3` 480 ·
+`units_sold_per_store_week_v1` 480 · `waste_value_per_store_week_v1` 139. **4,521 receipt lines
+have no published cost and produce no margin row**, and the count is carried out of the build:
+`sum(qty*price_paid) - sum(qty*unit_cost_as_of)` skips the null in the second term and not in the
+first, so revenue with no cost would enter the metric as **pure margin**.
+
+**The assignment table refuses three of the four ways to change an arm, and the fourth is named
+rather than left out of the list.** `delta.appendOnly` is enforced by the open-source engine:
+`update`, `delete` and `insert overwrite` are refused with `DELTA_CANNOT_MODIFY_APPEND_ONLY`; an
+`insert` is not, and it is the one the committed digest catches. **Nothing here claims
+unopenability** — `CLAUDE.md`'s doctrine 7 restatement puts that in phase 3, with Unity Catalog
+grants, and this is three refusals and a detection. *Written before the period opens* is a
+property of the moment, so the **write** refuses an assignment stamped at or after its own
+declared `period_start`.
+
+**The pin is falsifiable in both directions.** Same query, same store: pinned at its version
+before and after late data arrives, the number is identical; re-pinned at the latest version it
+is not. An assertion with only the first half would pass over a table nobody had appended to.
+
+**Two things this does not prove**, named rather than left to be discovered. Nothing here is
+about Databricks: the relations are bound in a local metastore rather than in Unity Catalog and
+`${catalog}` is never substituted, so **the SQL table function is still text no engine has read**
+— the one compiled consumer that is a catalog object. And the readout's parameters are bound by
+`pipelines/gold/readout.py` rather than by the engine, because **`delta-spark` 4.4.0 drops Spark
+4.2.0's own parameter binding**: isolated to the SQL extension rather than the catalog, `select
+:x as v` returns 1 without it and raises `UNBOUND_SQL_PARAMETER` with it. What is claimed is that
+the executed text differs from the file **only at parameter positions**, and `Bound` builds both
+texts from the same spans so that is a comparison rather than a promise.
+
+**The suite is 1,502 collected against 1,470 on `main`**, and the
+arithmetic is written out because a count that is not re-derived is the defect this repository
+files most often: **22** for gold's own tests, which `make test` deselects and `make gold` owns;
+**8** in the pyarrow boundary, which is parametrised per runtime module and gained
+`pipelines/gold/`'s eight; and **2** in the engine boundary, which is parametrised per test module
+and gained one file with two checks on it. (`main` is 1,465 until `#53` merges; the 1,470 is that
+branch's head, which is what this one is stacked on.)
+
+`make figures`' `discover` row went 7 to 8, and both the grep in `ci.yml` and the floor beside it
+moved with it. **That population is declared by name in two files on purpose** — `ops/figures.py`
+writes it out independently so the two can be **compared** rather than shared, and the row going
+red when they disagree is the mechanism rather than an inconvenience.
+
 ```
 id            T011
 title         pipelines/gold — dbt, the metric contract's Delta view + agent tool def + readout
@@ -1787,8 +1894,27 @@ closes        The metric contract compiles into a Delta view, the agent tool def
 out_of_scope  Executing the generated SQL on a real engine (deferred to Phase 3 — see DECISIONS.md).
 stop_at       When gold builds against local Delta and the compiled consumers match byte-for-byte.
 review        yes
-status        open
+status        closed
 ```
+
+> **`out_of_scope` restated 2026-09-04, because it cites a deferral that says the opposite.**
+> `docs/DECISIONS.md` holds exactly one entry about executing the generated SQL — *"The generated
+> SQL has never been executed"*, deferred 2026-08-27 — and its unlock condition is **phase 2, when
+> gold is built**, which is this task. The line above says phase 3 and names that file as its
+> source.
+>
+> **A deferral naming its own unlock outranks a parenthetical about it**, so `DECISIONS.md`
+> governs and executing the generated SQL is the point of `T011` rather than out of it. The prior
+> wording stays per doctrine rule 4, and the delta is the finding: **a sentence about a thing,
+> believed instead of the thing.** It cost nothing this time only because the discrepancy was
+> read before anything was built; the briefing this task opened with carried the phase-3 reading
+> forward, asserting the location without opening it.
+>
+> **And the ruling paid out three times in one day.** Executing the artefacts for the first time
+> found three defects in them, every one invisible to any amount of reading: a dbt model whose
+> file name is an identifier the engine cannot parse, parameters that `delta-spark` silently
+> drops, and a single version parameter applied to three tables whose version counters are
+> independent. Under the phase-3 reading all three would have been found on a paid estate.
 
 ```
 id            T012

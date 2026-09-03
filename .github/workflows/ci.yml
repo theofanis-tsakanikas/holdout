@@ -202,7 +202,7 @@ jobs:
       - id: read
         run: |
           set -euo pipefail
-          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit|silver):' Makefile \
+          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit|silver|gold):' Makefile \
                      | tr -d ':' | sort -u || true)"
           # The floor. `claim-[0-9]+` cannot miss a claim target the way `claim-[1-7]` could,
           # but a target that is *deleted* still shrinks this list in silence, and a shrinking
@@ -210,7 +210,7 @@ jobs:
           # ordinary growth and finding fewer is a claim whose gate stopped running.
           # `make figures` checks this number against the Makefile, so it cannot go stale
           # downward without something going red.
-          FLOOR=7
+          FLOOR=8
           found="$(printf '%s\n' $targets | grep -c . || true)"
           if [ "$found" -lt "$FLOOR" ]; then
             echo "::error::discover found $found claim target(s), below the declared floor of $FLOOR."
@@ -400,6 +400,16 @@ jobs:
       - name: the engine, for the one target that needs it
         if: matrix.target == 'silver'
         run: uv sync --locked --extra spark
+
+      # **Gold's extra contains silver's**, so this is one sync rather than two:
+      # `dbt-spark[session]` drives the SparkSession the repository starts, and `pyproject.toml`
+      # declares `holdout[spark]` inside the `dbt` extra for that reason. Measured on macOS
+      # arm64 on top of a tree that already had `spark`: **45 packages, 196.1 MiB**. The Linux
+      # figure is whatever this step's own log says, which is the only place it can honestly
+      # come from.
+      - name: dbt, for the gold target
+        if: matrix.target == 'gold'
+        run: uv sync --locked --extra dbt
 
       # Claim 2 generates its worlds once per command and reads them back — `.worlds/`, keyed
       # on a digest of the corpus and of the two modules that group it. This carries that one
