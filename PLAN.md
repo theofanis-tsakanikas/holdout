@@ -1785,6 +1785,14 @@ Everything that needs data at scale, an engine, or a workspace.
   scale `corpus/world/scale.py` declares: correct distribution over time, late arrivals,
   duplicates, a store that drops for two hours and then sends everything at once. The S3 bulk
   load, which is the ERP path.
+  *Landed in two branches, the driver on 2026-09-03 and the bulk load the same day. The drops
+  differ because the corpus's cost ledger steps during the day — measured at smoke scale, three
+  steps on the driven day and five drops declaring 0, 2, 0, 1, 0 newly visible rows — and at
+  `harness` scale nine days in ten carry none at all, so the driven day there is picked rather
+  than found. `corpus/world/` gained the Parquet target the deferral named, written out of the
+  standard library and read back by pyarrow in the dev group. Of the five intra-day changes the
+  phase-3 bullet below names, this corpus supports the cost change and no other — see T009's
+  landing note in `TASKS.md`.*
 - `pipelines/silver/` — Spark Declarative Pipelines, with expectations routing to quarantine and
   the as-of reference dimension.
 - `pipelines/gold/` — dbt. The metric contract compiles into a Delta view, the agent tool
