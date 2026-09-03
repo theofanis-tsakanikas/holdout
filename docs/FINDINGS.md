@@ -2597,6 +2597,53 @@ transition, and the transition is that branch landing
 
 ---
 
+**Two lists of one population, disagreeing in both directions** · found 2026-09-03 · by
+pricing `T010`, before writing any of it
+
+The population is *the targets CI runs*, and it is enumerated twice.
+
+The two rules do not agree:
+
+    .github/workflows/ci.yml:205   grep -oE '^(claim-[0-9]+|gate-proof|preview-audit):' Makefile
+    ops/figures.py:532             ^(?P<name>claim-[\w-]*):
+
+**Neither is wrong, and that is why nobody looked.** They answer different questions —
+`discover` wants the entry points CI must invoke, and `claim_selection` wants the targets that
+hand pytest a mark expression, so that `figures`' `suite` row can ask whether every test the
+suite deselects is run by something. **What is missing is anything that compares them.**
+
+They differ **in both directions**:
+
+- `discover` sees `gate-proof` and `preview-audit`; `figures.py` does not, because neither
+  begins `claim-`;
+- `figures.py` sees `claim-2-shard`, `claim-2-combine` and `claim-2-tests`; `discover`'s
+  `claim-[0-9]+:` does not match those names at all — it **derives** them from the Makefile's
+  `CLAIM_2_SHARDS`, which is a second correct answer arrived at a second way.
+
+**Nothing has gone red because the disagreement has never been exercised.** `gate-proof` runs
+`python -m evals.gate_proof` and hands pytest nothing, so `_selection_of` returns `None` for it
+and it contributes no mark; `preview-audit` does not exist yet. **The first target that is
+neither `claim-*` nor mark-free is the one that breaks the tie** — and `T010`'s silver is
+exactly that shape: a `silver:` target whose tests `make test` would deselect, invisible to
+`figures.py`'s rule and visible to `discover`'s, so the `suite` row would go red for a job that
+CI is provably running.
+
+**This is `make figures`' own subject, one layer up.** That gate exists because *a population
+enumerated once is a population nobody checked*, and here the repository enumerates one
+population twice with two rules and checks neither against the other. The honest reading is not
+that `figures.py` is too narrow: it is that **two lists of one population exist and their
+agreement is assumed.**
+
+*Site:* `.github/workflows/ci.yml` :: `          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit):' Makefile \`
+*Site:* `ops/figures.py` :: `CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)`
+*Disposition:* **`T010`'s branch if the author takes the shape that gives silver its own target**
+— it is that branch's first red run, and reconciling the two rules there is one edit with an
+exercise behind it. If he takes a shape with no new target, the entry stands unscoped and true:
+it is a fact about `main` today, filed with no branch open and no shape chosen
+*Status:* open
+
+---
+
 ## Closed
 
 An entry moves here with its `*Closed:*` line, its original `*Site:*` lines intact, and a `*Now:*`
