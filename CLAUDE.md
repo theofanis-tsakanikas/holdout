@@ -460,7 +460,7 @@ D · the decision record     decisions          (immutable, written at decision 
 
 | layer | engine | why |
 |---|---|---|
-| bronze → silver | **Spark Declarative Pipelines** | streaming, out-of-order, expectations and quarantine are native |
+| bronze → silver | **Spark Declarative Pipelines** | streaming and out-of-order are native; expectations and quarantine are **Lakeflow's extension and are written here by hand**, because the OSS framework this repository runs locally has neither |
 | silver → gold | **dbt** | many analytical models, tests, docs, per-model ownership; the metric contract compiles into exactly dbt's shape |
 
 Two tools, split at a declared boundary — chosen per problem, not per preference.
@@ -746,6 +746,9 @@ generated/             what the compilers emit, byte-compared on every run — n
 corpus/world/          the six adversarial worlds — NO import path to core/
 corpus/real/           what somebody else published, digest-checked — claim 1's prices, and
                        claim 7's two vocabularies of the names a person is known by
+pipelines/ingest/      the Zerobus driver and the S3 bulk load, which is the ERP path
+pipelines/silver/      Spark Declarative Pipelines — the as-of reference, the derived
+                       stock-out, and the quarantine the OSS framework does not provide
 evals/                 one directory per claim · report.py is the shared shape
   gate_proof/          the planted mutations: green first, named target, STALE on a moved one
 ops/                   the rules the product code is measured by — the corpus barrier and
@@ -770,8 +773,6 @@ the present tense beside directories that do. That is the same defect as a parag
 production path through dbt while the only two implementations are Python.
 
 ```
-pipelines/ingest/      Zerobus driver · the S3 bulk load (the ERP path)
-pipelines/silver/      Spark Declarative Pipelines
 pipelines/gold/        dbt
 pipelines/ml/          training, evaluation, promotion
 infra/                 bootstrap · foundation · lakehouse · pipelines · ml · serving

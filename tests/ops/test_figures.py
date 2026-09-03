@@ -324,11 +324,14 @@ def test_a_target_outside_the_regex_is_refused(
     narrowed = workflow.replace("claim-[0-9]+", "claim-[1-7]")
     assert narrowed != workflow, "the widened pattern is not in ci.yml"
 
+    before = figures.claim_targets_that_exist()
     monkeypatch.setattr(figures, "_makefile", lambda: makefile)
     monkeypatch.setattr(figures, "_workflow", lambda: narrowed)
 
-    assert figures.claim_targets_that_exist() == 7
-    assert figures.claim_targets_discover_finds() == 6
+    # Derived rather than frozen: the tree gained `silver` and a written count would have gone
+    # stale on a change that is not a defect — which is the rule this module enforces.
+    assert figures.claim_targets_that_exist() == before + 1
+    assert figures.claim_targets_discover_finds() == before
 
     code, output = _run()
     assert code == 1
@@ -340,10 +343,11 @@ def test_the_widened_regex_sees_the_eighth_claim(monkeypatch: pytest.MonkeyPatch
     """And the fix, driven the same way: the same Makefile, against `ci.yml` as it now is."""
     makefile = (figures.REPO_ROOT / "Makefile").read_text(encoding="utf-8")
     makefile += "\nclaim-8:  ## a claim that exists\n\t@true\n"
+    before = figures.claim_targets_that_exist()
     monkeypatch.setattr(figures, "_makefile", lambda: makefile)
 
-    assert figures.claim_targets_that_exist() == 7
-    assert figures.claim_targets_discover_finds() == 7
+    assert figures.claim_targets_that_exist() == before + 1
+    assert figures.claim_targets_discover_finds() == before + 1
 
 
 # ------------------------------------- a test the suite gave up and no claim target picked up
@@ -363,10 +367,16 @@ def test_a_deselected_test_that_no_claim_target_runs_is_refused(
     assert abandoned != makefile, "no claim target selects a mark, so there is nothing to remove"
     monkeypatch.setattr(figures, "_makefile", lambda: abandoned)
 
-    assert figures.suite_selection() == "not claim_2"
-    assert figures.claim_selection() is None
-    assert figures.tests_the_suite_deselects() > 0
-    assert figures.tests_a_claim_target_runs() == 0
+    assert figures.suite_selection() == "not claim_2 and not silver"
+    assert figures.claim_selection() == "(silver)"
+
+    # **A difference rather than a zero.** `silver` still owns its own tests, so the covered
+    # count is not zero and never will be again; what the row refuses is the *gap* — the
+    # claim_2 tests the suite gave up and nothing now runs. Asserting zero here was true only
+    # while one target owned every deselected test, which stopped being so in this branch.
+    deselected = figures.tests_the_suite_deselects()
+    covered = figures.tests_a_claim_target_runs()
+    assert 0 < covered < deselected, f"{covered} of {deselected} covered"
 
     code, output = _run()
     assert code == 1
@@ -385,7 +395,14 @@ def test_a_claim_target_that_runs_other_tests_does_not_cover_these(
     empty and the row is red while a union would have been green.
     """
     makefile = (figures.REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    elsewhere = makefile.replace("$(RUN) pytest -m claim_2", "$(RUN) pytest -m not_a_real_mark")
+    # **Every** mark-owning target is pointed at a mark no test carries, not just one of them:
+    # leaving the others intact would let this test pass for the wrong reason the day another
+    # target's own tests happen to cover the deselected set.
+    elsewhere = makefile
+    for real in ("claim_2", "silver"):
+        elsewhere = elsewhere.replace(
+            f"$(RUN) pytest -m {real}", "$(RUN) pytest -m not_a_real_mark"
+        )
     assert elsewhere != makefile
     monkeypatch.setattr(figures, "_makefile", lambda: elsewhere)
 
@@ -406,7 +423,7 @@ def test_a_suite_that_deselects_nothing_is_covered_by_nothing_and_passes(
     a gate that cannot tell *unused* from *broken* is the `grep -P` shape one file over.
     """
     makefile = (figures.REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    plain = makefile.replace('$(RUN) pytest -m "not claim_2"', "$(RUN) pytest")
+    plain = makefile.replace('$(RUN) pytest -m "not claim_2 and not silver"', "$(RUN) pytest")
     assert plain != makefile
     monkeypatch.setattr(figures, "_makefile", lambda: plain)
 
@@ -468,5 +485,39 @@ def test_a_floor_above_what_exists_is_refused(monkeypatch: pytest.MonkeyPatch) -
 
 def test_the_declared_floor_matches_the_makefile_today() -> None:
     failures, missing = figures.floor_failures()
+    assert missing == []
+    assert failures == []
+
+
+def test_a_target_that_owns_marked_tests_and_never_runs_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The flip side of the `suite` row: covered by a target CI does not invoke.
+
+    Renaming `silver` is enough — the recipe still hands pytest a mark, so the left side keeps
+    it, and `ci.yml`'s pattern no longer matches, so the right side loses it. That is the shape
+    a person produces by naming a target something reasonable.
+    """
+    makefile = (figures.REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    monkeypatch.setattr(figures, "_makefile", lambda: makefile.replace("\nsilver:", "\nsilverish:"))
+
+    failures, missing = figures.unrun_target_failures()
+    assert missing == []
+    assert failures and "silverish" in failures[0]
+
+
+def test_a_left_side_with_nothing_in_it_is_not_a_pass(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A subset assertion over an empty set is vacuously true, which is not an answer."""
+    monkeypatch.setattr(figures, "mark_owning_targets", list)
+
+    failures, missing = figures.unrun_target_failures()
+    assert failures == []
+    assert missing and "nothing to measure" in missing[0]
+
+
+def test_every_target_that_owns_marked_tests_runs_in_ci_today() -> None:
+    """Two of them, and the second arrived with the change that wrote this assertion."""
+    assert figures.mark_owning_targets() == ["claim-2-tests", "silver"]
+    failures, missing = figures.unrun_target_failures()
     assert missing == []
     assert failures == []

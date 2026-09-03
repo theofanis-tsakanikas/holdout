@@ -1795,6 +1795,13 @@ Everything that needs data at scale, an engine, or a workspace.
   landing note in `TASKS.md`.*
 - `pipelines/silver/` — Spark Declarative Pipelines, with expectations routing to quarantine and
   the as-of reference dimension.
+  *Landed 2026-09-03. The expectations are written by hand: they are native to Databricks
+  Lakeflow and absent from the open-source framework this repository runs, measured by printing
+  the installed package. The engine sits in its own extra, so 713 MB and a JVM land on one CI job
+  of twenty. Silver builds against local Delta with the quarantine non-empty on planted bad data,
+  the stock-out derived from movements rather than copied, and the as-of join carrying both
+  `effective_from` and `known_from` — the second only because the ERP drops several times during
+  the day. See T010's landing note in `TASKS.md`.*
 - `pipelines/gold/` — dbt. The metric contract compiles into a Delta view, the agent tool
   definition and the readout query.
 - The two AI/BI dashboards as `databricks_dashboard` resources — experiment readout and decision

@@ -2148,6 +2148,38 @@ the author's. Filed so the first branch that creates one of those directories do
 rediscover that no gate noticed
 *Status:* open
 
+> **Restated 2026-09-03 by `pipelines/silver`, which is the crossing this entry was filed
+> against — and it is the second, not the first.** `pipelines/ingest/` was created by `#45` on
+> 2026-09-02 and has been listed under *"Declared and not yet built"* ever since; `T010` now adds
+> `pipelines/silver/`. **Of the six entries in that block, two are built and the block says none
+> of them is**, and the row stayed green at `22 = 22` through both, exactly as predicted.
+>
+> **The prediction was forward-only, which is the part worth keeping.** *"Filed so the first
+> branch that creates one of those directories does not have to rediscover that no gate
+> noticed"* was written on the day after the first branch had already landed: the entry looked
+> ahead for a crossing that had happened the day before. A population enumerated in one
+> direction, in a finding about a check that enumerates in one direction — and the entry's own
+> author is not the one who noticed, which is the only reason it is recorded rather than argued.
+>
+> **`#47` then edited a line inside that block**, changing what `pipelines/ingest/` is described
+> as doing, on a branch rebased onto a `main` that already contained the directory. The heading
+> above the edited line was false about the line being edited.
+>
+> Both `CLAUDE.md` edits are the author's and are with him.
+>
+> **Restated again 2026-09-03: the edits have landed, and the entry does not close with them.**
+> The author delegated both to the integration session. `pipelines/ingest/` and `pipelines/silver/`
+> are in the built map, and the engine row names what the OSS framework actually has. **Two
+> instances were corrected by hand and no check was added** — which is the thing this entry has
+> asked for since it was filed. What changed is the state it described, not the gate. It stays open.
+>
+> **And the anchor survived the edit for a reason worth recording.** This entry's `*Site:*` quotes
+> the block's **heading**, not a line inside it, so moving two directories out of the block did not
+> move it. An entry anchored to the contents would have gone red on the very change that resolved
+> its instances, and would have had to be restated under a red gate. **That was luck rather than
+> design when it was written**, and it is the argument for anchoring a finding about a container to
+> the container rather than to what is in it.
+
 **The mutation budget was a lottery that had not been drawn, and then it was** · found
 2026-09-02 · by run `33610996234`, ninety minutes after a branch asserted it had never been
 crossed
@@ -2597,77 +2629,6 @@ transition, and the transition is that branch landing
 
 ---
 
-**A gate's population is defined by a name prefix, and nothing requires the name** · found
-2026-09-03 · by pricing `T010`, and corrected before it landed by reading the twenty lines above
-the one it was about
-
-`ops/figures.py`'s `suite` row asks that every test `make test` deselects is selected by some
-target CI runs, and it finds those targets by **name**:
-
-    ops/figures.py:532   CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)
-
-**Nothing requires a target that owns deselected tests to be called `claim-something`.** The
-docstring above that line justifies the rule's **breadth** — `claim-` rather than `claim-[0-9]`,
-so that `claim-2-shard` and `claim-2-combine` are visible — and says nothing about its
-**narrowness**. A target with any other name hands pytest a mark expression that this rule
-cannot see, its tests are deselected from the suite, and the row reports them as run by nothing.
-
-**That is the row refusing correctly rather than a gate going quietly wrong**, and it is worth
-recording only because of *when* it fires: the first target this repository writes that is not
-named `claim-*` and does own marked tests. `T010`'s silver — its tests deselected from the suite,
-its work run by a job of its own — is that target, and the row would go red on a branch whose CI
-is provably running them.
-
-**What this entry said first, and why the correction is the more useful half.** It read *"two
-lists of one population, disagreeing in both directions, and nothing compares them"*, naming
-`ci.yml`'s `discover` grep and the line above. **That was false.** `ops/figures.py:98` carries
-`ANY_CLAIM_TARGET`, which is `discover`'s pattern arrived at independently, and
-`claim_targets_discover_finds` **reads `ci.yml`'s own pattern out of `ci.yml`** and applies it to
-the Makefile — so the two enumerations of *the targets CI must invoke* are compared, on every
-run, by the `discover` row. The pair I named was not one population enumerated twice: it was two
-different questions, and the second one already has the comparison I said was missing.
-
-> **It was written after reading line 532 and line 205, and not the twenty lines above line
-> 532.** A claim about what a file does not do, made from the part of it that was open.
-
-The prior wording is recorded here rather than in the file's history because it is an instance of
-the family this branch has been counting all day — **a value used without being read off its
-source** — and because a finding that was corrected before it landed is worth more as a record of
-the correction than as a tidy entry.
-
-**And the second session's confirmation did not open the file either.** The reviewing session
-took `CLAIM_TARGET_NAME` from the first session's report, checked `ci.yml`'s `discover` job in
-the file, and wrote *"I read `ci.yml`'s `discover` job rather than reasoning from your
-description"* — true of one half, and it carried the other half along as though it were true of
-both. It then put the false version to the author as fact. **Two-party review, which is the
-guard this repository leans on hardest, produced agreement rather than checking**: both parties
-had read something, neither had read the twenty lines that mattered, and the agreement felt like
-verification. It is `concurred is not closed` arriving one step earlier — at the point where a
-finding is *believed* rather than where it is retired.
-
-**What the fix would enumerate, measured before it is written.** Of the **32** targets in the
-Makefile, exactly **two** hand pytest a mark expression: `test` (`not claim_2`) and
-`claim-2-tests` (`claim_2`). So a rule that asked *which targets select a mark* — reading the
-recipes rather than the names — returns exactly what `claim_selection()` returns today, and
-would have covered `claim-2-tests` without anyone naming it. **It is a no-op on this tree and
-load-bearing on the next one**, which is the only shape of change that can be trusted here.
-
-**The flip side of that rule is named rather than left to be discovered.** A target matching it
-that CI never invokes would let the row report coverage from something that never fires — this
-defect one flip over. Closing that means asserting that every mark-owning target is one `ci.yml`
-emits, derived by `figures`' own route from that file, the way it already reads the discovery
-pattern and the floor. `CLAIM_2_SHARDS` is not read by `figures` at all: the shard derivation is
-re-implemented, declared as a second implementation, in `tests/ops/test_ci_sharding.py`.
-
-*Site:* `ops/figures.py` :: `CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)`
-*Site:* `ops/figures.py` :: `#: Every target whose recipe may own tests the suite has given up. `
-*Disposition:* `T010`'s branch, which is the first thing to exercise it — the rule has to learn
-about targets it cannot name in advance, and doing that on a branch with a red row to fix is the
-only way to know the change works. **Not closed by the branch that filed it**
-*Status:* open
-
----
-
 **A drop's digest described the second it was written in** · found 2026-09-03 · by CI run
 `33739596010`, on a test that had been green locally and on three earlier runs
 
@@ -2709,6 +2670,59 @@ enough to re-read** — which is not a gate and is the only thing that caught it
 `T010` deliberately**: the flake is on `main` and taxes every branch, and *we shipped a latent
 flake and this is the fix* is a record that belongs in its own pull request rather than inside a
 six-commit argument about Spark. **Left open rather than closed by its own author**
+**A mark cannot isolate an environment; only an import site can** · found 2026-09-03 · by CI,
+on a branch whose author had run the full gate locally and seen it green
+
+`T010` puts Spark in an optional dependency group so that **one CI job of twenty** installs 713
+MB and a JVM. `make test` deselects `-m silver`; `make silver` and one workflow job run it.
+**That arrangement was broken by a single import line**, and every machine a developer works on
+is a machine where the break is invisible — because it is the machine that installed the extra.
+
+    tests/pipelines/test_silver.py    import pyspark        (module scope)
+    gate, run 33737357923             ModuleNotFoundError: No module named 'pyspark'
+                                      at collection, `make check` Error 2
+
+**pytest imports every test module before it applies a mark expression.** So a mark can decide
+what *runs*; it cannot decide what is *imported*, and an environment can only be isolated at the
+import site. The fix is that every engine import in that file now lives inside the function that
+needs it — **which is not a skip and must not become one**: an absent engine still fails at the
+first test that asks for it.
+
+**Verified in the environment rather than reasoned about**, by removing the extra from the
+worktree:
+
+    uv sync --locked      pyspark absent
+    make check            OK, all eight gates
+    make silver           ModuleNotFoundError: No module named 'delta'
+                          from pipelines/silver/session.py:27 — not a skip
+
+**Same boundary, two directions, and only one was guarded.**
+`tests/boundary/test_the_engine_is_never_skipped.py` was written **before** silver existed and
+refuses `importorskip`, `skipif` and `skip` naming an engine — the **silent-green** direction,
+which had a story behind it: an engine in an optional group is exactly where somebody reaches
+for a skip. The failure came along the other axis — **loud red in a target that has nothing to
+do with silver** — and nobody had imagined a failure there. **The incompleteness lay exactly
+where there was no story**, which is `a guard tested by its author` with the author's
+imagination as the population.
+
+**Closed by the same tool, one more visitor.** The AST walk that already reads every `*.py`
+under `tests/` now also refuses a **module-level** engine import, with `if TYPE_CHECKING:`
+exempted because it never executes — the one module-level spelling that costs nothing at
+collection, and the one silver's own tests use for their annotations. Proved by planting the
+exact line CI caught and watching that file's parametrised case go red.
+
+**And the class is wider than this repository's version of it.** `CLAUDE.md` records that a
+number measured on the author's hardware must be re-measured where it will be met — cores, wall
+clocks, timeouts. **Nobody had written the same rule for what is *installed*.** A laptop cannot
+reproduce a runner's environment by being careful, because the laptop is the machine that
+installs everything; `uv sync --locked` with no extra before pushing is a practice, and a gate
+cannot make a laptop forget what it has.
+
+*Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def imported_at_module_scope(source: str, filename: str) -> list[str]:`
+*Site:* `pyproject.toml` :: `spark = [`
+*Disposition:* `pipelines/silver` — the gate is on that branch and bites the line that caused
+it. **Left open rather than closed by its own author**: closure is a transition, and the
+transition is that branch landing
 *Status:* open
 
 ---
@@ -2842,4 +2856,87 @@ red the moment the sources-table row moved, refusing to let an anchored line cha
 somebody saying whether it was fixed or had gone stale. **The ruling and its closure are one
 piece of work because the anchor rule makes them one** — which is the register doing exactly what
 it is for, on the day it was tested by an edit it had never seen.
+*Status:* open
+
+---
+
+**A gate's population is defined by a name prefix, and nothing requires the name** · found
+2026-09-03 · by pricing `T010`, and corrected before it landed by reading the twenty lines above
+the one it was about
+
+`ops/figures.py`'s `suite` row asks that every test `make test` deselects is selected by some
+target CI runs, and it finds those targets by **name**:
+
+    ops/figures.py:532   CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)
+
+**Nothing requires a target that owns deselected tests to be called `claim-something`.** The
+docstring above that line justifies the rule's **breadth** — `claim-` rather than `claim-[0-9]`,
+so that `claim-2-shard` and `claim-2-combine` are visible — and says nothing about its
+**narrowness**. A target with any other name hands pytest a mark expression that this rule
+cannot see, its tests are deselected from the suite, and the row reports them as run by nothing.
+
+**That is the row refusing correctly rather than a gate going quietly wrong**, and it is worth
+recording only because of *when* it fires: the first target this repository writes that is not
+named `claim-*` and does own marked tests. `T010`'s silver — its tests deselected from the suite,
+its work run by a job of its own — is that target, and the row would go red on a branch whose CI
+is provably running them.
+
+**What this entry said first, and why the correction is the more useful half.** It read *"two
+lists of one population, disagreeing in both directions, and nothing compares them"*, naming
+`ci.yml`'s `discover` grep and the line above. **That was false.** `ops/figures.py:98` carries
+`ANY_CLAIM_TARGET`, which is `discover`'s pattern arrived at independently, and
+`claim_targets_discover_finds` **reads `ci.yml`'s own pattern out of `ci.yml`** and applies it to
+the Makefile — so the two enumerations of *the targets CI must invoke* are compared, on every
+run, by the `discover` row. The pair I named was not one population enumerated twice: it was two
+different questions, and the second one already has the comparison I said was missing.
+
+> **It was written after reading line 532 and line 205, and not the twenty lines above line
+> 532.** A claim about what a file does not do, made from the part of it that was open.
+
+The prior wording is recorded here rather than in the file's history because it is an instance of
+the family this branch has been counting all day — **a value used without being read off its
+source** — and because a finding that was corrected before it landed is worth more as a record of
+the correction than as a tidy entry.
+
+**And the second session's confirmation did not open the file either.** The reviewing session
+took `CLAIM_TARGET_NAME` from the first session's report, checked `ci.yml`'s `discover` job in
+the file, and wrote *"I read `ci.yml`'s `discover` job rather than reasoning from your
+description"* — true of one half, and it carried the other half along as though it were true of
+both. It then put the false version to the author as fact. **Two-party review, which is the
+guard this repository leans on hardest, produced agreement rather than checking**: both parties
+had read something, neither had read the twenty lines that mattered, and the agreement felt like
+verification. It is `concurred is not closed` arriving one step earlier — at the point where a
+finding is *believed* rather than where it is retired.
+
+**What the fix would enumerate, measured before it is written.** Of the **32** targets in the
+Makefile, exactly **two** hand pytest a mark expression: `test` (`not claim_2`) and
+`claim-2-tests` (`claim_2`). So a rule that asked *which targets select a mark* — reading the
+recipes rather than the names — returns exactly what `claim_selection()` returns today, and
+would have covered `claim-2-tests` without anyone naming it. **It is a no-op on this tree and
+load-bearing on the next one**, which is the only shape of change that can be trusted here.
+
+**The flip side of that rule is named rather than left to be discovered.** A target matching it
+that CI never invokes would let the row report coverage from something that never fires — this
+defect one flip over. Closing that means asserting that every mark-owning target is one `ci.yml`
+emits, derived by `figures`' own route from that file, the way it already reads the discovery
+pattern and the floor. `CLAIM_2_SHARDS` is not read by `figures` at all: the shard derivation is
+re-implemented, declared as a second implementation, in `tests/ops/test_ci_sharding.py`.
+
+*Site:* `ops/figures.py` :: `CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)`
+*Site:* `ops/figures.py` :: `#: Every target whose recipe may own tests the suite has given up. `
+*Disposition:* `T010`'s branch, which is the first thing to exercise it — the rule has to learn
+about targets it cannot name in advance, and doing that on a branch with a red row to fix is the
+only way to know the change works. **Not closed by the branch that filed it**
+*Closed:* 2026-09-03 — by `pipelines/silver`, through the exercise rather than around it. The
+rule now reads **recipes instead of names**: `mark_owning_targets` asks every target in the
+Makefile what its recipe hands pytest, so `silver` entered the population by existing and
+nothing has to be named in advance. Measured at the moment it changed — of 32 targets exactly
+two select a mark, `test` and `claim-2-tests` — so the new rule returned precisely what the old
+one returned, and then went to three the moment `silver` was written.
+**And the flip side is closed with it rather than left open**: `unrun_target_failures` asserts
+that every mark-owning target is one `ci.yml` emits, with both sides derived — the recipes on
+the left, the workflow's own pattern and its `_SHARDS` derivation on the right — and an empty
+left side raising rather than passing vacuously.
+*Now:* `ops/figures.py` :: `ANY_TARGET_NAME = re.compile(r"^(?P<name>[a-z][\w.-]*):", re.MULTILINE)`
+*Now:* `ops/figures.py` :: `#: Every target in the Makefile, by name, so each can be asked what its recipe does.`
 *Status:* open
