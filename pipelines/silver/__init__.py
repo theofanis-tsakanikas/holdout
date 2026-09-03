@@ -2,8 +2,16 @@
 
 `CLAUDE.md`'s silver layer is five tables — `sales · shelf_state · price_displayed · reference ·
 quarantine` — and it is deliberately not one-to-one with bronze: `reference` collapses the ERP's
-tables into one **as-of queryable** dimension, and `pos_lines` feeds two silver tables because a
-sale is both revenue and an inventory movement.
+tables into one dimension, and `pos_lines` feeds two silver tables because a sale is both revenue
+and an inventory movement.
+
+**That dimension is as-of on half its columns and not on the other half**, and the phrase is
+qualified here because it was not before. `cost_ledger` publishes `effective_from`, and the
+loader stamps `known_from`, so a cost is resolvable *as it was known at a moment*.
+`product_master` publishes **no time at all** — `pipelines/ingest/erp.py` says so in as many
+words — so a product's `category` is resolved by key, and a change to it applies to all of
+history because there is no date to apply it from. `tables.reference` carries the measurement;
+what must not happen is *as-of queryable* travelling unqualified over columns that are not.
 
 The quarantine is written by hand, and that is a finding rather than a preference
 --------------------------------------------------------------------------------
@@ -37,7 +45,8 @@ What each table answers
 `sales`            what was sold, deduplicated on the business key the POS supplies
 `price_displayed`  what the shelf actually showed — from the acknowledgement, never the decision
 `shelf_state`      whether the shelf emptied, and when, **derived from movements**
-`reference`        the cost as it was known at a moment, on both of its time axes
+`reference`        the cost as it was known at a moment, on both of its time axes; and the
+                   product by its key, which publishes neither
 `quarantine`       every row an expectation refused, with the reason and the key
 =================  ==========================================================================
 
@@ -46,4 +55,12 @@ are proved by `evals/`, and this is the layer they are eventually computed over 
 evidence itself. The one exception is negative — `reference` is where *"a sale at 14:00 joins to
 the cost as it was known at 14:00"* stops being a sentence in `CLAUDE.md` and becomes a join, and
 getting it wrong would silently rewrite every historical margin.
+
+**Four of seven, and then five.** `bulk.load` writes seven tables to bronze on this corpus and
+this layer read four of them, while `CLAUDE.md` described `reference` as collapsing six. Nothing
+noticed, because nothing downstream of silver existed to need the fifth: `category` is a
+`product_master` column and **every metric contract declares `grain: [store_id, iso_week,
+category]`**, so gold could not have been built at the grain its own contract declares. That is
+this branch. `store_master` and `price_decisions` are still unread and are named in
+`tables.reference` rather than left to be found the same way.
 """

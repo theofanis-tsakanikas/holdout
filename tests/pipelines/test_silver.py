@@ -380,3 +380,168 @@ def test_a_sale_with_no_published_cost_keeps_a_null_rather_than_borrowing_one(
     priced = tables.cost_as_of(reference, before_everything, "event_ts")
     assert priced.count() == 1
     assert priced.collect()[0]["unit_cost_as_of"] is None
+
+
+# ------------------------------------- the product half, which has no time axis at all
+
+
+def _reference_over(
+    spark: SparkSession,
+    costs: list[tuple[str, datetime, int, datetime, str]],
+    products: list[tuple[str, str, int, int, str | None, datetime, str]],
+) -> tuple[DataFrame, DataFrame]:
+    """`tables.reference` over two frames built for a case, rather than over the corpus.
+
+    Both branches this exercises are **absent from the corpus** — measured at smoke scale, 9
+    products, 9 with a cost step, 0 either way — so a test that only read the corpus would be
+    asserting over an empty population, which is the shape `docs/FINDINGS.md` carries four
+    instances of.
+    """
+    from pipelines.silver import tables
+
+    cost_frame = spark.createDataFrame(
+        costs,
+        "sku_id string, effective_from timestamp, unit_cost_cents bigint, "
+        "_exported_at timestamp, _source_file string",
+    )
+    product_frame = spark.createDataFrame(
+        products,
+        "sku_id string, category string, base_price_cents bigint, shelf_life_days bigint, "
+        "substitute_of string, _exported_at timestamp, _source_file string",
+    )
+    return tables.reference(cost_frame, product_frame)
+
+
+_AT = datetime(2025, 9, 2, 7, 0)  # noqa: DTZ001 — the corpus is naive on purpose
+_LATER = datetime(2025, 9, 2, 15, 0)  # noqa: DTZ001
+
+
+def test_a_cost_step_for_a_product_silver_does_not_have_is_quarantined(
+    spark: SparkSession,
+) -> None:
+    """It would enter the dimension with a cost and no category — a null in every metric's grain.
+
+    Every metric contract declares `grain: [store_id, iso_week, category]`. A row that carried a
+    cost and no category would aggregate into a metric cell nobody can attribute, and the number
+    would still be a number, which is why this is a refusal rather than a null.
+    """
+    kept, quarantined = _reference_over(
+        spark,
+        costs=[
+            ("KNOWN-1", _AT, 100, _AT, "drop=000/cost_ledger.csv.gz"),
+            ("GHOST-1", _AT, 100, _AT, "drop=000/cost_ledger.csv.gz"),
+        ],
+        products=[("KNOWN-1", "dairy", 150, 7, None, _AT, "drop=000/product_master.csv.gz")],
+    )
+    assert [row["sku_id"] for row in kept.collect()] == ["KNOWN-1"]
+    refused = [(row["business_key"], row["expectation"]) for row in quarantined.collect()]
+    assert refused == [(f"GHOST-1|{_AT}", "cost_step_names_a_known_product")], refused
+
+
+def test_a_product_with_no_cost_step_is_kept_with_a_null_cost(spark: SparkSession) -> None:
+    """The other direction of the same join, and it is **not** a refusal.
+
+    A product nobody has published a cost for is the same state as a sale before its product's
+    first published cost: doctrine rule 3 says a missing cost is a null, not a borrowed
+    neighbour. What must survive is the category, because that is what the grain needs.
+    """
+    kept, quarantined = _reference_over(
+        spark,
+        costs=[("PRICED-1", _AT, 100, _AT, "drop=000/cost_ledger.csv.gz")],
+        products=[
+            ("PRICED-1", "dairy", 150, 7, None, _AT, "drop=000/product_master.csv.gz"),
+            ("FREE-1", "bakery", 200, 3, None, _AT, "drop=000/product_master.csv.gz"),
+        ],
+    )
+    assert quarantined.count() == 0
+    rows = {row["sku_id"]: row for row in kept.collect()}
+    assert rows["FREE-1"]["category"] == "bakery"
+    assert rows["FREE-1"]["unit_cost_cents"] is None
+    assert rows["FREE-1"]["effective_from"] is None
+
+
+def test_a_product_with_no_category_is_quarantined(spark: SparkSession) -> None:
+    """The grain's third column, refused at the layer that has the product master."""
+    _, quarantined = _reference_over(
+        spark,
+        costs=[("NO-CAT", _AT, 100, _AT, "drop=000/cost_ledger.csv.gz")],
+        products=[("NO-CAT", "", 150, 7, None, _AT, "drop=000/product_master.csv.gz")],
+    )
+    refused = {row["business_key"]: row["expectation"] for row in quarantined.collect()}
+    assert refused["NO-CAT"] == "category_present"
+
+
+def test_a_product_whose_attributes_moved_between_drops_takes_the_latest_and_says_it_moved(
+    spark: SparkSession,
+) -> None:
+    """One row per sku, the latest drop's values, and the evidence that there was more than one.
+
+    **The corpus never does this** — 45 rows, 9 skus, 5 drops each, 0 with a category that
+    differed — so the tie-break exists here or nowhere. It is a retroactive rewrite and
+    `tables.reference` says so: `product_master` publishes no date, so there is nothing to apply
+    a change *from*, and the only honest residue is that the row was seen in more than one drop.
+    """
+    kept, quarantined = _reference_over(
+        spark,
+        costs=[("MOVED-1", _AT, 100, _AT, "drop=000/cost_ledger.csv.gz")],
+        products=[
+            ("MOVED-1", "dairy", 150, 7, None, _AT, "drop=000/product_master.csv.gz"),
+            ("MOVED-1", "chilled", 150, 7, None, _LATER, "drop=001/product_master.csv.gz"),
+        ],
+    )
+    assert quarantined.count() == 0
+    rows = kept.collect()
+    assert len(rows) == 1, "a sku that moved appeared twice, so every join to it would fan out"
+    assert rows[0]["category"] == "chilled", "the latest drop did not win"
+    assert rows[0]["product_known_from"] == _AT, "the first sighting was overwritten"
+    assert rows[0]["product_drops_carrying_it"] == 2
+
+
+def test_the_category_survives_a_sale_the_cost_join_cannot_answer(
+    spark: SparkSession, silver: Path
+) -> None:
+    """**The measurement that earns the second join**, and it is the number to read first.
+
+    `cost_as_of` resolves the product columns by key and the cost columns as-of. Through one
+    join instead — every column taken from the surviving cost step — a product's category would
+    be right on almost every row, because it is the same on all of that sku's steps. It would be
+    **null on exactly the rows where no step survives**, which are the rows that correctly keep a
+    null cost.
+
+    Measured on this corpus, both computed here rather than quoted:
+
+        sales with no cost known at the moment of the sale   1,418 of 35,695
+        of those, sales that would lose their category       1,418   (one join)
+        of those, sales that lose their category             0       (two joins)
+    """
+    from pipelines.silver import tables
+    from pyspark.sql import Window
+    from pyspark.sql import functions as sf
+
+    sales = _rows(spark, silver / "sales")
+    reference = _rows(spark, silver / "reference")
+    priced = tables.cost_as_of(reference, sales, "event_ts")
+
+    unanswerable = priced.filter("unit_cost_as_of is null").count()
+    assert unanswerable > 0, (
+        "no sale on this corpus predates its product's first published cost, so this test would "
+        "pass over an empty population and prove nothing about the second join"
+    )
+    assert priced.filter("category is null").count() == 0
+    assert priced.count() == sales.count(), "the by-key join changed the number of sales"
+
+    candidates = sales.join(
+        reference.withColumnRenamed("sku_id", "_ref_sku"),
+        (sales["sku_id"] == sf.col("_ref_sku"))
+        & (sf.col("effective_from") <= sf.col("event_ts"))
+        & (sf.col("known_from") <= sf.col("event_ts")),
+        "left",
+    )
+    latest = Window.partitionBy(*[sales[column] for column in sales.columns]).orderBy(
+        sf.col("effective_from").desc_nulls_last(), sf.col("known_from").desc_nulls_last()
+    )
+    one_join = candidates.withColumn("_rank", sf.row_number().over(latest)).filter("_rank = 1")
+    assert one_join.filter("category is null").count() == unanswerable, (
+        "the one-join counterfactual lost a different number of categories than the number of "
+        "sales it could not price, so this test is no longer measuring what it says it is"
+    )
