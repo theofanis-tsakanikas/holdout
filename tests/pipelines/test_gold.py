@@ -539,6 +539,12 @@ def test_a_unit_erased_from_the_table_is_caught_as_well(
 
     seal, schema = assigned
     table = f"{schema}.{assignment.TABLE}"
+    # **The empty-population shape, applied to a guard's state rather than to a collection.** A
+    # test that disables something has to prove it was enabled, or it is asserting over a
+    # condition that was already true — the same defect as a walk that passes because it found
+    # nothing to walk over. Fifth instance in four days and the second caught before it
+    # happened; recorded here rather than generalised, because `CLAUDE.md` says the rule is
+    # written at the instance that wears a form none of the others did.
     assert assignment.is_append_only(spark, schema=schema), (
         "the guard was already off before this test disarmed it, so what follows would prove "
         "nothing about the layer behind it"
