@@ -1,7 +1,7 @@
 """How big a world is, declared rather than implied.
 
 `CLAUDE.md`: *"The scenario is 1,200 stores. The corpus is 100."* — roughly 100 stores across
-three fresh categories over eight months, about 36M POS lines. That is the **scenario** scale,
+three fresh categories over eight months. That is the **scenario** scale,
 and it is the one figure in this package that costs real minutes to produce.
 
 Four scales exist because four different things need to be true at once:
