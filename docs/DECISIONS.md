@@ -101,7 +101,8 @@ claims are provable on a laptop with no account.
 **Parquet is written by hand; pyarrow is in the dev group and reads it back.** · 2026-09-03
 `corpus/world/parquet.py` writes Parquet out of the standard library — thrift compact, `PLAIN`
 values, `RLE` definition levels, GZIP through `zlib`. The library was priced rather than assumed:
-**34.2 MiB downloaded, 122 MB installed**, against a runtime dependency set that is empty and a
+**122 MB installed**, from a wheel of 34.2 MiB on the author's macOS arm64 and **47.8 MiB on
+CI's linux-x86_64**, against a runtime dependency set that is empty and a
 corpus that is stdlib-only apart from one `yaml.safe_load`. What that buys is not size — measured
 on W6 at smoke scale, the three reference tables come out **1.9x to 3.4x larger** than the same
 tables as gzipped CSV, because a footer costs more than nine rows — it is a schema and a type: a
@@ -113,11 +114,27 @@ for a timestamp is 8, the writer said 7, and 7 is `TIME`. The file was valid Par
 self-consistent and wrong, and a reader written here would have agreed with it.
 `tests/boundary/test_pyarrow_stays_in_the_tests.py` is what keeps the arrangement true: no module
 under `src/`, `corpus/`, `evals/`, `ops/`, `pipelines/` or `.claude/hooks` may import it.
-**What this costs CI is one number and it is not measured here.** A cold `.venv` against a warm uv
-cache syncs all 24 packages in **0.166 s** on the author's laptop, so the marginal install is
-nothing locally; what a runner pays is a 34.2 MiB download on a cold cache and a larger cache
-archive to restore, on nineteen jobs, and that number comes from this branch's own first run
-rather than from this sentence.
+**What this costs CI was taken from the runner rather than projected, and it is below the
+resolution the runner reports.** Run `33716314756`, this branch's first, missed the uv cache
+outright — its key is the lockfile's, and the lockfile changed — so its `gate` job downloaded all
+23 packages including **pyarrow at 47.8 MiB** and reported *Prepared 23 packages in 617 ms,
+Installed 23 packages in 40 ms*. Against `main`'s last run `33711399115`, which restored the
+cache and downloaded nothing:
+
+| | setup-uv | install step | `make check` |
+|---|---|---|---|
+| this branch, cache **missed**, pyarrow downloaded | 1s | 0s | 227s |
+| `main` `33711399115`, cache **hit** | 3s | 1s | 228s |
+
+**The cold run with the new dependency was faster than the warm run without it**, which is not a
+claim that pyarrow is free — it is the honest reading that whatever it costs is smaller than the
+second-level granularity these steps are reported at and smaller than the variance between two
+runners. A laptop figure (**0.166 s** for a cold `.venv` against a warm uv cache) is recorded
+here as a laptop figure and forecasts nothing about a runner.
+
+**What is not measured:** the cache *archive* is larger by pyarrow's unpacked size on every job
+that restores it, and no run so far separates that from the rest of the restore. It is named
+rather than estimated.
 
 **Money is integer euro cents, with three roundings.** · 2026-08-27
 Never a binary float. `as_price` is half-even, the metric contract's declared mode; `as_lower_bound`

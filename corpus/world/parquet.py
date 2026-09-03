@@ -9,11 +9,12 @@ Why the engine is ours and not a library
 ----------------------------------------
 The deferral's argument was that adding a Parquet engine to `corpus/` to write files nothing
 reads would be *"a dependency bought for a screenshot"*. Something reads them now, so the
-dependency would be earned — but it is still 34.2 MiB downloaded and **122 MB installed**
-(measured with `uv pip install pyarrow` into an empty environment, 2026-09-03) against a
-project whose runtime dependency set is `dependencies = []` and whose corpus is stdlib-only
-apart from one `yaml.safe_load`. A 122 MB C++ library to lay out a few million fixed-width
-values is a bad trade at any scale this repository runs.
+dependency would be earned — but it is still **122 MB installed**, from a wheel that is 34.2
+MiB on the author's macOS arm64 and **47.8 MiB on CI's linux-x86_64** (the first measured with
+`uv pip install pyarrow` into an empty environment on 2026-09-03, the second read off the
+runner's own log, because a download size is a fact about a platform and naming one without
+the other is how a figure stops being checkable). A 122 MB C++ library to lay out a few million
+fixed-width values is a bad trade at any scale this repository runs.
 
 So the format is written out here, and **the check that it is really Parquet comes from
 somewhere else**: `tests/corpus/test_world_parquet.py` reads every file back with `pyarrow`,

@@ -1637,7 +1637,8 @@ same directory, and `corpus/world/`'s Parquet target, which is the other half of
 
 **The Parquet target, and the dependency that was not bought.** `corpus/world/parquet.py` writes
 Parquet out of the standard library — thrift compact, `PLAIN` values, `RLE` definition levels, GZIP
-through `zlib`. pyarrow was priced at **34.2 MiB downloaded, 122 MB installed** and went into the
+through `zlib`. pyarrow was priced at **122 MB installed**, from a wheel of 34.2 MiB on the
+author's laptop and **47.8 MiB on the runner**, and went into the
 **dev group only**, as the reader every assertion is made through, with
 `tests/boundary/test_pyarrow_stays_in_the_tests.py` refusing the first runtime module that imports
 it. **It earned its place on the first run**: the `LogicalType` union member for a timestamp is 8,

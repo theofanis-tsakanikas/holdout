@@ -1,9 +1,9 @@
 """The Parquet target, read back by an implementation nobody here wrote.
 
 `corpus/world/parquet.py` is stdlib and ours, for the reason its docstring gives: pyarrow is
-34.2 MiB downloaded and 122 MB installed to lay out a few million fixed-width values. What
-that buys has to be paid for, and this file is the payment — **pyarrow is a development
-dependency and every assertion below is made through it.**
+122 MB installed — from a 34.2 MiB wheel on macOS arm64, 47.8 MiB on CI's linux-x86_64 — to lay
+out a few million fixed-width values. What that buys has to be paid for, and this file is the
+payment: **pyarrow is a development dependency and every assertion below is made through it.**
 
 `CLAUDE.md`: *a guard tested by its author is tested in the shape the guard already handles.*
 A reader written in this repository would have agreed with the writer in this repository about
