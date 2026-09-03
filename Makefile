@@ -26,7 +26,7 @@ PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
-        expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 \
+        expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 silver \
         claim-2-shard claim-2-combine claim-2-tests \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
@@ -81,7 +81,7 @@ typecheck:  ## mypy, strict
 #     all — it runs `-shard` on N machines and `-combine` on one — so whatever `claim-2` selects,
 #     `claim-2-combine` must select too, or CI runs none of it.
 test:  ## the suite, minus what a claim target owns
-	$(RUN) pytest -m "not claim_2"
+	$(RUN) pytest -m "not claim_2 and not silver"
 
 contracts:  ## validate every contract and refuse a stale or hand-edited generated artefact
 	$(RUN) holdout-contracts check
@@ -294,6 +294,18 @@ claim-7:  ## claim 7 — a decision that targets a person is structurally imposs
 
 eval-oversight:  ## just claim 7's eval, without the mutations — about four seconds
 	$(RUN) python -m evals.oversight
+
+# **Silver's tests, and the engine they need is not in the dev group.** `uv sync` installs
+# the dev group and never an extra, so this target fails loudly on a tree that has not asked
+# for one: `uv sync --extra spark`, once, and then this runs. That failure is the arrangement
+# working — `tests/boundary/test_the_engine_is_never_skipped.py` refuses the two spellings
+# that would have turned it into a skip, and a skipped test looks exactly like a passing one.
+#
+# It is discovered by `ci.yml` the same way the claim targets are, so a target that exists and
+# never runs stays impossible: the discovery grep names `silver` beside them and the floor it
+# refuses below went 6 to 7 with it.
+silver:  ## silver's tests — needs `uv sync --extra spark` (713 MB and a JVM)
+	$(RUN) pytest -m silver
 
 # The ledger, not the executor. Each claim target plants its own mutations, so this one
 # runs nothing and instead checks the arrangement: every mutation owned by exactly one

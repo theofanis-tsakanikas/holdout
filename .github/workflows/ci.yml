@@ -202,7 +202,7 @@ jobs:
       - id: read
         run: |
           set -euo pipefail
-          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit):' Makefile \
+          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit|silver):' Makefile \
                      | tr -d ':' | sort -u || true)"
           # The floor. `claim-[0-9]+` cannot miss a claim target the way `claim-[1-7]` could,
           # but a target that is *deleted* still shrinks this list in silence, and a shrinking
@@ -210,7 +210,7 @@ jobs:
           # ordinary growth and finding fewer is a claim whose gate stopped running.
           # `make figures` checks this number against the Makefile, so it cannot go stale
           # downward without something going red.
-          FLOOR=6
+          FLOOR=7
           found="$(printf '%s\n' $targets | grep -c . || true)"
           if [ "$found" -lt "$FLOOR" ]; then
             echo "::error::discover found $found claim target(s), below the declared floor of $FLOOR."
@@ -386,6 +386,20 @@ jobs:
 
       - name: install exactly what uv.lock pins
         run: make setup-locked
+
+      # **The engine is an extra, and this is the one job that asks for it.** `uv sync`
+      # installs the dev group and never an extra, so `make setup-locked` above leaves
+      # `pyspark` absent on every entry in this matrix; the silver entry adds it here.
+      # Measured before the shape was chosen: **713 MB installed** on macOS arm64 and a JVM,
+      # against 122 MB for pyarrow — which is why it is not in the dev group, where thirteen
+      # jobs would pay for it and one would use it.
+      #
+      # A test that cannot import it **fails**, never skips:
+      # `tests/boundary/test_the_engine_is_never_skipped.py` refuses the two spellings that
+      # would turn an absent engine into a green run, and it was written before silver was.
+      - name: the engine, for the one target that needs it
+        if: matrix.target == 'silver'
+        run: uv sync --locked --extra spark
 
       # Claim 2 generates its worlds once per command and reads them back — `.worlds/`, keyed
       # on a digest of the corpus and of the two modules that group it. This carries that one

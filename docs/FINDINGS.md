@@ -2597,77 +2597,6 @@ transition, and the transition is that branch landing
 
 ---
 
-**A gate's population is defined by a name prefix, and nothing requires the name** · found
-2026-09-03 · by pricing `T010`, and corrected before it landed by reading the twenty lines above
-the one it was about
-
-`ops/figures.py`'s `suite` row asks that every test `make test` deselects is selected by some
-target CI runs, and it finds those targets by **name**:
-
-    ops/figures.py:532   CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)
-
-**Nothing requires a target that owns deselected tests to be called `claim-something`.** The
-docstring above that line justifies the rule's **breadth** — `claim-` rather than `claim-[0-9]`,
-so that `claim-2-shard` and `claim-2-combine` are visible — and says nothing about its
-**narrowness**. A target with any other name hands pytest a mark expression that this rule
-cannot see, its tests are deselected from the suite, and the row reports them as run by nothing.
-
-**That is the row refusing correctly rather than a gate going quietly wrong**, and it is worth
-recording only because of *when* it fires: the first target this repository writes that is not
-named `claim-*` and does own marked tests. `T010`'s silver — its tests deselected from the suite,
-its work run by a job of its own — is that target, and the row would go red on a branch whose CI
-is provably running them.
-
-**What this entry said first, and why the correction is the more useful half.** It read *"two
-lists of one population, disagreeing in both directions, and nothing compares them"*, naming
-`ci.yml`'s `discover` grep and the line above. **That was false.** `ops/figures.py:98` carries
-`ANY_CLAIM_TARGET`, which is `discover`'s pattern arrived at independently, and
-`claim_targets_discover_finds` **reads `ci.yml`'s own pattern out of `ci.yml`** and applies it to
-the Makefile — so the two enumerations of *the targets CI must invoke* are compared, on every
-run, by the `discover` row. The pair I named was not one population enumerated twice: it was two
-different questions, and the second one already has the comparison I said was missing.
-
-> **It was written after reading line 532 and line 205, and not the twenty lines above line
-> 532.** A claim about what a file does not do, made from the part of it that was open.
-
-The prior wording is recorded here rather than in the file's history because it is an instance of
-the family this branch has been counting all day — **a value used without being read off its
-source** — and because a finding that was corrected before it landed is worth more as a record of
-the correction than as a tidy entry.
-
-**And the second session's confirmation did not open the file either.** The reviewing session
-took `CLAIM_TARGET_NAME` from the first session's report, checked `ci.yml`'s `discover` job in
-the file, and wrote *"I read `ci.yml`'s `discover` job rather than reasoning from your
-description"* — true of one half, and it carried the other half along as though it were true of
-both. It then put the false version to the author as fact. **Two-party review, which is the
-guard this repository leans on hardest, produced agreement rather than checking**: both parties
-had read something, neither had read the twenty lines that mattered, and the agreement felt like
-verification. It is `concurred is not closed` arriving one step earlier — at the point where a
-finding is *believed* rather than where it is retired.
-
-**What the fix would enumerate, measured before it is written.** Of the **32** targets in the
-Makefile, exactly **two** hand pytest a mark expression: `test` (`not claim_2`) and
-`claim-2-tests` (`claim_2`). So a rule that asked *which targets select a mark* — reading the
-recipes rather than the names — returns exactly what `claim_selection()` returns today, and
-would have covered `claim-2-tests` without anyone naming it. **It is a no-op on this tree and
-load-bearing on the next one**, which is the only shape of change that can be trusted here.
-
-**The flip side of that rule is named rather than left to be discovered.** A target matching it
-that CI never invokes would let the row report coverage from something that never fires — this
-defect one flip over. Closing that means asserting that every mark-owning target is one `ci.yml`
-emits, derived by `figures`' own route from that file, the way it already reads the discovery
-pattern and the floor. `CLAIM_2_SHARDS` is not read by `figures` at all: the shard derivation is
-re-implemented, declared as a second implementation, in `tests/ops/test_ci_sharding.py`.
-
-*Site:* `ops/figures.py` :: `CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)`
-*Site:* `ops/figures.py` :: `#: Every target whose recipe may own tests the suite has given up. `
-*Disposition:* `T010`'s branch, which is the first thing to exercise it — the rule has to learn
-about targets it cannot name in advance, and doing that on a branch with a red row to fix is the
-only way to know the change works. **Not closed by the branch that filed it**
-*Status:* open
-
----
-
 **A drop's digest described the second it was written in** · found 2026-09-03 · by CI run
 `33739596010`, on a test that had been green locally and on three earlier runs
 
@@ -2842,4 +2771,87 @@ red the moment the sources-table row moved, refusing to let an anchored line cha
 somebody saying whether it was fixed or had gone stale. **The ruling and its closure are one
 piece of work because the anchor rule makes them one** — which is the register doing exactly what
 it is for, on the day it was tested by an edit it had never seen.
+*Status:* open
+
+---
+
+**A gate's population is defined by a name prefix, and nothing requires the name** · found
+2026-09-03 · by pricing `T010`, and corrected before it landed by reading the twenty lines above
+the one it was about
+
+`ops/figures.py`'s `suite` row asks that every test `make test` deselects is selected by some
+target CI runs, and it finds those targets by **name**:
+
+    ops/figures.py:532   CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)
+
+**Nothing requires a target that owns deselected tests to be called `claim-something`.** The
+docstring above that line justifies the rule's **breadth** — `claim-` rather than `claim-[0-9]`,
+so that `claim-2-shard` and `claim-2-combine` are visible — and says nothing about its
+**narrowness**. A target with any other name hands pytest a mark expression that this rule
+cannot see, its tests are deselected from the suite, and the row reports them as run by nothing.
+
+**That is the row refusing correctly rather than a gate going quietly wrong**, and it is worth
+recording only because of *when* it fires: the first target this repository writes that is not
+named `claim-*` and does own marked tests. `T010`'s silver — its tests deselected from the suite,
+its work run by a job of its own — is that target, and the row would go red on a branch whose CI
+is provably running them.
+
+**What this entry said first, and why the correction is the more useful half.** It read *"two
+lists of one population, disagreeing in both directions, and nothing compares them"*, naming
+`ci.yml`'s `discover` grep and the line above. **That was false.** `ops/figures.py:98` carries
+`ANY_CLAIM_TARGET`, which is `discover`'s pattern arrived at independently, and
+`claim_targets_discover_finds` **reads `ci.yml`'s own pattern out of `ci.yml`** and applies it to
+the Makefile — so the two enumerations of *the targets CI must invoke* are compared, on every
+run, by the `discover` row. The pair I named was not one population enumerated twice: it was two
+different questions, and the second one already has the comparison I said was missing.
+
+> **It was written after reading line 532 and line 205, and not the twenty lines above line
+> 532.** A claim about what a file does not do, made from the part of it that was open.
+
+The prior wording is recorded here rather than in the file's history because it is an instance of
+the family this branch has been counting all day — **a value used without being read off its
+source** — and because a finding that was corrected before it landed is worth more as a record of
+the correction than as a tidy entry.
+
+**And the second session's confirmation did not open the file either.** The reviewing session
+took `CLAIM_TARGET_NAME` from the first session's report, checked `ci.yml`'s `discover` job in
+the file, and wrote *"I read `ci.yml`'s `discover` job rather than reasoning from your
+description"* — true of one half, and it carried the other half along as though it were true of
+both. It then put the false version to the author as fact. **Two-party review, which is the
+guard this repository leans on hardest, produced agreement rather than checking**: both parties
+had read something, neither had read the twenty lines that mattered, and the agreement felt like
+verification. It is `concurred is not closed` arriving one step earlier — at the point where a
+finding is *believed* rather than where it is retired.
+
+**What the fix would enumerate, measured before it is written.** Of the **32** targets in the
+Makefile, exactly **two** hand pytest a mark expression: `test` (`not claim_2`) and
+`claim-2-tests` (`claim_2`). So a rule that asked *which targets select a mark* — reading the
+recipes rather than the names — returns exactly what `claim_selection()` returns today, and
+would have covered `claim-2-tests` without anyone naming it. **It is a no-op on this tree and
+load-bearing on the next one**, which is the only shape of change that can be trusted here.
+
+**The flip side of that rule is named rather than left to be discovered.** A target matching it
+that CI never invokes would let the row report coverage from something that never fires — this
+defect one flip over. Closing that means asserting that every mark-owning target is one `ci.yml`
+emits, derived by `figures`' own route from that file, the way it already reads the discovery
+pattern and the floor. `CLAIM_2_SHARDS` is not read by `figures` at all: the shard derivation is
+re-implemented, declared as a second implementation, in `tests/ops/test_ci_sharding.py`.
+
+*Site:* `ops/figures.py` :: `CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)`
+*Site:* `ops/figures.py` :: `#: Every target whose recipe may own tests the suite has given up. `
+*Disposition:* `T010`'s branch, which is the first thing to exercise it — the rule has to learn
+about targets it cannot name in advance, and doing that on a branch with a red row to fix is the
+only way to know the change works. **Not closed by the branch that filed it**
+*Closed:* 2026-09-03 — by `pipelines/silver`, through the exercise rather than around it. The
+rule now reads **recipes instead of names**: `mark_owning_targets` asks every target in the
+Makefile what its recipe hands pytest, so `silver` entered the population by existing and
+nothing has to be named in advance. Measured at the moment it changed — of 32 targets exactly
+two select a mark, `test` and `claim-2-tests` — so the new rule returned precisely what the old
+one returned, and then went to three the moment `silver` was written.
+**And the flip side is closed with it rather than left open**: `unrun_target_failures` asserts
+that every mark-owning target is one `ci.yml` emits, with both sides derived — the recipes on
+the left, the workflow's own pattern and its `_SHARDS` derivation on the right — and an empty
+left side raising rather than passing vacuously.
+*Now:* `ops/figures.py` :: `ANY_TARGET_NAME = re.compile(r"^(?P<name>[a-z][\w.-]*):", re.MULTILINE)`
+*Now:* `ops/figures.py` :: `#: Every target in the Makefile, by name, so each can be asked what its recipe does.`
 *Status:* open

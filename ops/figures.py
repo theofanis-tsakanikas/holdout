@@ -93,9 +93,15 @@ DISCOVER_PATTERN = re.compile(r"grep -oE '(?P<pattern>\^\([^']+\):)'")
 #: The floor `discover` refuses below, read out of the workflow rather than repeated here.
 DISCOVER_FLOOR = re.compile(r"^\s*FLOOR=(?P<floor>\d+)\s*$", re.MULTILINE)
 
-#: What a claim target looks like when nobody is trying to keep the list short. `discover` must
-#: find every one of these; if it finds fewer, a claim exists whose gate never runs.
-ANY_CLAIM_TARGET = re.compile(r"^(claim-[0-9]+|gate-proof|preview-audit):", re.MULTILINE)
+#: What a target CI must run looks like when nobody is trying to keep the list short.
+#: `discover` must find every one of these; if it finds fewer, a gate exists that never runs.
+#:
+#: **`silver` is here and is not a claim.** `T010` put the engine it needs in an optional
+#: dependency group, so its tests are deselected from the suite and run by one job — which is
+#: exactly the shape that must not be discoverable by accident. Written out here independently
+#: of `ci.yml`, which is the whole mechanism: `claim_targets_discover_finds` reads that file's
+#: own pattern out of it, and the two are compared rather than shared.
+ANY_CLAIM_TARGET = re.compile(r"^(claim-[0-9]+|gate-proof|preview-audit|silver):", re.MULTILINE)
 
 
 class InstrumentMissingError(RuntimeError):
@@ -525,11 +531,18 @@ PYTEST_SELECTION = re.compile(
     r"""pytest\s+-m\s+(?:"(?P<quoted>[^"]+)"|'(?P<single>[^']+)'|(?P<bare>[\w.-]+))"""
 )
 
-#: Every target whose recipe may own tests the suite has given up. `claim-` rather than
-#: `claim-[0-9]` on purpose: a sharded claim's work runs under `claim-2-shard` and
-#: `claim-2-combine`, and a rule that could not see those would report coverage from the one
-#: target CI never runs.
-CLAIM_TARGET_NAME = re.compile(r"^(?P<name>claim-[\w-]*):", re.MULTILINE)
+#: Every target in the Makefile, by name, so each can be asked what its recipe does.
+#:
+#: **It replaced a rule that asked by name and it is the finding `#50` filed.** That rule was
+#: `^claim-[\w-]*:` — broad enough to see `claim-2-shard` and `claim-2-combine`, and silent
+#: about its own narrowness: nothing requires a target that owns deselected tests to be called
+#: `claim-something`, and `silver` is the first one that is not. A rule that reads **recipes**
+#: cannot be satisfied by a naming convention and cannot miss a target for being named oddly.
+#:
+#: Measured when it changed: of the 32 targets in the Makefile, exactly two hand pytest a mark
+#: expression — `test` and `claim-2-tests` — so this returned precisely what the old rule
+#: returned on the tree it landed in, and `silver` entered the population by existing.
+ANY_TARGET_NAME = re.compile(r"^(?P<name>[a-z][\w.-]*):", re.MULTILINE)
 
 
 def _recipe(target: str) -> list[str]:
@@ -564,15 +577,28 @@ def suite_selection() -> str | None:
     return _selection_of("test")
 
 
-def claim_selection() -> str | None:
-    """Every mark expression the claim targets select, as one `or`.
+def mark_owning_targets() -> list[str]:
+    """Every target other than `test` whose recipe hands pytest a mark expression.
 
-    Derived from the Makefile the way `discover` derives the target names from it, rather than
-    declared in a list here: a list would be a second registry of which claims own which tests,
-    kept by hand, in the file that exists so nobody has to keep one.
+    **Asked of the recipes, never of the names.** A target that owns tests the suite gave up
+    need not be called `claim-something` — `silver` is not — and a rule that looked for a name
+    would report those tests as run by nothing while a job was provably running them.
+
+    `test` is excluded because it is the other side of the comparison: it is what deselects.
+    """
+    names = sorted({m.group("name") for m in ANY_TARGET_NAME.finditer(_makefile())})
+    return [name for name in names if name != "test" and _selection_of(name) is not None]
+
+
+def claim_selection() -> str | None:
+    """Every mark expression those targets select, as one `or`.
+
+    Derived from the Makefile rather than declared in a list here: a list would be a second
+    registry of which target owns which tests, kept by hand, in the file that exists so nobody
+    has to keep one.
     """
     found: list[str] = []
-    for name in sorted({m.group("name") for m in CLAIM_TARGET_NAME.finditer(_makefile())}):
+    for name in mark_owning_targets():
         selection = _selection_of(name)
         if selection is not None and selection not in found:
             found.append(selection)
@@ -715,7 +741,7 @@ COVERAGE: tuple[Coverage, ...] = (
     ),
     Coverage(
         "discover",
-        "every claim-N, gate-proof and preview-audit target in the Makefile",
+        "every claim-N, gate-proof, preview-audit and silver target in the Makefile",
         claim_targets_that_exist,
         claim_targets_discover_finds,
         "the one that was already lying: claim-[1-7] cannot see a claim-8, and claims-complete "
@@ -856,6 +882,83 @@ def floor_failures() -> tuple[list[str], list[str]]:
     return [], []
 
 
+def unrun_target_failures() -> tuple[list[str], list[str]]:
+    """Every target that owns marked tests must be one `ci.yml` emits.
+
+    **The flip side of the `suite` row, and it fails in the direction that row cannot see.**
+    That row asks whether the tests `make test` gives up are selected by some target; this asks
+    whether that target is one CI actually invokes. A `foo:` running `pytest -m foo` that no
+    workflow calls would satisfy the first and run on no push — coverage reported from something
+    that never fires.
+
+    **Both sides are derived, and neither names a target.** The left is every recipe that hands
+    pytest a mark expression; the right is `ci.yml`'s own discovery pattern, read out of that
+    file, plus the `-tests` and `-shard`/`-combine` entries the workflow derives from a
+    `_SHARDS` variable. A list written here would pass today, pass after `silver` only if
+    somebody edited it, and fail by a person forgetting.
+
+    **The population is one today and two after `silver`, and that is said rather than hidden.**
+    An assertion over a single element is barely exercised; what makes it worth writing now is
+    that the second element arrives in the change that introduces it — not that one element
+    proves anything. An empty left side would make it vacuously true, which is the defect this
+    module exists to refuse, so an empty population raises rather than passing.
+    """
+    try:
+        owning = mark_owning_targets()
+        emitted = set(targets_ci_emits())
+    except InstrumentMissingError as exc:
+        return [], [f"targets CI emits: {exc}"]
+    if not owning:
+        return [], [
+            "no target in the Makefile hands pytest a mark expression, so whether every such "
+            "target runs in CI cannot be answered. That is an instrument with nothing to "
+            "measure rather than a repository in which everything is covered."
+        ]
+    unrun = [name for name in owning if name not in emitted]
+    if unrun:
+        return (
+            [
+                f"{name} selects a pytest mark and `ci.yml` emits no entry for it, so the tests "
+                "it owns run on no push while the suite counts them as covered"
+                for name in unrun
+            ],
+            [],
+        )
+    return [], []
+
+
+def targets_ci_emits() -> list[str]:
+    """What `discover` would put in the matrix, derived from `ci.yml` rather than from a list.
+
+    The base targets are its own pattern applied to the Makefile; the rest is the derivation
+    the workflow declares beside them — `<T>_SHARDS` above one becomes `-shard` and `-combine`,
+    and a `<target>-tests` recipe becomes its own entry. **Re-implemented here rather than read
+    off the workflow's output**, because a second enumeration that consumed the first would be
+    one enumeration wearing two names.
+    """
+    match = DISCOVER_PATTERN.search(_workflow())
+    if match is None:
+        raise InstrumentMissingError(
+            "the discovery grep is not in ci.yml in the shape this module reads it, so what CI "
+            "would emit cannot be computed. Nothing is reported rather than a shorter list."
+        )
+    pattern = match.group("pattern").replace("^(", "^(?:")
+    makefile = _makefile()
+    emitted: list[str] = []
+    for target in re.findall(pattern, makefile, re.MULTILINE):
+        name = target.rstrip(":")
+        variable = name.upper().replace("-", "_") + "_SHARDS"
+        shards = re.search(rf"^{variable}\s*:=\s*(?P<n>\d+)", makefile, re.MULTILINE)
+        count = int(shards.group("n")) if shards else 1
+        if count > 1:
+            emitted += [f"{name}-shard", f"{name}-combine"]
+        else:
+            emitted.append(name)
+        if re.search(rf"^{re.escape(name)}-tests:", makefile, re.MULTILINE):
+            emitted.append(f"{name}-tests")
+    return emitted
+
+
 #: The sub-block of the layout section that names directories on purpose before they exist.
 #: Isolated by its own declared heading rather than by guessing which names are aspirational —
 #: `make language` excludes paths the same way, by a written reason rather than by a rule that
@@ -945,10 +1048,18 @@ def rows() -> tuple[list[Row], list[str]]:
 
 def report(found: list[Row], missing: list[str], out: TextIO) -> int:
     floors, floor_missing = floor_failures()
+    unrun, unrun_missing = unrun_target_failures()
     fabricated, fabricated_missing = layout_fabrications()
     invented, invented_missing = skills_claimed_that_are_not_there()
     prose, prose_missing = prose_failures()
-    missing = [*missing, *floor_missing, *fabricated_missing, *invented_missing, *prose_missing]
+    missing = [
+        *missing,
+        *floor_missing,
+        *unrun_missing,
+        *fabricated_missing,
+        *invented_missing,
+        *prose_missing,
+    ]
     print("figures  a gate reports on what it examined; this is the difference", file=out)
     print("", file=out)
     print(f"  {'gate':<18} {'exists':>7} {'examined':>9}   population", file=out)
@@ -1014,7 +1125,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         )
         print("        as if it were what exists.", file=out)
         return 1
-    if missing or floors or fabricated or invented or prose:
+    if missing or floors or unrun or fabricated or invented or prose:
         return 1
 
     print(f"  {len(PROSE)} figure(s) in prose re-run and unchanged", file=out)
