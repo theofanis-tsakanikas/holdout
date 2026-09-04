@@ -720,9 +720,28 @@ def test_each_emission_attack_is_refused(attack: str) -> None:
 
 
 def test_every_emission_check_has_an_attack_that_bites_it() -> None:
+    """**The third substitution site, and the only one that was not asserting it applied.**
+
+    `_broken` and `_bitten_by` both require their anchor to occur exactly once before replacing;
+    this loop did not. A stale anchor here makes `broken` identical to the original, no check
+    fires, and the failure reads *"X is never made to fail by any emission attack"* — **which
+    blames the check when what is stale is the attack.**
+
+    That is not hypothetical. Verifying the ceiling plant by hand, `exit 1` was removed from a
+    copy of `ci.yml` with a search string that did not match; the file was unchanged, the plant
+    stayed green, and it read as the plant failing to bite. **A break that never broke, reported
+    as the guard not biting** — the same misdiagnosis this assertion now prevents, arriving by
+    hand instead of through this loop.
+    """
     bitten: set[str] = set()
     for attack, (old, new) in EMISSION_ATTACKS.items():
-        broken = CI_WORKFLOW.read_text(encoding="utf-8").replace(old, new, 1)
+        text = CI_WORKFLOW.read_text(encoding="utf-8")
+        assert text.count(old) == 1, (
+            f"the attack {attack!r} anchors on text occurring {text.count(old)} time(s) in "
+            "ci.yml, so it would edit nothing and this loop would report the checks as unbitten "
+            "— the attack is stale, not the checks"
+        )
+        broken = text.replace(old, new, 1)
         for name, check in EMISSION_CHECKS.items():
             try:
                 check(broken)
