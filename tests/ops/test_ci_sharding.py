@@ -757,7 +757,7 @@ def test_every_emission_check_has_an_attack_that_bites_it() -> None:
 # ---------------------------------- the ceiling check, planted rather than read
 
 
-def _entry_step(workflow_text: str | None = None) -> str:
+def _entry_step(workflow_text: str | None = None, *, cache_hit: str = "true") -> str:
     """The `run:` body of the step that executes a matrix entry, with the placeholders bound.
 
     Extracted from `ci.yml` rather than restated, for the reason `_discovered` gives about
@@ -772,20 +772,33 @@ def _entry_step(workflow_text: str | None = None) -> str:
     ]
     assert len(bodies) == 1, "the step that runs a matrix entry is no longer identifiable"
     body: str = bodies[0]
-    return (
+    bound = (
         body.replace("${{ matrix.shard }}", "")
         .replace("${{ matrix.target }}", "probe")
         .replace("${{ matrix.name }}", "probe bin")
+        .replace("${{ steps.worlds-cache.outputs.cache-hit }}", cache_hit)
     )
+    # **Every expression must be bound, or the plant tests the wrong script.** An unsubstituted
+    # `${{ ... }}` survives into the shell as a literal, and the cold-entry escape compares it
+    # against `"true"` — so a missed substitution makes every planted entry look cold and
+    # **exit 0 before reaching the check these tests exist to prove.** The plant would pass
+    # while testing nothing, which is this branch's own recurring defect aimed at itself.
+    assert "${{" not in bound, (
+        f"an expression was left unbound in the extracted step: {bound!r}. A literal `${{{{ }}}}` "
+        "reaching the shell would make the cold-entry escape fire and the plant pass vacuously."
+    )
+    return bound
 
 
-def _run_entry_step(scratch: Path, ceiling: int, sleeps: int) -> subprocess.CompletedProcess[str]:
+def _run_entry_step(
+    scratch: Path, ceiling: int, sleeps: int, *, cache_hit: str = "true"
+) -> subprocess.CompletedProcess[str]:
     """Run that step against a planted Makefile whose one target sleeps."""
     (scratch / "Makefile").write_text(
         f"CI_ENTRY_CEILING := {ceiling}\n\nprobe:\n\tsleep {sleeps}\n", encoding="utf-8"
     )
     return subprocess.run(
-        ["bash", "-c", _entry_step()],
+        ["bash", "-c", _entry_step(cache_hit=cache_hit)],
         cwd=scratch,
         env={"PATH": os.environ.get("PATH", "/usr/bin:/bin")},
         capture_output=True,
@@ -859,3 +872,24 @@ def test_an_entry_whose_tree_declares_no_ceiling_is_refused(tmp_path: Path) -> N
     )
     assert finished.returncode != 0
     assert "CI_ENTRY_CEILING" in finished.stdout + finished.stderr
+
+
+def test_a_cold_entry_over_the_ceiling_is_reported_and_not_failed(tmp_path: Path) -> None:
+    """The relaxation, planted — because it is the escape that could disarm everything above.
+
+    **The world cache is keyed on the bin's slug, so re-packing gives every bin a new key** and
+    the first run after a packing change is cold by construction. On this branch's own first run
+    that cost `claim-2-tests` **1340s against a warm 533s**, and the ceiling check fired — for a
+    reason that is not a stale cost. So a cold entry is reported and not failed.
+
+    **An escape hatch needs a plant more than the check it relaxes**, because it is the thing
+    that makes the check stop firing. This asserts it fires only where it should: the same
+    over-ceiling run that fails warm passes cold and says why.
+    """
+    finished = _run_entry_step(tmp_path, ceiling=1, sleeps=2, cache_hit="false")
+    output = finished.stdout + finished.stderr
+    assert finished.returncode == 0, f"a cold entry was failed for being cold: {output}"
+    assert "cold: the world cache missed" in output, output
+    assert "over the 1s ceiling" not in output, (
+        "a cold entry reached the ceiling comparison, so the escape is above the wrong line"
+    )

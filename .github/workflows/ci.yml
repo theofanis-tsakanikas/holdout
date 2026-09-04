@@ -475,7 +475,11 @@ jobs:
       # shard keys while leaving the combine restoring counterfactual worlds built by the
       # previous generator — not a slow run, a **wrong answer with no red**, which is the
       # failure T00G's narrowing warning names, in the key this change adds.
+      # **`id` because the entry's own ceiling check reads whether this hit.** A cold entry
+      # regenerates its worlds and is legitimately slow for a reason that is not a stale cost,
+      # so the ceiling is reported and not enforced there. See the check below.
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: worlds-cache
         with:
           path: .worlds
           key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}${{ matrix.slug && format('-shard-{0}', matrix.slug) || '' }}
@@ -514,6 +518,40 @@ jobs:
             exit 1
           fi
           echo "this entry took ${elapsed}s against a ceiling of ${ceiling}s"
+
+          # **A cold entry is not judged, and that is measured rather than cautious.** The world
+          # cache is keyed on the bin's slug, so **re-packing gives every bin a new key and the
+          # first run after a packing change is cold by construction.** On this branch's own
+          # first run that cost `claim-2-tests` 1340s against a warm 533s -- and the check below
+          # fired, correctly by its own terms, for a reason that is not a stale cost:
+          #
+          #     Cache not found for input keys: worlds-Linux-<digest>-shard-claim-2-tests-gold
+          #
+          # The same fact as `CLAIM_2_SHARDS` 8 to 7 invalidating seven shard caches, arriving
+          # in bins. So the ceiling is **enforced only when the entry started warm**, and a cold
+          # one prints its time and says the ceiling was not applied.
+          #
+          # **And the general form, which this is the third application of: a change is not
+          # verified by its own run; the run after it verifies.** `CLAIM_2_SHARDS` 8 to 7 was
+          # the first -- every shard key changed, so the run that made the change could not
+          # measure it. `T011`'s prediction was the second, written to be tested by a run that
+          # turned out to be cold for the same reason. This is the third and the parameter is
+          # the packing itself. **So the escape is not a hole in the check: the first run after
+          # a packing change has nothing to say, and the second is where the ceiling speaks.**
+          #
+          # **What that costs, said rather than left to be found: an entry whose cache never
+          # hits is never judged.** The direction is deliberate -- a check that cried wolf on
+          # every packing change would be turned off by the third one -- but it is a check that
+          # can be silently disarmed by a cache that stops working, and nothing here detects
+          # that. A run where every entry reports "cold" is the visible symptom. Named by the
+          # change that introduced it rather than left for whoever meets it.
+          if [ "${{ steps.worlds-cache.outputs.cache-hit }}" != "true" ]; then
+            echo "cold: the world cache missed, so this entry regenerated what a warm one"
+            echo "restores. The ceiling is not applied to a cold entry -- re-packing gives every"
+            echo "bin a new key, so the first run after a packing change is cold by construction."
+            exit 0
+          fi
+
           if [ "$elapsed" -gt "$ceiling" ]; then
             echo "::error::${{ matrix.name }} took ${elapsed}s, over the ${ceiling}s ceiling."
             echo "That ceiling is the critical chain: past it this entry is no longer free and"
