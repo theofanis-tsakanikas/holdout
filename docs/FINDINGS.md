@@ -3266,6 +3266,19 @@ entry it cited unlocked at phase 2 — and **both were found by opening the cite
 by reading the citing sentence.** Instances recorded, no rule: two is not a shape, and the
 correction each time is that a deferral naming its own unlock outranks a parenthetical about it.
 
+**A third was proposed on 2026-09-04 and refused, and the ground is recorded because the next
+reader will make the same surface match.** The candidate was `docs/DECISIONS.md`'s claim-2-README
+deferral naming `T012` as its unlock. It shares the shape — *a sentence about another document
+that turned out wrong* — and not the mechanism. `F2` and the entry above describe an **existing
+text** incorrectly and are **detectable by reading**, which is how both were found; the countermeasure
+is a habit, open the cited entry. That one **cites nothing**: it predicts what a task not yet
+written would touch, and it failed because the task chose differently, which no reading of any file
+could have caught in advance. Its countermeasure is a different rule and already exists — *a
+condition names an event, not a session*, and not a task. **Two failure modes, two countermeasures,
+and a rule generalised from a miscounted three is scoped to whatever the three happened to wear.**
+This register's own history is the argument: the *guard tested by its author* row took nine
+instances, and every early version was scoped to the form the known cases wore.
+
 *Site:* `TASKS.md` :: `              any claim's proof path touches one. This is where preview-audit first has something`
 *Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the first Terraform layer, and the first time a preview surface is considered.`
 *Disposition:* none — the correction is a restatement in `TASKS.md`, which `T012` makes, and the
@@ -3310,9 +3323,62 @@ strength of a laptop measurement is the defect `CLAUDE.md` names about numbers i
 in the very check whose job is to catch it. **The first CI run is the measurement**, and whoever
 declares `CLAIM_5_COST` from it is the one who can also close this.
 
+> **Measured 2026-09-04, run 33848508391, and the falsifier was named before it ran.** This entry
+> predicts that `claim-5` prints `cold` and is never judged; the thing that would refute it is the
+> bin printing `warm`, which was said in advance rather than after. It printed:
+>
+>     this entry took 674s against a ceiling of 1032s
+>     cold: the world cache missed, so this entry regenerated what a warm one restores
+>
+> **674s against a 1,032s ceiling, and the ceiling was not applied.** The entry is comfortably
+> inside it, so nothing was hidden this time — which is exactly why the defect is worth keeping
+> open. **A check that would have passed anyway did not run**, and nothing on the run distinguishes
+> that from a check that ran and passed. `CLAIM_5_COST` is now declared at 750, so a future change
+> that made this target slower would be a stale cost — and the mechanism that turns a stale cost
+> into a red run naming the bin is the one that abstains here, permanently.
+
 *Site:* `.github/workflows/ci.yml` :: `          if [ "${{ steps.worlds-cache.outputs.cache-hit }}" != "true" ]; then`
 *Site:* `evals/uplift/cache.py` :: `CACHE_DIR = Path(os.environ.get("HOLDOUT_WORLD_CACHE", REPO_ROOT / ".worlds"))`
 *Disposition:* the next task that declares `CLAIM_5_COST`, which needs the same run this needs
+*Status:* open
+
+---
+**A seal test searched a wall clock for a three-digit needle, and went red 1 run in 241** ·
+found 2026-09-04 · by `T012` running the suite, not by reading it
+
+`tests/corpus/test_world_seal.py::test_the_truth_is_not_lying_in_the_file_in_plain_sight` reads
+the whole sealed file as text and asserts that five strings **taken from the truth itself** do not
+appear in it. The docstring's argument is right and is the reason the test is good: *a hand-written
+list would test the author's imagination; this tests the file.*
+
+**One of the five needles is a bare integer, and one part of the haystack is a clock.** The nonce
+is derived rather than random — `corpus/world/seal.py` says so, deliberately, so that a rebuilt
+world produces a byte-identical seal — so **`sealed_at` is the only byte that changes between
+runs**. At `W3`, `smoke`, seed `seal`, `totals["acks_failed"]` is **248**, and a three-digit needle
+inside `2026-09-04T07:55:39.540625+00:00` collides in **0.414% of runs — about 1 in 241**, measured
+over 500,000 sampled timestamps.
+
+**A clock reading `…:24:8…` is not the truth leaking.** The collision answers a question nobody
+asked, and it can only ever produce a false red: the assertion is a `not in`, so chance moves it in
+one direction. Every job that runs the suite carries the 1-in-241, which is why it showed up as a
+single unreproducible failure inside a full run and passed on every attempt to reproduce it.
+
+**Fixed by narrowing the haystack rather than the needles.** The search now runs over the seal with
+`sealed_at` removed — the deterministic part, which is the only part that could carry a leak. The
+needles are unchanged and still come from the truth. **Checked by planting**: a needle written into
+the seal's `note` is still seen, so the narrowing removed a chance collision and not the guard.
+
+**How it was found is the part worth keeping.** It appeared in a `make check` run for an unrelated
+change and passed on the next four; the temptation is to call it a flake and move on. It is a flake
+— *with a mechanism*, a probability, and a one-line fix, and every one of those came from measuring
+the needle against the haystack instead of re-running until it went green. **Pre-existing; nothing
+in `T012` touches this file or the seal.**
+
+*Site:* `tests/corpus/test_world_seal.py` :: `def test_the_truth_is_not_lying_in_the_file_in_plain_sight(sealed: Path, readout: Path) -> None:`
+*Site:* `corpus/world/seal.py` :: `        "sealed_at": datetime.now(UTC).isoformat(),`
+*Disposition:* fixed in the test on 2026-09-04. What is **not** closed is the general shape — a
+needle that is a bare number searched in text containing a timestamp — and nothing enumerates the
+other places it could occur
 *Status:* open
 
 ---

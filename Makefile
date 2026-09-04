@@ -445,14 +445,36 @@ CI_ENTRY_CEILING := 1032
 #: A target costing more than the budget is its own bin and that is a signal rather than an
 #: error — at a budget of 700, `claim-1` at 712 already would be.
 #:
-#: **`claim-5` is deliberately absent from this list.** `T012` added it and it has never run on
-#: a runner, so declaring a cost here would be inventing one — the packer defaults it to the
-#: whole budget and gives it its own machine until somebody measures it. That is the rule
-#: working rather than an omission, and the first CI run is the measurement.
+#: **`claim-5` was deliberately absent from this list until it had run.** `T012` added the target
+#: and declaring a cost before a runner had ever executed it would have been inventing one — the
+#: packer defaults an undeclared cost to the whole budget and gives the target its own machine,
+#: which is the rule working rather than an omission. **Measured on run 33848508391: 674s.**
+#:
+#: **Declared at 750 from one observation, and above it rather than at it.** `claim-2-tests` is
+#: the nearest sibling with a history and it moves **446, 532, 498, 533 across four runs of
+#: unchanged work — 19%**; there is no reason to think this target is steadier and there is one
+#: point behind it. The safe direction is the one the mechanism already takes when it knows
+#: nothing: a cost declared too low overruns a bin, a cost declared too high only packs less
+#: efficiently.
+#:
+#: **The margin stops short of the sibling's 19% for a reason worth stating: at 800 a declaration
+#: is indistinguishable from no declaration**, because an undeclared cost *is* the budget. So a
+#: meaningful declaration here has an upper bound of 799, and 750 is 11% above the observation
+#: rather than 19% — the one place where the fail-safe direction and saying something both pull,
+#: and they pull against each other.
+#:
+#: **It changes no packing decision today, and that is said rather than left to be inferred.**
+#: Nothing in this list is small enough to sit beside it under 800, so `claim-5` is its own bin
+#: at 674, at 750 and at the default alike — its own bin **on merit** rather than by default.
+#: What the declaration buys is that a future change making it slower is a stale cost rather than
+#: an unknown one. **And what would catch that never runs for this target**: the ceiling check
+#: abstains on a cold world cache, `claim-5` has no world cache, and it printed `cold` on the run
+#: that measured it. `docs/FINDINGS.md` carries that.
 CLAIM_1_COST := 712
 CLAIM_2_TESTS_COST := 533
 CLAIM_3_COST := 453
 CLAIM_4_COST := 159
+CLAIM_5_COST := 750
 CLAIM_7_COST := 98
 GATE_PROOF_COST := 30
 SILVER_COST := 165

@@ -85,12 +85,19 @@ def test_an_undeclared_cost_is_packed_alone(monkeypatch: pytest.MonkeyPatch) -> 
     failure would be a red run somebody has to diagnose. An unknown treated as the whole budget
     costs one machine and nothing else, until somebody measures it — which is what makes a new
     target need no packing decision from anybody.
+
+    **The undeclared target is a name that will never exist, and it used to be `claim-5`.** That
+    read the real Makefile for a target that happened to be undeclared on the day, so the test
+    went red on 2026-09-04 the moment `T012` measured `claim-5` on a runner and declared its cost
+    — the repository doing exactly what this mechanism exists to make possible. A fixture that is
+    *whatever is unmeasured today* is a fixture with an expiry date nobody wrote down.
     """
     del monkeypatch
+    unmeasured = "claim-nothing-will-ever-declare-a-cost-for-this"
     limit = ci_pack.budget(REAL)
-    assert ci_pack.cost(REAL, "claim-5", default=limit) == limit
-    bins = ci_pack.pack([*TARGETS, "claim-5"], REAL)
-    assert ["claim-5"] in bins, bins
+    assert ci_pack.cost(REAL, unmeasured, default=limit) == limit
+    bins = ci_pack.pack([*TARGETS, unmeasured], REAL)
+    assert [unmeasured] in bins, bins
 
 
 def test_the_packing_is_a_pure_function_of_the_declared_numbers() -> None:
