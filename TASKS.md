@@ -2130,6 +2130,32 @@ permanently-cold entry among warm ones rather than as a run where everything rep
 rather than fixed, because enabling the ceiling on `claim-5` from a fourteen-core measurement is
 exactly the defect the check exists to catch, in the check.
 
+**`CLAIM_5_COST` is 750, measured rather than projected, and one line records what the arithmetic
+refused.** The target had no declared cost when it landed, so the packer gave it the whole budget
+and its own machine — the fail-safe direction, working. Run 33848508391 measured **674s against a
+1,032s ceiling**, and the cost was declared *above* that rather than at it: one observation, of a
+quantity whose nearest sibling with a history moves **19% across four runs of unchanged work**.
+**But 674 x 1.19 = 802**, so a full sibling-variance margin lands over the budget, and exactly two
+declarations exist — less margin than the sibling's variance, or a target oversized on merit. The
+first is taken and the second is written down, because at 800 a declaration is indistinguishable
+from no declaration: an undeclared cost *is* the budget. It changes no packing today; `claim-5` is
+its own bin at 674, at 750 and at the default alike.
+
+**And the run printed what the ceiling finding predicted, with the falsifier named first.** *If it
+prints warm I was wrong about the mechanism* — it printed `cold`. **674 is comfortably inside
+1,032, so the check would have passed anyway**, which is why the entry stays open rather than
+closing: nothing on the run distinguishes a check that did not run from one that ran and passed,
+and that same indistinguishability is what would hide a real overrun. The `cold:` line is the only
+thing separating them and it reads as weather.
+
+**Two tests broke on that run, and one of them broke because the repository worked.**
+`test_an_undeclared_cost_is_packed_alone` used `claim-5` itself as its undeclared example, reading
+the real Makefile for a target that happened to be unmeasured on the day; it went red the moment
+the cost was declared. **A fixture that is live data has an expiry nobody wrote down.** The other
+was a seal test searching a wall clock for a three-digit needle — 1 run in 241, measured — and both
+are in `docs/FINDINGS.md`, the second with its class left open because the fix is in and nothing
+enumerates where else a bare number is searched in text containing a timestamp.
+
 **`evals/definition/README.md` exists, and the deferral about claim 2's is restated.**
 `evals/README.md` declares `<claim>/README.md` as part of the shape and claim 2 has owed one since
 2026-08-29. That deferral's unlock condition named `T012` **by name**, with a prediction attached —

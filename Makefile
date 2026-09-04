@@ -463,6 +463,18 @@ CI_ENTRY_CEILING := 1032
 #: rather than 19% — the one place where the fail-safe direction and saying something both pull,
 #: and they pull against each other.
 #:
+#: **And for this target the tension is not a close call, it is arithmetically unresolvable:
+#: 674 x 1.19 = 802.** A full sibling-variance margin lands **over** the budget. So exactly two
+#: declarations are available here — *less margin than the sibling's measured variance*, which is
+#: 750, or *over budget*, which the packer reads as a target oversized on merit rather than as an
+#: unknown. Neither is wrong and they say different things. **This one chooses the first and the
+#: second is recorded**, so that whoever next raises `CI_ENTRY_BUDGET` or changes the target set
+#: comes back to this line instead of re-deriving it.
+#:
+#: **What the declaration is actually for, since it buys nothing today.** `claim-5` is its own bin
+#: at 674, at 750 and at the default alike. A declared cost buys accuracy the moment the budget or
+#: the target set moves, and nothing before that.
+#:
 #: **It changes no packing decision today, and that is said rather than left to be inferred.**
 #: Nothing in this list is small enough to sit beside it under 800, so `claim-5` is its own bin
 #: at 674, at 750 and at the default alike — its own bin **on merit** rather than by default.
