@@ -309,6 +309,27 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: and **the next run on this branch is the real test.** Recorded now rather than after, for the
 #: same reason the paragraph above it was.
 #:
+#: **It was, and the answer is here rather than in a pull request.** Run `33822115690`, seven
+#: shards, warm:
+#:
+#:     legs           257 290 255 314 299 275 296 s    max 314, min 255, max/min 1.23
+#:     claim-2-tests                            498 s
+#:     run                                     1511 s  = 25m11s
+#:
+#: **The conclusion holds and the bound does not.** The shards are not the critical path — the
+#: slowest leg is **184s below** `claim-2-tests`, more headroom than the ~144s projected. But the
+#: prediction said *under ~302s at worst* and the slowest leg came in at **314s**. **The bound was
+#: wrong, and it survived because the margin was large rather than because the arithmetic was
+#: good.** That distinction is what a projection actually buys, and it is worth more than the
+#: conclusion it protected.
+#:
+#: **And the number that indicts the method rather than the miss:** `claim-2-tests` has now been
+#: measured at **446s, 532s and 498s** across three runs of work that did not change — a **19%
+#: spread**, against a **4%** miss. **The baseline moves more than the error being worried about,
+#: so a point estimate was the wrong shape for the quantity.** That is what the paragraph above
+#: says about `max over min`, arriving one line later in the number this branch wrote rather than
+#: in the one it was quoting.
+#:
 #: **`main` will pay cold once too.** Its caches are not this branch's, so the first run after
 #: this merges is a cold seven-way at about what is measured above — expected, not a regression.
 CLAIM_2_SHARDS := 7
