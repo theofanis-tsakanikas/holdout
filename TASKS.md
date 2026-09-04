@@ -2227,6 +2227,165 @@ review        yes
 status        open
 ```
 
+**The number that argues against this atom, first: the model this pipeline trains cannot answer the
+question the decision path asks it.** `core.pricing.Scenario` takes `expected_units` **per candidate
+price**, and no such relationship is identified on this corpus. Measured at `rehearsal` over
+`PriceDecision` events, discount levels per hours-to-expiry bucket:
+
+    W1 (A/A)   {3:1, 6:1, 12:1, 16:1}          per (hours, arm): exactly 1
+    W6         {3:2, 6:2, 12:2, 16:2}          per (hours, arm): exactly 1
+
+`corpus/world/policy.py`'s `price_cents(base, hours)` is a step function with no noise and no
+exploration, so **price is a deterministic function of hours-to-expiry within an arm.** On ordinary
+history there is no price contrast; in a world with an experiment running the only one is the arm
+contrast the readout exists to measure, and a model fitted through it would be scored later by the
+answer it was trained on. `CLAUDE.md` predicts this and names the remedy — *deliberate price
+randomisation on a small share of decisions* — and **the randomisation is not built.**
+
+**So the pipeline forecasts units at the price the policy sets, and says so in three places.** The
+hole is left open rather than filled with a declared elasticity: a number in `contracts/ml/` saying
+how demand responds to price would be inventing the one thing a model exists to learn, which is
+doctrine rule 3 inside the layer that exists to refuse it. Nothing in `T014`'s `closes` needed it —
+the split, the correction, the calibration gate, the promotion gates and the named approver are all
+about the apparatus a model is judged by, and every one of them is built and planted against.
+
+**A fifth contract family, `contracts/ml/`, because a training run is not an experiment design.**
+`design/` is read by the engine that decides whether an experiment may exist and nothing in
+`pipelines/ml/` is that engine; `inference.yaml` is already in the loader's claimed list because it
+**moved once** for exactly this reason. Seven values, each a `{value, source}` pair, all
+`scenario_assumption`, all walked by the provenance check — 83 of 83 now carry a source.
+
+**Every gate is planted against by name, which is the stopping condition.** Twelve plants in
+`tests/pipelines/test_ml_promotion.py`, and each asserts **which** gate refused rather than that
+something did: a systematically optimistic model at the 20% `CLAUDE.md` names, the do-nothing
+baseline, two segments wrong in opposite directions, a corpus too thin to judge, a model fitted on
+too little history. Two of them assert a gate **passes** as part of the plant — the baseline must be
+refused by `P2` and *not* by `P1`, because a `P1` that refuses the mean is not measuring
+calibration; and the thin corpus must be refused by `P4` while `P3` passes, because `P3` passing
+over zero segments is the vacuous green `P4` exists for. And `test_a_sound_model_passes_every_gate`
+is there because **a gate that has never passed is as untested as one that has never refused**: a
+gate wired to `False` would satisfy every other test in the file.
+
+**Not in the closed refusal vocabulary, and that is a decision with a criterion rather than an
+omission.** `reason_codes.yaml` says *"three moments, because the system refuses three different
+things"* — a price, an experiment, a number — and `guardrails.Refusal` says where such a refusal
+travels: *"to the decision record, to the decision monitor's refusal table, and — at the same size
+as an uplift — to the experiment readout."* A refused model goes to none of those three. Claim 1
+counts decision refusals and claim 6 counts design refusals; **no claim counts a refused model.**
+And `design/codes.py` gives the second reason: the enum exists because `holdout.core` may not have
+the contract parser, and `pipelines/ml/` imports the loader freely — so the enum solves a problem
+this gate does not have. The criterion is written into `promotion.py` so the next reader has a test
+instead of a paragraph, and the condition under which a fourth section becomes right names an event:
+*a claim that asks how often the system declines to act across both populations.*
+
+**Doctrine rule 5 is a type here, not a sentence.** `Promotion` cannot be constructed without an
+`approved_by` matching `human:<name>` — the design form's own `filled_by` shape, so that `agent:`
+and `policy:`, legitimate there, are unspellable here. It refuses a model that any gate refused, an
+assessment belonging to a different model, and an approval with an empty note. The spellings the
+test plants are not a list somebody imagined: they are the other two values `filled_by` accepts.
+
+**Two thresholds were declared from reasoning and both were convicted by the first measurement,
+and that is filed rather than quietly corrected.** `rmse_ceiling_units: 6` against a corpus whose
+mean store-SKU-day is **34 units** — a gate that refused every model that could ever be fitted. And
+`segment_calibration_tolerance_pct: 10` against a median segment standard error of **5.13%**, which
+makes ten percent **1.9 standard errors** and an expected **1.2 false alarms every run** over
+twenty-one segments. The second is the worse one: a gate that refuses everything is noticed on the
+first run, and a gate that refuses a good model most runs is noticed as flakiness — and the
+reasonable response to flakiness is to widen the tolerance until it stops. Both are now relative to
+something the data supplies: RMSE as a share of the do-nothing baseline, and per-segment calibration
+in multiples of that segment's **own** standard error. **The rule about numbers in configuration was
+in hand and had been applied the same day to `CLAIM_5_COST`; it did not fire here, because a
+contract value with a paragraph of justification beside it does not look like an unmeasured number.
+It looks like a decision.**
+
+**A third instance arrived by review after both fixes, one order rarer, and it is the sharpest.**
+The fix above replaced the flat 10% with **three standard errors** — and three standard errors
+applied to the **worst of twenty-one segments** is not three standard errors. Measured: **5.52% of
+runs** refuse a well-calibrated model, one in eighteen, which is exactly the rate the paragraph
+above says a tolerance gets widened at. And it **degrades with the corpus**: 12.6% at 50 segments,
+41.8% at 200, **93.3% at 1,000**. *A fixed multiple is a threshold whose meaning depends on a
+population size nothing enumerates* — the coverage rule wearing a number. The contract now declares
+the **family-wise false alarm rate** and `promotion.segment_limit` derives the per-segment bound by
+Bonferroni: 3.04 standard errors at 21 judged segments, 3.66 at 200, computed with
+`statistics.NormalDist` from the standard library. **Each of the three was found a different way** —
+the first by the gate refusing everything, the second by measuring the noise floor, the third by a
+reviewer asking whether the correction had been applied for testing twenty-one segments, which no
+measurement taken here would have raised because every one of them was of a single segment.
+
+**And the model's own shape was chosen by measurement after being chosen by reasoning and got it
+wrong the same way.** It read `(category, weekday)` with a paragraph explaining why store was
+excluded — *a per-store rate is a handful of days per cell, and would be memorising*. Measured, RMSE
+on held-out days: `(category, weekday)` **33.48** against a do-nothing baseline of **35.58**, which
+is a model that had learned almost nothing. The reasoning was half right — `(store, sku, weekday)`
+scores 25.16 against `(store, sku)`'s 19.09, so a thinner cell **does** overfit, measured — and the
+conclusion was wrong: store belongs as a **factor**, not as a segment dimension. `(sku, weekday) x
+store factor` scores **14.09**. The table stays in the module docstring because the two rows that
+disagree with each other are the argument.
+
+**A seasonal shift then appeared that no gate would have found by reading.** With no recency term, 8
+of 21 segments sat outside the tolerance on the evaluation half while **0 of 21** did on the
+training half — bakery over-predicted on every weekday. One multiplier per category, fitted on the
+last `evaluation_days` training dates only, takes it to 1 of 21, and the factors say what happened:
+**bakery 0.858**, dairy 1.046, poultry 1.017. The window is `evaluation_days` from the contract
+rather than a number that scored well — *the level is estimated over a window as long as the one it
+will predict* — because a recency window tuned against the evaluation half would be the model
+reading its own examination paper.
+
+**What the run says now**, W1 at `rehearsal`, 42 training dates and 14 evaluation dates:
+
+    features       19,864 kept · 296 dropped (all below the reconstruction floor)
+    reconstructed  3,581 of 19,864, on a curve fitted on 16,206 uncensored days
+    model          168 (sku, weekday) rates · 20 store factors · recency 0.858 / 1.046 / 1.017
+    calibration    -2.75% in total · RMSE 13.61 · 0.3826 of baseline
+    gates          0 of 5 refused · worst segment 2.15 sd against a limit of 3
+
+**A planted test found prose describing a separation the code did not have.** `calibration.py` opens
+*"this module measures and that module judges"*, and it took `min_segment_days` and stamped a
+`judged` flag on every segment — so `P4`'s plant raised the bar in `assess` and **nothing happened**,
+because the judging had been done a module earlier. Both docstrings had been read several times that
+hour by their own author, and each describes the architecture the author intended. It is the same
+family as *prose that claims a check nobody wrote*, and it was found by a plant failing rather than
+by reading either file.
+
+**Four deferrals were unlocked and they did not close the same way.** The reconstruction-usability
+threshold closes with a value sourced from **arithmetic**, because the measurement it asked for
+cannot exist — a real stock-out turned away demand nobody ever saw, and the corpus refuses to emit
+it on purpose. The censoring correction's *no consumer* entry closes outright. The
+`stocked_out_from_hour` meaning closes on silver's declared derivation, with the direction now
+stated — **this pipeline's reconstructions err high, never low.** And the pooled-curve entry
+**stays open**: the pipeline groups by nothing, so the eval gains no grouping, and splitting the
+curve would still move a published figure in the flattering direction.
+
+**No dependency was needed, and it is said rather than left silent.** No numpy, no scipy, no
+scikit-learn — the model is counts, sums and exact `Fraction` shares, which is the arithmetic
+`holdout.core.demand` already uses, and fitting it in the standard library keeps the training logic
+inside the *proved-local* rule with nothing to install. MLflow is phase 3; a model here is a frozen
+object with a digest over its own numbers, so two fits of the same data are the same model or there
+is a bug.
+
+**What happens at decision time, because the finding stopped at the model and that is half a
+sentence.** `core.pricing.Scenario` takes `expected_units` per candidate price, so the decision
+path asks for something no model fitted on this corpus can supply. **The ladder covers it and the
+state is coherent** — doctrine rule 1 makes the ladder the safe state *"when the model is
+unavailable"*, `tests/core/test_composition.py` proves a ladder price certifies at every rung, and
+it carries `FALLBACK_LADDER` to the label, the P&L and the monitor, so rule 2 holds. The
+consequence is named rather than left as reassurance: **on this corpus the model path is
+unreachable, so the monitor would read 100% fallback** — the system honestly reporting it has no
+usable model, which is a different sentence from the system working. **What genuinely does not
+exist is the adapter**: nothing anywhere converts a model into a scenario table, `selection.py`
+says so about itself, and the only tables in the repository are worked by hand in a test. That is
+not `T014`'s scope — a producer needs the price response — and it has no owner, which is why it is
+in front of `T016` in those words.
+
+**What this deliberately did not do.** It did not touch `corpus/world/` — adding price exploration
+changes every world's data, moves claim 2's published figures and costs a cold CI on every touched
+module, and it is filed as a **pair** with `T012`'s sub-cent finding so whoever changes the corpus
+finds both and pays once. It did not build `gold.demand_features` as a dbt model: the features are
+built in `pipelines/ml/` because the censoring correction is Python and `CLAUDE.md` puts *the
+correction in training*, so a dbt model would have been a second definition of a corrected day. And
+it promoted nothing — `train` returns an assessment, and the type that records an approval cannot be
+built without a human.
+
 ```
 id            T014
 title         pipelines/ml — training code, proved local
@@ -2238,7 +2397,7 @@ closes        Time-based split, censoring correction (claim 4), calibration gati
 out_of_scope  The run that produces the deployed model (Phase 3, on the estate).
 stop_at       When the promotion gate refuses a planted bad model for a stated reason.
 review        yes
-status        open
+status        closed
 ```
 
 ```
@@ -2286,6 +2445,28 @@ was an estate.** Both findings were readable on the vendor's public documentatio
 The sentence was not wrong about the estate; it was a sentence that made looking feel unnecessary,
 which is `CLAUDE.md`'s eighth form of *a guard tested by its author* wearing a deferral instead of a
 rule.
+
+**Two things `T014` leaves in front of `T016` on purpose, because both are larger than the atom
+that found them and neither has an owner.** They are stated here rather than only in
+`docs/FINDINGS.md` because a gap with no owner is the one kind that survives every atom.
+
+**1 · Nothing converts a model into a scenario table.** `core.pricing.Scenario` takes
+`expected_units` per candidate price and `selection.py` says of itself that the value *"arrives as
+data"*; the only tables in the repository are worked by hand in `tests/core/test_composition.py`.
+Both halves of that join exist — a fitted model and a selection engine — and the adapter between
+them does not. It was not `T014`'s: a producer needs the price response, which is item 2.
+
+**2 · The phase-3 demonstration would never exercise the model path, and that was checked rather
+than assumed.** `backfill` trains on history from the same generator, and price is a deterministic
+function of hours-to-expiry within an arm at **every declared scale** — measured, one level per
+`(hours, arm)` cell at 4 stores and at 320, `harness` being the largest scale this repository
+declares. So on the estate every fresh markdown decision falls to the ladder and the decision
+monitor reads **100% fallback**: a coherent, honest system doing exactly what doctrine rule 1 says,
+and **a materially different demonstration from the one this project describes.**
+
+**Together they decide what the estate can show, which is why they go before phase 3 rather than
+inside it.** Neither is a defect in anything that was built; both are consequences of a corpus
+property that two separate atoms met from different directions.
 
 ```
 id            T016          <- Phase-2 integration session (oversight level 3)
@@ -2624,6 +2805,12 @@ L25 evals/definition/, make claim-5 — claim 5 green at 481 cells with 3/3 muta
     reading. One cell of the 481 is constructed, because the corpus cannot exercise the
     contract's rounding at all. make preview-audit withdrawn: its deferral does not unlock here.
                                            branch evals/definition          status closed
+L26 pipelines/ml/ + contracts/ml/ — training proved local: a time split that refuses four
+    kinds of leak, claim 4's correction given its first consumer, a demand model whose shape was
+    chosen by measurement after reasoning chose it wrong, and five promotion gates each planted
+    against by name. A fifth contract family, because a training run is not an experiment design.
+    Two declared thresholds convicted by the first measurement and restated as relatives.
+                                           branch pipelines/ml             status closed
 ```
 
 **And it went stale again, by two, before `L23` was written.** `T011` and `T00M` closed on

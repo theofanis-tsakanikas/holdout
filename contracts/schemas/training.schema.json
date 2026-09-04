@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/training.schema.json",
+  "title": "The training and promotion settings",
+  "description": "Every threshold the training pipeline branches on, fixed in a contract rather than as constants in pipelines/ml/. A promotion gate whose threshold lives in the module it gates is a dial the same session can turn until the model passes, which is the shape docs/DECISIONS.md refused for the inference settings and refuses again here. Every entry is a {value, source} pair; nothing in this file is law, so every source is a scenario_assumption. NOTE what this file deliberately does NOT carry: a price response. On this repository's corpus price is a deterministic function of hours-to-expiry within an arm, so no price response is identified from history and none is declared here — see pipelines/ml/__init__.py and docs/FINDINGS.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "effective_from", "split", "reconstruction", "gates"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "effective_from": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date" },
+    "note": { "type": "string" },
+
+    "split": {
+      "description": "How history is divided. Time-based, never random: a random split lets a Tuesday in the evaluation half be predicted from the Wednesday after it, which is the future leaking into training through the split itself.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluation_days", "min_training_days"],
+      "properties": {
+        "evaluation_days": {
+          "description": "How many trailing business dates are held out for evaluation. The split point is derived from this and from the data's own last date; it is never chosen after the numbers are seen.",
+          "$ref": "#/$defs/sourced_positive_integer"
+        },
+        "min_training_days": {
+          "description": "The fewest distinct business dates a model may be fitted on. Below this the fit is refused rather than produced with a wide interval nobody reads.",
+          "$ref": "#/$defs/sourced_positive_integer"
+        }
+      }
+    },
+
+    "reconstruction": {
+      "description": "What claim 4's correction is allowed to contribute to a training set.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_observed_share"],
+      "properties": {
+        "min_observed_share": {
+          "description": "The smallest share of an ordinary day a censored store-day's observed window may cover and still be used as a demand observation. Sourced from ARITHMETIC rather than from an error measurement, deliberately: the reconstruction is at_least / share, so `share` is exactly the fraction of the answer that is evidence and 1 - share is the fraction that is curve. A measured error threshold would have to come from evals/censoring/, whose censoring is constructed on ordinary days, and docs/DECISIONS.md refuses that as the wrong distribution for a live guard.",
+          "$ref": "#/$defs/sourced_probability"
+        }
+      }
+    },
+
+    "gates": {
+      "description": "What a model must satisfy before a human may be asked to approve it. Doctrine rule 5: nothing approves itself, so passing every gate here grants nothing — it only makes an approval possible.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "calibration_tolerance_pct",
+        "rmse_share_of_baseline",
+        "segment_family_false_alarm_rate",
+        "min_segment_days"
+      ],
+      "properties": {
+        "calibration_tolerance_pct": {
+          "description": "How far the total predicted units may sit from the total observed units, over the evaluation half, as a percentage of observed. This is the gate ABOVE RMSE: a model that is systematically optimistic by 20% sets systematically low prices, and every individual price still passes every guardrail.",
+          "$ref": "#/$defs/sourced_percent"
+        },
+        "rmse_share_of_baseline": {
+          "description": "The largest share of the do-nothing baseline's RMSE that will be admitted, where the baseline predicts the training grand rate for every store-SKU-day. Kept beside calibration because calibration alone passes a model that is unbiased and useless — the baseline itself is perfectly calibrated by construction, and this is the gate that refuses it. Expressed as a share rather than in units because a ceiling in units has to know the scale of demand, which is a property of the corpus and not of the model.",
+          "$ref": "#/$defs/sourced_probability"
+        },
+        "segment_family_false_alarm_rate": {
+          "description": "The probability that the per-segment calibration gate refuses a WELL-CALIBRATED model on a given run, over all the segments it judges. The per-segment limit is derived from this and from how many segments were judged — a Bonferroni correction — rather than declared as a fixed multiple of a standard error, because the same multiple means different things over twenty-one segments and over two hundred. This is the number that tells the next person whether a red run is real, so it is the number that is declared and the limit is what is computed.",
+          "$ref": "#/$defs/sourced_probability"
+        },
+        "min_segment_days": {
+          "description": "The fewest evaluation store-SKU-days a segment must carry before its calibration is judged. A segment with three days produces a percentage that swings on one shopper, and judging it would be reading noise as a defect.",
+          "$ref": "#/$defs/sourced_positive_integer"
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "source": {
+      "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/provenance"
+    },
+    "sourced_probability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_positive_number": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_percent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0, "maximum": 100 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_positive_integer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "integer", "minimum": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    }
+  }
+}

@@ -419,6 +419,34 @@ class AaHarness:
 
 
 @dataclass(frozen=True, slots=True)
+class TrainingSettings:
+    """`contracts/ml/training.yaml`, resolved. `Decimal` and `int` only, never a float.
+
+    Every threshold `pipelines/ml/` branches on, in a contract rather than in the module it
+    gates. `inference.yaml` gives the general reason — anything that can be chosen after the
+    fact will be chosen after the fact — and a promotion gate is where that bites hardest:
+    the model is the thing somebody wants to ship, so it is the number most likely to be
+    nudged, by whoever is under the most pressure to nudge it.
+
+    **What is deliberately absent is a price response.** Measured on this repository's corpus,
+    price is a deterministic function of hours-to-expiry within an arm, so nothing about
+    demand at a price the policy never set is identified from history. A declared elasticity
+    here would be inventing the number the model exists to learn, and `pipelines/ml/` says so
+    in the same words rather than filling the hole.
+    """
+
+    version: int
+    effective_from: date
+    evaluation_days: int
+    min_training_days: int
+    min_observed_share: Decimal
+    calibration_tolerance_pct: Decimal
+    rmse_share_of_baseline: Decimal
+    segment_family_false_alarm_rate: Decimal
+    min_segment_days: int
+
+
+@dataclass(frozen=True, slots=True)
 class ContractSet:
     """Every contract in the repository, validated and resolved.
 
@@ -434,6 +462,7 @@ class ContractSet:
     reason_codes: ReasonCodes
     balance_covariates: BalanceCovariates
     inference: InferenceSettings
+    training: TrainingSettings
     aa_harness: AaHarness
     design_form: MappingProxyType[str, Any]
     census: Any
