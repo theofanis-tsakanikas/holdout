@@ -1821,6 +1821,21 @@ Everything that needs data at scale, an engine, or a workspace.
 - The two AI/BI dashboards as `databricks_dashboard` resources — experiment readout and decision
   monitor. The second is required by doctrine rule 2: without it, a fallback is not visible to the
   end. Both consume the metric contract, so both are claim 5 evidence.
+  *Landed 2026-09-04, and the atom's own stopping condition was measured before it was trusted:
+  `terraform validate` passes a dashboard whose `serialized_dashboard` contains `select nonsense
+  from table_that_does_not_exist where 1=`, because that field is a string. So **both dashboards
+  are a fifth compiled consumer** of the metric contract — the readout screen's dataset SQL **is**
+  `compile_readout(metric)`, the same call `generated/readout/` is written from — and `make
+  contracts` byte-compares them. The check tiles come from `at_readout`'s own `check` field and
+  the monitor names all twelve `at_decision` codes, so nothing on either screen is typed by hand
+  that a contract declares.*
+
+  *And the screen `closes` calls the single most important screenshot in the project **has no data
+  source**: `gold.readout` does not exist and the compiled readout returns per-arm metric rows with
+  no uplift and no reason code. Its columns are the fields of `holdout.core.experiment.Readout`,
+  compared in both directions by a test, so the naming is honest — but the row still has nobody to
+  write it, and that goes to `T016` beside `T014`'s missing model-to-scenario join. See `T013`'s
+  landing note in `TASKS.md`.*
 - `evals/definition/` — the three mechanisms compared as integers, no tolerance.
   *Landed 2026-09-04, and the first thing it measured argues against it: **two of the three
   mechanisms `CLAUDE.md` names are one mechanism.** The dbt model, the SQL function and the
@@ -1865,7 +1880,8 @@ Everything that needs data at scale, an engine, or a workspace.
   against a do-nothing baseline of 35.58, and `(sku, weekday)` times a store factor scores 14.09.
   See `T014`'s landing note in `TASKS.md`.*
 - `make preview-audit` — the declared inventory of preview surfaces, and the check that no
-  claim's proof path touches one.
+  claim's proof path touches one. *`terraform validate`, which shared its deferral, landed
+  2026-09-04 with `T013`'s first Terraform layer and is in `make check` and CI's `gate`.*
 
   > **Not delivered by `T012`, and `TASKS.md` said it would be. Restated 2026-09-04.** That block
   > read *"`DECISIONS.md` defers it to exactly here"*; the deferral says *"the first Terraform

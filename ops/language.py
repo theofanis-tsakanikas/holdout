@@ -94,11 +94,18 @@ NOT_CONTENT: frozenset[str] = frozenset(
         ".shards",
         "notes",
         "uv.lock",
+        # Terraform's downloaded providers — 67 MB of platform binary, gitignored, fetched by
+        # `terraform init` from the tracked `.terraform.lock.hcl` beside it. Same class as
+        # `.worlds` and `.shards`: generated, not tracked, and not text.
+        ".terraform",
     }
 )
 
-#: **This list is kept by hand, and that is the shape this repository has been wrong about four
-#: times.** It went red on `.shards/` the day sharding landed, which is the list working — an
+#: **This list is kept by hand, and `docs/FINDINGS.md` now carries three instances of what that
+#: costs.** It went red on `.shards/` the day sharding landed, on a stray worktree that reddened
+#: one laptop and no runner, and on `.terraform/` the day the first infrastructure layer landed —
+#: **each one a gitignored artefact this gate had no business reading, each added by whoever
+#: tripped over it.** That is the list working — an
 #: unreadable file is *enumerated and not examined*, and `make figures` reports that as
 #: under-coverage rather than letting it pass. The population it ought to be computed from is
 #: what git tracks, which would need no entry here at all; that is recorded rather than done,

@@ -28,7 +28,7 @@ PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check check-locked test lint format typecheck contracts contracts-write \
-        expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-5 claim-7 silver \
+        expiry language figures findings terraform claim-1 claim-2 claim-3 claim-4 claim-5 claim-7 silver \
         gold \
         claim-2-shard claim-2-combine claim-2-tests \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight eval-definition gate-proof \
@@ -65,9 +65,9 @@ check-locked:  ## make check in the environment CI's `gate` job has — NO extra
 	@echo "OK      the gate's own environment, with no extra installed"
 	@echo "        your extras are gone: 'uv sync --extra dbt' puts them back"
 
-check: lint typecheck contracts language findings expiry figures test  ## the whole local gate, in the order that fails fastest
+check: lint typecheck contracts language findings expiry figures terraform test  ## the whole local gate, in the order that fails fastest
 	@echo ""
-	@echo "OK      lint · typecheck · contracts · language · findings · expiry · figures · tests"
+	@echo "OK      lint · typecheck · contracts · language · findings · expiry · figures · terraform · tests"
 	@echo "        the claim targets are NOT in here — they take minutes, and CI discovers"
 	@echo "        and runs every one of them. Run 'make claim-1' before a claim's own PR."
 
@@ -161,6 +161,40 @@ figures:  ## refuse a gate that examined less than exists, and a figure that sto
 # is how one of these findings nearly left the record twice.
 findings:  ## refuse an open finding that no longer anchors to what it named
 	$(RUN) python -m ops.findings
+
+# `terraform validate` over every layer under `infra/`, with the population enumerated by a
+# glob rather than by a list somebody keeps: a layer that exists and is never validated is the
+# coverage rule's own failure, and `make figures` compares this count against the tree.
+#
+# **`-backend=false`, because nothing here is applied.** No state, no credential, no resource
+# that exists. `infra/lakehouse/README.md` says so at length, because *the first Terraform
+# layer* sounds like the estate and is not.
+#
+# **What this cannot check is most of what the layer is for**, and it is written here so that
+# nobody reads a green as more than it is: `serialized_dashboard` is a string, so a dashboard
+# containing broken SQL over a table that does not exist validates clean -- measured against the
+# real provider. What checks the content is `make contracts`, which byte-compares the generated
+# artefact the resource reads.
+#
+# Skipped with a loud line, never silently, when terraform is absent: an instrument that cannot
+# answer says so rather than returning success.
+terraform:  ## terraform validate over every layer under infra/
+	@command -v terraform >/dev/null 2>&1 || { \
+	  echo "SKIP    terraform is not installed, so no layer under infra/ was validated."; \
+	  echo "        This is a skip and not a pass. CI installs it; a laptop may not have it."; \
+	  exit 0; \
+	}
+	@found=0; for layer in infra/*/; do \
+	  [ -f "$$layer/versions.tf" ] || continue; \
+	  found=$$((found + 1)); \
+	  terraform -chdir="$$layer" init -backend=false -input=false >/dev/null || exit 1; \
+	  terraform -chdir="$$layer" validate || exit 1; \
+	done; \
+	if [ "$$found" -eq 0 ]; then \
+	  echo "OK      no layer under infra/ carries a versions.tf, so nothing was validated."; \
+	else \
+	  echo "OK      $$found layer(s) under infra/ validate"; \
+	fi
 
 # Doctrine rule 6: "Exceptions expire. On expiry the finding returns and CI goes red again."
 # This is the only target in the file that can go red on a day nobody touched the repository,

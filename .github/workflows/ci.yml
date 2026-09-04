@@ -164,6 +164,43 @@ jobs:
       - name: install exactly what uv.lock pins
         run: make setup-locked
 
+      # **`make check` now runs `terraform validate`, so this job needs terraform** -- and the
+      # two steps below exist to keep that from becoming a new way for a REQUIRED context to go
+      # red. `gate` is the check everything else depends on, and a registry fetch inside it is a
+      # failure mode on the job with the least tolerance for one.
+      #
+      # `hashicorp/setup-terraform` is pinned by sha like every other action here.
+      # `terraform_wrapper: false` because the wrapper replaces the binary with a script that
+      # captures stdout, and `make terraform` reads exit codes rather than output.
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: 1.15.5
+          terraform_wrapper: false
+
+      # **The provider, cached on the lock file rather than fetched every run.** 67 MB, measured
+      # on darwin_arm64; the Linux figure is whatever this step's own log says, which is the only
+      # place it can honestly come from.
+      #
+      # The key is the hash of every `.terraform.lock.hcl` under `infra/`, so a pinned provider
+      # is restored and a changed pin is a miss -- the same shape as claim 2's world cache, where
+      # the key is the digest computed by the code that decides what stale means.
+      #
+      # **What this does not remove is the fetch on a miss.** On a cold key `terraform init`
+      # reaches the Terraform registry, and `gate` is red if it cannot. That is stated here and
+      # in `infra/lakehouse/README.md` rather than absorbed, because it is a sentence somebody
+      # needs to be able to find when it fires at three in the morning.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-${{ runner.os }}-${{ hashFiles('infra/**/.terraform.lock.hcl') }}
+
+      # `terraform init` writes here and reads here, so a hit means no registry call at all.
+      # The directory has to exist before init runs or terraform ignores the variable.
+      - name: the plugin cache the step above restores
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >> "$GITHUB_ENV"
+
       # `make check` is the whole local gate - the same command a session runs before it
       # commits. Running the identical target here is the point: if CI and a laptop can
       # disagree, the laptop stops being evidence.
@@ -182,6 +219,12 @@ jobs:
       # legible as itself rather than as "make check failed".
       - name: make expiry
         run: make expiry
+
+      # Overlapping with `make check` for the same reason as the two steps above: when a
+      # Terraform layer stops validating, the checks list should say `terraform` rather than
+      # `make check failed`. It is also the step whose log carries the Linux provider figure.
+      - name: make terraform
+        run: make terraform
 
   # Reads the claim targets out of the **Makefile** and emits them as a matrix. The
   # discovery property is the whole point and it survives the restructure unchanged: the

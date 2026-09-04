@@ -801,8 +801,28 @@ exists on one machine and never on a runner — so the gate that would catch an 
 list is maintained on the only machine where the problem occurs and checked on the only machine
 where it cannot. Two instances now, and the second one is not a longer list.
 
+**Third instance, 2026-09-04, and it is the one that turns the list into a forecast.**
+`make language` went red on **67 MB of Terraform provider binary** the day `T013` created the
+first infrastructure layer — `infra/lakehouse/.terraform/providers/…/terraform-provider-databricks_v1.130.0`,
+enumerated as repository content and undecodable, which `make figures` correctly reported as
+under-coverage. `.terraform` is now the third name added to `NOT_CONTENT` by whoever tripped over
+it, and **`git check-ignore` answers in one line**: `.gitignore:60: infra/**/.terraform/`.
+
+> **Every one of the three is a gitignored artefact the gate had no business reading, and each was
+> added by the session that met it.** `.shards/` when sharding landed, a stray worktree that
+> reddened one laptop and no runner, `.terraform/` when the first Terraform layer landed.
+
+**So the pattern is no longer *the list is short*. It is a prediction: the next tool adds a
+fourth.** Nothing about these three is a judgement call — `git ls-files` would have excluded all
+three without an entry, and `ops/figures.py` has asked git since 2026-09-01, one file away, with a
+docstring saying *what git tracks, which is the only defensible answer to what is repository
+content*. The entry stays open because the change has still not been made, and each instance is
+cheaper to add than to fix, which is exactly why three of them exist.
+
 *Site:* `ops/language.py` :: `NOT_CONTENT: frozenset[str] = frozenset(`
-*Disposition:* its own branch — small, and unblocked now rather than by anything
+*Disposition:* its own branch — small, and unblocked now rather than by anything. **Three
+instances, and the third is the argument for doing it before a fourth**: the fix is applying a
+move that already landed one file away, not designing anything
 *Status:* open
 
 **The combine job's worlds are disjoint from every shard's** · found 2026-09-01 · by T00H, from
@@ -3607,6 +3627,137 @@ that module are the ones being measured. The prose did not change; it became tru
 *Disposition:* fixed. The class stays open — **prose describing a separation the code does not
 have** is the same family as *prose that claims a check nobody wrote*, and nothing enumerates where
 else a module says it decides nothing while taking a threshold as an argument
+*Status:* open
+
+---
+**The single most important screenshot in the project has no data source** ·
+found 2026-09-04 · by `T013` reading what its own `closes` sentence would need
+
+`TASKS.md`'s `T013`: *"**The refused version of the readout screen is the single most important
+screenshot in the project.**"* `CLAUDE.md` says the same thing and describes the screen: four
+check tiles, then *"either the uplift with its confidence interval, or the refusal and its reason
+code, at the same size"*.
+
+**Nothing produces that row.** `gold.readout` does not exist — `pipelines/gold/` builds two of
+family C's four tables and says why the other two are absent: *"exposure and outcomes are
+collected by a running experiment, which is phase 3."* And the compiled readout query is not it
+either: `generated/readout/*.sql` returns `arm · store_id · iso_week · category · metric_value`,
+**computes no uplift and carries no reason code**. It is the input to an estimator, not the
+estimator's answer.
+
+**So the screen the design calls its most important artefact is the one screen whose data has no
+producer.** Both halves either side of it exist — `holdout.core.experiment` closes a readout and
+returns every field, and the dashboard resource is compiled and validated — and the join does not.
+
+**This is the same kind as the model-to-scenario-table gap `T014` filed**, and they are named
+together for the same reason: *halves that exist and a join that nobody owns*. A gap with no owner
+is the one kind that survives every atom, because every atom can correctly say it is not theirs.
+
+**What `T013` did instead of inventing a schema.** The dashboard names columns for the absent
+table, and they are the fields of `holdout.core.experiment.readout.Readout` — the type the core
+already returns and the one phase 3 will materialise — with
+`tests/contracts/test_dashboard.py::test_the_readout_columns_are_the_core_types_own_fields`
+comparing the two **in both directions**. So the screen consumes a declaration that exists rather
+than one somebody wrote for it, and a field renamed in the core turns the build red. **That is not
+a fix and is not offered as one**: it makes the naming honest, and the row still has nobody to
+write it.
+
+*Site:* `src/holdout/contracts/compilers/dashboard.py` :: `READOUT_COLUMNS: tuple[str, ...] = (`
+*Site:* `pipelines/gold/__init__.py` :: ``C`    `experiment_assignment` · `exposure` · `outcomes` · `readout`        two of four`
+*Disposition:* `T016`, alongside the model-to-scenario join. It is not `T013`'s — a producer needs
+the experiment to have run — and it is not phase 3's to discover, because what the estate can
+demonstrate is decided before it opens
+*Status:* open
+
+---
+
+**`terraform validate` passes a dashboard whose SQL is broken over a table that does not exist** ·
+found 2026-09-04 · by `T013` testing its own stopping condition before relying on it
+
+`T013`'s `stop_at`: *"when the definitions consume the metric contract and `terraform validate`
+passes."* Two halves. **Only the second is mechanised, and it cannot see the first.**
+
+Measured against the real provider — `databricks/databricks` 1.130.0 — with a
+`databricks_dashboard` whose `serialized_dashboard` contained
+
+    select nonsense from table_that_does_not_exist where 1=
+
+broken syntax, a column that does not exist, a table that does not exist:
+
+    Success! The configuration is valid.
+
+**`serialized_dashboard` is a string.** `validate` checks HCL and the provider's resource schema
+and stops there. So the declared stopping condition is satisfied by a dashboard that re-expressed
+the metric wrongly, against tables nobody built — **a declared stopping condition that does not
+test the declared closing condition**, which is the third time this repository has recorded that
+shape.
+
+**Closed by making the consumption structural rather than by widening the assertion.** The readout
+screen's dataset SQL **is** `compile_readout(metric)` — the same call `generated/readout/` is
+written from, not a copy of it — the four check tiles are derived from `at_readout`'s own `check`
+field, the monitor names all twelve `at_decision` codes, and both screens are artefacts under
+`generated/` that `make contracts` byte-compares. A drifted query is a red build, not a red
+screenshot six months later.
+
+**What is worth keeping is the order.** The measurement came before the design: the plant was run
+against the provider *before* the layer was written, so the compiler exists in the shape it does
+because `validate` had already been shown blind. **A stopping condition trusted rather than tested
+is a gate whose coverage nobody measured**, and this one covers none of what the atom is about.
+
+*Site:* `infra/lakehouse/README.md` :: `    select nonsense from table_that_does_not_exist where 1=`
+*Site:* `Makefile` :: `terraform:  ## terraform validate over every layer under infra/`
+*Disposition:* closed in `T013` by the byte comparison. The **class** stays open: nothing
+enumerates which other `stop_at` conditions in `TASKS.md` are satisfiable without testing what
+they name
+*Status:* open
+
+---
+**The explained-collision pair key degrades to the bare identifier** ·
+found 2026-09-04 · by the reviewer, when a fifth same-name entry was about to be added
+
+`evals/oversight/checks.py`'s `EXPLAINED` is keyed by a **pair** — the name here and the name
+there — and its comment records why, as a finding of its own:
+
+> *"**The key is a pair, and that was a finding.** It was the bare identifier until oversight
+> level 2 pointed out what that excuses: an entry for `members` would have pre-approved **any**
+> future `members` anywhere in the package — including one that really is a collection of people
+> — and `O12` would have stayed green, because the name still matched something."*
+
+**The entry is `("members", "members")`.**
+
+**For a same-name collision the pair key *is* the bare identifier.** A future local `members`
+colliding with the published `members` matches that key exactly, and is pre-approved — which is
+the outcome the pair was adopted to prevent, in the very example the comment uses to explain it.
+
+Measured over the eleven entries:
+
+    same-name   4   agent · candidate · members · parents
+    differing   7   AGENT vs agent · agent_tool vs agent · compile_agent_tool vs agent ·
+                    candidate_weeks vs candidate · url vs URL · weight_c vs weight ·
+                    weight_t vs weight
+
+**So the pair genuinely protects seven and protects nothing on four**, and `height` — added the
+same day — would have been a fifth. The mechanism is not wrong; it is **partial in a way its own
+justification does not say**, and the sentence a reader takes away is that the case is covered.
+
+**Found because a fifth same-name entry was about to be added**, and by the reviewer rather than
+by the session adding it. Nothing measured it before: the four have been there since T006 and the
+count had never been taken.
+
+> **A mechanism whose recorded justification names the case it fails on is worse than one with no
+> justification**, because the justification is what stops anybody checking.
+
+**What would fix it is a design question rather than a longer key**, which is why this is filed
+rather than fixed. An explanation would have to be keyed to something that distinguishes *this*
+`members` from a future one — a module, a type, a line — and each of those has a cost the pair
+does not: a key carrying a path goes stale on a move, and a key carrying a line goes stale on an
+edit. **The pair was chosen because it is stable. What it buys in stability it gives back on every
+same-name collision**, and that trade has never been stated.
+
+*Site:* `evals/oversight/checks.py` :: `EXPLAINED: dict[tuple[str, str], str] = {`
+*Disposition:* `T016`, with the other two joins. It is a design question about what an explanation
+is keyed to, it blocks nothing, and the four entries it affects are each individually sound —
+which is what makes it a shape rather than four defects
 *Status:* open
 
 ---

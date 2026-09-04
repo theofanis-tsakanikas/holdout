@@ -1,0 +1,296 @@
+{
+  "_generated": "GENERATED FILE — DO NOT EDIT. Source: contracts/. Generator: holdout.contracts.compilers.dashboard. Regenerate: make contracts, which recompiles this file and fails the build if what is on disk differs.",
+  "datasets": [
+    {
+      "displayName": "category_margin_per_store_week@v3 by arm",
+      "name": "arm_metric",
+      "queryLines": [
+        "-- GENERATED FILE — DO NOT EDIT\n",
+        "-- source:     contracts/metrics/category_margin_per_store_week.v3.yaml\n",
+        "-- generator:  holdout.contracts.compilers.readout\n",
+        "-- regenerate: make contracts\n",
+        "--\n",
+        "-- `make contracts` recompiles this file and fails the build if what is on disk\n",
+        "-- differs, so an edit here does not survive and does not go unnoticed either.\n",
+        "\n",
+        "-- readout: category_margin_per_store_week@v3 — unit EUR, rounded half_even to 2 decimals\n",
+        "--\n",
+        "-- parameters\n",
+        "--   :experiment_id  the experiment whose assignment is read\n",
+        "--   :data_version_gold_decision_economics\n",
+        "--                   the Delta version gold.decision_economics is pinned to. **One parameter\n",
+        "--                   per relation**: a Delta version counter is per table, so one\n",
+        "--                   number cannot index two of them. Without the pin, re-running\n",
+        "--                   last month's readout returns a different number as late data\n",
+        "--                   arrives.\n",
+        "--   :data_version_gold_waste\n",
+        "--                   the Delta version gold.waste is pinned to.\n",
+        "--   :data_version_gold_experiment_assignment\n",
+        "--                   the Delta version gold.experiment_assignment is pinned to.\n",
+        "--   :period_start   inclusive, the declared opening of the comparison window\n",
+        "--   :period_end     exclusive, the declared close. Reading before it is blocked by the\n",
+        "--                   engine, not by this query.\n",
+        "\n",
+        "with s as (\n",
+        "    select\n",
+        "        store_id,\n",
+        "        iso_week,\n",
+        "        category,\n",
+        "        sum(cast(qty * price_paid as decimal(38, 6))) as term_0,\n",
+        "        sum(cast(qty * unit_cost_as_of as decimal(38, 6))) as term_1\n",
+        "    from gold.decision_economics version as of :data_version_gold_decision_economics\n",
+        "    group by store_id, iso_week, category\n",
+        "),\n",
+        "\n",
+        "w as (\n",
+        "    select\n",
+        "        store_id,\n",
+        "        iso_week,\n",
+        "        category,\n",
+        "        sum(cast(qty * unit_cost_as_of as decimal(38, 6))) as term_2\n",
+        "    from gold.waste version as of :data_version_gold_waste\n",
+        "    group by store_id, iso_week, category\n",
+        "),\n",
+        "\n",
+        "grain as (\n",
+        "    select store_id, iso_week, category from s\n",
+        "    union\n",
+        "    select store_id, iso_week, category from w\n",
+        "),\n",
+        "\n",
+        "metric as (\n",
+        "    select\n",
+        "        g.store_id,\n",
+        "        g.iso_week,\n",
+        "        g.category,\n",
+        "        'category_margin_per_store_week' as metric_id,\n",
+        "        3 as metric_version,\n",
+        "        bround(coalesce(s.term_0, 0) - coalesce(s.term_1, 0) - coalesce(w.term_2, 0), 2) as metric_value\n",
+        "    from grain g\n",
+        "    left join s on s.store_id = g.store_id and s.iso_week = g.iso_week and s.category = g.category\n",
+        "    left join w on w.store_id = g.store_id and w.iso_week = g.iso_week and w.category = g.category\n",
+        "),\n",
+        "\n",
+        "assignment as (\n",
+        "    select\n",
+        "        store_id,\n",
+        "        arm,\n",
+        "        assigned_at,\n",
+        "        seed\n",
+        "    from gold.experiment_assignment version as of :data_version_gold_experiment_assignment\n",
+        "    where experiment_id = :experiment_id\n",
+        ")\n",
+        "\n",
+        "select\n",
+        "    a.arm,\n",
+        "    m.store_id, m.iso_week, m.category,\n",
+        "    m.metric_id,\n",
+        "    m.metric_version,\n",
+        "    m.metric_value\n",
+        "from metric m\n",
+        "join assignment a\n",
+        "  on a.store_id = m.store_id\n",
+        "where m.iso_week >= :period_start\n",
+        "  and m.iso_week <  :period_end\n",
+        "order by a.arm, m.store_id, m.iso_week, m.category\n"
+      ]
+    },
+    {
+      "displayName": "The number, or the reason there is none",
+      "name": "verdict",
+      "queryLines": [
+        "select\n",
+        "  experiment_id,\n",
+        "  uplift,\n",
+        "  confidence_interval,\n",
+        "  p_value,\n",
+        "  alpha,\n",
+        "  digest,\n",
+        "  data_version\n",
+        "from gold.readout\n",
+        "where experiment_id = :experiment_id\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "displayName": "Experiment readout",
+      "layout": [
+        {
+          "position": {
+            "height": 3,
+            "width": 3,
+            "x": 0,
+            "y": 0
+          },
+          "widget": {
+            "name": "check_balance",
+            "textbox_spec": "### balance\n\nRefuses with **IMBALANCED_PRE_PERIOD**.\n\nThe arms differ on a declared balance covariate by more than the tolerance, measured on the pre-period only. The difference of means would carry that difference into the estimate and call it an effect."
+          }
+        },
+        {
+          "position": {
+            "height": 3,
+            "width": 3,
+            "x": 3,
+            "y": 0
+          },
+          "widget": {
+            "name": "check_exposure",
+            "textbox_spec": "### exposure\n\nRefuses with **EXPOSURE_BELOW_THRESHOLD**.\n\nToo few treated units were actually exposed — the ESL acknowledgement never arrived, so the price never reached the shelf. Estimating anyway measures intentions instead of actions and dilutes the effect toward zero without saying so."
+          }
+        },
+        {
+          "position": {
+            "height": 3,
+            "width": 3,
+            "x": 6,
+            "y": 0
+          },
+          "widget": {
+            "name": "check_contamination",
+            "textbox_spec": "### contamination\n\nRefuses with **CONTAMINATED_ASSIGNMENT**.\n\nA unit received the other arm's policy, or an assignment differs from the committed seed's draw. The lottery is where the validity comes from; once it is broken there is nothing left to be unbiased about."
+          }
+        },
+        {
+          "position": {
+            "height": 3,
+            "width": 3,
+            "x": 9,
+            "y": 0
+          },
+          "widget": {
+            "name": "check_power",
+            "textbox_spec": "### power\n\nRefuses with **POWER_NOT_REACHED**.\n\nThe realised variance or the realised sample leaves the experiment unable to detect the declared MDE. A wide interval is honest; a point estimate presented without one is not."
+          }
+        },
+        {
+          "position": {
+            "height": 4,
+            "width": 6,
+            "x": 0,
+            "y": 3
+          },
+          "widget": {
+            "name": "hero",
+            "textbox_spec": "## Uplift, or the refusal at the same size\n\nMetric **category_margin_per_store_week@v3**, unit **EUR**, rounded half_even to 2 decimals.\n\nA refusal is a correct output. It is shown here at the size an uplift would be, never as an empty chart."
+          }
+        },
+        {
+          "position": {
+            "height": 4,
+            "width": 6,
+            "x": 6,
+            "y": 3
+          },
+          "widget": {
+            "name": "arms_by_week",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "arm_metric"
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "color": {
+                  "fieldName": "arm",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "x": {
+                  "fieldName": "iso_week",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "metric_value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "version": 3,
+              "widgetType": "line"
+            }
+          }
+        },
+        {
+          "position": {
+            "height": 4,
+            "width": 6,
+            "x": 0,
+            "y": 7
+          },
+          "widget": {
+            "name": "per_store_effect",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "arm_metric"
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "x": {
+                  "fieldName": "metric_value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "version": 3,
+              "widgetType": "histogram"
+            }
+          }
+        },
+        {
+          "position": {
+            "height": 4,
+            "width": 6,
+            "x": 6,
+            "y": 7
+          },
+          "widget": {
+            "name": "locked_design",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "verdict"
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "experiment_id"
+                  },
+                  {
+                    "fieldName": "digest"
+                  },
+                  {
+                    "fieldName": "data_version"
+                  },
+                  {
+                    "fieldName": "alpha"
+                  }
+                ]
+              },
+              "version": 3,
+              "widgetType": "table"
+            }
+          }
+        }
+      ],
+      "name": "readout"
+    }
+  ]
+}
