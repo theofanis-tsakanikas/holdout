@@ -3761,6 +3761,517 @@ which is what makes it a shape rather than four defects
 *Status:* open
 
 ---
+**A published disagreement count stops at five, and the docstring says *every*** ·
+found 2026-09-05 · by `T016`, planting a mutation on the mechanism claim 5 has none for
+
+`evals/definition/checks.py::_disagreements` takes `limit: int = 5` and **breaks out of its loop**
+when it reaches it. `compare()` publishes the length of that truncated list as the check's figure:
+
+    figure=f"{len(set(left) | set(right))} cell(s), {len(broken)} disagreeing"
+
+Measured directly, with no pipeline involved — twenty cells, every one of them different:
+
+    20 cells all disagreeing -> 5 reported
+
+The docstring's first line is *"Every cell the two do not agree on, including cells one has and the
+other does not."*
+
+**`passed` is unaffected and the claim does not become false**: any disagreement fails the check.
+What is wrong is the number beside it, and it is wrong in the flattering direction — a one-cent
+disagreement and a catastrophic one publish the same figure. Measured on a planted mutation
+(`evals/claim-5-arms-the-sql-mechanism`): **349 cells present in both Python paths and absent from
+the SQL, published as `481 cell(s), 5 disagreeing`.**
+
+`evals/README.md`'s fifth rule is *numbers, not a green tick*. Claim 1's `G6` is the contrast: it
+publishes `716` and `6,650` as counts and truncates only its examples.
+
+**And the same numbers block hard-codes the cell it constructed.** `("cells", f"{len(sql):,} —
+{len(sql) - 1:,} from the corpus, 1 constructed")` subtracts a literal 1 rather than counting. On
+the mutated run the SQL had dropped the constructed cell and the line read *"132 — 131 from the
+corpus, 1 constructed"* where the truth was 132 and **0** — wrong on exactly the run where the loss
+of the eval's own constructed cell is the thing to notice.
+
+**And a check id in prose that no check carries.** `evals/definition/__init__.py` ends a paragraph
+*"it is a property of the pipeline, established in `T010` and `T011`, and it is `D5`."* `D5` occurs
+**exactly once in the repository**, in that sentence; claim 5 declares `D1`–`D4` and the drop it
+describes is published as a number. `make figures`'s `armed-or-says-why` row enumerates `Check(...)`
+ids, so a check named only in prose is outside every population.
+
+*Site:* `evals/definition/checks.py` :: `    limit: int = 5,`
+*Site:* `evals/definition/checks.py` :: `        ("cells", f"{len(sql):,} — {len(sql) - 1:,} from the corpus, 1 constructed"),`
+*Site:* `evals/definition/__init__.py` :: `it is a property of the pipeline, established in`
+*Disposition:* branch `evals/claim-5-counts-what-it-found` — count every disagreement and truncate
+only the examples, derive the constructed-cell count, and either write `D5` or stop naming it
+*Status:* open
+
+---
+**Claim 5's load-bearing third mechanism owns no mutation — planted here, and it bites** ·
+found 2026-09-05 · by `T016`, in a copy of the tree
+
+All three of claim 5's mutations edit `evals/definition/`'s two Python paths:
+
+    01 rounding-lands-on-every-row-instead-of-every-cell  combine_then_aggregate.py
+    02 a-float-where-the-contract-says-decimal            aggregate_then_combine.py
+    03 a-cell-only-one-source-has-is-dropped              aggregate_then_combine.py
+
+None edits the compiled SQL, `metric_parts`, any compiler or `pipelines/gold/`. The eval's own
+printed note calls that mechanism **the load-bearing third** *"because it was compiled by a
+different mechanism at a different time"*, and it is the one nothing has been shown to catch.
+
+**Planted, in a copy of the tree: the same misreading mutation 03 plants on the Python side.**
+`metric_parts`'s `left join` read as an inner join — `join: full_outer_on_grain` in the contract
+read as an intersection — then regenerated so that compiler and artefact agree:
+
+    before regenerating   holdout-contracts check   FAILED 4 violation(s)  [stale_artefact]
+    after regenerating    holdout-contracts check   OK 15 artefact(s) · every byte matches
+                          python -m evals.definition
+                            FAIL D1.integer-equal  481 cell(s), 5 disagreeing
+                            FAIL D2.integer-equal  481 cell(s), 5 disagreeing
+                            RED 2/4
+
+**Two things follow and the first is good news.** `make contracts` is green on a compiler that is
+wrong, because it compares bytes against a recompile and a wrong-but-consistent compiler agrees
+with itself — which is exactly the gap claim 5 exists to fill, now demonstrated rather than argued.
+**And claim 5 does bite there**, so arming it costs one YAML file and no new code.
+
+*Site:* `evals/definition/__init__.py` :: `**The SQL is the load-bearing third for exactly that reason**`
+*Disposition:* branch `evals/claim-5-arms-the-sql-mechanism` — a mutation against `metric_parts`
+under `claim-5`, with the regeneration step in its own `breaks:` so the mutation is honest about
+what it needs
+*Status:* open
+
+---
+**A check landed unarmed four days after the rule that says nothing lands unarmed** ·
+found 2026-09-05 · by `T016`, comparing `make gate-proof` with `PLAN.md`'s landing note
+
+`make gate-proof` prints **37 armed · 23 declared un-armable · 8 unarmed**. `PLAN.md`'s landing
+note for `evals/unarmed-checks`, 2026-08-31, records **7**. The set differs by exactly one:
+`D4.tool-definition-matches-the-contract`, from claim 5, landed 2026-09-04.
+
+`evals/README.md` says of the mechanism that prints those three states:
+
+> *this is what applies it, and what stops the next one being written from prose.*
+
+**The next one was written from prose.** The gate prints and does not refuse, deliberately and for
+a stated reason — *refusing it would buy a sentence where a mutation belongs* — and that reason is
+sound. What is false is the clause claiming it stops anything.
+
+`D4` is armable: a mutation to the compiled agent tool's declared rounding would break it, and it
+carries no `unarmed_because`. The other seven are the phase-1 set less `G7`: `C5`, `C9`, `G4`,
+`G6`, `G8`, `U5`, `U9`.
+
+*Site:* `evals/definition/checks.py` :: `        id="D4.tool-definition-matches-the-contract",`
+*Disposition:* branch `evals/d4-is-armed-or-says-why`. The clause in `evals/README.md` is the
+other half and belongs in the same change: a gate that prints does not stop anything, and the
+sentence should say what it does
+*Status:* open
+
+---
+**The floor a required check rests on is one below what exists, and the sentence that says a gate prevents it points the other way** ·
+found 2026-09-05 · by `T016`, running `discover`'s own numbers
+
+    uv run python -c "from ops import figures; print(figures.discover_floor(), figures.claim_targets_that_exist())"
+    8 9
+
+`ci.yml`'s `discover` refuses below `FLOOR=8`. Nine targets exist. The floor moved 6 → 7 with
+`silver` and 7 → 8 with `gold`; **`claim-5` landed on 2026-09-04 and it did not move.** The
+comment beside it says *"FLOOR is what exists today"*.
+
+The same comment says *"`make figures` checks this number against the Makefile, so it cannot go
+stale downward."* `ops/figures.floor_failures` refuses only `floor > exists` — its own docstring is
+honest about that, and the workflow comment is not.
+
+Measured, by renaming one target at a time in a copy of the Makefile:
+
+    claim-5 / gold / silver / gate-proof renamed away
+      discover finds 8 · floor 8 · discover refuses: no · make figures refuses: no
+
+`claims-complete` aggregates only what `discover` emits, and it is one of the three contexts the
+`main` ruleset requires.
+
+**The number that argues against this:** three of the four are caught elsewhere — a renamed `gold`
+or `silver` by `figures.unrun_target_failures`, a renamed `claim-N` by `tests/evals/test_ledger.py`.
+The floor is the backstop for what those miss, and it is the one that is short.
+
+*Site:* `.github/workflows/ci.yml` :: `          FLOOR=8`
+*Site:* `ops/figures.py` :: `    if floor > exists:`
+*Disposition:* branch `ops/the-floor-is-what-exists` — the floor to nine in the same change that
+decides whether `make figures` refuses the other direction, and the workflow comment corrected to
+what the check does
+*Status:* open
+
+---
+**Four deferrals are closed in the registry's prose and counted open by the gate** ·
+found 2026-09-05 · by `T016`, scanning every entry for a closure the parser cannot read
+
+`make expiry` reports `36 entr(y/ies) in the section: 31 open, 5 closed`. `ops/expiry.py` reads one
+marker, `*Closed:* YYYY-MM-DD`. Four entries record a full closure in bold prose instead:
+
+    docs/SCENARIO.md and docs/DAY-ONE.md                        "Closed 2026-09-02 by T015"
+    No threshold at which a reconstruction stops being usable   "Closed 2026-09-04 by T014"
+    The censoring correction has no consumer                    "Closed 2026-09-04 by T014"
+    No source has declared what stocked_out_from_hour means     "Closed 2026-09-04"
+
+Nine closures are written in the file and the gate reads five. **The true open count is 27, not
+31**, and *oldest condition-only deferral is 8 day(s) old* is computed over a population four
+entries too large.
+
+**The gate is `ops/expiry-knows-what-closed`, written on 2026-08-31 for exactly this** — phase 1's
+§2a. It was correct, published, and every closure written since has used the other spelling. That
+is the branch's own lesson — *a new rule is not applied to what already exists unless somebody runs
+it there* — pointing forwards instead of backwards.
+
+**Two entries a looser parser would close wrongly**, stated because a coverage question has two
+directions: *One pooled availability curve per world* says *"the entry stays open on its own terms
+and that is the point of it"*, and *The regulated basket's benchmark* says *"half of this closed"*.
+Reading `**Closed` as a marker would take both.
+
+*Site:* `ops/expiry.py` :: `_CLOSED = re.compile(`
+*Site:* `docs/DECISIONS.md` :: `> **Closed 2026-09-04 by T014. It has a consumer, and the composition is what the tests assert.**`
+*Disposition:* branch `ops/a-closure-is-read-however-it-is-written` — and the choice between
+teaching the parser the prose form and rewriting four entries into the marker is the branch's, with
+the two half-closures planted against in both directions
+*Status:* open
+
+---
+**`make language` reproduces the instance its own comment records** ·
+found 2026-09-05 · by `T016`, putting a worktree where this tree invites one
+
+`ops/language.py::content_files` walks the working directory and excludes a hand-kept
+`NOT_CONTENT`. Its comment counts three instances of what that costs — `.shards/`, *"a stray
+worktree that reddened one laptop and no runner"*, and `.terraform/` — and names the fix without
+taking it: *the population it ought to be computed from is what git tracks.*
+
+Measured, by creating a git worktree at `.claude/worktrees/phase-2-integration`, a directory that
+exists on disk in this tree, untracked and absent from `.gitignore`:
+
+    make language  →  304+ offences, every one inside the worktree copy, exit 1
+
+Every entry in `EXCEPTED_PATHS` is repo-relative, so the copy's
+`.claude/worktrees/…/contracts/guardrails/prior_price.yaml` is a different path and the verbatim
+Greek law inside it reads as a violation.
+
+**The worktree instance is already on the module's own list, and the list was never given an entry
+for it**, so the second worktree reproduces the first exactly. `ops/figures._layout_population`
+asks git, one module along in the same package, for the same reason.
+
+The worktree was moved outside the repository and `make language` is green again.
+
+*Site:* `ops/language.py` :: `        ".terraform",`
+*Disposition:* branch `ops/language-asks-git-too`. Either the population comes from `git ls-files`
+like the layout one, or `.gitignore` gains `.claude/worktrees/` — and the first is the fix the
+module already names
+*Status:* open
+
+---
+**A package says it has four consumers and lists five, one file from where it says five** ·
+found 2026-09-05 · by `T016`, counting the bullets
+
+`src/holdout/contracts/compilers/__init__.py` opens *"The four consumers of the metric contract:"*
+and is followed by **five** bullets, the fifth being `generated/dashboards/`.
+`src/holdout/contracts/compilers/dashboard.py`, in the same package and the same commit, opens
+*"A fifth consumer, and the reason it has to be a compiled one is a measurement."*
+
+`docs/FINDINGS.md` already carries *Three consumers named in three files, four emitted*; its three
+sites are `CLAUDE.md`, `PLAN.md` and `TASKS.md`, and it was filed before the fifth existed. **This
+site is in code, is new, and is the one place a reader goes to find out what compiles.**
+
+*Site:* `src/holdout/contracts/compilers/__init__.py` :: `The four consumers of the metric contract:`
+*Disposition:* branch `contracts/the-count-matches-the-list`, and it is a candidate for `PROSE` —
+a count in a docstring against `len()` of what the module emits is exactly what that registry is for
+*Status:* open
+
+---
+**Claim 2 prints two disclaimers that have stopped being true, on every run** ·
+found 2026-09-05 · by `T016`, reading the eval's output against the deferral it cites
+
+`evals/README.md`'s sixth rule: *"What this does not prove is printed on every run. Not kept in a
+README where it can quietly stop being true."* Two of the five notes in
+`evals/uplift/checks.py::report` have:
+
+    "claim 5, with two Python implementations. The dbt model and the SQL function are
+     T011 and T012, and the deferral in docs/DECISIONS.md carries them as its unlock"
+
+Both landed on 2026-09-04. Claim 5 exists, is green, and executes the compiled SQL.
+
+    "that the world's prices are certified prices — the guardrail envelope is not on this
+     path, and the deferral that says so names phase 2 as its unlock"
+
+The deferral names **T003** — *"T003 is the first eval to run a whole system over a world and is
+where the question becomes concrete"* — which landed on 2026-08-28; its condition is *the decision
+path being exercised end to end against a world*, which is phase 3's `run`. **Three statements
+about one deferral and no two of them agree**, and one of the three is printed by the claim.
+
+`docs/DECISIONS.md` already carries the rule for the middle one — *a prediction about what a task
+will touch is not an event in the repository* — written on 2026-09-04 about a different entry and
+never swept over this one.
+
+*Site:* `evals/uplift/checks.py` :: `            "this path, and the deferral that says so names phase 2 as its unlock",`
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the decision path being exercised end to end against a world, which is`
+*Disposition:* branch `evals/the-printed-disclaimer-is-re-read` — both notes corrected against what
+runs, and the deferral's forecast sentence restated per doctrine rule 4
+*Status:* open
+
+---
+**Two packages state their claim standing and the statements are the wrong way round** ·
+found 2026-09-05 · by `T016`, asking which packages an eval imports
+
+`pipelines/ingest/__init__.py` set the standard in its own words: *"A module that serves no claim
+and says so is a different object from one that serves no claim and does not."* Measured against it:
+
+    pipelines/ingest/   no eval          says "It serves no claim"                  correct
+    pipelines/silver/   claim 5's eval   says "It serves no claim ... the layer
+                                         they are eventually computed over"         false since 2026-09-04
+    pipelines/gold/     claim 5's eval   says nothing                               carries a mechanism
+    pipelines/ml/       no eval          says nothing                               the second kind
+
+`evals/definition/build.py` imports `pipelines.silver.build` and `pipelines.gold.build` and runs
+both on every `make claim-5`. **The package genuinely upstream of the comparison declares it serves
+no claim; the package that materialises claim 5's third mechanism declares nothing.**
+`pipelines/ml/` is the second kind exactly as `pipelines/ingest/` defines it, and phase 1's §4
+finding about `pricing/selection.py` is still `adrift` against the same shape.
+
+*Site:* `pipelines/silver/__init__.py` :: `evidence itself. The one exception is negative`
+*Site:* `pipelines/gold/__init__.py` :: `The one rule this layer is really about`
+*Site:* `pipelines/ml/__init__.py` :: `Two things this package is not`
+*Disposition:* branch `pipelines/each-package-says-what-it-serves` — three sentences, no code, and
+the distinction worth writing down is *on a claim's execution path* against *part of a claim's
+evidence*, which silver and gold sit on opposite sides of
+*Status:* open
+
+---
+**The corpus barrier's runtime half knows one of the two spellings its source half declares** ·
+found 2026-09-05 · by `T016`, attacking the barrier with eleven shapes
+
+`ops/isolation.py` declares both spellings and says why — *"A barrier that misses the spelling its
+own task description used is not a barrier."* The runtime half, the test written to close the
+dynamic hole reading cannot see, passes one:
+
+    block_imports(FORBIDDEN, evict=(POLICED,))
+
+Measured:
+
+    _Refuse(("holdout",))._blocks("holdout.core.money")       True
+    _Refuse(("holdout",))._blocks("src.holdout.core.money")   False
+
+    with that finder installed, exactly as the test installs it:
+      importlib.import_module("holdout.core.money")      ModuleNotFoundError: blocked for this test
+      importlib.import_module("src.holdout.core.money")  <class 'src.holdout.core.money.Money'>
+
+So a **module-level** `importlib.import_module("src.holdout…")` in a corpus module is invisible to
+both halves: to `offences`, because there is no `Import` node, and to the runtime test, because the
+finder was never told the second spelling.
+
+**And the prose says otherwise.** `tests/boundary/conftest.py`: *"`tests/boundary/test_blocking.py`
+plants both spellings against this fixture and requires each to raise."* `src.holdout` occurs
+nowhere in `test_blocking.py`; all six of its tests block and plant `holdout`. This is the file
+that exists **because** the previous technique's prose looked right.
+
+**What this is not.** It is not the declared hole. `.claude/README.md` and the boundary test both
+state that a dynamic import is invisible to the source scan, and the runtime test closes the
+module-level half deliberately. What is undeclared is that it closes it for one spelling out of
+two, in a repository whose own history records the first spelling costing a barrier.
+
+**Not planted in `corpus/`**, and that is the one step not taken: both halves were measured
+directly rather than by writing a file into a checkout other sessions are working in. Each half is
+a direct measurement; the composite is inference from them.
+
+*Site:* `tests/boundary/conftest.py` :: `plants both spellings against this fixture and requires each to raise.`
+*Site:* `tests/boundary/test_corpus_imports_nothing.py` :: `    block_imports(FORBIDDEN, evict=(POLICED,))`
+*Disposition:* branch `ops/the-barrier-blocks-both-spellings`, first of the eleven proposed —
+`block_imports(*FORBIDDEN_ROOTS)`, with `test_blocking.py` planting the second spelling, which is
+what its own conftest already claims
+*Status:* open
+
+---
+**A variable's description asserts the absence of the default declared two lines below it** ·
+found 2026-09-05 · by `T016`, reading the first layer of the estate
+
+`infra/lakehouse/dashboards.tf`:
+
+    variable "warehouse_id" {
+      description = <<-EOT
+        ... declared with no default so that a layer applying these resources has to say which
+        warehouse rather than inheriting one somebody typed here.
+      EOT
+      type        = string
+      default     = "" # validate-only: T020 supplies the real one
+    }
+
+**The default is exactly what removes the protection the description claims.** A `terraform apply`
+that forgets `warehouse_id` will not stop; it will bind two dashboards to warehouse `""`.
+
+**And the stated reason does not hold.** Measured, on a copy of the layer with the default removed:
+
+    terraform init -backend=false && terraform validate  →  Success! The configuration is valid.
+
+`terraform validate` does not need it.
+
+This is in the first layer of the estate, in the phase whose whole cost is that mistakes there are
+paid for in dollars and in forty-minute applies.
+
+*Site:* `infra/lakehouse/dashboards.tf` :: `  default     = "" # validate-only: T020 supplies the real one`
+*Disposition:* branch `infra/the-warehouse-has-no-default` — delete the default, and the
+description becomes true. Proposed to land before `T017`, because `T017` is the next thing to touch
+`infra/` and a second layer would copy the pattern
+*Status:* open
+
+---
+**An unlock condition fired at `T011` and nobody read it; the route it names is 541 names wide and clean** ·
+found 2026-09-05 · by `T016`, reading the registry as a population
+
+> **Claim 7 is proved over `holdout.core` and the contracts, and nothing else exists yet**
+> *Unlock condition:* T011, which builds the gold layer.
+
+`T011` landed on 2026-09-04. The entry is unchanged and `make expiry` cannot see it, because it
+checks that a condition is present and never that it is true. **It is the only one of the fourteen
+task-named conditions whose task has landed and which carries no restatement.**
+
+**Measured, so the exposure is a number rather than an alarm.** `evals/oversight/` scans
+`src/holdout/` and `generated/`; `pipelines/` is 30 modules and is scanned by nothing in claim 7.
+Running the eval's own reader and its own 317-name lexicon over `pipelines/`:
+
+    1,421 identifiers · 541 distinct names
+    collisions with the two published person-vocabularies: 1 — `parents`, at seven sites,
+    already on claim 7's explained list for the same reason it is there for src/holdout/
+
+**The route is uncovered and it is clean today**, which is the moment to extend the scan rather
+than the moment to worry — and it is what the entry's own text asks for: *the silver tables'
+declared schemas and the Lakebase decision record, the two places a customer column would arrive
+with a straight face.*
+
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* T011, which builds the gold layer.`
+*Site:* `evals/oversight/reference.py` :: `PACKAGE = Path(__file__).resolve().parents[2] / "src" / "holdout"`
+*Disposition:* branch `docs/the-condition-that-fired-at-T011` for the restatement; whether the scan
+extends to `pipelines/` in the same change or in a claim-7 branch is that branch's to decide, and
+the measurement above is what it should be decided on
+*Status:* open
+
+---
+**Three joins on the path phase 3 drives have no implementation and no task** ·
+found 2026-09-05 · by `T016`, putting two already-filed halves beside the task registry
+
+`docs/FINDINGS.md` routes three entries to `T016`. Two of them are halves of one thing: `T013`'s
+*The single most important screenshot in the project has no data source* and `T014`'s *the adapter
+between the model and the decision path has no owner*. **Each was filed by the atom that found it
+and each was correct to say it was not theirs.**
+
+Measured:
+
+    Scenario(...) is constructed in     tests/core/test_pricing.py, tests/core/test_composition.py
+                                        and nowhere else in the repository
+    experiment.close() is called from   evals/assignment/checks.py:852, evals/uplift/harness.py:387
+                                        and nowhere else. holdout.core.experiment.readout is
+                                        imported by no pipelines/ module — gold imports
+                                        assignment and codes, and neither reaches close
+    gold.readout is written by          nothing; the compiled dashboard reads `from gold.readout`
+    the decision path is composed in    tests/core/test_composition.py and evals/guardrail/build.py;
+                                        no pipelines/ module takes a trigger and produces a
+                                        certified price or a decision record
+
+**And no task owns any of them.** Phase 3 is six infrastructure layers, the five workflows and a
+review; phase 4 is the agent and claim 6. No `closes` in `TASKS.md` names a scenario producer, a
+decision-path driver or a readout writer — and `T023`'s `closes` requires the **output** of two of
+them: *at least one experiment producing a number and at least one refusing for the right reason.*
+
+**A gap with no owner is the one kind that survives every atom, because every atom can correctly
+say it is not theirs.** What nobody did is put the halves beside the registry and ask which atom
+owns the wire.
+
+**It does not make a claim untrue.** Claims 1–5 and 7 are proved local and green; none of them
+asserts that the system runs end to end, and `CLAUDE.md` has always been careful about that. It
+means phase 3's closing condition is not reachable by phase 3's task list, and that this is
+knowable now, for nothing.
+
+*Site:* `TASKS.md` :: `title         The five workflows + infra/serving (applied by backfill)`
+*Site:* `pipelines/ml/__init__.py` :: `**Units at the price the policy will set. Not units at a candidate price.**`
+*Disposition:* the author's, and it is one decision: either the three joins become atoms with ids
+placed before `T021`, or phase 3's scope is restated to the demonstration this corpus and this code
+can give and the shot list moves with it. `docs/reviews/phase-2.md` §15 carries the argument. It
+does not have to be taken today; it has to be taken before `T018`
+*Status:* open
+
+---
+**The `[M]` registry reaches two numbers, and both are a module checking itself** ·
+found 2026-09-05 · by `T016`, re-running every present-tense measured figure it could find a command for
+
+`ops/figures.PROSE` is the `[M]` half `docs/reviews/phase-1.md` §8 called *worth more than all the
+other corrections together*. It holds two entries, and both recompute a constant from the module
+whose docstring asserts it:
+
+    ops/language.py  "uses **<n>** distinct Greek tokens"   len(language.ALLOWED)
+    ops/language.py  "outside the <n> excepted paths"       len(language.EXCEPTED_PATHS)
+
+That is a real check and it is not the class §8 was about. Of the six incidents §8 said would have
+gone red — the 11/11, the W5 counts, the 100→109→45 chain, *about 36M*, the cache hypothesis —
+**none is registered, and neither is any number a claim publishes.** `docs/SCENARIO.md` carries
+eight `[M]` tags with the command beside each and no command re-runs them; the docstring says so.
+
+The list's own defence is written down and is good: doctrine rule 4 keeps superseded figures in
+`PLAN.md` and `TASKS.md`, so only present-tense text can be registered and which text that is
+remains a judgment. **What that defence does not reach is present-tense measured text outside those
+two files** — `CLAUDE.md`'s claim rows, the evals' READMEs, the workflow comments. Re-running every
+such figure in `CLAUDE.md` by hand found exactly one stale: *17,752 of 17,752*, now 18,069.
+
+**No rule is proposed and no widening.** `CLAUDE.md`'s own argument for waiting applies: a rule
+generalised from the forms the known cases wore cannot see the next one, and widening `PROSE` by
+hand is the same act as keeping `NOT_CONTENT` by hand. What is recorded is the size of the gap —
+**two registered figures against every claim's published numbers** — so the next session finds the
+count rather than the impression.
+
+*Site:* `ops/figures.py` :: `PROSE: tuple[Figure, ...] = (`
+*Disposition:* none — recorded rather than acted on, deliberately, with the count and the argument
+for not acting yet. The first candidate that costs nothing is
+`src/holdout/contracts/compilers/__init__.py`'s consumer count, filed separately
+*Status:* open
+
+---
+**Five `CLAUDE.md` lines the author's, one of them a measured figure that has moved** ·
+found 2026-09-05 · by `T016`, running the evals behind each figure
+
+`CLAUDE.md` is the author's file. Five lines are named here rather than edited.
+
+| line | measured |
+|---|---|
+| claim 7's row: *the closed field set refuses **17,752 of 17,752*** | `make eval-oversight` → **18,069 of 18,069**. The other half, *the hand-written list catches 35 of 317*, is exact |
+| the layout block: `pipelines/ml/` and `infra/` under *Declared and not yet built* | both built 2026-09-04. `infra` is the only tracked top-level directory named in no other block, so `make figures` reads `layout 23 = 23` off the block that says it does not exist |
+| Gold: *the assignment table … is then **read-only*** | `delta.appendOnly` refuses update, delete and overwrite and permits append — three of four — and `pipelines/gold/assignment.py` says so |
+| the contract layer: *`contracts/` … **Four families*** | five; `contracts/ml/` landed with `T014` and `TASKS.md` L26 calls it *a fifth contract family* |
+| the visible surface: *the figures that matter most — `9/200 = 4.5%`* | the eval has never printed it. `U1` is **8/200 = 4.0%**, which `PLAN.md` and `TASKS.md` carry. Illustrative rather than asserted, and it reads as measured |
+
+*Site:* `CLAUDE.md` :: `the closed field set refuses 17,752 of 17,752`
+*Site:* `CLAUDE.md` :: `infra/                 bootstrap · foundation · lakehouse · pipelines · ml · serving`
+*Site:* `CLAUDE.md` :: `  then read-only.`
+*Site:* `CLAUDE.md` :: `Four families, none of which is a vendor feature.`
+*Disposition:* the author's. Joins the four `CLAUDE.md` lines already with him; `docs/reviews/phase-2.md` §9 is the same table with the commands beside it
+*Status:* open
+
+---
+**An explanation that pre-approves the collision it explains, now five of twelve** ·
+found 2026-09-05 · by `T016`, re-measuring the entry routed here
+
+`docs/FINDINGS.md` routes *The explained-collision pair key degrades to the bare identifier* to
+`T016`. Re-measured today, after `height` was added:
+
+    12 entries · 5 same-name (agent · candidate · height · members · parents) · 7 differing
+
+**The finding predicted `height` would be a fifth and it is.** The pair protects seven and protects
+nothing on five, and the ratio has moved against it.
+
+**No fix is proposed, and the finding's own reason is why**: an explanation keyed to a module, a
+type or a line goes stale on a move or an edit, and the pair was chosen because it is stable.
+
+**What costs nothing is publishing the split.** `O12` already re-checks every explanation; printing
+*5 of 12 explanations are same-name and pre-approve any future collision on that name* makes the
+partiality visible on every run instead of in a register. That is smaller than a fix and it is the
+shape this repository uses everywhere else — publish the number that argues against you.
+
+*Site:* `evals/oversight/checks.py` :: `EXPLAINED: dict[tuple[str, str], str] = {`
+*Disposition:* branch `evals/the-explanation-publishes-what-it-does-not-cover`. The design question
+underneath stays open and unscoped, which is where the entry that raised it left it
+*Status:* open
+
+---
 
 ## Closed
 

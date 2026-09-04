@@ -822,6 +822,216 @@ configured wrong fails in the same direction — a required context satisfied by
 test the merged result — so (2) is verified against the API and never against a memory of it.
 
 
+### The twelve `T016` proposed — 2026-09-05
+
+`docs/reviews/phase-2.md` is the phase-2 integration review. It builds nothing; every fix below is
+its own branch with its own oversight level 2, and the ordering argument is in the report's closing
+table rather than repeated here. **Three of them are named in the report as landing before the
+estate produces evidence** — `T00N`, `T00Y`, and whichever change answers `§15` — and the rest can
+land in any order.
+
+**What is deliberately not an atom here.** The report's `§15` — the three joins on the path phase 3
+drives, none of which has an implementation and none of which has a task — is **the author's**, and
+turning it into task ids inside the review would be the review taking the decision it exists to
+put in front of him. It is in `docs/FINDINGS.md` with the measurement.
+
+```
+id            T00N
+title         The corpus barrier blocks both spellings, and the prose stops claiming it already does
+branch        ops/the-barrier-blocks-both-spellings
+depends_on    T016
+closes        The runtime half of the corpus barrier blocks every root ops/isolation.py declares,
+              not only the first: block_imports(*FORBIDDEN_ROOTS). tests/boundary/test_blocking.py
+              plants the second spelling, which its own conftest already says it plants. Measured
+              before the fix: _Refuse(("holdout",)) does not block src.holdout.core.money, and
+              with that finder installed importlib.import_module("src.holdout.core.money") returns
+              Money.
+out_of_scope  The declared hole — a dynamic import inside a function, which no import-time block
+              can see and which .claude/README.md and the boundary test both state.
+stop_at       When the second spelling is planted against the fixture and raises, and the conftest
+              sentence is true of the file it names.
+review        yes
+status        open
+```
+
+```
+id            T00P
+title         Claim 5 publishes the count it found, not the one it printed
+branch        evals/claim-5-counts-what-it-found
+depends_on    T016
+closes        _disagreements counts every disagreement and truncates only the examples; the cells
+              line derives its constructed-cell count instead of subtracting a literal 1; and D5 is
+              either written or stopped being named. Measured before the fix: 20 disagreeing cells
+              reported as 5, and 349 reported as 5 on a planted mutation.
+out_of_scope  Any change to what the checks compare or to whether they pass.
+stop_at       When a run with more than five disagreements publishes their number, and the
+              constructed cell is counted rather than assumed.
+review        yes
+status        open
+```
+
+```
+id            T00Q
+title         A mutation against the mechanism claim 5 calls load-bearing
+branch        evals/claim-5-arms-the-sql-mechanism
+depends_on    T00P
+closes        A gate-proof mutation under claim-5 aimed at metric_parts — the compiled SQL, which
+              all three of claim 5's mutations leave untouched. Verified by hand first: left join
+              read as an inner join, regenerated so compiler and artefact agree, make contracts
+              green at 15/15 bytes and claim 5 red on D1 and D2.
+out_of_scope  Widening any assertion. The mutation must be refused by the check it names.
+stop_at       When make claim-5 refuses it by name and gate-proof counts D1/D2/D3 as armed by a
+              mutation that edits the system rather than the eval.
+review        yes
+status        open
+```
+
+```
+id            T00R
+title         A closure is read however it is written
+branch        ops/a-closure-is-read-however-it-is-written
+depends_on    T016
+closes        make expiry stops reporting four closed deferrals as open. Measured: nine closures
+              are written in docs/DECISIONS.md and ops/expiry.py reads five, so the printed open
+              count is 31 where the file says 27.
+out_of_scope  Closing anything. The four entries are already closed in prose; this is about the
+              parser and the convention, and the choice between the two is the branch's.
+stop_at       When the count matches the file, with the two half-closures planted against in both
+              directions so a looser parser cannot close them by accident.
+review        yes
+status        open
+```
+
+```
+id            T00S
+title         The floor is what exists
+branch        ops/the-floor-is-what-exists
+depends_on    T016
+closes        discover's FLOOR matches the Makefile — 8 against nine targets since claim-5 landed —
+              and ci.yml's comment says what make figures actually checks. floor_failures refuses
+              only floor > exists; whether it should refuse the other direction is this branch's
+              decision, and whichever way it goes the comment stops asserting the one that is not
+              there.
+out_of_scope  Any change to what discover emits or to claims-complete.
+stop_at       When a renamed claim target is refused by something, and the comment names what.
+review        yes
+status        open
+```
+
+```
+id            T00T
+title         The condition that fired at T011
+branch        docs/the-condition-that-fired-at-T011
+depends_on    T016
+closes        The one open deferral whose named task has landed and which carries no restatement —
+              "Claim 7 is proved over holdout.core and the contracts". Measured for it: pipelines/
+              is 30 modules, 1,421 identifiers, 541 distinct names, and one collision with the two
+              published person-vocabularies, `parents`, already explained.
+out_of_scope  Extending claim 7's scan, unless this branch decides the restatement is best written
+              by doing it. The measurement above is what that decision rests on.
+stop_at       When the entry says what T011 changed and what its condition is now.
+review        yes
+status        open
+```
+
+```
+id            T00U
+title         The printed disclaimer is re-read
+branch        evals/the-printed-disclaimer-is-re-read
+depends_on    T016
+closes        Two of claim 2's five printed notes, which have stopped being true: the dbt model and
+              the SQL function "are T011 and T012" (both landed), and a deferral that "names phase
+              2 as its unlock" (it names T003, and its condition is phase 3's run). The deferral's
+              own forecast sentence is restated per doctrine rule 4 in the same change.
+out_of_scope  Any change to a check or to what claim 2 measures.
+stop_at       When every note in Report.notes for claim 2 is true of what runs today, and the
+              deferral says which event unlocks it rather than which task.
+review        yes
+status        open
+```
+
+```
+id            T00V
+title         Each pipelines package says what it serves
+branch        pipelines/each-package-says-what-it-serves
+depends_on    T016
+closes        silver stops saying it serves no claim (claim 5's eval builds it on every run), gold
+              says it carries claim 5's third mechanism, and ml says it serves no claim — which is
+              the standard pipelines/ingest wrote and the state phase 1's §4 finding is open
+              against.
+out_of_scope  Any code. The distinction worth writing down is "on a claim's execution path"
+              against "part of a claim's evidence".
+stop_at       When each of the four packages states its standing and the statements are true.
+review        yes
+status        open
+```
+
+```
+id            T00W
+title         The count matches the list
+branch        contracts/the-count-matches-the-list
+depends_on    T016
+closes        src/holdout/contracts/compilers/__init__.py says "The four consumers of the metric
+              contract" above five bullets, one file from dashboard.py's "A fifth consumer". It is
+              also the cheapest candidate ops/figures.PROSE has: a count in a docstring against
+              len() of what the module emits.
+out_of_scope  The CLAUDE.md / PLAN.md / TASKS.md half, which docs/FINDINGS.md already carries and
+              which is the author's.
+stop_at       When the count is derived rather than written, or written and registered.
+review        yes
+status        open
+```
+
+```
+id            T00X
+title         make language asks git too
+branch        ops/language-asks-git-too
+depends_on    T016
+closes        The population make language enumerates comes from what git tracks, the way
+              ops/figures._layout_population already does, so a worktree, a cache or a downloaded
+              provider needs no entry in a hand-kept list. Measured: a worktree at
+              .claude/worktrees/ — a directory this tree already has — turns the gate red with 304+
+              false offences, which is the second instance of the one the module's own comment
+              records.
+out_of_scope  Any change to what counts as an offence or to the declared exceptions.
+stop_at       When a worktree inside the repository does not turn the gate red, and NOT_CONTENT is
+              smaller rather than longer.
+review        yes
+status        open
+```
+
+```
+id            T00Y
+title         The warehouse has no default
+branch        infra/the-warehouse-has-no-default
+depends_on    T016
+closes        infra/lakehouse/dashboards.tf's warehouse_id variable, whose description says it is
+              "declared with no default" two lines above its default — and whose default removes
+              exactly the protection the description claims. Measured: terraform validate succeeds
+              with the default removed, so the stated reason does not hold.
+out_of_scope  Anything else in the layer. Proposed to land before T017, because T017 is the next
+              thing to touch infra/ and a second layer would copy the pattern.
+stop_at       When the layer validates with no default and an apply that omits warehouse_id stops.
+review        yes
+status        open
+```
+
+```
+id            T00Z
+title         The explanation publishes what it does not cover
+branch        evals/the-explanation-publishes-what-it-does-not-cover
+depends_on    T016
+closes        O12 prints how many of EXPLAINED's entries are same-name and therefore pre-approve
+              any future collision on that name — 5 of 12 today, after height was added exactly as
+              the finding predicted. Smaller than a fix and the shape this repository uses
+              everywhere else: publish the number that argues against you.
+out_of_scope  Changing what an explanation is keyed to, which is the design question the entry
+              that raised this left open and unscoped.
+stop_at       When the split is on the screen on every claim-7 run.
+review        yes
+status        open
+```
+
 ---
 
 ## Phase 1 — the core, the contracts, and the hardest claim
@@ -2564,14 +2774,40 @@ property that two separate atoms met from different directions.
 ```
 id            T016          <- Phase-2 integration session (oversight level 3)
 title         Phase-2 integration — read the repo against CLAUDE.md, report drift
-branch        —  (dedicated session, runs the integration-review skill from T008)
+branch        docs/phase-2-integration
 depends_on    T012, T014
 closes        A drift report. Builds nothing.
 out_of_scope  Building any product code.
 stop_at       When the report is written and each proposed fix is its own branch.
 review        n/a — this task IS the review.
-status        open
+status        closed
 ```
+
+**`docs/reviews/phase-2.md`, 2026-09-05.** Twelve proposed branches, `T00N`–`T00Z` above, and one
+thing that is not a branch. Every claim target was run rather than inherited, including
+`make eval-uplift`, whose absence from the phase-1 report's inputs the `integration-review` skill
+names as a hole in its own record.
+
+**The largest section is not a defect.** `§15` puts `T013`'s half and `T014`'s half beside the task
+registry and measures that **three joins on the path phase 3 drives have no implementation and no
+task**: `Scenario(...)` is constructed only in `tests/core/`, `experiment.close()` is called only
+from `evals/`, `gold.readout` is read by the compiled dashboard and written by nothing, and no
+`pipelines/` module takes a trigger and produces a decision. `T023`'s `closes` requires the output
+of two of them. **The decision is the author's and it is one decision** — the joins become atoms
+placed before `T021`, or phase 3's scope is restated to what this corpus and this code can
+demonstrate and the shot list moves with it. It has to be taken before `T018`.
+
+**Two findings were produced by attacking rather than by reading.** A mutation planted on
+`metric_parts` — the mechanism claim 5's own note calls load-bearing and the one none of its three
+mutations touches — left `make contracts` **green at 15/15 bytes** and claim 5 **red on D1 and
+D2**, which both arms the gap and demonstrates why the contracts gate cannot stand in for the
+claim. And the corpus barrier's runtime half was found to block one of the two spellings
+`ops/isolation.py` declares, in a repository whose own history records the second spelling costing
+that barrier once already.
+
+**`T017` may open and phase 2 closes.** What is not ready is `T023`. The report says so in those
+words rather than in a summary.
+
 
 ---
 
@@ -2909,6 +3145,13 @@ L27 infra/lakehouse/ + generated/dashboards/ — the two AI/BI screens as a FIFT
     serialized_dashboard string and passes broken SQL over a table that does not exist. The
     first Terraform layer, which applies nothing. Half of the 2026-08-27 deferral closes.
                                            branch lakehouse/dashboards   status closed
+L28 docs/reviews/phase-2.md — the phase-2 integration review (oversight level 3). Twelve proposed
+    branches, T00N to T00Z; claim 5's published disagreement count capped at five and its
+    load-bearing mechanism armed by a planted mutation that make contracts is green on; the corpus
+    barrier's runtime half blocking one of the two spellings its source half declares; four
+    deferrals closed in prose and counted open. And §15: three joins on the path phase 3 drives,
+    with no implementation and no task, which is the author's.
+                                           branch docs/phase-2-integration status closed
 ```
 
 **And it went stale again, by two, before `L23` was written.** `T011` and `T00M` closed on
