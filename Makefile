@@ -346,6 +346,29 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: quantity is a bound to be judged against `claim-2-tests` on whatever run is in front of you,
 #: not a number to be pinned down by collecting more of them.
 #:
+#: ---
+#:
+#: **And that refusal is load-bearing, which took three CI runs to notice.** *Record the
+#: measurement where the claim lives* is the right rule and it is why these paragraphs are here
+#: rather than in a pull request body. **Applied to a claim whose measurement is produced by the
+#: act of recording it, it does not terminate**: each commit that writes down a run's figure
+#: starts another run, which produces another figure, which the same rule says to write down.
+#: Three runs on this branch, each green, each adding a real number, each invalidating the sha
+#: the merge button was about to read.
+#:
+#: **The terminator is not a policy about how many runs to spend. It is how the record is
+#: written**, and it is one distinction:
+#:
+#:     a paragraph that names its SUCCESSOR recurses -- "the next run is the real test"
+#:     a paragraph that names a JUDGEMENT closes  -- "a bound judged against the run in
+#:                                                   front of you"
+#:
+#: So the complete form of the rule is: **record where the claim lives, and write the record so
+#: that it does not promise its own successor.** The first half was already this repository's;
+#: the second half is what this paragraph cost to find, and it is written here rather than
+#: generalised into `CLAUDE.md`, which is the author's file and which says a rule is written at
+#: the instance wearing a form the earlier ones did not.
+#:
 #: **`main` will pay cold once too.** Its caches are not this branch's, so the first run after
 #: this merges is a cold seven-way at about what is measured above — expected, not a regression.
 CLAIM_2_SHARDS := 7
