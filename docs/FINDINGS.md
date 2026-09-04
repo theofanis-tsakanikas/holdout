@@ -3761,6 +3761,81 @@ which is what makes it a shape rather than four defects
 *Status:* open
 
 ---
+**A coverage guard enumerated its population by the property it was about to check** ·
+found 2026-09-04 · by the reviewer, on a target with one layer where it could not yet be wrong
+
+`make terraform` was written to validate *"every layer under `infra/`, with the population
+enumerated by a glob rather than by a list somebody keeps"*. It globbed `infra/*/`, then:
+
+    [ -f "$layer/versions.tf" ] || continue
+
+**A directory without a `versions.tf` was skipped with a bare `continue` and counted nowhere.**
+`found` counted only the layers it validated, so the `found == 0` guard could not see a layer that
+existed and was passed over. **The coverage rule at one directory's depth, inside the target
+written to enforce it** — *a gate reports on what it examined; it becomes a lie when it reports
+what it examined as if it were what exists.*
+
+**The shape is sharper than a missing branch: the guard enumerated its population by the very
+property it was checking for.** A layer counts as a layer *because* it has the file whose absence
+is the defect, so the defect makes its own instance invisible. That is not the same as forgetting
+a case — no amount of care inside the loop would have found it, because the loop never saw one.
+
+**It could not be wrong with one layer, which is exactly when it was worth reading.** Phase 3 adds
+four — `bootstrap`, `foundation`, `pipelines`, `ml`, `serving` — so it would have become wrong by
+**construction** rather than by accident, and the first symptom would have been a green
+`terraform` line on a run that validated one layer of five.
+
+**Fixed here rather than filed alone**, because the fix is not a judgment call: the population is
+every directory under `infra/`, a directory with `.tf` files and no `versions.tf` is **red rather
+than skipped**, and a directory with no `.tf` at all is reported as examined-and-not-a-layer.
+Both shapes are planted against by hand before and after.
+
+**Who found it, because it is the transferable part.** Not the author of the target, who had
+written the sentence about enumerating from the tree and believed it. A reviewer, on the grounds
+that *there is one layer today so it cannot yet be wrong — which is exactly when it is worth
+reading.* **The window in which a coverage guard is unfalsifiable is the window in which it is
+cheapest to check.**
+
+*Site:* `Makefile` :: `terraform:  ## terraform validate over every layer under infra/`
+*Disposition:* fixed 2026-09-04, with the prior wording kept per doctrine rule 4. The **class**
+stays open: nothing enumerates which other gates in this repository decide their population by a
+property they are also checking
+*Status:* open
+
+---
+
+**An extension of a principle was written up as a precedent the list already carried** ·
+found 2026-09-04 · by the reviewer, in the entry written the hour before
+
+`evals/oversight/checks.py`'s new `("height", "height")` explanation said the two alternatives
+were *"refused for reasons this list already carries"* — **plural**. Measured over the other ten
+entries:
+
+    narrowing the scan     refused BY NAME, in `parents`' own entry
+    degrading an artefact  ABSENT — nothing in the list says it
+
+**One of the two was a precedent and the other was an extension of the same principle**, and the
+sentence made them the same kind of thing. **In the one file whose entire subject is not claiming
+more than you have**, in the entry its author had just been told to write carefully because he was
+the party who introduced the name.
+
+**And the failure mode is the one this register already has a name for.** The claim was not
+unchecked — it was *decorated*: a reason beside a number, or here a citation beside a refusal, is
+what stops anybody asking whether the citation exists. **Justification as camouflage**, filed
+earlier the same day about two contract thresholds, arriving again in prose within hours.
+
+**Restated rather than erased.** The entry now says which of the two is a precedent and which is
+an extension, and keeps the prior wording per doctrine rule 4 — because the delta *is* the
+finding, and an entry in a list about honest overlaps that quietly corrected its own overclaim
+would be the second version of the same act.
+
+*Site:* `evals/oversight/checks.py` :: `    ("height", "height"): (`
+*Disposition:* corrected in place. What has no owner is whether the other ten entries cite
+precedents that exist — none was checked when they were written, and the same reviewer who found
+this one is the reason it is now known that nobody had looked
+*Status:* open
+
+---
 
 ## Closed
 
