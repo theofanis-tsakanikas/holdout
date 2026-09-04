@@ -58,7 +58,9 @@ def missing(built: Sequence[str]) -> list[str]:
     return [name for name in EXPECTED_MODELS if name not in set(built)]
 
 
-def run(spark: SparkSession, *, target_root: Path) -> tuple[str, ...]:
+def run(
+    spark: SparkSession, *, target_root: Path, select: Sequence[str] | None = None
+) -> tuple[str, ...]:
     """Build every model and return their names, or raise naming what went wrong.
 
     `spark` is taken as an argument and never used: it is here because **dbt reaching the right
@@ -72,6 +74,7 @@ def run(spark: SparkSession, *, target_root: Path) -> tuple[str, ...]:
     invocation = dbtRunner().invoke(
         [
             "run",
+            *(["--select", *select] if select else []),
             "--project-dir",
             str(PROJECT),
             "--profiles-dir",
@@ -95,6 +98,20 @@ def run(spark: SparkSession, *, target_root: Path) -> tuple[str, ...]:
     # about a library's internals. What is *not* trusted is its content: `missing` below is
     # what turns a short list into a refusal.
     built = tuple(str(result.node.name) for result in cast("Iterable[Any]", invocation.result))
+    # **A selected run is not checked for completeness**, because it deliberately built fewer.
+    # The check below exists so a run that resolved *nothing* cannot report success; a caller
+    # naming its models has already said which it wants, and `claim-5`'s eval is the one caller
+    # that does — it rebuilds only the metric models after appending a constructed cell, and a
+    # full run would rebuild `decision_economics` from `priced_sales` and throw that cell away.
+    if select:
+        if not built:
+            raise DbtRunError(
+                f"dbt reported success having built nothing from --select {list(select)}. A "
+                "selection that matches no model exits 0, which is the same silence as a run "
+                "that resolved none."
+            )
+        return built
+
     absent = missing(built)
     if absent:
         raise DbtRunError(

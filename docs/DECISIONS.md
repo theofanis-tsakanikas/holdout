@@ -2247,6 +2247,34 @@ and does not prove, or T008 if it gets there first.
 *Expires:* 2026-12-31 — a missing README has no natural deadline, so it gets a calendar one rather
 than an unlock condition alone, which `make expiry` can never evaluate.
 
+> **Restated 2026-09-04 by T012, which did not fire it — and the condition named T012 by name.**
+> Two things are wrong with the line above and they are different sizes.
+>
+> **The small one: the stated reason did not happen.** *Claim-5 work makes the two Python
+> implementations three* assumed claim 5 would extend `evals/uplift/`'s pair. It did not, and the
+> reason is in `evals/definition/aggregate_then_combine.py`: `grouped_metric` and `walked_metric`
+> both consume an already-aggregated `Ledger`, so they are independent **in the wrong half** — the
+> half the compiled SQL does differently — and reusing them would have bought agreement by
+> construction. Claim 5 wrote a **new** pair, in its own package, and `evals/uplift/` was never
+> opened. The task named here ran to completion without the condition's event occurring.
+>
+> **The large one: naming a task is naming a session, which `CLAUDE.md` says is not a condition.**
+> *An unlock condition that names a session rather than an event is a date without a calendar* was
+> added by T008 after nine deferrals pointed at one. This entry carries the same defect in a shape
+> that reads as an event because a *reason* is attached — and the reason is what turned out false,
+> leaving only the name. **A prediction about what a task will touch is not an event in the
+> repository.**
+>
+> *Unlock condition, restated:* **the next change that edits any module under `evals/uplift/`.**
+> That is a fact about a diff, it can be evaluated by whoever writes one, and it does not depend on
+> anybody's forecast of what a future task will need. The calendar bound is unchanged.
+>
+> **And claim 5 has a README, written by T012.** Not to satisfy this entry, which is claim 2's, but
+> because landing a sixth claim without one would have added a second violation of the declared
+> shape in the same session that restated the deferral about the first. `evals/README.md`'s count
+> of what is owed is now one, and it was one before this too — the eval that closed on 2026-09-04
+> simply did not become the second.
+
 **No threshold at which a reconstruction stops being usable** · deferred 2026-08-29
 Claim 4's correction expands a censored store-day by the share of an ordinary day its open window
 covers, and how well it does that is a function of that share. Measured, on three worlds at

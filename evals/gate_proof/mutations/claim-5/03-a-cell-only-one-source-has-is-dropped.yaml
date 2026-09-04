@@ -1,0 +1,26 @@
+# The full outer join, read as an inner one. `contracts/metrics/*.yaml` declares
+# `join: full_outer_on_grain` for the waste source precisely so that a store-week appearing on
+# one side and not the other still produces a number: a week that traded and threw nothing away
+# has a margin, and a week that only threw something away has a negative one.
+#
+# Reading it as an intersection is the most plausible misreading of the contract there is, and
+# it is invisible at `smoke` scale, where this corpus throws nothing away at all and every cell
+# is one-sided in the same direction. `evals/definition/build.py` runs at `rehearsal` for that
+# reason, and this mutation is what makes that choice load-bearing rather than cautious.
+
+id:          a-cell-only-one-source-has-is-dropped
+claim:       5
+eval_module: evals.definition
+targets:     [D1.integer-equal, D3.integer-equal]
+
+breaks: >-
+  the aggregate-then-combine path keeps only cells that both sources carry, so every store-week
+  that traded without throwing anything away disappears from its answer while the SQL and the
+  other Python path still report it.
+
+file: evals/definition/aggregate_then_combine.py
+
+anchor: |
+    every: set[Cell] = set(revenue) | set(cogs) | set(thrown)
+replacement: |
+    every: set[Cell] = (set(revenue) | set(cogs)) & set(thrown)

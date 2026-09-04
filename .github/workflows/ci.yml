@@ -445,8 +445,13 @@ jobs:
       # arm64 on top of a tree that already had `spark`: **45 packages, 196.1 MiB**. The Linux
       # figure is whatever this step's own log says, which is the only place it can honestly
       # come from.
-      - name: dbt, for the gold target
-        if: contains(format(' {0} ', matrix.target), ' gold ')
+      # **`gold` and `claim-5` both**, because claim 5's eval builds a world through bronze,
+      # silver and gold before it can compare anything — the SQL mechanism is the compiled
+      # artefact *executed*, so the pipeline is not optional to it.
+      - name: dbt, for the targets that build gold
+        if: >-
+          contains(format(' {0} ', matrix.target), ' gold ')
+          || contains(format(' {0} ', matrix.target), ' claim-5 ')
         run: uv sync --locked --extra dbt
 
       # Claim 2 generates its worlds once per command and reads them back — `.worlds/`, keyed

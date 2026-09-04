@@ -2035,6 +2035,119 @@ review        yes
 status        closed
 ```
 
+**The number that argues against this atom, first: two of claim 5's three mechanisms were already
+one mechanism, and `CLAUDE.md` names both of them.** The claim reads *compiled into a Delta view,
+the agent's tool definition and the experiment readout*. `compile_dbt_model`, `compile_sql_function`
+and `compile_readout` all render from `metric_parts` in one compiler, and normalising away relation
+names and the version clause their arithmetic is **byte-identical**. A bug in the combination or in
+the `decimal(38, 6)` cast appears in all three and cancels in every comparison between them.
+Comparing them proves Spark is deterministic. **It is claim 5's own trap with a bigger number** —
+*two consumers calling the same function prove nothing* becomes three consumers calling the same
+renderer. And the fourth named consumer cannot be a mechanism at all: the agent tool definition
+computes nothing, so it has no number to compare, and `D4` holds it to the contract's **terms**
+instead, which is not an arithmetic claim.
+
+**So the eval builds the two mechanisms the repository did not have**, and says so in
+`evals/definition/__init__.py` rather than in a report: `aggregate_then_combine` sums each term per
+cell and combines the sums; `combine_then_aggregate` reduces each row to its own signed contribution
+and sums those. They differ in **order of operations**, which is where the failures live, and
+`tests/evals/test_definition_independence.py` enforces non-sharing on the import graph.
+`evals/uplift/`'s proven pair was the obvious candidate and was refused: both consume an already
+aggregated `Ledger`, so they are independent **in the wrong half** — the half the SQL does
+differently — and reusing them would have bought agreement by construction.
+
+**Green at 481 cells, 422,139 economics rows and 676 waste rows, `D1`–`D4` with no tolerance
+anywhere**, over gold built by `T011`'s own code from `W6` at `rehearsal`. `rehearsal` rather than
+`smoke` because at smoke this corpus throws nothing away: `gold.waste` is empty, the metric's third
+term is a sum over no rows, and the full-outer join — the one place a one-sided cell can be lost —
+never has a one-sided cell. **A claim 5 proved at smoke would agree on two thirds of its own
+definition.** The 6,515 sales of 428,652 that gold could not price are published **beside** the
+comparison and never inside it: the population is held fixed across all three mechanisms, because
+feeding three mechanisms three row sets tests the definition and the pipeline and the drop rule at
+once and a disagreement would name none of them.
+
+**One of those 481 cells was written by the eval, and the reason is a finding against the contract
+rather than a convenience.** The corpus cannot exercise the contract's `rounding` block at all —
+gold builds `price_paid` and `unit_cost_as_of` as `cents / 100` and `qty` is an integer, so every
+corpus cell is an exact number of cents, `bround(x, 2)` is the identity, and `half_even` and
+`half_up` differ only on an exact half at the third decimal this data never has.
+
+**It is a controlled comparison rather than an argument.** One mutation, correctly built, rounding
+each row before summing:
+
+    over 480 corpus cells                      SURVIVED
+    over the same run plus one cell at 0.1250  BIT
+
+The only thing that changed is the data. **And it sharpens metric v3's problem rather than softening
+it**: the distinction v3 exists for is demonstrably real and demonstrably unreachable from this
+corpus, both halves measured. Filed in `docs/FINDINGS.md` against the contract and the corpus — not
+against the eval, which is where it was found and not where it lives. The construction is one cell
+because both surviving plants bite on that one value; a scattering would have weakened more of the
+claim for no gain. It follows claim 4's practice, including the form: each check's question names
+**both** populations — *over every cell the corpus produced and the one the eval constructed* — so a
+reader sees which half the eval wrote.
+
+**Three mutations planted, 3 of 3 bit, slowest 60s of a 900s budget.** Getting there cost four
+wrong answers worth recording. Two mutations reported `NOT-ARMED` because `pipelines` was not in
+`gate_proof`'s `COPIED` set and then because the mutant JVM had no `JAVA_HOME`; a third because
+Spark's progress bar and dbt's `OK created sql table model` go to **file descriptor 1** directly,
+which `contextlib.redirect_stdout` does not reach, so the harness read `[Stage 238:====>` where it
+expected JSON and said so — *the harness being exactly right about a cause that names nothing*. And
+two mutations **SURVIVED**, which I first reported as one story and corrected: the rounding plant
+survived because the corpus has no sub-cent content, and the float plant survived because my plant
+used `Decimal(str(float(x)))`, which round-trips losslessly and moved nothing at all. **Neither fix
+alone would have done it** — the old plant on the new cell still undoes itself, the new plant on the
+old corpus still moves nothing a cent can see. Two independent defects, not one misdiagnosed twice.
+
+**`make preview-audit` is withdrawn from this atom and the deferral stays open**, which is the
+second half of the block below and is restated there rather than quietly dropped. `TASKS.md` said
+*"`DECISIONS.md` defers it to exactly here"*; `docs/DECISIONS.md` says *"the first Terraform layer,
+**and** the first time a preview surface is considered"*. `T012` is `evals/definition/`, it is not a
+Terraform layer, and there is still no `infra/`. **The surface that fired the other half is also
+gone from the design** — `T015` fired it on the PostgreSQL connector for Lakeflow Connect, route 2
+removed the connector, and this register already carries the distinction: **route 2 removes a
+surface, not the condition.** So the inventory is not empty, it is **undetermined**, and a gate over
+an undetermined population is worse than one over an empty population: it would report *no claim's
+proof path touches a preview surface* while nobody knows what the surfaces are. Both facts keep it
+open, and Zerobus's own status is `T015`'s unresolved question.
+
+**This is the second instance of `F2`'s shape, and how both were found is the transferable part.**
+`F2` on `T011` was a `TASKS.md` sentence deferring the generated SQL's execution to phase 3 while
+the entry it cited unlocked at phase 2. **Both were found by opening the cited entry rather than by
+reading the citing sentence**, and in both the deferral naming its own unlock outranked the
+parenthetical about it. Two instances, recorded, no rule — this file's own argument for waiting
+applies.
+
+**And a third finding, against `T00M`'s ceiling check rather than against anything here.** A packed
+job abstains from the ceiling when the world cache missed, using `cache-hit != true` as a proxy for
+*this entry regenerated its worlds*. `.worlds` is written by `evals/uplift/cache.py` and by nothing
+else — measured, one file in the tree names it — and `claim-5` builds its world through
+`corpus.world.prepare`, so its key is never populated and it reports cold on **every** run. The
+ceiling is never applied to it, and not only on the first run. **It is the disarm that check's own
+comment predicted, one target later and in a shape the comment did not name**: it warned about a
+cache that *breaks*, and this is a target that never had one, which shows up as a single
+permanently-cold entry among warm ones rather than as a run where everything reports cold. Filed
+rather than fixed, because enabling the ceiling on `claim-5` from a fourteen-core measurement is
+exactly the defect the check exists to catch, in the check.
+
+**`evals/definition/README.md` exists, and the deferral about claim 2's is restated.**
+`evals/README.md` declares `<claim>/README.md` as part of the shape and claim 2 has owed one since
+2026-08-29. That deferral's unlock condition named `T012` **by name**, with a prediction attached —
+*claim-5 work makes the two Python implementations three* — and the prediction is false: claim 5
+refused `evals/uplift/`'s pair for being independent in the wrong half and wrote its own, never
+opening that package. So the condition's task ran to completion without its event occurring, which
+is `CLAUDE.md`'s *an unlock condition that names a session is a date without a calendar* wearing a
+reason. Restated in `docs/DECISIONS.md` to **the next change that edits any module under
+`evals/uplift/`**, which is a fact about a diff. Claim 5's own README was written because landing a
+sixth claim without one would have made the count two.
+
+**What this deliberately did not do.** It did not add the Unity Catalog metric view as a fourth
+consumer, which is on the estate and is `T012`'s declared `out_of_scope`. It did not make the
+corpus produce sub-cent content — the constructed cell proves three mechanisms round alike on a
+value the corpus never produces and does **not** prove the corpus should produce one; that is the
+author's, on the finding. And it did not touch `metric v3`, whose justification the same measurement
+leaves unverifiable on this data.
+
 ```
 id            T012
 title         evals/definition/ — make claim-5 + make preview-audit
@@ -2045,11 +2158,18 @@ closes        make claim-5 green — one definition, three genuinely different m
               make preview-audit — reads the declared inventory of preview surfaces and fails when
               any claim's proof path touches one. This is where preview-audit first has something
               to act on; DECISIONS.md defers it to exactly here.
+              ^ restated 2026-09-04, doctrine rule 4 — the prior wording stays and the second half
+                is WITHDRAWN. DECISIONS.md unlocks on "the first Terraform layer, AND the first
+                time a preview surface is considered". T012 is not a Terraform layer and there is
+                no infra/; and the surface that fired the other half was removed by route 2, so
+                the inventory is undetermined rather than empty. The deferral stays open.
 out_of_scope  The Unity Catalog metric view as a consumer (a preview/GA fourth consumer, added on
               the estate).
+              ^ and, from 2026-09-04, make preview-audit itself.
 stop_at       When claim-5 is integer-equal across three mechanisms and preview-audit is green.
+              ^ restated with closes: when claim-5 is integer-equal across three mechanisms.
 review        yes
-status        open
+status        closed
 ```
 
 ```
@@ -2446,7 +2566,32 @@ L22 pipelines/silver/ — five tables built against local Delta, with the quaran
     skip; the stock-out derived from movements and agreeing 549 of 549 with the corpus's own
     marking; the as-of join on both of its time axes.
                                            branch pipelines/silver          status closed
+L23 pipelines/gold/ — dbt in session mode over the same Delta the silver tables live in, driving
+    the compiled metric models rather than a copy of them: model-paths reaches into generated/,
+    so no second definition can exist to drift. The assignment table appendOnly and refusing a
+    write after the period opens; the readout pinning a Delta version per relation, because three
+    tables have three independent version counters and one parameter pinned none of them.
+                                           branch pipelines/gold            status closed
+L24 ops/ci_pack.py — the run is slot-bound, not time-bound, so unsharded targets are packed into
+    bins under a declared budget and a packed job checks its own elapsed time against a separate
+    ceiling. A budget reused as a failure threshold is a flake generator; an undeclared cost is
+    the whole budget, so an unmeasured target is packed alone.
+                                           branch ops/the-run-is-slot-bound status closed
+L25 evals/definition/, make claim-5 — claim 5 green at 481 cells with 3/3 mutations biting. The
+    three consumers CLAUDE.md names are ONE mechanism (byte-identical from one renderer), so the
+    eval builds the two that differ in order of operations and the compiled SQL carries the
+    reading. One cell of the 481 is constructed, because the corpus cannot exercise the
+    contract's rounding at all. make preview-audit withdrawn: its deferral does not unlock here.
+                                           branch evals/definition          status closed
 ```
+
+**And it went stale again, by two, before `L23` was written.** `T011` and `T00M` closed on
+2026-09-03 and 2026-09-04 and neither added a line here; `L23`, `L24` and `L25` were all written by
+the session that closed the third. That is the same gap as the one below, smaller and in the same
+direction, and it arrived **after** the paragraph explaining why it recurs — the section has no gate,
+so the only thing standing between it and staleness is whoever closed the last atom remembering.
+Recorded rather than fixed in passing, because a silent catch-up is this file reporting what it
+examined as though that were what exists.
 
 **Two of those entries named branches that never existed, and `evals/world-cache-measured` found
 it by asking git.** `docs/phase-1-review` and `ops/coverage-expiry-findings` were written here on

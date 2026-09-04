@@ -1822,19 +1822,44 @@ Everything that needs data at scale, an engine, or a workspace.
   monitor. The second is required by doctrine rule 2: without it, a fallback is not visible to the
   end. Both consume the metric contract, so both are claim 5 evidence.
 - `evals/definition/` — the three mechanisms compared as integers, no tolerance.
+  *Landed 2026-09-04, and the first thing it measured argues against it: **two of the three
+  mechanisms `CLAUDE.md` names are one mechanism.** The dbt model, the SQL function and the
+  readout all render from `metric_parts` in one compiler and their arithmetic is byte-identical,
+  so comparing them proves Spark is deterministic. The fourth named consumer, the agent tool
+  definition, computes nothing and cannot be a mechanism at all — `D4` holds it to the contract's
+  terms instead. So the eval builds the two mechanisms that were missing, differing in **order of
+  operations**, and the compiled SQL is the load-bearing third because it was compiled by a
+  different mechanism at a different time. Non-sharing prevents shared code, not a shared
+  misconception, and that limit is stated rather than papered over.*
+
+  *Green at 481 cells over `W6` at `rehearsal`, `D1`–`D4`, 3 of 3 mutations biting. **One of those
+  cells was written by the eval**, because the corpus cannot exercise the contract's `rounding` at
+  all: every corpus cell is an exact number of cents, so `half_even` and `half_up` never part
+  company. The same plant survives on 480 corpus cells and bites on the constructed one — a
+  controlled comparison where only the data changed, filed against the contract and the corpus in
+  `docs/FINDINGS.md`. See `T012`'s landing note in `TASKS.md`.*
 - `pipelines/ml/` — the training code: time-based split, censoring correction, calibration gating,
   the promotion gates and a named approver. Proved **local** against a small corpus. The run that
   produces the deployed model happens on the estate in phase 3, where the data is.
 - `make preview-audit` — the declared inventory of preview surfaces, and the check that no
   claim's proof path touches one.
+
+  > **Not delivered by `T012`, and `TASKS.md` said it would be. Restated 2026-09-04.** That block
+  > read *"`DECISIONS.md` defers it to exactly here"*; the deferral says *"the first Terraform
+  > layer, **and** the first time a preview surface is considered"*, and `evals/definition/` is not
+  > a Terraform layer. **The surface that fired the other half is gone too** — route 2 removed the
+  > Lakeflow Connect Postgres connector — so the inventory is **undetermined rather than empty**,
+  > and a gate over an undetermined population would report *no claim's proof path touches a
+  > preview surface* while nobody knows what the surfaces are. It moves to phase 3, with the first
+  > layer, and Zerobus's own status is `T015`'s open question.
 - `docs/DAY-ONE.md` — the manual work with no API, written **before** phase 3 and read as a
   checklist rather than as a record. Listed here because T015 is a phase-2 atom and this list
   did not carry it. *Added 2026-09-02 by T015.*
 
 ### What closes this phase
 
-`make claim-5` green against local Delta tables, and a trained model that the promotion gate
-either accepts for a stated reason or refuses for a stated reason. **A gate that has never
+`make claim-5` green against local Delta tables *(done 2026-09-04)*, and a trained model that the
+promotion gate either accepts for a stated reason or refuses for a stated reason. **A gate that has never
 refused anything has not been tested.**
 
 ### Closed in this phase

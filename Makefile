@@ -10,9 +10,11 @@
 # claim that is a paragraph is advice. `ci` discovers them by grepping this file rather than
 # by listing them, so a claim target that exists but is never run is impossible.
 #
-# Still deliberately absent: `claim-5`, `claim-6` and `preview-audit`. A green target that
+# Still deliberately absent: `claim-6` and `preview-audit`. A green target that
 # proves nothing is worse than a missing one — it is a gate disarmed before it was ever
-# armed — so each arrives with the eval that earns it.
+# armed — so each arrives with the eval that earns it. `claim-5` arrived on 2026-09-04 with
+# `evals/definition/`; `preview-audit` did not, and `TASKS.md`'s T012 block records why the
+# deferral it cites does not unlock here.
 
 UV ?= uv
 RUN := $(UV) run
@@ -26,10 +28,10 @@ PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check check-locked test lint format typecheck contracts contracts-write \
-        expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 silver \
+        expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-5 claim-7 silver \
         gold \
         claim-2-shard claim-2-combine claim-2-tests \
-        eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
+        eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight eval-definition gate-proof \
         world roster corpus clean
 
 help:  ## show this help
@@ -442,6 +444,11 @@ CI_ENTRY_CEILING := 1032
 #:
 #: A target costing more than the budget is its own bin and that is a signal rather than an
 #: error — at a budget of 700, `claim-1` at 712 already would be.
+#:
+#: **`claim-5` is deliberately absent from this list.** `T012` added it and it has never run on
+#: a runner, so declaring a cost here would be inventing one — the packer defaults it to the
+#: whole budget and gives it its own machine until somebody measures it. That is the rule
+#: working rather than an omission, and the first CI run is the measurement.
 CLAIM_1_COST := 712
 CLAIM_2_TESTS_COST := 533
 CLAIM_3_COST := 453
@@ -514,6 +521,24 @@ eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 # every type added to it adds 317 attacks; and then "1m32s to 1m45s", falsified by the very
 # next run coming in *faster*. A quantity with two independent reasons to move should be
 # asserted as a bound with room in it, never as a point and never as a tight range.
+# Claim 5 is the one that had to be re-read before it could be built. `CLAUDE.md` names three
+# consumers -- dbt model, SQL function, readout -- and they are **one** mechanism: all three are
+# rendered by `metric_parts` and their arithmetic is byte-identical, so comparing them proves the
+# engine is deterministic and nothing about the definition. The three here are the compiled SQL
+# executed over gold, and two Python implementations that differ in the order of operations and
+# may not share a line.
+#
+# It builds a rehearsal-scale world through bronze, silver and gold before it can compare
+# anything, so it needs the `dbt` extra and it is minutes rather than seconds. That cost is the
+# claim: the SQL mechanism is the compiled artefact **executed**, and an eval that skipped the
+# pipeline would compare three implementations against data no engine ever produced.
+claim-5:  ## claim 5 — one definition, three mechanisms, the same integer
+	$(RUN) python -m evals.definition
+	$(RUN) python -m evals.gate_proof --claim 5
+
+eval-definition:  ## just claim 5's eval, without the mutations
+	$(RUN) python -m evals.definition
+
 claim-7:  ## claim 7 — a decision that targets a person is structurally impossible
 	$(RUN) python -m evals.oversight
 	$(RUN) python -m evals.gate_proof --claim 7
