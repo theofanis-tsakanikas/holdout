@@ -801,8 +801,28 @@ exists on one machine and never on a runner — so the gate that would catch an 
 list is maintained on the only machine where the problem occurs and checked on the only machine
 where it cannot. Two instances now, and the second one is not a longer list.
 
+**Third instance, 2026-09-04, and it is the one that turns the list into a forecast.**
+`make language` went red on **67 MB of Terraform provider binary** the day `T013` created the
+first infrastructure layer — `infra/lakehouse/.terraform/providers/…/terraform-provider-databricks_v1.130.0`,
+enumerated as repository content and undecodable, which `make figures` correctly reported as
+under-coverage. `.terraform` is now the third name added to `NOT_CONTENT` by whoever tripped over
+it, and **`git check-ignore` answers in one line**: `.gitignore:60: infra/**/.terraform/`.
+
+> **Every one of the three is a gitignored artefact the gate had no business reading, and each was
+> added by the session that met it.** `.shards/` when sharding landed, a stray worktree that
+> reddened one laptop and no runner, `.terraform/` when the first Terraform layer landed.
+
+**So the pattern is no longer *the list is short*. It is a prediction: the next tool adds a
+fourth.** Nothing about these three is a judgement call — `git ls-files` would have excluded all
+three without an entry, and `ops/figures.py` has asked git since 2026-09-01, one file away, with a
+docstring saying *what git tracks, which is the only defensible answer to what is repository
+content*. The entry stays open because the change has still not been made, and each instance is
+cheaper to add than to fix, which is exactly why three of them exist.
+
 *Site:* `ops/language.py` :: `NOT_CONTENT: frozenset[str] = frozenset(`
-*Disposition:* its own branch — small, and unblocked now rather than by anything
+*Disposition:* its own branch — small, and unblocked now rather than by anything. **Three
+instances, and the third is the argument for doing it before a fourth**: the fix is applying a
+move that already landed one file away, not designing anything
 *Status:* open
 
 **The combine job's worlds are disjoint from every shard's** · found 2026-09-01 · by T00H, from
