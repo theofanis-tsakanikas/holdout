@@ -166,6 +166,39 @@ findings:  ## refuse an open finding that no longer anchors to what it named
 # glob rather than by a list somebody keeps: a layer that exists and is never validated is the
 # coverage rule's own failure, and `make figures` compares this count against the tree.
 #
+# **Restated: the sentence above is the original, kept per doctrine rule 4, and two of its
+# clauses were false.** An earlier version of this restatement rewrote that sentence, deleted
+# its last clause, and then labelled the rewrite as prior wording -- which is a rule-4 label on
+# text that was not preserved, and worse than no label, because it tells a reader the original
+# is there to compare against. Found by the phase-2 review reading this branch hostilely at the
+# integration session's request.
+#
+# **The deleted clause was itself a claim about a check nobody wrote.** `ops/figures.py`
+# contains no occurrence of `terraform` or `infra` -- there is no such row among its eleven, and
+# there never was. So the branch whose whole subject is *prose claiming a check that does not
+# exist* carried one in its own comment, and removed it silently rather than restating it.
+# Whether `make figures` should gain a `terraform` row is a fair question; deleting the sentence
+# that claimed it does was not the way to ask it.
+#
+# **And the first version of this target said what the first clause says and did not do it.**
+# It globbed `infra/*/`, skipped any directory
+# without a `versions.tf` with a bare `continue`, and counted only the ones it validated — so a
+# layer that existed and was silently skipped was invisible, and the `found == 0` guard could
+# not see it either. **The coverage rule at one directory's depth**, in the target written to
+# enforce it: *a gate reports on what it examined; it becomes a lie when it reports what it
+# examined as if it were what exists.*
+#
+# It could not be wrong with one layer, which is exactly when it was worth reading — found by a
+# reviewer for that reason. **Phase 3 adds four**, so it would have become wrong by construction
+# rather than by accident.
+#
+# **The population is now every directory under `infra/` that carries any `.tf` file at all**, and
+# such a directory without a `versions.tf` is **red rather than skipped**: a layer with no
+# declared provider requirements cannot be meaningfully validated, and a `terraform validate`
+# that passes because it examined nothing is the vacuous green this repository refuses
+# everywhere else. A directory carrying no `.tf` at all is not a layer, and is reported as
+# examined-and-not-a-layer rather than silently ignored.
+#
 # **`-backend=false`, because nothing here is applied.** No state, no credential, no resource
 # that exists. `infra/lakehouse/README.md` says so at length, because *the first Terraform
 # layer* sounds like the estate and is not.
@@ -184,16 +217,29 @@ terraform:  ## terraform validate over every layer under infra/
 	  echo "        This is a skip and not a pass. CI installs it; a laptop may not have it."; \
 	  exit 0; \
 	}
-	@found=0; for layer in infra/*/; do \
-	  [ -f "$$layer/versions.tf" ] || continue; \
-	  found=$$((found + 1)); \
+	@validated=0; others=0; for layer in infra/*/; do \
+	  [ -d "$$layer" ] || continue; \
+	  if ! ls "$$layer"*.tf >/dev/null 2>&1; then \
+	    others=$$((others + 1)); \
+	    echo "        $$layer carries no .tf file, so it is not a layer"; \
+	    continue; \
+	  fi; \
+	  if [ ! -f "$$layer/versions.tf" ]; then \
+	    echo "::error::$$layer has Terraform files and no versions.tf, so nothing pins its"; \
+	    echo "provider, and validating there would check a configuration against whatever"; \
+	    echo "the registry happened to serve. A layer that cannot be validated is refused"; \
+	    echo "here rather than skipped -- being skipped is how this target was wrong before."; \
+	    exit 1; \
+	  fi; \
+	  validated=$$((validated + 1)); \
 	  terraform -chdir="$$layer" init -backend=false -input=false >/dev/null || exit 1; \
 	  terraform -chdir="$$layer" validate || exit 1; \
 	done; \
-	if [ "$$found" -eq 0 ]; then \
-	  echo "OK      no layer under infra/ carries a versions.tf, so nothing was validated."; \
+	total=$$((validated + others)); \
+	if [ "$$total" -eq 0 ]; then \
+	  echo "OK      infra/ holds no directories, so there is no layer to validate."; \
 	else \
-	  echo "OK      $$found layer(s) under infra/ validate"; \
+	  echo "OK      $$validated of $$total director(y/ies) under infra/ are layers, and all validate"; \
 	fi
 
 # Doctrine rule 6: "Exceptions expire. On expiry the finding returns and CI goes red again."
