@@ -3712,6 +3712,55 @@ they name
 *Status:* open
 
 ---
+**The explained-collision pair key degrades to the bare identifier** ·
+found 2026-09-04 · by the reviewer, when a fifth same-name entry was about to be added
+
+`evals/oversight/checks.py`'s `EXPLAINED` is keyed by a **pair** — the name here and the name
+there — and its comment records why, as a finding of its own:
+
+> *"**The key is a pair, and that was a finding.** It was the bare identifier until oversight
+> level 2 pointed out what that excuses: an entry for `members` would have pre-approved **any**
+> future `members` anywhere in the package — including one that really is a collection of people
+> — and `O12` would have stayed green, because the name still matched something."*
+
+**The entry is `("members", "members")`.**
+
+**For a same-name collision the pair key *is* the bare identifier.** A future local `members`
+colliding with the published `members` matches that key exactly, and is pre-approved — which is
+the outcome the pair was adopted to prevent, in the very example the comment uses to explain it.
+
+Measured over the eleven entries:
+
+    same-name   4   agent · candidate · members · parents
+    differing   7   AGENT vs agent · agent_tool vs agent · compile_agent_tool vs agent ·
+                    candidate_weeks vs candidate · url vs URL · weight_c vs weight ·
+                    weight_t vs weight
+
+**So the pair genuinely protects seven and protects nothing on four**, and `height` — added the
+same day — would have been a fifth. The mechanism is not wrong; it is **partial in a way its own
+justification does not say**, and the sentence a reader takes away is that the case is covered.
+
+**Found because a fifth same-name entry was about to be added**, and by the reviewer rather than
+by the session adding it. Nothing measured it before: the four have been there since T006 and the
+count had never been taken.
+
+> **A mechanism whose recorded justification names the case it fails on is worse than one with no
+> justification**, because the justification is what stops anybody checking.
+
+**What would fix it is a design question rather than a longer key**, which is why this is filed
+rather than fixed. An explanation would have to be keyed to something that distinguishes *this*
+`members` from a future one — a module, a type, a line — and each of those has a cost the pair
+does not: a key carrying a path goes stale on a move, and a key carrying a line goes stale on an
+edit. **The pair was chosen because it is stable. What it buys in stability it gives back on every
+same-name collision**, and that trade has never been stated.
+
+*Site:* `evals/oversight/checks.py` :: `EXPLAINED: dict[tuple[str, str], str] = {`
+*Disposition:* `T016`, with the other two joins. It is a design question about what an explanation
+is keyed to, it blocks nothing, and the four entries it affects are each individually sound —
+which is what makes it a shape rather than four defects
+*Status:* open
+
+---
 
 ## Closed
 

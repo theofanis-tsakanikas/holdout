@@ -134,6 +134,17 @@ EXPLAINED: dict[tuple[str, str], str] = {
         "the control arm's weight in the estimator's variance, not a person's mass"
     ),
     ("weight_t", "weight"): "the treatment arm's, likewise",
+    # Added 2026-09-04, in its own commit and by the ruling of the reviewer who did not
+    # introduce it — this list's rule is *never an addition made in the same commit as the
+    # name*, and the conversation it requires is quoted in that commit.
+    ("height", "height"): (
+        "a widget's grid height in the Lakeview dashboard format — one of `x`, `y`, `width`, "
+        "`height`, the vendor's own layout keys, in `generated/dashboards/*.lvdash.json`. "
+        "schema.org's `height` is a person's. The two alternatives were refused for reasons "
+        "this list already carries: emitting no positions would degrade a real dashboard into "
+        "a stub to satisfy a guard, and excluding vendor JSON keys from the scan is the "
+        "narrowing `parents` refuses by name"
+    ),
 }
 
 

@@ -18,6 +18,17 @@ The four consumers of the metric contract:
   nobody re-derives, and `terraform validate` cannot read a `serialized_dashboard` string at
   all — measured, it passes one containing broken SQL over a table that does not exist.
 
+**Before pushing a change that adds or moves anything under `generated/`, run `make claim-5` and
+`make claim-7`.** Not a gate and not offered as one — a habit, written where whoever adds the next
+consumer will meet it. The reason is a measurement rather than caution: `T013` added the dashboards
+with `make check` green on the laptop and CI red on the sha, because **a new generated consumer
+changes claim 7's population** — `O10` scans every artefact under `generated/` for person-shaped
+names and refused `height`, a Lakeview layout key that schema.org also uses for a person. `make
+check` cannot see that, by design: the claim targets take minutes and CI discovers them.
+
+*A green `make check` is a fact about a working tree; a run is a fact about a sha* — and the two
+claims whose populations this directory **is** are 5 and 7.
+
 and one consumer of the design contracts:
 
 * `generated/design/form.schema.json` — the form with its closed lists resolved from
