@@ -1841,6 +1841,29 @@ Everything that needs data at scale, an engine, or a workspace.
 - `pipelines/ml/` — the training code: time-based split, censoring correction, calibration gating,
   the promotion gates and a named approver. Proved **local** against a small corpus. The run that
   produces the deployed model happens on the estate in phase 3, where the data is.
+  *Landed 2026-09-04, and the first thing it measured narrows what it claims: **the model cannot
+  answer the question the decision path asks it.** `core.pricing.Scenario` takes `expected_units`
+  per candidate price, and on this corpus price is a deterministic function of hours-to-expiry
+  within an arm — W1 has one discount level per hours-bucket, W6 has two, and within `(hours, arm)`
+  there is exactly one. So the only price contrast anywhere is the arm contrast the readout exists
+  to measure. `CLAUDE.md` names the remedy and it is not built, so the pipeline forecasts units at
+  the price the policy sets and says so, rather than declaring an elasticity — which would be
+  inventing the number a model exists to learn.*
+
+  *What is built is the apparatus a model is judged by, and every gate is planted against by name:
+  a systematically optimistic model, the do-nothing baseline, two segments wrong in opposite
+  directions, a corpus too thin to judge, a model fitted on too little history. Two of the plants
+  assert a gate **passes** — the baseline must be refused by the RMSE gate and not by the
+  calibration gate — and one test requires all five to pass, because a gate that has never passed
+  is as untested as one that has never refused. `Promotion` cannot be constructed without a
+  `human:<name>`, so doctrine rule 5 is a type here rather than a sentence.*
+
+  *Two declared thresholds were convicted by the first measurement — an RMSE ceiling of 6 units
+  against a corpus averaging 34, and a per-segment tolerance of 10% against a segment standard
+  error of 5.13% — and both are now relative to something the data supplies. The model's own shape
+  was chosen the same wrong way and corrected the same way: `(category, weekday)` scored 33.48
+  against a do-nothing baseline of 35.58, and `(sku, weekday)` times a store factor scores 14.09.
+  See `T014`'s landing note in `TASKS.md`.*
 - `make preview-audit` — the declared inventory of preview surfaces, and the check that no
   claim's proof path touches one.
 
@@ -1859,7 +1882,8 @@ Everything that needs data at scale, an engine, or a workspace.
 ### What closes this phase
 
 `make claim-5` green against local Delta tables *(done 2026-09-04)*, and a trained model that the
-promotion gate either accepts for a stated reason or refuses for a stated reason. **A gate that has never
+promotion gate either accepts for a stated reason or refuses for a stated reason *(done 2026-09-04:
+five gates, twelve plants, and a run in which all five pass on the honest model)*. **A gate that has never
 refused anything has not been tested.**
 
 ### Closed in this phase

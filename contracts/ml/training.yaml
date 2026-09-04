@@ -1,0 +1,157 @@
+# The training and promotion settings.
+#
+# Fixed here rather than as constants in `pipelines/ml/`, for exactly the reason
+# `contracts/design/inference.yaml` gives about itself: a threshold that lives in the module
+# it gates is a dial the same session can turn until the model passes. Doctrine rule 3 does
+# not care what extension a file has, and a promotion gate is the place where turning a dial
+# is most tempting and least visible — the model is the thing somebody wants to ship.
+#
+# Every value here is a `scenario_assumption`. None of them is law, and none of them is a
+# measurement of this repository's own corpus dressed as a standard. Where a number could
+# have been sourced from a measurement and deliberately was not, the note says which
+# measurement was refused and why.
+#
+# What this file deliberately does NOT carry: a price response. Measured on this
+# repository's corpus at `rehearsal`, price is a deterministic function of hours-to-expiry
+# within an arm — W1 has one discount level per hours-bucket and W6 has two, one per arm.
+# So no demand-at-candidate-price relationship is identified from history, and declaring one
+# here would be inventing the number the model is supposed to learn. The model this contract
+# governs forecasts units at the price the policy will set, and `pipelines/ml/__init__.py`
+# says so in the same words.
+
+version:        1
+effective_from: 2026-09-04
+
+# ------------------------------------------------------------------ how history is divided
+
+split:
+
+  evaluation_days:
+    value: 14
+    source:
+      kind: scenario_assumption
+      note: >-
+        How many trailing business dates are held out for evaluation. Two weeks rather than
+        one because a single week cannot separate a day-of-week effect from a trend, and
+        rather than four because this repository's corpus is eight months in the scenario
+        and a few weeks at the scales that run locally — an evaluation half that swallowed
+        most of a rehearsal corpus would leave a training half nothing could be fitted on.
+        The split point is DERIVED from this number and the data's own last date; it is
+        never chosen after the numbers are seen, which is the whole reason it is declared
+        here rather than passed as an argument.
+      verified_on: 2026-09-04
+
+  min_training_days:
+    value: 21
+    source:
+      kind: scenario_assumption
+      note: >-
+        The fewest distinct business dates a model may be fitted on. Three weeks, so that
+        every day of the week is seen at least three times: a weekday effect fitted on one
+        observation per weekday is one shopper's Tuesday, and a model that cannot tell a
+        Tuesday from a Saturday will be wrong in the direction that empties shelves at the
+        weekend. Below this the fit is REFUSED rather than produced with a caveat, because a
+        caveat is not read and a refusal is.
+      verified_on: 2026-09-04
+
+# --------------------------------------------------- what a reconstruction may contribute
+
+reconstruction:
+
+  min_observed_share:
+    value: 0.5
+    source:
+      kind: scenario_assumption
+      note: >-
+        The smallest share of an ordinary day a censored store-day's observed window may
+        cover and still enter a training set. Sourced from ARITHMETIC rather than from an
+        error measurement, and the distinction is the whole justification. Claim 4's
+        correction returns `at_least / share`, so `share` is exactly the fraction of the
+        answer that is evidence and `1 - share` is the fraction that is curve; at 0.5 the
+        reconstruction is half receipt and half model, and below it the model is the
+        majority of a number that will be trained on as though it were an observation. The
+        measurement that was NOT used is `evals/censoring/`'s error-versus-share grid, which
+        `docs/DECISIONS.md` refuses as a source for a live guard: it censors ordinary days on
+        purpose, and a real stock-out is endogenous — it happens on unusually busy days — so
+        the error at a given share there is not the error here. What that entry asks for is a
+        measurement over the days the pipeline actually trains on, and no such measurement
+        can exist for the error, because nothing in this system has ever seen the demand a
+        stock-out turned away.
+      verified_on: 2026-09-04
+
+# ------------------------------------------------------- what a model must satisfy to ship
+
+gates:
+
+  calibration_tolerance_pct:
+    value: 5
+    source:
+      kind: scenario_assumption
+      note: >-
+        How far total predicted units may sit from total observed units over the evaluation
+        half, as a percentage of observed. This is the gate `CLAUDE.md` puts ABOVE RMSE, and
+        the reason is stated there: a model that is systematically optimistic by 20% sets
+        systematically low prices, and every individual price still passes every guardrail —
+        so the envelope cannot catch it and only this can. Five percent is a stated
+        assumption of the scenario and not a standard; what it is chosen to be is small
+        enough that a bias of the size the doctrine warns about cannot pass, and large
+        enough that ordinary sampling noise on a rehearsal-scale corpus does not fail a
+        model that is fine.
+      verified_on: 2026-09-04
+
+  rmse_share_of_baseline:
+    value: 0.75
+    source:
+      kind: scenario_assumption
+      note: >-
+        The largest share of the do-nothing baseline's RMSE that will be admitted, where the
+        baseline predicts the training grand rate for every store-SKU-day. Kept alongside
+        calibration because calibration alone passes a model that is unbiased and useless —
+        the baseline is perfectly calibrated by construction, so this is the gate that
+        refuses it, and at a share of 1.0 it would not. Measured on W1 at rehearsal before
+        the value was chosen: the fitted model scores 0.396 of the baseline and a
+        (category, weekday) model scores 0.941, so 0.75 sits between a model that learned
+        the corpus's structure and one that barely learned anything. THE PRIOR WORDING OF
+        THIS ENTRY was `rmse_ceiling_units: 6`, an absolute count, and it was wrong in the
+        way this repository catalogues: a number set from a projection rather than from a
+        measurement of what runs. Mean demand on this corpus is thirty-four units per
+        store-SKU-day, so six units was below the noise floor and the gate refused every
+        model that could ever be fitted. A share needs no knowledge of the scale, which is
+        the property that makes it checkable on a corpus nobody has measured yet.
+      verified_on: 2026-09-04
+
+  segment_calibration_max_sigma:
+    value: 3
+    source:
+      kind: scenario_assumption
+      note: >-
+        The same calibration test applied per segment rather than to the total, judged in
+        multiples of that segment's OWN sampling standard error. It exists because an overall
+        calibration of zero can hide two segments wrong in opposite directions in equal
+        measure, and a price is decided inside a segment and never over the average of all of
+        them; `CLAUDE.md` names a per-segment regression as one of the two gates a model card
+        carries. THE PRIOR WORDING was `segment_calibration_tolerance_pct: 10`, and the
+        argument for it was that a segment carries fewer days than the total and is therefore
+        noisier — sound reasoning, and never measured. Measured on W1 at rehearsal: the
+        median segment's standard error is 5.13% of its own mean, so ten percent is 1.9
+        standard errors, and over twenty-one segments that is an expected 1.2 false alarms
+        EVERY RUN. A gate that refuses a good model most of the time is a gate somebody
+        widens until it stops firing, which is how a gate is disarmed by people acting
+        reasonably. Three standard errors puts the expected false alarms over the same
+        twenty-one segments near 0.06 per run, and it needs no knowledge of how noisy a
+        segment is — the segment supplies that itself, so a thin segment is judged in the
+        same units as a thick one instead of being judged more leniently by accident.
+      verified_on: 2026-09-04
+
+  min_segment_days:
+    value: 30
+    source:
+      kind: scenario_assumption
+      note: >-
+        The fewest evaluation store-SKU-days a segment must carry before its calibration is
+        judged at all. A segment with three days produces a percentage that swings on one
+        shopper, and judging it would be reading noise as a defect and teaching whoever
+        maintains the gate to widen the tolerance until the noise stops firing — which is
+        how a gate is disarmed by people acting reasonably. A segment below this count is
+        reported with its size and explicitly NOT judged, rather than silently dropped.
+      verified_on: 2026-09-04

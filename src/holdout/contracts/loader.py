@@ -47,6 +47,7 @@ from holdout.contracts.model import (
     ReasonCodes,
     Restatement,
     Rounding,
+    TrainingSettings,
     freeze,
 )
 from holdout.contracts.provenance import Census, census, check_provenance
@@ -95,6 +96,12 @@ CLAIMED_FILES = {
     "design": frozenset(
         {"aa_harness.yaml", "balance_covariates.yaml", "form.schema.yaml", "inference.yaml"}
     ),
+    # A fifth family, added by T014. It is `ml` rather than a section of `design/` because a
+    # training run is not an experiment design: `design/` is read by the engine that decides
+    # whether an experiment may exist, and nothing in `pipelines/ml/` is that engine. A file
+    # filed under the wrong family is read by the wrong consumer, and `inference.yaml` is
+    # already in this list because it MOVED once for that reason.
+    "ml": frozenset({"training.yaml"}),
 }
 
 #: Families whose numbers the independent provenance walk descends. Originally "numbers
@@ -107,7 +114,7 @@ CLAIMED_FILES = {
 #: The design *form* is still excluded from the walk in the only way that matters: it is a
 #: JSON Schema, read by `_check_form` rather than by `validated`, so its `value` keys — which
 #: are schema vocabulary and not data — are never descended.
-PROVENANCE_FAMILIES = ("guardrails", "policies", "design")
+PROVENANCE_FAMILIES = ("guardrails", "policies", "design", "ml")
 
 
 def repo_relative(path: Path, base: Path = REPO_ROOT) -> str:
@@ -381,6 +388,21 @@ def _inference(raw: dict[str, Any]) -> InferenceSettings:
     )
 
 
+def _training(raw: dict[str, Any]) -> TrainingSettings:
+    split, reconstruction, gates = raw["split"], raw["reconstruction"], raw["gates"]
+    return TrainingSettings(
+        version=raw["version"],
+        effective_from=_as_date(raw["effective_from"]),
+        evaluation_days=int(split["evaluation_days"]["value"]),
+        min_training_days=int(split["min_training_days"]["value"]),
+        min_observed_share=_as_decimal(reconstruction["min_observed_share"]["value"]),
+        calibration_tolerance_pct=_as_decimal(gates["calibration_tolerance_pct"]["value"]),
+        rmse_share_of_baseline=_as_decimal(gates["rmse_share_of_baseline"]["value"]),
+        segment_calibration_max_sigma=_as_decimal(gates["segment_calibration_max_sigma"]["value"]),
+        min_segment_days=int(gates["min_segment_days"]["value"]),
+    )
+
+
 def _aa_harness(raw: dict[str, Any]) -> AaHarness:
     seeds = raw["seeds"]
     machinery = raw["machinery"]
@@ -493,6 +515,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
     )
     inference_pairs = validated([design_dir / "inference.yaml"], "inference.schema.json", "design")
     harness_pairs = validated([design_dir / "aa_harness.yaml"], "aa_harness.schema.json", "design")
+    training_pairs = validated([root / "ml" / "training.yaml"], "training.schema.json", "ml")
     form_path = design_dir / "form.schema.yaml"
     if form_path.is_file():
         form_raw = read(form_path)
@@ -516,6 +539,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
         reason_codes=_reason_codes(reason_codes_pairs[0][1]),
         balance_covariates=_balance_covariates(covariate_pairs[0][1]),
         inference=_inference(inference_pairs[0][1]),
+        training=_training(training_pairs[0][1]),
         aa_harness=_aa_harness(harness_pairs[0][1]),
         design_form=MappingProxyType(form_raw),
         census=counted,

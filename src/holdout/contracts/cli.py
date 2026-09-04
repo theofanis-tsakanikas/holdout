@@ -146,6 +146,18 @@ def _summary(contracts: ContractSet, expected: dict[str, str]) -> list[str]:
         f" · binomial at {contracts.aa_harness.binomial_level}"
         f" · MDE {contracts.aa_harness.mde_pct_of_pre_period_mean}% of the pre-period mean"
         f" · machinery at {contracts.aa_harness.machinery.scale}",
+        # And the third contract that compiles to nothing, for the same reason as the two
+        # above. Its own line rather than a fold, because `ml` is a family and not a section
+        # of `design/`: nothing in `pipelines/ml/` is the engine that decides whether an
+        # experiment may exist, and a file printed under the wrong heading is a file read by
+        # the wrong consumer one session later.
+        f"training     evaluation {contracts.training.evaluation_days}d"
+        f" · min train {contracts.training.min_training_days}d"
+        f" · reconstruction floor {contracts.training.min_observed_share}"
+        f" · calibration {contracts.training.calibration_tolerance_pct}%"
+        f" (per segment {contracts.training.segment_calibration_max_sigma} sd"
+        f" above {contracts.training.min_segment_days} day(s))"
+        f" · RMSE ≤ {contracts.training.rmse_share_of_baseline} of baseline",
         _provenance_line(contracts.census),
         f"generated    {len(expected)} artefact(s) from {len(in_force)} metric(s)"
         f" and the design form",

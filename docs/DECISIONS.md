@@ -2296,6 +2296,29 @@ to do with a reconstructed store-day. The threshold — if there is one — is d
 `{value, source}` pair in a contract like every other number in this repository, and the source is a
 measurement over the days the pipeline actually trains on.
 
+> **Closed 2026-09-04 by T014, and the threshold is not what this entry expected.**
+> `contracts/ml/training.yaml` declares `reconstruction.min_observed_share: 0.5`, and
+> `pipelines/ml/features.py` excludes and **counts** every reconstructed store-day below it.
+>
+> **What this entry asked for cannot exist, and saying so is most of the closure.** It asks for a
+> source that is *a measurement over the days the pipeline actually trains on* — an error measured
+> against truth. There is no truth to measure against: a real stock-out turned away demand nobody
+> ever saw, and `corpus/world/events.py` refuses to emit it on purpose, *"a corpus that emitted
+> them would be handing claim 4 the answer it is supposed to have to reconstruct."* The only error
+> grid that exists is `evals/censoring/`'s, over days censored **deliberately** on ordinary days,
+> and this entry is itself the argument for not sourcing a live guard from it.
+>
+> **So the value is sourced from arithmetic instead, and the note says which measurement was
+> refused.** `correct` returns `at_least / share`, so `share` is exactly the fraction of the answer
+> that is evidence and `1 - share` is the fraction that is curve. At 0.5 the number is half receipt
+> and half model; below it the model is the majority of something that will be trained on as though
+> it were an observation. **That is a statement about what the arithmetic does, not about how wrong
+> it is** — and the difference is the reason the entry closes with a threshold rather than with the
+> measurement it asked for.
+>
+> Measured on the corpus this pipeline trains on, W1 at `rehearsal`: **296 store-days of 20,160
+> fall below the floor** and are excluded, and 3,581 reconstructions are kept.
+
 **The endogeneity of a real stock-out is not measured, only stated** · deferred 2026-08-29
 `evals/censoring/` grades its correction by censoring held-out store-days **on purpose**, at a
 declared grid of hours, and comparing the reconstruction against what those days actually sold. That
@@ -2329,6 +2352,19 @@ groupings without a consumer that needs them would be tuning a published figure.
 and the eval gains the grouping the pipeline actually uses rather than one chosen to improve a
 number.
 
+> **Fired 2026-09-04 by T014, and the answer is that the pipeline groups by nothing.** `features.
+> fit_curve` fits **one pooled curve** over every store and every category, and it says so where a
+> reader will find it rather than leaving the absence to be inferred. So the eval gains no grouping,
+> because the consumer that this entry was waiting for turned out not to need one.
+>
+> **The entry stays open on its own terms and that is the point of it.** What it asks for is
+> evidence that the correction *survives* being grouped, and the direction that evidence would move
+> in is the flattering one — a smaller residual error. Adding a grouping now would still be tuning a
+> published figure, and the consumer's existence does not change that; what has changed is that the
+> question is no longer hypothetical, because there is now a pipeline whose curve could be split.
+> **A curve per category is the first thing to try when somebody has a reason other than the number
+> going down.**
+
 **The censoring correction has no consumer** · deferred 2026-08-29
 `holdout.core.demand.censoring` is proved by `make claim-4` and called by nothing else. `CLAUDE.md`
 puts stock-out marking in silver and the correction in training, and neither exists yet. So claim 4
@@ -2339,6 +2375,21 @@ the reason `tests/core/test_composition.py` exists.
 and a demand feature is built from it, the composition is what claim 4 has to survive — a censored
 day reaching a feature table unmarked is doctrine rule 2 broken, and it will be provable end to end
 rather than one module at a time.
+
+> **Closed 2026-09-04 by T014. It has a consumer, and the composition is what the tests assert.**
+> `pipelines/ml/features.py` reads silver's `shelf_state`, applies `censoring.read`, `fit` and
+> `correct`, and emits a `DemandFeature` that **cannot be constructed without `censored` and
+> `observed_share`** — no defaults, no optional fields.
+>
+> **And the mark is asserted all the way to the end rather than at the boundary.**
+> `tests/pipelines/test_ml_features.py` checks that a reconstructed store-day arrives marked *and*
+> that `DemandModel.censored_share` carries the proportion onward, because a pipeline that set the
+> field and then dropped it would pass every boundary assertion — doctrine rule 2 broken with a
+> field that looks right.
+>
+> Measured on W1 at `rehearsal`: **3,581 of 19,864 training rows are reconstructions**, on a curve
+> fitted on 16,206 uncensored store-days. Claim 4 is now a property of a pipeline and not only of a
+> module.
 
 **No source has declared what `stocked_out_from_hour` means** · deferred 2026-08-29
 `holdout.core.demand.censoring` expands a censored store-day by the share of an ordinary day its
@@ -2357,6 +2408,27 @@ carry, because no `shelf_state` exists yet.
 movements, and the derivation it writes is what fixes the meaning — at which point the column gets
 a declared definition and the correction's direction stops being conditional. Until then the
 conditional statement is the honest one, and it is printed on every run.
+
+> **Closed 2026-09-04. The condition fired when T010 landed and nobody read it until T014 needed
+> the column** — which is the ordinary way an unlock condition is met, and the reason a condition
+> names an event rather than a session: the event happened on 2026-09-03 and the noticing happened
+> a day later, by the first consumer that had to map the field.
+>
+> **Silver's derivation is the declared definition.** `shelf_state` writes `emptied` — the day
+> closed at zero — and `last_sale_hour`, which its own docstring calls a lower bound: *"the last
+> unit can leave without a sale — it expires, or it is thrown away — so an hour derived from sales
+> can only be at or before the truth."* `pipelines/ml/features.py` maps
+> `stocked_out_from_hour = last_sale_hour if emptied else None` and nothing else.
+>
+> **So the direction stops being conditional and is stated.** An hour at or before the truth gives
+> an observed window at or shorter than the truth, so `share_before` returns a share at or below
+> the true one, so `at_least / share` is at or above the true demand. **This pipeline's
+> reconstructions err high, never low** — a consequence of silver's derivation rather than a
+> property of claim 4's arithmetic, which is why it is stated in the consumer and not in the core.
+>
+> What this does **not** settle is the second reading — the hour the first shopper was turned away.
+> No source in this repository supplies it, the two differ on 43.0% of censored store-days, and
+> `evals/censoring/` goes on publishing both.
 
 **`C7`, `C11` and `C12` own no `gate-proof` mutation, and cannot** · deferred 2026-08-29
 `make gate-proof`'s "no unproven gate" rule is a **target-level** check: `claim-4` owns nine

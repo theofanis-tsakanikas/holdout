@@ -3428,6 +3428,113 @@ today makes using it easier than not
 *Status:* open
 
 ---
+**Two properties the design requires and the corpus cannot express — record them as a pair** ·
+found 2026-09-04 · by `T012` and `T014`, one each, neither knowing about the other
+
+**Sub-cent cost content.** Gold builds `price_paid` and `unit_cost_as_of` as `cents / 100` and
+`qty` is an integer, so every metric cell is an exact number of cents. `bround(x, 2)` is the
+identity and `half_even` and `half_up` never part company, which makes the `rounding` block of
+every metric contract inert — measured by planting, and `evals/definition/` constructs one cell to
+exercise what the corpus cannot reach.
+
+**Price variation independent of the arm.** `corpus/world/policy.py`'s `price_cents(base, hours)`
+is a step function with no noise and no exploration, so price is a deterministic function of
+hours-to-expiry within an arm. Measured at `rehearsal` over `PriceDecision` events: **W1 has one
+discount level per hours-bucket, W6 has two, and within `(hours, arm)` there is exactly one.** So
+demand at a price the policy never set is unidentified on ordinary history and, in a world with an
+experiment running, identified only from the treatment contrast the readout exists to measure.
+`CLAUDE.md` names the remedy — *deliberate price randomisation on a small share of decisions* —
+and it is not built. `pipelines/ml/` is the first consumer that needed it and does not fill the
+hole: the model forecasts units at the price the policy sets, and says so.
+
+**They are recorded together because whoever fixes either one should find both.** Each changes the
+data of every world; each invalidates claim 2's world caches; each costs a cold CI on every touched
+module. `T00M`'s lesson applies exactly — **two changes to the same expensive thing, batched, cost
+once** — and nothing else in this register would have put them side by side, because they were
+found six hours apart by two tasks looking at different layers.
+
+**Neither is a defect in the corpus.** `corpus/world/` was built before either consumer existed and
+is correct about what it set out to generate. What is recorded is that two downstream claims have
+now each met a limit of it, and that the limits are cheaper to lift together than apart.
+
+*Site:* `corpus/world/policy.py` :: `    def price_cents(self, base_price_cents: int, hours_to_expiry: float) -> tuple[int, int]:`
+*Site:* `pipelines/ml/__init__.py` :: `What this package forecasts, and the measurement that decided it`
+*Disposition:* the author's, and it is one decision rather than two — whether the corpus gains
+sub-cent costs and price exploration in one change. Neither claim is blocked meanwhile: claim 5
+constructs its cell and `pipelines/ml/` narrows what it forecasts
+*Status:* open
+
+---
+
+**Two thresholds declared from reasoning, both convicted by the first measurement** ·
+found 2026-09-04 · by `T014` running the pipeline it had just written
+
+`contracts/ml/training.yaml` declared `rmse_ceiling_units: 6` and
+`segment_calibration_tolerance_pct: 10`. Both were written with an argument beside them, both
+arguments were sound, and both numbers were wrong the first time anything measured them.
+
+    rmse_ceiling_units: 6        mean demand is 34 units per store-SKU-day; the honest model
+                                scores 13.6, so the gate refused every model that could exist
+    segment tolerance: 10%      the median segment's own standard error is 5.13%, so ten
+                                percent is 1.9 sd — an expected 1.2 false alarms every run
+                                over twenty-one segments
+
+**The second is the worse one and it is the one that would have survived.** A gate that refuses
+everything is noticed on the first run. A gate that refuses a good model **most** runs is noticed
+as flakiness, and the reasonable response to flakiness is to widen the tolerance until it stops —
+which is how a gate is disarmed by people acting sensibly, with a commit message that says
+*reduce noise*.
+
+**Both were fixed by making the threshold relative to something the data supplies**: RMSE as a
+share of the do-nothing baseline, and per-segment calibration in multiples of that segment's own
+standard error. Neither then needs to know the scale of the corpus, which is the property that
+made both original numbers guesses.
+
+**What makes this a finding rather than two corrections.** `CLAUDE.md` already says an assertion
+wearing a number is set from a measurement of the thing that will run — and this atom's author had
+spent the same day applying that rule to `CLAIM_5_COST`, refusing to declare it before a runner
+had executed the target. **The rule was in hand, recently used, and did not fire here**, because a
+contract value with a paragraph of justification beside it does not look like an unmeasured
+number. It looks like a decision. The tell is not the absence of an argument; it is the absence of
+a measurement the argument was checked against.
+
+*Site:* `contracts/ml/training.yaml` :: `  rmse_share_of_baseline:`
+*Site:* `contracts/ml/training.yaml` :: `  segment_calibration_max_sigma:`
+*Disposition:* both restated in place with the prior wording kept, per doctrine rule 4. What has no
+owner is whether other contract values carry the same shape — `inference.yaml`'s nine are the
+obvious population and nothing has measured them against what they gate
+*Status:* open
+
+---
+
+**A module's docstring claimed a separation the code did not have, found by a planted test** ·
+found 2026-09-04 · by `T014`'s `P4` plant refusing to bite
+
+`pipelines/ml/calibration.py` opens with *"This module measures and that module judges, so a
+threshold cannot be quietly relaxed by the code that computes the quantity it is compared
+against."* `promotion.py` says the same thing from the other side.
+
+**It was false.** `measure` took `min_segment_days` and stamped a `judged` flag onto every
+segment; `assess` then read `calibration.judged_segments` and compared its own contract value
+against a decision another module had already made. The threshold was applied in the module whose
+docstring says it applies none.
+
+**It was found by a plant failing, not by reading either file.** `P4`'s test raises
+`min_segment_days` above every segment's size and requires the gate to refuse — and nothing
+happened, because the judging had been done one module earlier with a different value. Both
+docstrings had been read several times that hour, by their own author, and each one describes the
+architecture the author intended.
+
+**`Calibration.judged` is now a method taking the threshold**, so the only numbers crossing into
+that module are the ones being measured. The prose did not change; it became true.
+
+*Site:* `pipelines/ml/calibration.py` :: `    def judged(self, min_segment_days: int) -> tuple[SegmentCalibration, ...]:`
+*Disposition:* fixed. The class stays open — **prose describing a separation the code does not
+have** is the same family as *prose that claims a check nobody wrote*, and nothing enumerates where
+else a module says it decides nothing while taking a threshold as an argument
+*Status:* open
+
+---
 
 ## Closed
 
