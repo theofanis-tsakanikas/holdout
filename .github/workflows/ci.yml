@@ -531,6 +531,20 @@ jobs:
           # in bins. So the ceiling is **enforced only when the entry started warm**, and a cold
           # one prints its time and says the ceiling was not applied.
           #
+          # **And the reason this is not merely honest but necessary: without it the check
+          # cannot reach a state where it works.** A failing job does not run its cache-save
+          # step. So a bin that fails *for being cold* never writes the cache whose absence
+          # made it cold, and the next run misses again:
+          #
+          #     cold -> over ceiling -> red -> no cache save -> cold
+          #
+          # That is a **loop, not a delay**, and every re-run of it reads as a stubborn stale
+          # cost rather than as a mechanism that cannot start. Measured on this branch: the
+          # first packed run failed and saved nothing, the second was cold again, abstained,
+          # and **wrote the key** -- which is the only reason a third run can judge that bin at
+          # all. **An escape that only made the check polite would be worth arguing about; this
+          # one is what lets it ever run.**
+          #
           # **And the general form, which this is the third application of: a change is not
           # verified by its own run; the run after it verifies.** `CLAIM_2_SHARDS` 8 to 7 was
           # the first -- every shard key changed, so the run that made the change could not
