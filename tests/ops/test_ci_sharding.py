@@ -561,8 +561,24 @@ def _discovered(workflow_text: str | None = None) -> list[dict[str, str]]:
     return entries
 
 
+def _emitted_targets(workflow_text: str | None = None) -> list[str]:
+    """Every target the matrix runs, flattened out of the entries that carry them.
+
+    **An entry carries a bin, not a target, since `T00M`.** `ci.yml` runs
+    `make ${{ matrix.target }}` unquoted and `make` takes several targets on one line, so
+    `claim-2-tests gold` is one entry running two targets. Every check below asks *is this
+    target run* rather than *does this target have an entry* — which is the property that
+    always mattered and was, until packing existed, indistinguishable from the other one.
+    """
+    return [t for e in _discovered(workflow_text) for t in e["target"].split()]
+
+
 def _tests_entries(workflow_text: str | None = None) -> list[dict[str, str]]:
-    return [e for e in _discovered(workflow_text) if e["target"].endswith("-tests")]
+    return [
+        e
+        for e in _discovered(workflow_text)
+        if any(t.endswith("-tests") for t in e["target"].split())
+    ]
 
 
 def check_every_tests_target_gets_a_job(workflow_text: str | None = None) -> None:
@@ -574,7 +590,7 @@ def check_every_tests_target_gets_a_job(workflow_text: str | None = None) -> Non
     """
     declared = sorted(re.findall(r"^(claim-[\w-]*-tests):", _MAKEFILE, re.MULTILINE))
     assert declared, "no -tests target exists, so this check is asserting nothing"
-    emitted = [entry["target"] for entry in _discovered(workflow_text)]
+    emitted = _emitted_targets(workflow_text)
     missing = [target for target in declared if target not in emitted]
     assert not missing, (
         f"the Makefile declares {missing} and discover emits no job for them, so they run on "
@@ -601,7 +617,7 @@ def check_every_generating_entry_has_its_own_cache_namespace(
         f"two matrix entries share a cache namespace: {sorted(namespaced)}"
     )
     for entry in entries:
-        if entry["target"].endswith("-tests"):
+        if any(t.endswith("-tests") for t in entry["target"].split()):
             assert entry["slug"], (
                 f"{entry['name']} generates worlds and has no cache namespace, so it races the "
                 "unsharded targets for the un-suffixed key and loses to the fastest of them"
@@ -618,9 +634,15 @@ def test_the_run_stays_under_the_concurrency_ceiling() -> None:
     Twenty is what this account documents. The count moved from 18 to 19 when the marked tests
     were given their own entry, and the whole reason to compute it here rather than to write it
     down is that the next entry will move it again.
+
+    **It did, and it refused: `gold` made it 21 and this is what stopped the branch.** What
+    followed is `T00M` — the run was slot-bound rather than time-bound, and unsharded targets
+    are now packed into bins under `CI_ENTRY_BUDGET`. So this counts **entries**, which is
+    machines, while the checks above count **targets**, which is work. The two were the same
+    number until packing existed and the difference is the whole point of it.
     """
     entries = _discovered()
-    combines = sum(1 for t in {e["target"] for e in entries} if _declared_shards(t, _MAKEFILE) > 1)
+    combines = sum(1 for t in set(_emitted_targets()) if _declared_shards(t, _MAKEFILE) > 1)
     jobs = 3 + len(entries) + combines + 1
     assert jobs <= 20, (
         f"a run would launch {jobs} jobs against a documented ceiling of 20. Past the ceiling "
@@ -635,15 +657,32 @@ def test_the_run_stays_under_the_concurrency_ceiling() -> None:
 #: these are checked by **running** it, because what `discover` emits is not visible in the
 #: text — the defect they model is a shell loop that stops emitting, not a key that changed.
 EMISSION_ATTACKS: dict[str, tuple[str, str]] = {
-    "the tests entry no longer emitted": (
+    "the tests entry no longer collected": (
         '            if grep -qE "^${t}-tests:" Makefile; then\n'
-        '              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \\\n',
-        "            if false; then\n"
-        '              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \\\n',
+        '              unsharded="$unsharded ${t}-tests"\n',
+        '            if false; then\n              unsharded="$unsharded ${t}-tests"\n',
     ),
-    "the tests entry given no cache namespace": (
-        '--arg t "${t}-tests" --arg slug "tests"',
-        '--arg t "${t}-tests" --arg slug ""',
+    # **Re-aimed by `T00M`, and where it moved to is the finding.** This used to blank the
+    # `--arg slug "tests"` in `ci.yml`, because the namespace was decided there. It is now
+    # decided by `ops/ci_pack.py`, which derives a bin's slug from its contents — so the
+    # namespace cannot be blanked from this file at all and an attack that tried would be
+    # aiming at text that no longer decides anything.
+    #
+    # What is still expressible here is the seam: the packer's output being **discarded**.
+    # That leaves the matrix with no unsharded entry at all, which both checks must refuse —
+    # and the property the old attack proved, that a generating entry has its own namespace,
+    # is now asserted directly over `ops.ci_pack.entries` in `test_ci_pack.py`, where it lives.
+    "the packed entries discarded": (
+        'packed="$(python3 -m ops.ci_pack $unsharded)"',
+        'packed="[]"',
+    ),
+    # The other half of what the blanked-slug attack used to prove, expressed at the seam that
+    # still exists in this file: a packer that emits entries **without** a namespace. It models
+    # a real regression — `ops/ci_pack.entries` dropping the slug — from the one place `ci.yml`
+    # can still reach it, which is by standing in for the packer entirely.
+    "the packer emits entries with no cache namespace": (
+        'packed="$(python3 -m ops.ci_pack $unsharded)"',
+        'packed="$(python3 -m ops.ci_pack $unsharded | jq -c \'[.[] | .slug = ""]\')"',
     ),
 }
 

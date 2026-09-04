@@ -3131,6 +3131,40 @@ would protect. **Left open rather than closed by its own author**
 *Status:* open
 
 ---
+**The largest number in the run is 731s of sequential mutations, and nothing recorded it** ·
+found 2026-09-04 · by `T00M` decomposing a job it was about to tune around
+
+The critical path is `max_leg + combine`, and `combine` is **99.6% mutations**. From the job's own
+log timestamps:
+
+    evals.uplift --combine          2.7s
+    evals.gate_proof --claim 2    731s     8 mutations, sequential, slowest 88s of a 900s budget
+
+So the run's chain is **288s of shards and 731s of `gate_proof`**, and **the shard count — the
+number two tasks in a row proposed tuning — is a dial on 28% of it.**
+
+Nothing in the tree records this. `make gate-proof` publishes the slowest **mutation** and its
+budget, which is the right figure for *is a mutation looping*; there is no figure anywhere for
+*what does the mutation pass cost the run*, and it is the largest single number in CI.
+
+It is not a defect and nothing here is broken. `T00L` already moved the worst mutation from 806s
+to 58s; what it did not do is make the pass concurrent, and `docs/DECISIONS.md` now records why
+concurrency will not help — the eval already runs a pool sized to the runner's cores, so the work
+is parallel one level down and four mutations at once divide the same four cores.
+
+**What that leaves is a number with no owner.** `T00M` packed the ten idle entries because that
+was free; the 731s is not free and was not touched, deliberately, because reducing it means
+changing what the mutations do rather than where they run. **Recorded so the next session that
+proposes tuning CI finds the decomposition rather than re-deriving it from the shard count.**
+
+*Site:* `docs/DECISIONS.md` :: `**Claim 2's mutations run one at a time, and concurrency will not help** · deferred 2026-09-04`
+*Site:* `ops/ci_pack.py` :: `def pack(targets: list[str], makefile: str) -> list[list[str]]:`
+*Disposition:* none — this is a measurement rather than a defect, and the thing it would take to
+act on it is a change to the mutation pass that no task has asked for. Filed with the
+decomposition so the number is not rediscovered from the outside a third time
+*Status:* open
+
+---
 
 ## Closed
 

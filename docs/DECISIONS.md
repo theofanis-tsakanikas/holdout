@@ -1368,6 +1368,33 @@ system, carried in the artefact the grader opens after the readout is written.
 Each entry says what would unlock it. An item with no unlock condition is not deferred, it is
 forgotten.
 
+**Claim 2's mutations run one at a time, and concurrency will not help** · deferred 2026-09-04
+`evals/gate_proof` runs each of claim 2's eight mutations sequentially, and that is **99.6% of the
+`combine` job**: 2.7s of `uplift --combine` against **731s** of mutations, on a critical chain of
+1,032s. Four-way concurrency inside the existing job looked free — no extra slot, bounded below by
+the slowest single mutation at 88s, `731 -> ~185`.
+
+It buys nothing, **because the work is already parallel one level down**.
+`evals/uplift/parallel.py` runs `ProcessPoolExecutor(max_workers=os.cpu_count())`, and its own
+comment says *"`os.cpu_count()` on a laptop and **four on a GitHub runner**, which is what the
+budget in the SPEC is priced against."* Each mutation's eval already saturates the four cores, so
+four at once divide the same four between them: **the total CPU work is unchanged and the wall
+clock does not move.** It would cost 4x the memory and 4x the workspace copies to achieve that.
+
+There is a second obstacle, **weaker and surmountable**, recorded so nobody rediscovers it
+either: `engine.run` creates **one** workspace per claim and each mutation edits it in place and restores
+it. Concurrency needs one workspace per worker — a `copytree` of `src`, `contracts`, `generated`,
+`evals`, `corpus`, `ops` and `.worlds` apiece.
+
+This is filed as **an option refused rather than a defect**, because the next person will have
+the same idea. It is the obvious one: eight independent things, run one after another, in a job that is
+two thirds of the run. The reason it is wrong is not visible from the shape of the problem — only
+from the docstring of the function three layers in.
+
+*Unlock condition:* a runner with materially more cores than the eval's pool uses, or an eval that
+stops taking `os.cpu_count()`. Until one of those, the arithmetic does not change: **whatever
+concurrency is added at the mutation level is subtracted at the draw level.**
+
 **The contamination check cannot see a store erased from the assignment table** · deferred
 2026-08-29
 `contamination.check` asks two questions — does the digest still describe the arms, and does the

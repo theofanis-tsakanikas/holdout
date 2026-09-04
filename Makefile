@@ -378,6 +378,79 @@ CLAIM_2_SHARDS := 7
 #: cache and is not keyed like one.
 SHARD_DIR ?= .shards
 
+# ------------------------------------------------- how many machines the run may ask for
+
+# **The run was slot-bound, not time-bound, and nobody had measured it.** Twenty jobs at a
+# documented ceiling of twenty, holding work that fits in about six: ten of them carried
+# 2,375 seconds against a critical chain of 1,032, every one with slack. `T012` could not
+# start because it wanted two more entries, and the first two answers considered — shaving a
+# shard, merging two named jobs — both bought slots by tuning the **one** number that is on
+# the critical path while ten machines sat idle beside it.
+#
+# So entries are **packed** rather than counted. `ci.yml`'s `discover` places every unsharded
+# target into a bin under `CI_ENTRY_BUDGET`, first-fit over costs declared below, and
+# `<TARGET>_COST` is read out of this file exactly the way `<TARGET>_SHARDS` is — so that file
+# still names no claim.
+#
+# **`packable_work / budget` is the whole arithmetic, and it is why this is a rule rather than
+# a grouping.** A new target adds *work*, not a slot: it falls into an existing bin while the
+# total stays under a multiple of the budget, and costs one more bin when it does not. Nobody
+# makes a packing decision when a target arrives.
+
+#: Where the packer stops adding to a bin. **Not a failure threshold** — see the ceiling below,
+#: and the two are different questions that were nearly given one number.
+#:
+#: 800 because a bin costs the run nothing until it exceeds the critical chain, and the chain's
+#: **floor** across four warm runs is 1,032s — the run where there is least room, not the mean.
+#: 800 leaves **232s, 22%**. Measured at 850 the packer produces three bins instead of four and
+#: frees one more slot; that slot is refused, because it spends four points of margin on a floor
+#: with four observations behind it and on costs that are themselves maxima of four, and
+#: `claim-3` alone spread **1.72x** across them. Margin that absorbs a fifth observation is worth
+#: more than a slot.
+#:
+#: **Changing this re-packs, and re-packing invalidates the world cache of every bin that
+#: moves** — the bin's slug is its contents. That is the same effect measured when
+#: `CLAIM_2_SHARDS` went 8 to 7 and every leg ran cold, and it is written here in advance
+#: rather than discovered by the run that pays it.
+CI_ENTRY_BUDGET := 800
+
+#: Where a bin starts **costing** the run, which is a different question from how tightly to
+#: pack. A packed job checks its own elapsed time against this and fails if it exceeds it.
+#:
+#: **It is the critical chain, not the budget, and the distinction is the whole of why this
+#: check is not a flake generator.** Packing to a budget puts every bin *at* the budget by
+#: construction — the largest is 777 of 800, three percent under — so a self-check at 800 would
+#: fire on ordinary variance nearly every run. `claim-2-tests` moves **19%** across four runs of
+#: unchanged work. At 1,032 the largest bin has 255s of headroom, 33%, and nineteen percent
+#: variance on it lands near 925s: **only a genuinely stale cost trips it.**
+#:
+#: **The direction of error is deliberate.** If the chain ever shrinks — cheaper mutations, a
+#: different shard count — this becomes generous rather than tight, which is the safe way round.
+#: It does not track the chain and must not pretend to; it is a measurement with a date, and the
+#: run that contradicts it is the one that says so.
+CI_ENTRY_CEILING := 1032
+
+#: What each unsharded target costs, in seconds, as the **maximum** observed across four warm
+#: runs rather than the mean: a bin packed on means is over budget half the time. Runs
+#: 33813980838, 33822115690, 33824423170 and 33826401366.
+#:
+#: **A target with no cost declared here is packed alone**, because the packer defaults an
+#: unknown to the whole budget. **Unmeasured means unpacked** — a new target costs one slot
+#: rather than a wrong packing, and it stops costing it the moment somebody measures it. That is
+#: the direction this has to fail in: a wrong bin is a red run somebody has to diagnose, and an
+#: unpacked target is one machine.
+#:
+#: A target costing more than the budget is its own bin and that is a signal rather than an
+#: error — at a budget of 700, `claim-1` at 712 already would be.
+CLAIM_1_COST := 712
+CLAIM_2_TESTS_COST := 533
+CLAIM_3_COST := 453
+CLAIM_4_COST := 159
+CLAIM_7_COST := 98
+GATE_PROOF_COST := 30
+SILVER_COST := 165
+GOLD_COST := 225
+
 claim-2-shard:  ## one slice of claim 2's draws — SHARD=i/N, written to $(SHARD_DIR)
 	@test -n "$(SHARD)" || { echo "claim-2-shard needs SHARD=i/N, e.g. SHARD=3/8"; exit 2; }
 	$(RUN) python -m evals.uplift --shard $(SHARD) --out $(SHARD_DIR)/uplift-$(subst /,-of-,$(SHARD)).pickle
