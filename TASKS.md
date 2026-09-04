@@ -2446,6 +2446,28 @@ The sentence was not wrong about the estate; it was a sentence that made looking
 which is `CLAUDE.md`'s eighth form of *a guard tested by its author* wearing a deferral instead of a
 rule.
 
+**Two things `T014` leaves in front of `T016` on purpose, because both are larger than the atom
+that found them and neither has an owner.** They are stated here rather than only in
+`docs/FINDINGS.md` because a gap with no owner is the one kind that survives every atom.
+
+**1 · Nothing converts a model into a scenario table.** `core.pricing.Scenario` takes
+`expected_units` per candidate price and `selection.py` says of itself that the value *"arrives as
+data"*; the only tables in the repository are worked by hand in `tests/core/test_composition.py`.
+Both halves of that join exist — a fitted model and a selection engine — and the adapter between
+them does not. It was not `T014`'s: a producer needs the price response, which is item 2.
+
+**2 · The phase-3 demonstration would never exercise the model path, and that was checked rather
+than assumed.** `backfill` trains on history from the same generator, and price is a deterministic
+function of hours-to-expiry within an arm at **every declared scale** — measured, one level per
+`(hours, arm)` cell at 4 stores and at 320, `harness` being the largest scale this repository
+declares. So on the estate every fresh markdown decision falls to the ladder and the decision
+monitor reads **100% fallback**: a coherent, honest system doing exactly what doctrine rule 1 says,
+and **a materially different demonstration from the one this project describes.**
+
+**Together they decide what the estate can show, which is why they go before phase 3 rather than
+inside it.** Neither is a defect in anything that was built; both are consequences of a corpus
+property that two separate atoms met from different directions.
+
 ```
 id            T016          <- Phase-2 integration session (oversight level 3)
 title         Phase-2 integration — read the repo against CLAUDE.md, report drift

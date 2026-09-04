@@ -3472,6 +3472,32 @@ path is unreachable, so every fresh markdown decision falls to the ladder and th
 would read 100% fallback.** That is the system honestly reporting it has no usable model — which
 is what rule 2 exists to make visible — and it is a different sentence from *the system working*.
 
+**Does the estate inherit it? Yes, and it was checked rather than assumed.** Phase 3's `backfill`
+trains on eight months of history from this same generator, so the question is whether anything
+about scale introduces price variation. Measured over `PriceDecision` events at every declared
+scale, discount levels within one `(hours_to_expiry, arm)` cell:
+
+    smoke      W1  1,320 decisions    1 level     W6  1,380     1 level
+    rehearsal  W1  17,640 decisions   1-2 levels  W6  17,820    1-2 levels
+    harness    W1  295,764 decisions  1 level     W6  295,816   1 level
+
+**One level, at 320 stores as at four.** The `1-2` at `rehearsal` is not exploration and is worth
+saying so: it is `price_cents` rounding a rung to the cent — `max(1, (kept + 50) // 100)` — so one
+base price realises a 50% rung as 49% and another as 50%. That is variation **across SKUs at one
+depth**, perfectly confounded with base price, not a second price for the same product.
+
+**And it is structural, not a fact about size**: `price_cents(base, hours)` depends on the base
+price and the hours only, and the depths come from the policy's rungs, which are the same in every
+world and at every scale. `harness` is also the largest scale this repository declares —
+`CLAUDE.md` restates that no declared scale reaches 1,200 — so it is the largest thing phase 3
+could run.
+
+> **So the phase-3 demonstration would show the ladder working and never exercise the model path.**
+> A coherent, honest system doing exactly what doctrine rule 1 says, and **a materially different
+> demonstration from the one this project describes.** That is a sentence the author needs before
+> phase 3 opens rather than inside it, and it belongs beside the missing join below because the two
+> together decide what the estate can show.
+
 **And one thing genuinely does not exist, named here because it is the join between two halves that
 do.** *Nothing anywhere converts a model into a scenario table.* `selection.py` says so about
 itself — *"`Scenario.expected_units` arrives as data"* — and the only tables in the repository are
