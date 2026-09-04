@@ -501,6 +501,12 @@ CI_ENTRY_CEILING := 1032
 #: about 7% between consecutive runs of unchanged work. That does not change the declaration and
 #: it is the first direct evidence for the variance argument the declaration rests on.
 #:
+#: **And it answers the obvious question — *why not declare 674, you measured it* — with a
+#: measurement of this target rather than with a sibling's variance.** The bin doing **more work
+#: finished faster**, so the run-to-run noise on this job **exceeds a thirty-second workload**. A
+#: cost declared to the second here would carry more digits than the instrument has. That is why
+#: the declaration is a rounded bound above the observation and not the observation.
+#:
 #: **It changes no packing decision today, and that is said rather than left to be inferred.**
 #: Nothing in this list is small enough to sit beside it under 800, so `claim-5` is its own bin
 #: at 674, at 750 and at the default alike — its own bin **on merit** rather than by default.
