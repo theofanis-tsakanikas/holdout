@@ -417,7 +417,14 @@ is append-only, and the module that built it says so. **The author's.**
 14 unlock conditions name a task id · 2 name a session, and both are already restated
 ```
 
-**The registry is in better shape than phase 1's, and the number that says so is one.** Of the
+**The other register is not in the same shape, and the number is worth putting beside this
+one.** `make findings`, before this review filed anything: **72 findings, 64 open, and 23 of the 64
+`adrift`** — no branch, no task, a written reason. A third of the open register has nobody scoped
+to it. `adrift` is a real state and deliberately does not turn the gate red, so this is not a
+defect; it is the size of the thing nobody had asked the instrument for, and it is published here
+because the review's own briefing put the register at *roughly thirty*.
+
+**The deferral registry is in better shape than phase 1's, and the number that says so is one.** Of the
 fourteen conditions naming a task, **thirteen name something that has happened**, and **twelve of
 the thirteen carry a restatement or a closure written when it did** — *The generated SQL has never
 been executed* (revised condition: the estate, where `${catalog}` resolves), *Claim 2's eval has no
@@ -619,7 +626,21 @@ new target now enumerates its own population and refuses a non-layer by name, wh
 argument that a second enumeration would be one enumeration wearing two names. Either answer is
 fine. Deleting the sentence is not.
 
-*Disposition:* `projects-d1`, before merge.
+> **Added after this section was written, and it is the better half of the finding.**
+> `projects-d1` read the diff rather than this account of it and named a second defect: the
+> replacement says *"the sentence above is the prior wording kept per doctrine rule 4"* **when the
+> sentence above is a rewrite.** Not kept. **A rule-4 label on a sentence that was not preserved is
+> worse than no label**, because it tells the next reader the original is there to compare against
+> and it is not. Which makes the first defect sharper too: the target's own comment claimed a
+> `figures` row that has never existed — **the branch's own subject, in the branch, uncounted.**
+>
+> Recorded here rather than folded in silently, for the same reason `docs/reviews/phase-1.md` §2d
+> is dated and attributed: **this section reported one defect and there were two, and the second
+> was found by somebody who was not me.**
+
+*Disposition:* `projects-d1`, who owns the branch — it was rebased by that session after the one
+that wrote it did not survive a restart — and who has said it does not merge as it stands. **Not a
+wording call**, which is what this section said before the paragraph above was added.
 
 ---
 
