@@ -442,7 +442,7 @@ class TrainingSettings:
     min_observed_share: Decimal
     calibration_tolerance_pct: Decimal
     rmse_share_of_baseline: Decimal
-    segment_calibration_max_sigma: Decimal
+    segment_family_false_alarm_rate: Decimal
     min_segment_days: int
 
 

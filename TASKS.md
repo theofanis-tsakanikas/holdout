@@ -2298,6 +2298,20 @@ in hand and had been applied the same day to `CLAIM_5_COST`; it did not fire her
 contract value with a paragraph of justification beside it does not look like an unmeasured number.
 It looks like a decision.**
 
+**A third instance arrived by review after both fixes, one order rarer, and it is the sharpest.**
+The fix above replaced the flat 10% with **three standard errors** — and three standard errors
+applied to the **worst of twenty-one segments** is not three standard errors. Measured: **5.52% of
+runs** refuse a well-calibrated model, one in eighteen, which is exactly the rate the paragraph
+above says a tolerance gets widened at. And it **degrades with the corpus**: 12.6% at 50 segments,
+41.8% at 200, **93.3% at 1,000**. *A fixed multiple is a threshold whose meaning depends on a
+population size nothing enumerates* — the coverage rule wearing a number. The contract now declares
+the **family-wise false alarm rate** and `promotion.segment_limit` derives the per-segment bound by
+Bonferroni: 3.04 standard errors at 21 judged segments, 3.66 at 200, computed with
+`statistics.NormalDist` from the standard library. **Each of the three was found a different way** —
+the first by the gate refusing everything, the second by measuring the noise floor, the third by a
+reviewer asking whether the correction had been applied for testing twenty-one segments, which no
+measurement taken here would have raised because every one of them was of a single segment.
+
 **And the model's own shape was chosen by measurement after being chosen by reasoning and got it
 wrong the same way.** It read `(category, weekday)` with a paragraph explaining why store was
 excluded — *a per-store rate is a handful of days per cell, and would be memorising*. Measured, RMSE
@@ -2348,6 +2362,20 @@ scikit-learn — the model is counts, sums and exact `Fraction` shares, which is
 inside the *proved-local* rule with nothing to install. MLflow is phase 3; a model here is a frozen
 object with a digest over its own numbers, so two fits of the same data are the same model or there
 is a bug.
+
+**What happens at decision time, because the finding stopped at the model and that is half a
+sentence.** `core.pricing.Scenario` takes `expected_units` per candidate price, so the decision
+path asks for something no model fitted on this corpus can supply. **The ladder covers it and the
+state is coherent** — doctrine rule 1 makes the ladder the safe state *"when the model is
+unavailable"*, `tests/core/test_composition.py` proves a ladder price certifies at every rung, and
+it carries `FALLBACK_LADDER` to the label, the P&L and the monitor, so rule 2 holds. The
+consequence is named rather than left as reassurance: **on this corpus the model path is
+unreachable, so the monitor would read 100% fallback** — the system honestly reporting it has no
+usable model, which is a different sentence from the system working. **What genuinely does not
+exist is the adapter**: nothing anywhere converts a model into a scenario table, `selection.py`
+says so about itself, and the only tables in the repository are worked by hand in a test. That is
+not `T014`'s scope — a producer needs the price response — and it has no owner, which is why it is
+in front of `T016` in those words.
 
 **What this deliberately did not do.** It did not touch `corpus/world/` — adding price exploration
 changes every world's data, moves claim 2's published figures and costs a cold CI on every touched

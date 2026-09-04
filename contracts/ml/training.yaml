@@ -120,8 +120,8 @@ gates:
         the property that makes it checkable on a corpus nobody has measured yet.
       verified_on: 2026-09-04
 
-  segment_calibration_max_sigma:
-    value: 3
+  segment_family_false_alarm_rate:
+    value: 0.05
     source:
       kind: scenario_assumption
       note: >-
@@ -141,6 +141,22 @@ gates:
         twenty-one segments near 0.06 per run, and it needs no knowledge of how noisy a
         segment is — the segment supplies that itself, so a thin segment is judged in the
         same units as a thick one instead of being judged more leniently by accident.
+        RESTATED THE SAME DAY, AND THE PRIOR WORDING ABOVE IS THE DEFECT IT NAMES ONE ORDER
+        RARER. `segment_calibration_max_sigma: 3` is a limit on the WORST of however many
+        segments happen to be judged, and three standard errors applied to the worst of
+        twenty-one is not three standard errors: measured, it refuses a well-calibrated
+        model on 5.52% of runs — one in eighteen — which is precisely the rate at which
+        somebody widens a tolerance to stop the noise. And it DEGRADES WITH THE CORPUS,
+        which is the half that would never have been noticed: at 50 segments 12.6%, at 200
+        segments 41.8%, at 1,000 segments 93.3%. A fixed multiple is a threshold whose
+        meaning depends on a population size nothing enumerates, which is this repository's
+        coverage rule wearing a number. So what is declared here is the FAMILY-WISE FALSE
+        ALARM RATE — the chance this gate refuses a well-calibrated model on a run — and the
+        per-segment limit is derived from it and from how many segments were judged, by
+        Bonferroni: at 21 judged segments the limit is 3.04 standard errors, at 200 it is
+        3.66. Five percent is the conventional level `contracts/design/inference.yaml`
+        adopts for alpha and is adopted here for the same reason and with the same
+        disclaimer: it is a convention this repository adopts, not a fact anyone verified.
       verified_on: 2026-09-04
 
   min_segment_days:

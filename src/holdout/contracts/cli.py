@@ -155,7 +155,7 @@ def _summary(contracts: ContractSet, expected: dict[str, str]) -> list[str]:
         f" · min train {contracts.training.min_training_days}d"
         f" · reconstruction floor {contracts.training.min_observed_share}"
         f" · calibration {contracts.training.calibration_tolerance_pct}%"
-        f" (per segment {contracts.training.segment_calibration_max_sigma} sd"
+        f" (per-segment family alarm {contracts.training.segment_family_false_alarm_rate}"
         f" above {contracts.training.min_segment_days} day(s))"
         f" · RMSE ≤ {contracts.training.rmse_share_of_baseline} of baseline",
         _provenance_line(contracts.census),

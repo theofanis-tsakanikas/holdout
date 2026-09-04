@@ -48,7 +48,7 @@
       "required": [
         "calibration_tolerance_pct",
         "rmse_share_of_baseline",
-        "segment_calibration_max_sigma",
+        "segment_family_false_alarm_rate",
         "min_segment_days"
       ],
       "properties": {
@@ -60,9 +60,9 @@
           "description": "The largest share of the do-nothing baseline's RMSE that will be admitted, where the baseline predicts the training grand rate for every store-SKU-day. Kept beside calibration because calibration alone passes a model that is unbiased and useless — the baseline itself is perfectly calibrated by construction, and this is the gate that refuses it. Expressed as a share rather than in units because a ceiling in units has to know the scale of demand, which is a property of the corpus and not of the model.",
           "$ref": "#/$defs/sourced_probability"
         },
-        "segment_calibration_max_sigma": {
-          "description": "The same calibration test applied per segment rather than to the total, judged in multiples of that segment's OWN sampling standard error rather than as a fixed percentage. An overall calibration of zero can hide two segments wrong in opposite directions, and a pricing decision is taken inside a segment and not over the average of all of them. It is a multiple rather than a percentage because a percentage has to assume how noisy a segment is, and how noisy a segment is depends on how many days it carries — a flat tolerance therefore tests a large segment strictly and a small one not at all.",
-          "$ref": "#/$defs/sourced_positive_number"
+        "segment_family_false_alarm_rate": {
+          "description": "The probability that the per-segment calibration gate refuses a WELL-CALIBRATED model on a given run, over all the segments it judges. The per-segment limit is derived from this and from how many segments were judged — a Bonferroni correction — rather than declared as a fixed multiple of a standard error, because the same multiple means different things over twenty-one segments and over two hundred. This is the number that tells the next person whether a red run is real, so it is the number that is declared and the limit is what is computed.",
+          "$ref": "#/$defs/sourced_probability"
         },
         "min_segment_days": {
           "description": "The fewest evaluation store-SKU-days a segment must carry before its calibration is judged. A segment with three days produces a percentage that swings on one shopper, and judging it would be reading noise as a defect.",

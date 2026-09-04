@@ -398,7 +398,9 @@ def _training(raw: dict[str, Any]) -> TrainingSettings:
         min_observed_share=_as_decimal(reconstruction["min_observed_share"]["value"]),
         calibration_tolerance_pct=_as_decimal(gates["calibration_tolerance_pct"]["value"]),
         rmse_share_of_baseline=_as_decimal(gates["rmse_share_of_baseline"]["value"]),
-        segment_calibration_max_sigma=_as_decimal(gates["segment_calibration_max_sigma"]["value"]),
+        segment_family_false_alarm_rate=_as_decimal(
+            gates["segment_family_false_alarm_rate"]["value"]
+        ),
         min_segment_days=int(gates["min_segment_days"]["value"]),
     )
 

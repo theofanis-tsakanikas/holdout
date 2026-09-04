@@ -43,6 +43,7 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
+from statistics import NormalDist
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -56,6 +57,34 @@ if TYPE_CHECKING:
 #: `filled_by` spells it — so a reader who knows one knows the other, and so `agent:` and
 #: `policy:`, which are legitimate there, are unspellable here.
 APPROVER = re.compile(r"^human:[A-Za-z][A-Za-z .'\-]{1,62}$")
+
+
+def segment_limit(judged: int, family_rate: Decimal) -> Decimal:
+    """How many of its own standard errors a segment may miss by, given how many are judged.
+
+    **Derived, never declared.** `contracts/ml/training.yaml` declares the *family-wise false
+    alarm rate* — the chance this gate refuses a well-calibrated model on a run — and this turns
+    it into a per-segment limit by Bonferroni: each of `judged` segments is tested two-sided at
+    `family_rate / judged`.
+
+    The reason it is not a fixed multiple is a measurement, and it is in that contract's own note.
+    A flat three standard errors applied to the **worst of twenty-one** segments refuses a
+    well-calibrated model on **5.52% of runs**, and it degrades as the corpus grows — 12.6% at 50
+    segments, 41.8% at 200, 93.3% at 1,000. **A fixed multiple is a threshold whose meaning
+    depends on a population size nothing enumerates**, which is this repository's coverage rule
+    wearing a number instead of a verb.
+
+    `statistics.NormalDist` is the standard library, so this needs no dependency — and unlike
+    `holdout.core`, which writes its quantiles out in `inference.yaml` because it may not import a
+    statistics module, `pipelines/` is under no such rule.
+    """
+    if judged < 1:
+        raise PromotionError(
+            "a per-segment limit over zero judged segments. P4 is what refuses that case, and "
+            "reaching here means it did not run first."
+        )
+    per_segment = float(family_rate) / judged
+    return Decimal(str(NormalDist().inv_cdf(1 - per_segment / 2))).quantize(Decimal("0.01"))
 
 
 class PromotionError(ValueError):
@@ -219,8 +248,14 @@ def assess(model: DemandModel, calibration: Calibration, settings: TrainingSetti
         )
     )
 
-    limit = Decimal(settings.segment_calibration_max_sigma)
     judged = calibration.judged(settings.min_segment_days)
+    # **Computed before the gate, from the population the gate will judge.** A limit read from a
+    # contract would be a fixed multiple, which is the defect this replaced.
+    limit = (
+        segment_limit(len(judged), settings.segment_family_false_alarm_rate)
+        if judged
+        else Decimal(0)
+    )
     breached = [segment for segment in judged if segment.sigmas > limit]
     gates.append(
         GateResult(
@@ -234,7 +269,10 @@ def assess(model: DemandModel, calibration: Calibration, settings: TrainingSetti
                 f"{len(judged)} judged, {len(breached)} outside "
                 f"(worst {max((s.sigmas for s in judged), default=Decimal(0))} sd)"
             ),
-            threshold=f"<={limit} standard error(s) of the segment itself",
+            threshold=(
+                f"<={limit} standard error(s), from a family alarm rate of "
+                f"{settings.segment_family_false_alarm_rate} over {len(judged)} segment(s)"
+            ),
             detail=(
                 ""
                 if not breached

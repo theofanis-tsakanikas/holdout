@@ -3457,6 +3457,29 @@ found six hours apart by two tasks looking at different layers.
 is correct about what it set out to generate. What is recorded is that two downstream claims have
 now each met a limit of it, and that the limits are cheaper to lift together than apart.
 
+**What happens at decision time, asked because the finding stopped at the model and the sentence
+differs completely either way.** `core.pricing.Scenario` takes `expected_units` per candidate
+price, so the decision path asks for something no model fitted on this corpus can supply. **The
+ladder covers it, the state is coherent, and doctrine rules 1 and 2 both hold**: rule 1 declares
+the deterministic markdown ladder the safe state of the fresh path *"when the freshness gate fails,
+when the model is unavailable, or when any input is stale"*, `tests/core/test_composition.py`
+proves a ladder price certifies at every rung, and a ladder price carries `FALLBACK_LADDER` to the
+label, the P&L and the monitor. **So this is not *the decision path has an input nothing can
+supply*.** Something supplies it, the design anticipated exactly this, and the fallback is visible.
+
+**The consequence is worth naming rather than leaving as reassurance: on this corpus the model
+path is unreachable, so every fresh markdown decision falls to the ladder and the decision monitor
+would read 100% fallback.** That is the system honestly reporting it has no usable model — which
+is what rule 2 exists to make visible — and it is a different sentence from *the system working*.
+
+**And one thing genuinely does not exist, named here because it is the join between two halves that
+do.** *Nothing anywhere converts a model into a scenario table.* `selection.py` says so about
+itself — *"`Scenario.expected_units` arrives as data"* — and the only tables in the repository are
+worked by hand in `tests/core/test_composition.py`. `T014` did not build one and it is not in its
+scope: a producer needs the price response that is the first half of this finding. **So the gap is
+not that the model is weak; it is that the adapter between the model and the decision path has no
+owner**, and that belongs in front of `T016` in those words.
+
 *Site:* `corpus/world/policy.py` :: `    def price_cents(self, base_price_cents: int, hours_to_expiry: float) -> tuple[int, int]:`
 *Site:* `pipelines/ml/__init__.py` :: `What this package forecasts, and the measurement that decided it`
 *Disposition:* the author's, and it is one decision rather than two — whether the corpus gains
@@ -3490,16 +3513,42 @@ share of the do-nothing baseline, and per-segment calibration in multiples of th
 standard error. Neither then needs to know the scale of the corpus, which is the property that
 made both original numbers guesses.
 
+**And a third, one order rarer, found by review rather than by measurement.** The fix above
+replaced the flat 10% with **three standard errors** — and three standard errors applied to the
+**worst of twenty-one segments** is not three standard errors. Measured: it refuses a
+well-calibrated model on **5.52% of runs**, one in eighteen, which is precisely the rate the
+paragraph above says a tolerance gets widened at. **And it degrades with the corpus**, which is the
+half nobody would have noticed: 12.6% at 50 segments, 41.8% at 200, **93.3% at 1,000**.
+
+> **A fixed multiple is a threshold whose meaning depends on a population size nothing
+> enumerates** — this repository's coverage rule wearing a number instead of a verb.
+
+So the contract now declares the **family-wise false alarm rate** and the per-segment limit is
+derived from it and from how many segments were judged, by Bonferroni. At 21 judged segments the
+limit is 3.04 standard errors; at 200 it is 3.66. **The declared number is the one that tells a
+reader whether a red run is real**, and the limit is what is computed from it.
+
+**Three instances now, each a level up from the last, and each found a different way.** The first
+was caught by the gate refusing everything on the first run. The second by measuring the noise
+floor. **The third by a reviewer asking whether the correction had been applied for testing
+twenty-one segments** — a question no measurement I had taken would have raised, because every one
+of them was of a single segment.
+
 **What makes this a finding rather than two corrections.** `CLAUDE.md` already says an assertion
 wearing a number is set from a measurement of the thing that will run — and this atom's author had
 spent the same day applying that rule to `CLAIM_5_COST`, refusing to declare it before a runner
 had executed the target. **The rule was in hand, recently used, and did not fire here**, because a
 contract value with a paragraph of justification beside it does not look like an unmeasured
-number. It looks like a decision. The tell is not the absence of an argument; it is the absence of
-a measurement the argument was checked against.
+number. It looks like a decision.
+
+> **Justification as camouflage.** Every other instance in this register is a fact that was
+> **missing** or **unread**. This one was *decorated*: the number had a paragraph beside it
+> explaining exactly why it was that number, and the paragraph is what stopped anybody asking what
+> it had been checked against. The tell is not the absence of an argument. **It is the absence of a
+> measurement the argument was checked against**, and an argument is what hides that.
 
 *Site:* `contracts/ml/training.yaml` :: `  rmse_share_of_baseline:`
-*Site:* `contracts/ml/training.yaml` :: `  segment_calibration_max_sigma:`
+*Site:* `contracts/ml/training.yaml` :: `  segment_family_false_alarm_rate:`
 *Disposition:* both restated in place with the prior wording kept, per doctrine rule 4. What has no
 owner is whether other contract values carry the same shape — `inference.yaml`'s nine are the
 obvious population and nothing has measured them against what they gate

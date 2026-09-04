@@ -93,7 +93,7 @@ def _settings(**overrides: object) -> TrainingSettings:
         "min_observed_share": SETTINGS.min_observed_share,
         "calibration_tolerance_pct": SETTINGS.calibration_tolerance_pct,
         "rmse_share_of_baseline": SETTINGS.rmse_share_of_baseline,
-        "segment_calibration_max_sigma": SETTINGS.segment_calibration_max_sigma,
+        "segment_family_false_alarm_rate": SETTINGS.segment_family_false_alarm_rate,
         "min_segment_days": SETTINGS.min_segment_days,
     }
     fields.update(overrides)
@@ -388,3 +388,40 @@ def test_the_segment_gate_is_judged_in_the_segments_own_standard_errors() -> Non
     assert quiet.error_pct == noisy.error_pct
     assert quiet.sigmas == Decimal("8.00")
     assert noisy.sigmas == Decimal("0.80")
+
+
+def test_the_segment_limit_widens_with_the_number_of_segments_judged() -> None:
+    """The property the contract was restated for a second time, and the one a constant fakes.
+
+    **A fixed multiple would pass every other test in this file.** `test_the_segment_gate_is_
+    judged_in_the_segments_own_standard_errors` proves the gate stopped comparing percentages;
+    nothing there would notice a limit hard-coded at 3.0, because at twenty-one segments the
+    derived limit is 3.04 and every verdict would be the same.
+
+    What separates them is how the limit behaves when the population changes, which is the whole
+    content of the correction: three standard errors on the **worst of twenty-one** refuses a
+    well-calibrated model on 5.52% of runs, and on the worst of a thousand on 93.3%. So the limit
+    must widen, and the rate must not.
+    """
+    rate = SETTINGS.segment_family_false_alarm_rate
+    limits = [promotion.segment_limit(count, rate) for count in (1, 21, 200, 1000)]
+    assert limits == sorted(limits), limits
+    assert limits[0] < limits[-1], (
+        "the per-segment limit did not move with the number of segments, which is what a fixed "
+        "multiple looks like from here"
+    )
+    # The published figures, so a change to the derivation has to change a number a reader can
+    # check rather than only an ordering.
+    assert promotion.segment_limit(1, rate) == Decimal("1.96")
+    assert promotion.segment_limit(21, rate) == Decimal("3.04")
+    assert promotion.segment_limit(200, rate) == Decimal("3.66")
+
+
+def test_a_limit_over_no_judged_segments_is_refused_rather_than_computed() -> None:
+    """`P4` is what handles an empty population, and this refuses to paper over its absence.
+
+    A limit derived from zero segments would divide by zero or return infinity; either would make
+    `P3` pass over nothing while looking as though it had judged something.
+    """
+    with pytest.raises(promotion.PromotionError, match="zero judged segments"):
+        promotion.segment_limit(0, SETTINGS.segment_family_false_alarm_rate)
