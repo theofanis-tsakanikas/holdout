@@ -2213,6 +2213,94 @@ review        yes
 status        closed
 ```
 
+**The measurement came before the design, and it is why this atom has a second gate.** `T013`'s
+`stop_at` is *"when the definitions consume the metric contract and `terraform validate` passes"* —
+two halves, and before writing a line of the layer I ran the second one against the first. A
+`databricks_dashboard` whose `serialized_dashboard` contained
+`select nonsense from table_that_does_not_exist where 1=` — broken syntax, a column that does not
+exist, a table that does not exist — against the real provider:
+
+    Success! The configuration is valid.
+
+**`serialized_dashboard` is a string.** `validate` reads HCL and the provider's resource schema and
+stops. So the declared stopping condition is satisfied by a dashboard that re-expressed the metric
+wrongly against tables nobody built: **a declared stopping condition that does not test the declared
+closing condition**, for the third time in this repository.
+
+**Closed by making the consumption structural rather than by widening an assertion.** The dashboards
+are a **fifth compiled consumer** of the metric contract, under `generated/dashboards/`, and the
+readout screen's dataset SQL **is `compile_readout(metric)`** — the same call
+`generated/readout/` is written from, not a copy of it. `make contracts` byte-compares both files,
+so a drifted query is a red build rather than a wrong screenshot six months later. The four check
+tiles are derived from `at_readout`'s own `check` field; the monitor names **all twelve**
+`at_decision` codes; the unit and rounding come from the metric. **Nothing on either screen is typed
+by hand that a contract already declares** — which matters more here than anywhere else, because a
+screenshot is the one artefact nobody re-derives.
+
+**The screen the design calls its most important artefact is the one whose data has no producer,
+and that is filed rather than papered over.** `closes` says *the refused version of the readout
+screen is the single most important screenshot in the project*. `gold.readout` does not exist —
+family C is two of four, and the rest are collected by a running experiment — and
+`generated/readout/*.sql` returns per-arm metric rows, computing no uplift and carrying no reason
+code. **Both halves either side of that row exist and the join does not**, which is the same kind as
+`T014`'s missing model-to-scenario table. They go to `T016` together.
+
+**What was done instead of inventing a schema.** The dashboard names columns for the absent table,
+and they are the fields of `holdout.core.experiment.readout.Readout` — the type the core already
+returns and the one phase 3 will materialise — compared **in both directions** by a test, because a
+subset check passes a compiler that dropped a field and a superset check passes one that invented
+one. `holdout/contracts/` still does not import `holdout/core/`: the coupling lives in the test,
+where a test may import both, which is the arrangement `tests/core/test_refusal_codes.py` already
+uses for the refusal enums.
+
+**Placement was a reading, not a preference.** `T020`'s branch is literally `infra/lakehouse`, it
+`depends_on T013`, and its `closes` names *"the two AI/BI dashboards (T013) applied"*. So the
+resources land where the layer that applies them will find them.
+
+**And `infra/lakehouse/` is not phase 3**, stated in the layer's own README because *the first
+Terraform layer* sounds like the estate: no `apply`, no backend, no credential, no resource that
+exists, nothing that costs a cent. `terraform init -backend=false` and `validate` only.
+
+**Half a deferral closes and half stays open, on the half that cannot be met by an edit.**
+*`terraform validate` and `make preview-audit` in CI*, deferred 2026-08-27, has always had two
+unlock conditions. The first fires here — there is a Terraform layer — and `make terraform` is in
+`make check` and in CI's `gate`, with its population enumerated by a glob rather than a list. **The
+`preview-audit` half stays open because the inventory is undetermined rather than empty**: `T015`
+fired the condition on the Lakeflow Connect connector, route 2 removed the connector, and *route 2
+removes a surface, not the condition.* A gate over an undetermined population would report *no
+claim's proof path touches a preview surface* while nobody knows what the surfaces are.
+
+**`gate` is a required context, so the provider is pinned and cached — and what that does not fix
+is named.** `.terraform.lock.hcl` is committed with hashes for four platforms, `terraform_version`
+is pinned to 1.15.5, and CI caches `TF_PLUGIN_CACHE_DIR` keyed on the lock file. **What pinning does
+not remove is the fetch on a cold key**: `terraform init` then reaches the Terraform registry, and
+`gate` is red if it cannot. That sentence is in the layer's README and in `ci.yml` rather than
+absorbed, because it is what somebody needs to find when it fires at three in the morning. Measured:
+provider **67 MB** on `darwin_arm64`, `terraform init` **2.2s** cold; the Linux figure is whatever
+the step's own log says.
+
+**Two of this repository's own gates went red on work they were supposed to allow, and both are the
+same shape.** `ops/language.py` walks the filesystem and could not decode 67 MB of provider binary —
+its own comment predicted this, *"it went red on `.shards/` the day sharding landed, which is the
+list working"*, and `.terraform` is now the second entry added that way. And
+`tests/ops/test_figures.py` planted **`infra/`** as its example of a directory the layout invents —
+so the plant went vacuous the moment this atom created `infra/lakehouse/`. **That is the second
+instance in two atoms of a fixture that is live data**: `T014` fixed the same shape in
+`tests/ops/test_ci_pack.py`, which used `claim-5` as its undeclared target and broke when `T014`
+measured it. Both tests broke because the repository did the thing the atom set out to do, and both
+are now planted on names nothing will ever create.
+
+**One line of `CLAUDE.md` goes stale and it is the author's.** `infra/` sits under *Declared and not
+yet built — phase 2 and later*, and it is now partly built. `make figures` stays green — checked
+with a tracked probe rather than assumed, 23 = 23, because the map names `infra/` in either block —
+so nothing goes red; what is wrong is one sentence, in the file this session may not edit.
+
+**What this deliberately did not do.** It did not apply anything, which is `T020`'s. It did not
+build `gold.readout`, which needs an experiment to have run. It did not close `preview-audit`, whose
+remaining half needs a decision rather than a commit. And it did not put `terraform` into
+`discover`'s pattern: `terraform validate` is not a claim, and `gate` is where a check that is not a
+claim belongs.
+
 ```
 id            T013
 title         The two AI/BI dashboards as databricks_dashboard resources (definitions)
@@ -2223,8 +2311,13 @@ closes        The experiment readout and the decision monitor as databricks_dash
               version of the readout screen is the single most important screenshot in the project.
 out_of_scope  Applying them to a workspace — that happens in T020 (lakehouse layer).
 stop_at       When the definitions consume the metric contract and terraform validate passes.
+              ^ restated 2026-09-04, doctrine rule 4 — the prior wording stays and the second
+                half is measured rather than trusted. `terraform validate` passes a dashboard
+                containing `select nonsense from table_that_does_not_exist where 1=`, because
+                serialized_dashboard is a string. So the first half is what `make contracts`
+                byte-compares, and `make terraform` is the second half doing only what it can.
 review        yes
-status        open
+status        closed
 ```
 
 **The number that argues against this atom, first: the model this pipeline trains cannot answer the
@@ -2811,6 +2904,11 @@ L26 pipelines/ml/ + contracts/ml/ — training proved local: a time split that r
     against by name. A fifth contract family, because a training run is not an experiment design.
     Two declared thresholds convicted by the first measurement and restated as relatives.
                                            branch pipelines/ml             status closed
+L27 infra/lakehouse/ + generated/dashboards/ — the two AI/BI screens as a FIFTH compiled
+    consumer of the metric contract, because `terraform validate` cannot read a
+    serialized_dashboard string and passes broken SQL over a table that does not exist. The
+    first Terraform layer, which applies nothing. Half of the 2026-08-27 deferral closes.
+                                           branch lakehouse/dashboards   status closed
 ```
 
 **And it went stale again, by two, before `L23` was written.** `T011` and `T00M` closed on

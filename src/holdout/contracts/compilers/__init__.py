@@ -12,6 +12,11 @@ The four consumers of the metric contract:
 * `generated/sql/functions/`      — a SQL table function, a genuinely different mechanism
 * `generated/agent_tools/`        — the agent's tool definition, so the agent never writes SQL
 * `generated/readout/`            — the experiment readout, by arm, against a pinned version
+* `generated/dashboards/`         — the two AI/BI screens, whose readout dataset **is** the
+  readout consumer above rather than a copy of it. Added by `T013`, because a dashboard is
+  where a second definition would be least checkable: the screenshot is the one artefact
+  nobody re-derives, and `terraform validate` cannot read a `serialized_dashboard` string at
+  all — measured, it passes one containing broken SQL over a table that does not exist.
 
 and one consumer of the design contracts:
 
@@ -22,6 +27,12 @@ and one consumer of the design contracts:
 from __future__ import annotations
 
 from holdout.contracts.compilers.agent_tool import compile_agent_tool
+from holdout.contracts.compilers.dashboard import (
+    MONITOR_PATH,
+    READOUT_PATH,
+    compile_decision_monitor,
+    compile_readout_dashboard,
+)
 from holdout.contracts.compilers.dbt import compile_dbt_model
 from holdout.contracts.compilers.design_form import compile_design_form
 from holdout.contracts.compilers.readout import compile_readout
@@ -29,11 +40,15 @@ from holdout.contracts.compilers.sql_function import compile_sql_function
 from holdout.contracts.model import ContractSet, Metric
 
 __all__ = [
+    "MONITOR_PATH",
+    "READOUT_PATH",
     "compile_agent_tool",
     "compile_all",
     "compile_dbt_model",
+    "compile_decision_monitor",
     "compile_design_form",
     "compile_readout",
+    "compile_readout_dashboard",
     "compile_sql_function",
     "in_force_metrics",
 ]
@@ -76,4 +91,6 @@ def compile_all(contracts: ContractSet) -> dict[str, str]:
         artefacts[f"generated/agent_tools/{stem}.json"] = compile_agent_tool(metric)
         artefacts[f"generated/readout/{stem}.sql"] = compile_readout(metric)
     artefacts["generated/design/form.schema.json"] = compile_design_form(contracts)
+    artefacts[READOUT_PATH] = compile_readout_dashboard(contracts)
+    artefacts[MONITOR_PATH] = compile_decision_monitor(contracts)
     return artefacts

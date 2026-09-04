@@ -3610,6 +3610,88 @@ else a module says it decides nothing while taking a threshold as an argument
 *Status:* open
 
 ---
+**The single most important screenshot in the project has no data source** ·
+found 2026-09-04 · by `T013` reading what its own `closes` sentence would need
+
+`TASKS.md`'s `T013`: *"**The refused version of the readout screen is the single most important
+screenshot in the project.**"* `CLAUDE.md` says the same thing and describes the screen: four
+check tiles, then *"either the uplift with its confidence interval, or the refusal and its reason
+code, at the same size"*.
+
+**Nothing produces that row.** `gold.readout` does not exist — `pipelines/gold/` builds two of
+family C's four tables and says why the other two are absent: *"exposure and outcomes are
+collected by a running experiment, which is phase 3."* And the compiled readout query is not it
+either: `generated/readout/*.sql` returns `arm · store_id · iso_week · category · metric_value`,
+**computes no uplift and carries no reason code**. It is the input to an estimator, not the
+estimator's answer.
+
+**So the screen the design calls its most important artefact is the one screen whose data has no
+producer.** Both halves either side of it exist — `holdout.core.experiment` closes a readout and
+returns every field, and the dashboard resource is compiled and validated — and the join does not.
+
+**This is the same kind as the model-to-scenario-table gap `T014` filed**, and they are named
+together for the same reason: *halves that exist and a join that nobody owns*. A gap with no owner
+is the one kind that survives every atom, because every atom can correctly say it is not theirs.
+
+**What `T013` did instead of inventing a schema.** The dashboard names columns for the absent
+table, and they are the fields of `holdout.core.experiment.readout.Readout` — the type the core
+already returns and the one phase 3 will materialise — with
+`tests/contracts/test_dashboard.py::test_the_readout_columns_are_the_core_types_own_fields`
+comparing the two **in both directions**. So the screen consumes a declaration that exists rather
+than one somebody wrote for it, and a field renamed in the core turns the build red. **That is not
+a fix and is not offered as one**: it makes the naming honest, and the row still has nobody to
+write it.
+
+*Site:* `src/holdout/contracts/compilers/dashboard.py` :: `READOUT_COLUMNS: tuple[str, ...] = (`
+*Site:* `pipelines/gold/__init__.py` :: ``C`    `experiment_assignment` · `exposure` · `outcomes` · `readout`        two of four`
+*Disposition:* `T016`, alongside the model-to-scenario join. It is not `T013`'s — a producer needs
+the experiment to have run — and it is not phase 3's to discover, because what the estate can
+demonstrate is decided before it opens
+*Status:* open
+
+---
+
+**`terraform validate` passes a dashboard whose SQL is broken over a table that does not exist** ·
+found 2026-09-04 · by `T013` testing its own stopping condition before relying on it
+
+`T013`'s `stop_at`: *"when the definitions consume the metric contract and `terraform validate`
+passes."* Two halves. **Only the second is mechanised, and it cannot see the first.**
+
+Measured against the real provider — `databricks/databricks` 1.130.0 — with a
+`databricks_dashboard` whose `serialized_dashboard` contained
+
+    select nonsense from table_that_does_not_exist where 1=
+
+broken syntax, a column that does not exist, a table that does not exist:
+
+    Success! The configuration is valid.
+
+**`serialized_dashboard` is a string.** `validate` checks HCL and the provider's resource schema
+and stops there. So the declared stopping condition is satisfied by a dashboard that re-expressed
+the metric wrongly, against tables nobody built — **a declared stopping condition that does not
+test the declared closing condition**, which is the third time this repository has recorded that
+shape.
+
+**Closed by making the consumption structural rather than by widening the assertion.** The readout
+screen's dataset SQL **is** `compile_readout(metric)` — the same call `generated/readout/` is
+written from, not a copy of it — the four check tiles are derived from `at_readout`'s own `check`
+field, the monitor names all twelve `at_decision` codes, and both screens are artefacts under
+`generated/` that `make contracts` byte-compares. A drifted query is a red build, not a red
+screenshot six months later.
+
+**What is worth keeping is the order.** The measurement came before the design: the plant was run
+against the provider *before* the layer was written, so the compiler exists in the shape it does
+because `validate` had already been shown blind. **A stopping condition trusted rather than tested
+is a gate whose coverage nobody measured**, and this one covers none of what the atom is about.
+
+*Site:* `infra/lakehouse/README.md` :: `    select nonsense from table_that_does_not_exist where 1=`
+*Site:* `Makefile` :: `terraform:  ## terraform validate over every layer under infra/`
+*Disposition:* closed in `T013` by the byte comparison. The **class** stays open: nothing
+enumerates which other `stop_at` conditions in `TASKS.md` are satisfiable without testing what
+they name
+*Status:* open
+
+---
 
 ## Closed
 

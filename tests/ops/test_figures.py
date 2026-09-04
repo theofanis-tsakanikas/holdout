@@ -167,7 +167,14 @@ def test_a_directory_the_layout_invents_is_refused(monkeypatch: pytest.MonkeyPat
     claude = (figures.REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     real = "tests/                 the suite the gates run\n"
     assert real in claude, "the layout no longer names tests/ in the shape this test edits"
-    invented = real + "infra/                 bootstrap · foundation · sources · lakehouse\n"
+    # **The planted name is one nothing will ever create, and it used to be `infra/`.**
+    # That read the real tree for a directory that happened not to exist on the day, so the
+    # plant went vacuous the moment `T013` created `infra/lakehouse/` — the test broke because
+    # the repository did the thing the atom set out to do. Second instance in two atoms:
+    # `tests/ops/test_ci_pack.py` used `claim-5` the same way and broke when `T014` measured it.
+    # **A fixture that is live data has an expiry nobody wrote down.**
+    fabricated = "a-directory-nothing-will-ever-create"
+    invented = real + f"{fabricated}/     a name that matches no directory in this tree\n"
 
     monkeypatch.setattr(
         figures,
@@ -178,7 +185,7 @@ def test_a_directory_the_layout_invents_is_refused(monkeypatch: pytest.MonkeyPat
     code, output = _run()
     assert code == 1
     assert "do not exist" in output
-    assert "infra" in output
+    assert fabricated in output
 
 
 def _fabrications_of(text: str) -> tuple[list[str], list[str]]:

@@ -1611,6 +1611,27 @@ no declared inventory of preview surfaces.
 > breaches *no claim depends on a non-GA surface* is the author's; `docs/FINDINGS.md` carries the
 > reading and its counter rather than a conclusion.
 
+> **The other half fired 2026-09-04 by T013, and half the entry closes.** `infra/lakehouse/`
+> exists, `make terraform` runs `terraform validate` over every layer under `infra/` — the
+> population enumerated by a glob rather than by a list somebody keeps — and it is in `make check`
+> and in CI's `gate`. So **`terraform validate` in CI is done** and this entry no longer covers it.
+>
+> **`make preview-audit` stays open, on the half that has not been met and cannot be by an
+> edit.** `T015` fired *a preview surface has been considered* on the Lakeflow Connect Postgres
+> connector; route 2 then removed that connector, and `docs/FINDINGS.md` records why removing a
+> surface removes a surface and not the condition. The inventory is therefore **undetermined
+> rather than empty** — the connector is gone, Zerobus is unresolved in one direction, the Unity
+> Catalog metric view lives on the estate — and *a gate over an undetermined population is worse
+> than one over an empty population*: it would report **no claim's proof path touches a preview
+> surface** while nobody knows what the surfaces are.
+> *Unlock condition, for the half that remains:* the declared inventory of preview surfaces
+> exists — which needs `T015`'s Zerobus question answered, and that is the author's.
+>
+> **And `infra/lakehouse/` is not phase 3**, said here because *the first Terraform layer* sounds
+> like the estate. No `apply`, no backend, no credential, no resource that exists, nothing that
+> costs a cent; `terraform init -backend=false` and `validate` only. Applying is `T020`'s, which
+> `T013`'s own `out_of_scope` says.
+
 **`docs/SCENARIO.md` and `docs/DAY-ONE.md`** · deferred 2026-08-27
 Both are named in CLAUDE.md's "read this first" table and neither exists. `DAY-ONE.md` has nothing
 to record until there is an estate; `SCENARIO.md` is a writing task, not a blocked one.

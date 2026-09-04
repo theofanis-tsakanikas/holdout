@@ -1,0 +1,120 @@
+{
+  "_generated": "GENERATED FILE — DO NOT EDIT. Source: contracts/. Generator: holdout.contracts.compilers.dashboard. Regenerate: make contracts, which recompiles this file and fails the build if what is on disk differs.",
+  "datasets": [
+    {
+      "displayName": "Decisions, by outcome and hour",
+      "name": "decisions_today",
+      "queryLines": [
+        "select\n",
+        "  date_trunc('hour', decided_at) as hour,\n",
+        "  outcome,\n",
+        "  marker,\n",
+        "  reason_code,\n",
+        "  count(*) as decisions\n",
+        "from gold.decisions\n",
+        "where decided_at >= current_date()\n",
+        "group by 1, 2, 3, 4\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "displayName": "Decision monitor",
+      "layout": [
+        {
+          "position": {
+            "height": 5,
+            "width": 12,
+            "x": 0,
+            "y": 0
+          },
+          "widget": {
+            "name": "outcome_over_the_day",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "decisions_today"
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "color": {
+                  "fieldName": "outcome",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "x": {
+                  "fieldName": "hour",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "decisions",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "version": 3,
+              "widgetType": "area"
+            }
+          }
+        },
+        {
+          "position": {
+            "height": 5,
+            "width": 6,
+            "x": 0,
+            "y": 5
+          },
+          "widget": {
+            "name": "which_guardrails_fired",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "decisions_today"
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "x": {
+                  "fieldName": "reason_code",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "decisions",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "version": 3,
+              "widgetType": "bar"
+            }
+          }
+        },
+        {
+          "position": {
+            "height": 5,
+            "width": 6,
+            "x": 6,
+            "y": 5
+          },
+          "widget": {
+            "name": "the_closed_vocabulary",
+            "textbox_spec": "### Every refusal a decision can carry\n\nCompiled from `contracts/vocabularies/reason_codes.yaml`. A code that is not here cannot be emitted, and a code emitted that is not here is a contract change.\n\n- `CATEGORY_FROZEN` — frozen_categories\n- `COST_STALE` — floor\n- `BELOW_ABSOLUTE_FLOOR` — floor\n- `BELOW_MARGIN_FLOOR` — floor\n- `NO_PRICE_SATISFIES_EVERY_GUARDRAIL` — any\n- `MARKDOWN_EXCEEDS_MAX_DEPTH` — max_delta\n- `DAILY_CHANGE_BUDGET_EXHAUSTED` — max_delta\n- `BASE_PRICE_MOVE_EXCEEDS_WEEKLY_LIMIT` — max_delta\n- `MARGIN_CAP_EXCEEDED` — regulated_basket\n- `MARGIN_CAP_BASIS_UNEVALUABLE` — regulated_basket\n- `PRIOR_PRICE_NOT_ESTABLISHED` — prior_price\n- `INPUT_NOT_AVAILABLE` — any"
+          }
+        }
+      ],
+      "name": "monitor"
+    }
+  ]
+}

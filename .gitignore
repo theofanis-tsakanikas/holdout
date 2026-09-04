@@ -53,3 +53,8 @@ pipelines/gold/dbt/.user.yml
 .DS_Store
 .idea/
 .vscode/
+
+# Terraform's downloaded providers. **The lock file beside them is tracked and this is not**:
+# `.terraform.lock.hcl` is the pin every platform verifies against, and `.terraform/` is 67 MB
+# of binary that `terraform init` fetches from it.
+infra/**/.terraform/
