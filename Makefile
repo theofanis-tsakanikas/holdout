@@ -162,11 +162,26 @@ figures:  ## refuse a gate that examined less than exists, and a figure that sto
 findings:  ## refuse an open finding that no longer anchors to what it named
 	$(RUN) python -m ops.findings
 
-# `terraform validate` over every layer under `infra/`, with the population enumerated from the
-# tree rather than from a list somebody keeps.
+# `terraform validate` over every layer under `infra/`, with the population enumerated by a
+# glob rather than by a list somebody keeps: a layer that exists and is never validated is the
+# coverage rule's own failure, and `make figures` compares this count against the tree.
 #
-# **The first version of this target said that and did not do it**, and the sentence above is
-# the prior wording kept per doctrine rule 4. It globbed `infra/*/`, skipped any directory
+# **Restated: the sentence above is the original, kept per doctrine rule 4, and two of its
+# clauses were false.** An earlier version of this restatement rewrote that sentence, deleted
+# its last clause, and then labelled the rewrite as prior wording -- which is a rule-4 label on
+# text that was not preserved, and worse than no label, because it tells a reader the original
+# is there to compare against. Found by the phase-2 review reading this branch hostilely at the
+# integration session's request.
+#
+# **The deleted clause was itself a claim about a check nobody wrote.** `ops/figures.py`
+# contains no occurrence of `terraform` or `infra` -- there is no such row among its eleven, and
+# there never was. So the branch whose whole subject is *prose claiming a check that does not
+# exist* carried one in its own comment, and removed it silently rather than restating it.
+# Whether `make figures` should gain a `terraform` row is a fair question; deleting the sentence
+# that claimed it does was not the way to ask it.
+#
+# **And the first version of this target said what the first clause says and did not do it.**
+# It globbed `infra/*/`, skipped any directory
 # without a `versions.tf` with a bare `continue`, and counted only the ones it validated — so a
 # layer that existed and was silently skipped was invisible, and the `found == 0` guard could
 # not see it either. **The coverage rule at one directory's depth**, in the target written to
