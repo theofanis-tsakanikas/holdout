@@ -60,6 +60,16 @@ POLICED = "tests"
 #: optional extra and this list did not learn about it, so the two spellings below were policed
 #: for three engines and not for the fourth. Nothing had used either spelling, so nothing was
 #: broken — the guard was simply blind, which is the state that looks most like coverage.
+#:
+#: **`deltalake` is in no extra, is installed nowhere, and is policed anyway — deliberately.**
+#: Those three facts are checkable; why it was first written here is not recorded, so this is
+#: `T011`'s argument for keeping it rather than a claim about what `T010` meant. `deltalake` is
+#: delta-rs, the **JVM-free** way to read a Delta table, and that is exactly what somebody
+#: reaching past the `spark` extra's 713 MB and its Java runtime would reach for. An
+#: `importorskip("deltalake")` would arrive *because* it looks cheap, and it is the same defect
+#: as the other three: a test that goes green when its engine is absent. **A name nothing
+#: imports reads as dead**, so it is written down here that it is not — the entry is guarding a
+#: door nobody has opened yet, which is the only useful moment to guard one.
 ENGINES: tuple[str, ...] = ("pyspark", "delta", "deltalake", "dbt")
 
 #: The two spellings pytest offers for turning an absent import into a green run.

@@ -279,6 +279,38 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: comes in above `claim-2-tests`, this paragraph was wrong in the direction that rule warns
 #: about, and it is here in advance so that would be a falsified prediction rather than a
 #: defence written afterwards.
+#:
+#: **Run `33819500228`, the first at seven, and the prediction could not be tested by it.** The
+#: world cache key is `worlds-<os>-<digest>-shard-<i>-of-<n>`, an exact key with no
+#: `restore-keys`, so **changing the shard count changed every key** and all seven legs were
+#: cold — each paying its own world generation, which is the same effect `docs/FINDINGS.md`
+#: records for the first sharded run ever. Measured, cold:
+#:
+#:     legs          933 858 851 1025 861 977 783 s     max 1025, min 783, max/min 1.31
+#:     claim-2-tests                             532 s
+#:     run                                      1791 s  = 29m51s
+#:
+#: On **this** run the slowest leg is the critical path at roughly twice `claim-2-tests`, which
+#: is the opposite of the prediction. **The prediction is therefore unfalsified and untested, and
+#: both halves have to be said** — *not falsified* on its own reads like a pass, and nothing here
+#: has passed: the prediction was about warm legs and these are cold.
+#:
+#: **What this is instead is something the prediction did not anticipate: the change it describes
+#: invalidates the measurement that would test it.** A parameter that is part of a cache key
+#: cannot be compared against its own predecessor in one run — general, and it applies to any
+#: later change to a sharding or caching parameter.
+#:
+#: **And the fact was retrievable and was not retrieved.** The cache key's shape is in `ci.yml`,
+#: which is the file this same change edited three times, and *the branch's first run is the
+#: measurement* was written by somebody who had it in front of them. Not carelessness — the sixth
+#: instance this week of an answer that was available to whoever needed it.
+#:
+#: The digest is unchanged, so the seven-way keys this run wrote are restored by the next one,
+#: and **the next run on this branch is the real test.** Recorded now rather than after, for the
+#: same reason the paragraph above it was.
+#:
+#: **`main` will pay cold once too.** Its caches are not this branch's, so the first run after
+#: this merges is a cold seven-way at about what is measured above — expected, not a regression.
 CLAIM_2_SHARDS := 7
 
 #: Where a shard leaves its draws and where the combine step looks for them. Never committed —

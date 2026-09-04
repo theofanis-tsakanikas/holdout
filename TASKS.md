@@ -1819,7 +1819,16 @@ under `generated/`.
 repository starts, verified by application id before and after, so the generated models reach a
 session configured with Delta rather than one dbt built for itself. **Priced before it was
 chosen**, macOS arm64 / CPython 3.12.13, on top of a tree that already has `spark`: **45 packages
-and 196.1 MiB**, on one CI job of twenty. The Linux figure is in this branch's own run.
+and 196.1 MiB**, on one CI job of twenty.
+
+**And measured on the runner, where the two figures are not the same measurement.** Run
+`33819500228`'s `gold` job: `uv sync --locked --extra dbt` prepared **59 packages in 14.92s** —
+a different baseline, because the `dbt` extra declares `holdout[spark]` and that sync is over the
+dev group rather than over a tree that already has Spark. **Installed size is not in the log and
+this run cannot produce it**, so the 196.1 MiB stands as macOS arm64 and is not generalised.
+What the run does give is the cost that matters: **`gold` 186s against `silver` 152s** on the same
+run and the same runner class — the whole extra, dbt included, is about **34 seconds** more than
+the job that was already there.
 
 **Families A and C, and the four that are absent are absent with a reason.** `store_day` has no
 consumer; `demand_features` belongs to `T014`, where point-in-time correctness has something to
@@ -1870,12 +1879,14 @@ about Databricks: the relations are bound in a local metastore rather than in Un
 the executed text differs from the file **only at parameter positions**, and `Bound` builds both
 texts from the same spans so that is a comparison rather than a promise.
 
-**The suite is 1,502 collected against 1,470 on `main`**, and the
+**The suite is 1,505 collected against 1,470 on `main`**, and the
 arithmetic is written out because a count that is not re-derived is the defect this repository
 files most often: **22** for gold's own tests, which `make test` deselects and `make gold` owns;
 **8** in the pyarrow boundary, which is parametrised per runtime module and gained
-`pipelines/gold/`'s eight; and **2** in the engine boundary, which is parametrised per test module
-and gained one file with two checks on it. (`main` is 1,465 until `#53` merges; the 1,470 is that
+`pipelines/gold/`'s eight; and **5** in the engine boundary — 2 because it is parametrised per
+test module and gained one file with two checks on it, and 3 more from the `dbt` drift `gate`
+found: the comparison against mypy's overrides, and the two planted spellings that prove the
+widened `ENGINES` is policed rather than merely longer. (`main` is 1,465 until `#53` merges; the 1,470 is that
 branch's head, which is what this one is stacked on.)
 
 `make figures`' `discover` row went 7 to 8, and both the grep in `ci.yml` and the floor beside it
