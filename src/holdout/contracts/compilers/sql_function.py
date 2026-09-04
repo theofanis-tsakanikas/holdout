@@ -27,7 +27,7 @@ def _sql_type(unit: str, decimals: int) -> str:
 
 def compile_sql_function(metric: Metric) -> str:
     header = sql_header(source_path=metric.source_path, generator=GENERATOR)
-    name = f"{CATALOG}.{SCHEMA}.{metric.id}_v{metric.version}"
+    name = f"{CATALOG}.{SCHEMA}.{metric.identifier}"
     returns = ", ".join(f"{column} string" for column in metric.grain)
     returns += (
         f", metric_id string, metric_version int, "

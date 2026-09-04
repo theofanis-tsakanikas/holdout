@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  # What `pipelines/gold/facts.py` writes: silver's tables with the cost resolved as-of. The
+  # as-of join is Python because `pipelines/silver/tables.py::cost_as_of` already is it — see
+  # `pipelines/gold/__init__.py` for why writing it a second time in SQL is the one thing this
+  # layer must not do.
+  - name: priced
+    schema: gold
+    tables:
+      - name: priced_sales
+        description: Every receipt line, with the cost as it was known at the moment of the sale.
+      - name: priced_waste
+        description: Every disposal, valued at the cost known on the day it happened.

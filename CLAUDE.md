@@ -749,6 +749,7 @@ corpus/real/           what somebody else published, digest-checked — claim 1'
 pipelines/ingest/      the Zerobus driver and the S3 bulk load, which is the ERP path
 pipelines/silver/      Spark Declarative Pipelines — the as-of reference, the derived
                        stock-out, and the quarantine the OSS framework does not provide
+pipelines/gold/        dbt
 evals/                 one directory per claim · report.py is the shared shape
   gate_proof/          the planted mutations: green first, named target, STALE on a moved one
 ops/                   the rules the product code is measured by — the corpus barrier and
@@ -773,7 +774,6 @@ the present tense beside directories that do. That is the same defect as a parag
 production path through dbt while the only two implementations are Python.
 
 ```
-pipelines/gold/        dbt
 pipelines/ml/          training, evaluation, promotion
 infra/                 bootstrap · foundation · lakehouse · pipelines · ml · serving
 experiments/           one YAML per experiment, in git, with its full history

@@ -18,7 +18,13 @@ had checked that the uplift was allowed to exist.
 
 from __future__ import annotations
 
-from holdout.contracts.compilers.sql import metric_parts, qualified, sql_header
+from holdout.contracts.compilers.sql import (
+    metric_parts,
+    pinned,
+    qualified,
+    sql_header,
+    version_parameter,
+)
 from holdout.contracts.errors import CompilationError
 from holdout.contracts.model import Metric
 
@@ -56,17 +62,33 @@ def compile_readout(metric: Metric) -> str:
             locator="/grain",
         )
     header = sql_header(source_path=metric.source_path, generator=GENERATOR)
-    version_clause = " version as of :data_version"
-    ctes, select = metric_parts(metric, relation=qualified, version_clause=version_clause)
+    ctes, select = metric_parts(metric, relation=qualified, version_clause=pinned)
     indented = "\n".join(f"    {line}" if line else "" for line in select.splitlines())
     ctes.append("metric as (\n" + indented + "\n)")
     ctes.append(
         "assignment as (\n"
         f"    select\n        {UNIT_COLUMN},\n        arm,\n        assigned_at,\n"
         "        seed\n"
-        f"    from {ASSIGNMENT} version as of :data_version\n"
+        f"    from {ASSIGNMENT} version as of :{version_parameter(ASSIGNMENT)}\n"
         "    where experiment_id = :experiment_id\n"
         ")"
+    )
+    pins = [*(s.relation for s in metric.sources), ASSIGNMENT]
+    pin_lines = "".join(
+        (
+            f"--   :{version_parameter(relation)}\n"
+            f"--                   the Delta version {relation} is pinned to. **One parameter\n"
+            f"--                   per relation**: a Delta version counter is per table, so one\n"
+            f"--                   number cannot index two of them. Without the pin, re-running\n"
+            f"--                   last month's readout returns a different number as late data\n"
+            f"--                   arrives.\n"
+        )
+        if index == 0
+        else (
+            f"--   :{version_parameter(relation)}\n"
+            f"--                   the Delta version {relation} is pinned to.\n"
+        )
+        for index, relation in enumerate(pins)
     )
     cte_block = "with " + ",\n\n".join(ctes)
     grain = ", ".join(f"m.{column}" for column in metric.grain)
@@ -77,9 +99,7 @@ def compile_readout(metric: Metric) -> str:
 --
 -- parameters
 --   :experiment_id  the experiment whose assignment is read
---   :data_version   the Delta version every source is pinned to, so the number is
---                   reproducible after late data has arrived
---   :period_start   inclusive, the declared opening of the comparison window
+{pin_lines}--   :period_start   inclusive, the declared opening of the comparison window
 --   :period_end     exclusive, the declared close. Reading before it is blocked by the
 --                   engine, not by this query.
 

@@ -379,10 +379,14 @@ def test_the_workflow_derives_the_variable_name_the_same_way_this_does() -> None
 
 
 def test_claim_2_declares_the_shard_count_the_measurements_were_taken_at() -> None:
-    """Eight, because the balance figures elsewhere were measured at eight.
+    """**Seven since `T011`, and every figure taken at eight is now marked as history.**
 
-    The `Makefile` and `evals/uplift/checks.py` both publish a spread taken at this count, so a
-    count that moved without them would leave two figures describing a split nobody runs.
+    This assertion exists so a count cannot move while figures describing the old one stand as
+    present-tense measurements. It **fired** when `gold` became the twenty-first job and the
+    shard count came down to make room, which is the assertion working rather than an
+    inconvenience: the `Makefile`'s spread — `38 43 39 42 37 40 43 41`, max over min 1.16 — was
+    taken over an eight-way split and is kept there per doctrine rule 4, with the restatement
+    beside it saying what it now describes.
 
     **The job arithmetic that used to live here has moved to
     `test_the_run_stays_under_the_concurrency_ceiling`, which runs `discover` instead of
@@ -390,7 +394,7 @@ def test_claim_2_declares_the_shard_count_the_measurements_were_taken_at() -> No
     for one entry, and the whole argument of this file is that a second hand-written derivation
     agrees with itself.
     """
-    assert _declared_shards("claim-2") == 8
+    assert _declared_shards("claim-2") == 7
 
 
 # ---------------------------------- the target CI runs, which is not the target that is named

@@ -2806,6 +2806,331 @@ rather than in commit four of a gold one. **Left open rather than closed by its 
 *Status:* open
 
 ---
+**A knob accepted in the wrong block, ignored without a warning, on a green run** · found
+2026-09-04 · by `T011` checking what dbt had built rather than that it had built
+
+`pipelines/gold/` runs dbt against local Delta. The first version put `file_format: delta` in
+`profiles.yml`, under `outputs.local`, beside `type`, `method`, `schema` and `host`. **`dbt run`
+reported `PASS=5 ERROR=0`.** Every table it built was **parquet**.
+
+`file_format` is a dbt **model** config. In a connection block it is accepted, dropped, and
+nothing is printed. Measured three ways on the same session, dbt-core 1.12.3 / dbt-spark 1.11.0 /
+delta-spark 4.4.0 / Spark 4.2.0:
+
+    file_format under `outputs` in profiles.yml   Provider = parquet
+      select ... version as of 0                  -> [UNSUPPORTED_FEATURE.TIME_TRAVEL]
+    the identical statement issued directly       Provider = delta      time travel works
+    `+file_format: delta` under `models:`         Provider = delta      time travel works
+
+**This is `CLAUDE.md`'s `grep -P` at one remove.** There, a missing option made *no matches* and
+*no such option* the same two characters on a terminal. Here, a misplaced key makes *the format
+you asked for* and *the default* the same green run — and it is worse in one respect: `grep`
+exited 1. dbt exited **0**, and printed five green `OK created` lines naming five models that
+were the wrong thing.
+
+**And it was found by the session that had spent the day filing this exact family.** The first
+report of this branch said the generated models *"execute unmodified against local Delta"*. The
+SQL half was true; the Delta half was read off a knob that was never connected. It came out
+because a reviewer's ruling made the storage property load-bearing — `delta.appendOnly` — and
+checking that meant looking at what the tables actually were.
+
+**The fix is not the interesting half.** `+file_format: delta` goes under `models:` in
+`dbt_project.yml`, where it also reaches the compiled metric models without touching their
+`{{ config() }}` — which is what keeps `make contracts`' byte comparison intact. The interesting
+half is that `tests/pipelines/test_gold.py` now asserts the **provider of every built table**
+rather than the config that was supposed to set it: *what came out*, never *what was asked for*.
+
+*Site:* `pipelines/gold/dbt/dbt_project.yml` :: `# **`+file_format: delta` is here and not in `profiles.yml`, and that is a defect this branch`
+*Site:* `pipelines/gold/dbt/profiles.yml` :: `# **`file_format` is deliberately absent here.** It is a model config and belongs in`
+*Site:* `tests/pipelines/test_gold.py` :: `        assert described["Provider"] == "delta", f"{name} is {described['Provider']}, not Delta"`
+*Disposition:* `pipelines/gold`, which is this branch — the misplaced key and the assertion that
+would have caught it land together. **Left open rather than closed by its own author**
+*Status:* open
+
+---
+
+**A single version parameter, applied to three tables whose version counters are independent** ·
+found 2026-09-04 · by `T011` executing a compiled readout for the first time
+
+`generated/readout/*.sql` emitted `version as of :data_version` on **every** relation it reads,
+and its own header described that as *"the Delta version every source is pinned to"*. **Delta
+version counters are per table.** Each starts at 0 and advances on its own writes, so one integer
+cannot index two of them.
+
+Measured on a gold build, which is the only way this could have been found:
+
+    gold.decision_economics     max version = 0
+    gold.waste                  max version = 0
+    gold.experiment_assignment  max version = 0  after create
+                                            = 1  after the assignment is written
+
+A readout pinned at the fact tables' version therefore read `gold.experiment_assignment` **at
+version 0, which is the empty `CREATE`** — the join found no arms and the query returned zero
+rows. `assert {}`.
+
+**It is structural rather than a matter of ordering.** The assignment table is written **once,
+before the period opens, and never again** — that is doctrine rule 7, not an implementation
+detail — while the fact tables are rebuilt on every dbt run. The one relation the design
+guarantees will not move was being asked to move in step with the ones that do.
+
+**The comment was false in prose, in the file, about the file**, which is what settled the fix:
+one parameter per relation makes it true, and dropping the pin from the assignment alone would
+have required rewriting it to carry an exception — and a comment with an exception in it is how
+the next reader learns the wrong general rule. The rejected alternative's justification, *the
+digest protects the assignment anyway*, is the argument that would let somebody drop the pin from
+a fact table next.
+
+**A third option was considered and refused rather than left unconsidered:** pinning at the
+minimum of the three maxima, which would have made the failing test pass and left the artefact
+wrong — the test bent to the defect. A fourth, `timestamp as of` with one shared moment, was
+refused for a reason rather than a preference: a timestamp is a **lookup** into history that can
+resolve differently after a vacuum or a restore, while a version is an identity, and the pin
+exists so that the same query returns the same number.
+
+*Site:* `src/holdout/contracts/compilers/sql.py` :: `def version_parameter(relation: str) -> str:`
+*Site:* `pipelines/gold/readout.py` :: `def pins(text: str) -> dict[str, str]:`
+*Site:* `tests/pipelines/test_gold.py` :: `def test_every_compiled_readout_binds_in_both_directions(path: Path) -> None:`
+*Disposition:* `pipelines/gold`, which is this branch — the third payout of `docs/DECISIONS.md`'s
+*"if gold does not match, the contracts move"* in one day, and the one that could not have been
+found by any amount of reading. **Left open rather than closed by its own author**
+*Status:* open
+
+---
+
+**The layout block's third crossing, and `make figures` is silent for the third time** ·
+found 2026-09-04 · by `T011`, before creating the directory
+
+`CLAUDE.md`'s layout lists `pipelines/gold/` under *"Declared and not yet built — phase 2 and
+later"*. This branch builds it, so that sentence becomes false the moment it merges — after
+`pipelines/ingest/` on 2026-09-02 and `pipelines/silver/` on 2026-09-03.
+
+**The layout crossing is the third directory and `make figures` will not go red for it**, and
+that is the sentence rather than the complaint: it is the same silence three times, and the third
+is the one that establishes it is a property of the gate rather than an accident of two branches. Two rules could have caught it and neither applies: `layout_fabrications` exempts the
+declared-future block by design, and `layout_packages` enumerates **top-level** directories git
+tracks plus packages under `src/holdout/` — `pipelines/gold` is neither, so it is not in the
+population at all. The row reads `22 = 22` before and after.
+
+That is a **third** direction of the same one-sided question, and the entry that predicted it —
+*"Nothing checks that a directory declared not yet built is still unbuilt"* — is open with a
+disposition of `none`, because the edit it would force is to `CLAUDE.md` and that is the author's.
+This is recorded as its third instance rather than as a new finding.
+
+*Site:* `CLAUDE.md` :: `pipelines/gold/        dbt`
+*Disposition:* none — the same as the entry it instantiates. The `CLAUDE.md` edit is the author's
+and is with him; this branch does not touch that file
+*Status:* open
+
+---
+**Three consumers named in three files, four emitted, and one of the three is not a view** ·
+found 2026-09-04 · by `T011` counting what it had to build
+
+`CLAUDE.md`'s claim 5 row, `PLAN.md`'s phase-2 heading and `T011`'s `closes` all say the metric
+contract compiles into **three** things: *"a Delta view, the agent tool definition and the
+readout query"*. `src/holdout/contracts/compilers/__init__.py` emits **four** per metric — a dbt
+model, a **SQL table function**, an agent tool definition and a readout query — and `CLAUDE.md`'s
+own `contracts/metrics/` section says four in as many words.
+
+So `CLAUDE.md` says three in one place and four in another, and the two documents downstream of
+it inherited the three.
+
+**And the first of the three is not a view.** The dbt compiler emits `materialized='table'`;
+`generated/dbt/models/metrics/*.sql` says so on its third line. *Delta view* would be a Unity
+Catalog metric view, which the contract layer's rule 5 names as a **fourth** consumer added on
+the estate — so the phrase in claim 5's row names the thing that is deliberately not there yet.
+
+**Low stakes and filed anyway, because it is the family that has bitten three times this week:**
+a count in prose that does not match the thing it counts. It matters slightly more here than
+elsewhere because the SQL table function is the one consumer `T011` could **not** execute — it is
+`create or replace function ${catalog}.metrics…`, a catalog object with a template variable — and
+a count that omits it also omits the one gap.
+
+*Site:* `CLAUDE.md` :: `compiled into a Delta view, the agent's tool definition and the experiment readout`
+*Site:* `PLAN.md` :: `dbt. The metric contract compiles into a Delta view, the agent tool`
+*Site:* `TASKS.md` :: `closes        The metric contract compiles into a Delta view, the agent tool definition and the`
+*Disposition:* none — the `CLAUDE.md` half is the author's and the other two inherited it from
+there, so correcting them alone would leave the three documents disagreeing in a new direction.
+Filed with the three sites named so whoever opens that file has them together
+*Status:* open
+
+---
+**The run is at its concurrency ceiling and the cheap lever is spent** ·
+found 2026-09-04 · by `make check` refusing `T011` at twenty-one jobs
+
+`tests/ops/test_ci_sharding.py::test_the_run_stays_under_the_concurrency_ceiling` computes
+`3 + entries + combines + 1` by running `discover` rather than by writing a number down, and it
+**refused** when `gold` became the twenty-first job against this account's documented ceiling of
+twenty. Its own docstring had predicted the moment: *"the whole reason to compute it here rather
+than to write it down is that the next entry will move it again."*
+
+**It did not stop a bad change. It made a real cost visible at the moment somebody was about to
+pay it without noticing**, which is what a gate is for and is rarer than catching a defect.
+
+**The slot was bought by taking a shard off claim 2**, 8 to 7, which is acceptable and is not an
+improvement: the measurement establishes only that the wall clock does not move, because
+`claim-2-tests` at 446s is the matrix's longest leg and seven shards land ~144s under it. The
+`Makefile` carries the figures and says in those words that the constraint chose the number.
+
+**The forward count is the finding, and it is not a proposal.** Phase 2 has `T012`
+(`evals/definition/`, which brings `make claim-5` and `make preview-audit`), `T013` (the two
+dashboards) and `T014` (`pipelines/ml`) still open, and each may want an entry. **There are no
+more shards to give at this price.** The levers left are:
+
+    raise the ceiling                     an account setting — the author's, not a session's
+    merge `silver` and `gold`             undoes `#50`'s separation and pays both extras
+                                          (713 MB and 196 MiB) on one job whichever it runs
+    put an engine's tests in `gate`       exactly what `T010` kept silver out of, on the job
+                                          that runs on every push
+
+The second and third are refused above rather than left unconsidered.
+
+**The first was taken to the author on 2026-09-04 and declined, on grounds worth recording because
+they are not about the shard count.** The ceiling is **not a correctness limit** — beyond twenty,
+jobs queue, so it costs wall clock and not truth. Raising it is a **recurring subscription**, paid
+from a budget earmarked for AWS, to solve a design question; seven is measured, free and
+reversible, and its cost is one published figure becoming history. He kept seven.
+
+**And shaving a shard buys exactly one task.** `T012` is a claim target and will want a job;
+`T014` probably will. **There is no second cheap shard** — the sharding still earns the slots it
+has, measured: 1,896s of draws against a 264s slowest leg.
+
+**The structural question underneath belongs to `T016` and is deliberately not answered here.**
+Three tasks each want an engine job and all three want the **same** installation: silver has one,
+gold took a second, `pipelines/ml` will ask for a third — three slots for one dependency set. One
+job for every engine test would cost one slot instead of three. **That is a question about the
+whole**, which is what the phase-2 integration session exists for and exactly the kind of thing
+answered badly one branch at a time; and when it is answered it is to be answered by **measuring**
+what a combined job costs, not by projecting it.
+
+*Site:* `tests/ops/test_ci_sharding.py` :: `def test_the_run_stays_under_the_concurrency_ceiling() -> None:`
+*Site:* `Makefile` :: `CLAIM_2_SHARDS := 7`
+*Disposition:* none — the question is whether the documented ceiling of twenty can be raised and
+at what cost, which is an account fact and the author's to answer. Filed with the forward count so
+that the next task to want a job finds the arithmetic rather than rediscovering it at the gate
+*Status:* open
+
+---
+
+**A dependency introduced in this branch wrote a per-machine UUID into a tracked package** ·
+found 2026-09-04 · by reading `git status` before committing rather than after
+
+The first `dbt run` left two untracked things inside `pipelines/gold/dbt/`:
+
+    .user.yml   id: <a UUID>      an anonymous machine identifier
+    logs/       dbt.log
+
+`send_anonymous_usage_stats` is **on by default**; dbt writes that id beside the profile and
+posts usage events with it. `logs/` and `target/` also default to **inside the project**, which
+here is a tracked package — a build writing into the tree it is built from, which is the same
+shape `pipelines/gold/session.py` already refuses for Spark's `spark-warehouse/` and
+`metastore_db/`.
+
+**This repository is public and every commit is a publication at the moment it is made.** A
+per-machine identifier is not a credential, but it is in the family the rule exists for, and it
+arrived from a dependency rather than from anything anybody wrote.
+
+**Three layers, in the order that matters.** `flags: send_anonymous_usage_stats: false` in
+`dbt_project.yml`, so the file is not created at all — measured: with it false, no `.user.yml` is
+written. `--log-path` and `--target-path` passed by `pipelines/gold/models.py`, so both output
+directories are caller-chosen. And `.gitignore` entries as a **second** line of defence rather
+than the first, because relying on one flag to keep a UUID out of a public repository is relying
+on a flag.
+
+**What has no layer at all is the general case, and the gates that could have seen it were each
+looking for something else.** `make figures`' layout rows enumerate directories the map
+**declares** — an untracked one a tool created is in neither the map nor the population. The
+`secrets` job looks for credentials, and a machine UUID is not one. `make language` reads
+repository content, and this was not content yet. **Three gates ran and none of them was pointed
+at this**, which is a stronger statement than *nothing checks*: something would have had to be
+built for it, and nothing was.
+
+Two instances now, and **both were caught by a person reading `git status`** — this one, and
+Spark's `spark-warehouse/`, `metastore_db/` and `derby.log` landing in the working directory,
+which is recorded in `pipelines/gold/session.py`'s docstring and was found the same way, by
+noticing an untracked directory appear in a worktree.
+
+*Site:* `pipelines/gold/dbt/dbt_project.yml` :: `  send_anonymous_usage_stats: false`
+*Site:* `pipelines/gold/models.py` :: `            "--log-path",`
+*Site:* `.gitignore` :: `pipelines/gold/dbt/.user.yml`
+*Disposition:* `pipelines/gold`, which is this branch, for the three layers above. **What stays
+open is the general case**: no gate enumerates what a dependency writes into the tree, and both
+instances so far were caught by a person reading `git status`. **Left open rather than closed by
+its own author**
+*Status:* open
+
+---
+**Three lists name the packages this tree may not have, and only one of them said so** ·
+found 2026-09-04 · by `gate` going red on `#54` after a green local `make check`
+
+`make typecheck` failed on CI with:
+
+    pipelines/gold/models.py:69: error: Cannot find implementation or library stub
+                                        for module named "dbt.cli.main"  [import-not-found]
+
+**Not a collection failure and not the runtime guard's shape.** `lint` passed, the engine imports
+are inside the functions that need them, and `make test` deselects `-m gold` cleanly. **mypy
+resolves imports statically**, so it is a different consumer of the same absence: it fails on code
+nothing runs, and it needs either the package or an entry in `[[tool.mypy.overrides]]`. `dbt` had
+none.
+
+**Three hand-kept lists name this set, and `T011` had to edit all three:**
+
+    pyproject.toml        [project.optional-dependencies]      spark = […]  dbt = […]
+    tests/boundary/…      ENGINES = ("pyspark", "delta", "deltalake")
+    pyproject.toml        [[tool.mypy.overrides]] module = […, "pyspark.*", "delta.*"]
+
+**Only the third said anything, and it said it on a runner.** The other two are silent by
+construction: an override list that is short resolves fewer modules on a machine that has them
+all, and a short `ENGINES` polices fewer names. `dbt` was missing from **both** the second and the
+third — so today the guard would have refused neither an `importorskip("dbt")` nor a module-scope
+`import dbt`, the two spellings it exists to refuse. Nothing had used either, so nothing was
+broken; **the guard was simply blind, which is the state that looks most like coverage.**
+
+**The second and third are now compared**, by `test_every_engine_is_ignorable_by_mypy` — the
+direction that needs no package-to-module mapping. **It fired on its first run against a gap that
+predates this branch**: `deltalake` had been in `ENGINES` since `T010` and was never in the
+overrides. Nothing imports it, so mypy never had to resolve it and nothing went red. **The drift
+was already two names wide before `dbt` made it three.**
+
+**Nothing links the first list to the second, and that is where both drifts came from.** The
+reason is in `ENGINES`' own comment — *"`delta` is `delta-spark`'s import name, which is not its
+package name"* — and `dbt` makes the point twice over, since `dbt-core` and `dbt-spark` both
+import as `dbt`.
+
+**Measured rather than assumed to be impossible.** `importlib.metadata.packages_distributions()`
+does invert it: `delta <- ['delta_spark']`, `dbt <- ['dbt-core', 'dbt-adapters', 'dbt-spark']`. So
+the mapping exists. **A derivation over it still does not**, for three reasons that are all naming
+and one that is not:
+
+    deltalake  ->  None          an engine listed defensively and installed nowhere is invisible
+    delta-spark vs delta_spark   distribution names normalise (PEP 503) and the two lists do not
+    dbt extra declares holdout[spark]   a self-referential extra hides its own contents
+    and it can only answer where the packages exist, which is not `gate`
+
+So the gap is named and left open rather than closed badly: **the answer is available in the job
+that has the packages and useless in the job that needs it.**
+
+**And the generalisation is the line worth keeping.** Every local green on this branch was taken
+with both extras installed, which is the one environment where this error cannot occur: **the
+machine that builds the thing is the machine least able to see what its absence does.**
+
+**What was already stated and not done.** After the previous runner failure this session said
+`uv sync --locked && make check` was a thing it would run before pushing. It did not. **A stated
+procedure that is not run is the same shape as a guard that is not armed**, and the answer is not
+resolve — it is `make check-locked`, one command with a name, which is not a gate and does not
+pretend to be one. What it changes is that *did you run `make check-locked`* has an answer and
+*did you remember the two-step thing* does not.
+
+*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*"]`
+*Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def test_every_engine_is_ignorable_by_mypy() -> None:`
+*Site:* `Makefile` :: `check-locked:  ## make check in the environment CI's`
+*Disposition:* `pipelines/gold`, which is this branch, for the two lists that can be compared and
+for the named target. **What stays open is the first linkage** — extras to `ENGINES` — which is
+measured above as available only where the packages are installed, and that is not the job it
+would protect. **Left open rather than closed by its own author**
+*Status:* open
+
+---
 
 ## Closed
 

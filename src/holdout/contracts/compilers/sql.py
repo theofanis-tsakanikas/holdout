@@ -42,11 +42,42 @@ def dbt_ref(source: MetricSource) -> str:
     return "{{ ref('" + source.relation_name + "') }}"
 
 
+def version_parameter(relation: str) -> str:
+    """The parameter name that pins one relation, derived from the relation itself.
+
+    **One per relation, because a Delta version counter is per table.** The readout used to emit
+    a single `:data_version` on every source and describe it as *"the Delta version every source
+    is pinned to"* — a sentence that cannot be true of Delta: each table's counter starts at 0
+    and advances on its own writes, so one integer indexes three unrelated points in history.
+
+    Measured on a gold build, which is what found it: `gold.decision_economics` and `gold.waste`
+    at version 0 while `gold.experiment_assignment` was at 1, and a readout pinned at 0 read the
+    assignment table's **empty CREATE** and returned no rows at all. And it is structural rather
+    than accidental — `gold.experiment_assignment` is written once before the period opens and
+    never again, so it is by design the one relation that will not advance with the others.
+
+    `docs/DECISIONS.md`'s *"The generated SQL has never been executed"* is what deferred this to
+    the moment gold was built, and its ruling is what settles it: **if gold does not match, the
+    contracts move.**
+    """
+    return "data_version_" + relation.replace(".", "_")
+
+
+def no_version(_: MetricSource) -> str:
+    """No time travel at all — the dbt model and the SQL function, which read the live table."""
+    return ""
+
+
+def pinned(source: MetricSource) -> str:
+    """The relation's own `version as of`, with the parameter that names it."""
+    return f" version as of :{version_parameter(source.relation)}"
+
+
 def metric_body(
     metric: Metric,
     *,
     relation: Callable[[MetricSource], str],
-    version_clause: str = "",
+    version_clause: Callable[[MetricSource], str] = no_version,
 ) -> str:
     """The full statement — `with <ctes> <select>` — that computes the metric at its grain."""
     ctes, select = metric_parts(metric, relation=relation, version_clause=version_clause)
@@ -57,7 +88,7 @@ def metric_parts(
     metric: Metric,
     *,
     relation: Callable[[MetricSource], str],
-    version_clause: str = "",
+    version_clause: Callable[[MetricSource], str] = no_version,
 ) -> tuple[list[str], str]:
     """The CTE definitions and the final SELECT, separately.
 
@@ -85,7 +116,7 @@ def metric_parts(
             f"{source.alias} as (\n"
             "    select\n"
             + "\n".join(select_lines)
-            + f"\n    from {relation(source)}{version_clause}\n"
+            + f"\n    from {relation(source)}{version_clause(source)}\n"
             + "    group by "
             + ", ".join(grain)
             + "\n"

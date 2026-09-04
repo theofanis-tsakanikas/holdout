@@ -131,6 +131,35 @@ class Metric:
         return f"{self.id}@v{self.version}"
 
     @property
+    def identifier(self) -> str:
+        """The metric's name where a **name is an identifier** rather than prose.
+
+        `ref` is `category_margin_per_store_week@v3` and is for a human. This is
+        `category_margin_per_store_week_v3`, and it exists because two consumers put the
+        metric's name somewhere an engine parses: the SQL table function names a catalog
+        object, and the dbt model takes its relation name **from its file name**.
+
+        **The dot was the defect, and it was found by running dbt rather than by reading
+        the file.** `generated/dbt/models/metrics/` was written as `{id}.v{version}.sql`
+        like the other three artefacts, and dbt derives the model name from the file name,
+        so `category_margin_per_store_week.v3` reached Spark as a three-part identifier:
+
+            [REQUIRES_SINGLE_PART_NAMESPACE] spark_catalog requires a single-part
+            namespace, but got identifier `gold`.`category_margin_per_store_week`.`v3`
+
+        Measured on dbt-core 1.12.3 / dbt-spark 1.11.0 against local Delta, on all three
+        metrics, every run. **It is not a local artefact**: on Databricks the same name
+        resolves to `catalog`.`gold`.`category_margin_per_store_week`.`v3`, four parts,
+        which is invalid there too. The other three artefacts are unaffected — none of them
+        takes its file name as an identifier — which is why one shared stem hid it.
+
+        `docs/DECISIONS.md`'s *"The generated SQL has never been executed"* deferred exactly
+        this to the moment gold was built, and ruled in advance: **if gold does not match,
+        the contracts move — not the other way round.** This is the contract moving.
+        """
+        return f"{self.id}_v{self.version}"
+
+    @property
     def anchor(self) -> MetricSource:
         return self.sources[0]
 

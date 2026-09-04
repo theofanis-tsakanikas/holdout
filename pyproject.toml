@@ -28,6 +28,26 @@ spark = [
     "pyspark[pipelines]>=4.1.0",
     "delta-spark>=4.0.0",
 ]
+# The engine `pipelines/gold/` runs on, and it **contains** `spark` rather than sitting
+# beside it: dbt-spark's `session` method drives the SparkSession this repository already
+# starts, so a tree that asked for dbt and not for Spark could not run a single model.
+#
+# Measured before it was chosen, on macOS arm64 / CPython 3.12.13, on top of a tree that
+# already has `spark` — so pyspark, pyarrow and pandas are excluded from the figure:
+# **45 packages and 196.1 MiB installed**, the largest being babel 33 MB (pulled by
+# metricflow), networkx 8 MB and dbt 6 MB. dbt-core 1.12.3, dbt-spark 1.11.0. The Linux
+# figure this repository's CI actually pays is in this branch's pull request rather than
+# projected here.
+#
+# **It is not a new architectural choice and it is not an escape from one.** `CLAUDE.md`
+# names dbt as the silver -> gold engine, and `docs/DECISIONS.md` scheduled the generated
+# SQL's first execution for the moment gold was built. What is new is one number, and it
+# lands on **one CI job of twenty** — the same arrangement `spark` already has.
+dbt = [
+    "holdout[spark]",
+    "dbt-core>=1.12.3",
+    "dbt-spark[session]>=1.11.0",
+]
 
 [project.scripts]
 holdout-contracts = "holdout.contracts.cli:main"
@@ -121,8 +141,18 @@ warn_return_any = true
 disallow_untyped_defs = true
 no_implicit_reexport = false
 
+# **Every engine an optional extra may withhold has to be here, or `make typecheck` fails on
+# any machine that does not have it** — which is every machine except the one CI job per extra.
+# mypy resolves imports statically, so it is a different consumer of an absent package from the
+# runtime guard in `tests/boundary/test_the_engine_is_never_skipped.py`: that one keeps an
+# absent engine loud at *run* time, and this keeps it quiet at *type* time.
+#
+# **`dbt` was missing and `gate` found it, on a runner, after a green local `make check`.** Both
+# extras had been installed on the laptop, which is the one environment where the error cannot
+# occur. `test_every_engine_is_ignorable_by_mypy` now compares this list against `ENGINES` so
+# the two cannot fall out of step again silently.
 [[tool.mypy.overrides]]
-module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*"]
+module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -136,6 +166,7 @@ pythonpath = ["src"]
 # `make test` deselects to be selected by some `claim-*` target.
 markers = [
   "silver: needs the `spark` extra — the engine `pipelines/silver/` runs on, which `uv sync` does not install. Run by `make silver`, and by the one CI job that syncs the extra.",
+  "gold: needs the `dbt` extra — dbt-core and dbt-spark[session], which contain the `spark` extra. Run by `make gold`, and by the one CI job that syncs it.",
   "claim_2: claim 2's own evidence — minutes, and it generates worlds. Run by `make claim-2` and by `make claim-2-combine`, which is the one CI runs for a sharded target.",
 ]
 

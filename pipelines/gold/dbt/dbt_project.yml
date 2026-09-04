@@ -1,0 +1,38 @@
+# The gold dbt project. `CLAUDE.md` chooses dbt for silver -> gold and this is that choice
+# running, locally, against Delta.
+#
+# **`model-paths` reaches outside this directory on purpose.** The three metric models are
+# compiled from `contracts/metrics/*.yaml` into `generated/dbt/models/metrics/` and are
+# byte-compared by `make contracts` on every run. Pointing at them means **no copy of a
+# generated artefact exists anywhere under `pipelines/`** — so there is nothing to go stale,
+# and `stop_at`'s "the compiled consumers match byte-for-byte" is an arrangement rather than
+# an equality somebody has to maintain. Measured: dbt resolves a `..` model path and finds
+# the models.
+#
+# **`+file_format: delta` is here and not in `profiles.yml`, and that is a defect this branch
+# made first.** `file_format` is a *model* config. Written under `outputs:` in the profile it
+# is silently ignored, `dbt run` stays green, and every table comes out `Provider = parquet`
+# with `version as of` failing as UNSUPPORTED_FEATURE.TIME_TRAVEL. A knob accepted in the
+# wrong block, dropped without a warning, with the run still reporting success.
+name: holdout_gold
+version: '1.0.0'
+config-version: 2
+profile: holdout_gold
+
+# **dbt phones home by default and writes a per-machine UUID beside this file.** Left on, a
+# `dbt run` creates `.user.yml` holding an anonymous id and posts usage events to Snowplow.
+# This repository is public and every commit is a publication at the moment it is made, so a
+# per-machine identifier written by a tool introduced in this branch is exactly the thing that
+# must not be able to land — and a `.gitignore` entry is a second line of defence rather than
+# the first. Measured: with this false, no `.user.yml` is written at all.
+flags:
+  send_anonymous_usage_stats: false
+
+model-paths: ["models", "../../../generated/dbt/models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  holdout_gold:
+    +file_format: delta
+    +materialized: table

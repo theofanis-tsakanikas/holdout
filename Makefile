@@ -25,8 +25,9 @@ RUN := $(UV) run
 PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
 
 .DEFAULT_GOAL := help
-.PHONY: help setup setup-locked check test lint format typecheck contracts contracts-write \
+.PHONY: help setup setup-locked check check-locked test lint format typecheck contracts contracts-write \
         expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 silver \
+        gold \
         claim-2-shard claim-2-combine claim-2-tests \
         eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
         world roster corpus clean
@@ -40,6 +41,27 @@ setup:  ## create the virtualenv and install everything
 
 setup-locked:  ## install exactly what uv.lock pins — what CI runs, and what refuses a drifted lock
 	$(UV) sync --locked
+
+# **The environment `gate` has, which is the one a session working on an engine never has.**
+# `uv sync --locked` installs the dev group and no extra, so this is `make check` on a tree
+# without pyspark, without delta and without dbt — every machine except the one CI job per
+# extra.
+#
+# It exists because a stated procedure that is not run is the same shape as a guard that is not
+# armed. `T011` said after one runner failure that it would run this two-step check before
+# pushing, did not, and `gate` went red on `mypy` resolving `dbt.cli.main` — **on a branch whose
+# every local green had been taken with both extras installed, which is the one environment
+# where that error cannot occur.** One command with a name is not a gate and does not pretend to
+# be one; what it changes is that *did you run `make check-locked`* has an answer and *did you
+# remember the two-step thing* does not.
+#
+# **It uninstalls your extras.** That is the point, and getting back is `uv sync --extra dbt`.
+check-locked:  ## make check in the environment CI's `gate` job has — NO extras, uninstalls yours
+	$(UV) sync --locked
+	$(MAKE) check
+	@echo ""
+	@echo "OK      the gate's own environment, with no extra installed"
+	@echo "        your extras are gone: 'uv sync --extra dbt' puts them back"
 
 check: lint typecheck contracts language findings expiry figures test  ## the whole local gate, in the order that fails fastest
 	@echo ""
@@ -81,7 +103,7 @@ typecheck:  ## mypy, strict
 #     all — it runs `-shard` on N machines and `-combine` on one — so whatever `claim-2` selects,
 #     `claim-2-combine` must select too, or CI runs none of it.
 test:  ## the suite, minus what a claim target owns
-	$(RUN) pytest -m "not claim_2 and not silver"
+	$(RUN) pytest -m "not claim_2 and not silver and not gold"
 
 contracts:  ## validate every contract and refuse a stale or hand-edited generated artefact
 	$(RUN) holdout-contracts check
@@ -189,6 +211,10 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: twenty. Eight fits one pull request with headroom and two do not, which matches the
 #: one-branch-at-a-time practice this repository already follows.
 #:
+#: **Every figure below was taken over an EIGHT-way split and is kept per doctrine rule 4.** It
+#: describes the split this repository ran until 2026-09-04; the restatement under
+#: `CLAIM_2_SHARDS` says why it is seven now and what that costs.
+#:
 #: What it buys, measured on this repository's own corpus rather than projected: eight
 #: interleaved shards at 38 43 39 42 37 40 43 41 seconds, max over min **1.16**, against 270s
 #: unsharded. The balance is what interleaving buys — a contiguous split would put W1's 200
@@ -218,7 +244,134 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #:
 #: *(The first sharded CI run gave 490-973 and 1.99, and that was neither of these: every shard
 #: key was cold and each leg paid its own world generation. `docs/FINDINGS.md` carries it.)*
-CLAIM_2_SHARDS := 8
+#: **Restated 2026-09-04 by `T011`: eight became seven. Seven is not better than eight — it is
+#: what fits under a ceiling.** `gold` is the twenty-first job against a documented limit of
+#: twenty, `tests/ops/test_ci_sharding.py` computes `3 + entries + combines + 1` and refused at
+#: **21**, and a new entry has to come out of somewhere. The paragraph above is still the whole
+#: argument for why this number is set by the ceiling and not by the work.
+#:
+#: **The measurement below says the change is acceptable. It does not say it is right**, and a
+#: reader who finds `7` with figures beside it should not conclude anybody chose seven on the
+#: merits. The constraint chose it; the measurement only established that the wall clock does
+#: not move.
+#:
+#: **What it costs, measured rather than projected: nothing on the critical path.** From run
+#: `33813980838`, the eight shards and the marked tests beside them:
+#:
+#:     shards        264 263 192 191 256 240 236 254 s      max 264, sum 1896
+#:     claim-2-tests                             446 s      the longest leg of the matrix
+#:
+#: **The shards are not the critical path; `claim-2-tests` is.** Redistributing the same work
+#: over seven legs raises the average to 271s, and even a full one-seventh increase on the
+#: slowest leg lands at ~302s — still **144s below** the leg that actually decides the run. The
+#: shard leg would have to grow by 69% before it mattered.
+#:
+#: **The number that argues against it:** that projection assumes the interleaved split stays
+#: balanced, and the paragraph above measures `max over min` moving 55% across three runs of an
+#: identical split. What it also measures is that the movement is all in the *minimum* — the
+#: slowest leg was stable to 3.8% — and the slowest leg is the one this argument rests on.
+#:
+#: **And it is a projection, written down before the run rather than after it.** The eight-way
+#: figures come from a real CI run; the seven-way figure is arithmetic on them. `CLAUDE.md`'s
+#: fourth form of *a guard tested by its author* is precisely a number set from a projection
+#: instead of from a measurement of the thing that will run, on the hardware that will run it —
+#: and this is one. **The first run of this branch is the measurement.** If the slowest shard leg
+#: comes in above `claim-2-tests`, this paragraph was wrong in the direction that rule warns
+#: about, and it is here in advance so that would be a falsified prediction rather than a
+#: defence written afterwards.
+#:
+#: **Run `33819500228`, the first at seven, and the prediction could not be tested by it.** The
+#: world cache key is `worlds-<os>-<digest>-shard-<i>-of-<n>`, an exact key with no
+#: `restore-keys`, so **changing the shard count changed every key** and all seven legs were
+#: cold — each paying its own world generation, which is the same effect `docs/FINDINGS.md`
+#: records for the first sharded run ever. Measured, cold:
+#:
+#:     legs          933 858 851 1025 861 977 783 s     max 1025, min 783, max/min 1.31
+#:     claim-2-tests                             532 s
+#:     run                                      1791 s  = 29m51s
+#:
+#: On **this** run the slowest leg is the critical path at roughly twice `claim-2-tests`, which
+#: is the opposite of the prediction. **The prediction is therefore unfalsified and untested, and
+#: both halves have to be said** — *not falsified* on its own reads like a pass, and nothing here
+#: has passed: the prediction was about warm legs and these are cold.
+#:
+#: **What this is instead is something the prediction did not anticipate: the change it describes
+#: invalidates the measurement that would test it.** A parameter that is part of a cache key
+#: cannot be compared against its own predecessor in one run — general, and it applies to any
+#: later change to a sharding or caching parameter.
+#:
+#: **And the fact was retrievable and was not retrieved.** The cache key's shape is in `ci.yml`,
+#: which is the file this same change edited three times, and *the branch's first run is the
+#: measurement* was written by somebody who had it in front of them. Not carelessness — the sixth
+#: instance this week of an answer that was available to whoever needed it.
+#:
+#: The digest is unchanged, so the seven-way keys this run wrote are restored by the next one,
+#: and **the next run on this branch is the real test.** Recorded now rather than after, for the
+#: same reason the paragraph above it was.
+#:
+#: **It was, and the answer is here rather than in a pull request.** Run `33822115690`, seven
+#: shards, warm:
+#:
+#:     legs           257 290 255 314 299 275 296 s    max 314, min 255, max/min 1.23
+#:     claim-2-tests                            498 s
+#:     run                                     1511 s  = 25m11s
+#:
+#: **The conclusion holds and the bound does not.** The shards are not the critical path — the
+#: slowest leg is **184s below** `claim-2-tests`, more headroom than the ~144s projected. But the
+#: prediction said *under ~302s at worst* and the slowest leg came in at **314s**. **The bound was
+#: wrong, and it survived because the margin was large rather than because the arithmetic was
+#: good.** That distinction is what a projection actually buys, and it is worth more than the
+#: conclusion it protected.
+#:
+#: **And the number that indicts the method rather than the miss:** `claim-2-tests` has now been
+#: measured at **446s, 532s and 498s** across three runs of work that did not change — a **19%
+#: spread**, against a **4%** miss. **The baseline moves more than the error being worried about,
+#: so a point estimate was the wrong shape for the quantity.** That is what the paragraph above
+#: says about `max over min`, arriving one line later in the number this branch wrote rather than
+#: in the one it was quoting.
+#:
+#: **Second warm run, `33824423170`, and it lands on the other side of the bound:**
+#:
+#:     legs           273 280 257 179 280 281 217 s    max 281, min 179, max/min 1.57
+#:     claim-2-tests                            533 s
+#:
+#: **So the ~302s bound is exceeded on one warm run and met on the other** — 314 then 281 — which
+#: is the same statement as the one above, now with a case on each side of it rather than an
+#: argument. `claim-2-tests` is 446, 532, 498, 533 across four runs, and `max over min` moved 1.23
+#: to 1.57 on a split that did not change, exactly as the paragraph about the eight-way figures
+#: says it does.
+#:
+#: **Two observations are not a spread and nothing here claims one.** They are recorded next to
+#: each other because that is what there is, and **this line does not ask for a third**: the
+#: quantity is a bound to be judged against `claim-2-tests` on whatever run is in front of you,
+#: not a number to be pinned down by collecting more of them.
+#:
+#: ---
+#:
+#: **And that refusal is load-bearing, which took three CI runs to notice.** *Record the
+#: measurement where the claim lives* is the right rule and it is why these paragraphs are here
+#: rather than in a pull request body. **Applied to a claim whose measurement is produced by the
+#: act of recording it, it does not terminate**: each commit that writes down a run's figure
+#: starts another run, which produces another figure, which the same rule says to write down.
+#: Three runs on this branch, each green, each adding a real number, each invalidating the sha
+#: the merge button was about to read.
+#:
+#: **The terminator is not a policy about how many runs to spend. It is how the record is
+#: written**, and it is one distinction:
+#:
+#:     a paragraph that names its SUCCESSOR recurses -- "the next run is the real test"
+#:     a paragraph that names a JUDGEMENT closes  -- "a bound judged against the run in
+#:                                                   front of you"
+#:
+#: So the complete form of the rule is: **record where the claim lives, and write the record so
+#: that it does not promise its own successor.** The first half was already this repository's;
+#: the second half is what this paragraph cost to find, and it is written here rather than
+#: generalised into `CLAUDE.md`, which is the author's file and which says a rule is written at
+#: the instance wearing a form the earlier ones did not.
+#:
+#: **`main` will pay cold once too.** Its caches are not this branch's, so the first run after
+#: this merges is a cold seven-way at about what is measured above — expected, not a regression.
+CLAIM_2_SHARDS := 7
 
 #: Where a shard leaves its draws and where the combine step looks for them. Never committed —
 #: `.gitignore` carries it — and it holds draws rather than worlds, so it is not the world
@@ -306,6 +459,22 @@ eval-oversight:  ## just claim 7's eval, without the mutations — about four se
 # refuses below went 6 to 7 with it.
 silver:  ## silver's tests — needs `uv sync --extra spark` (713 MB and a JVM)
 	$(RUN) pytest -m silver
+
+# **Gold's tests, and the extra they need contains silver's.** `dbt-spark[session]` drives the
+# SparkSession this repository starts, so a tree with dbt and no Spark could not run a model:
+# the `dbt` extra declares `holdout[spark]` and `uv sync --extra dbt` installs both.
+#
+# Measured before it was chosen, macOS arm64 / CPython 3.12.13, on top of a tree that already
+# has `spark`: **45 packages and 196.1 MiB**. It lands on one CI job of twenty, the same
+# arrangement `spark` has.
+#
+# **It runs at `rehearsal` and not at `smoke`, and that is a measurement.** At smoke this corpus
+# throws nothing away — 0 store-days of 2,268, on W1 and W6 — so `category_margin`'s third term
+# would be a sum over an empty table and `waste_value_per_store_week` a table with no rows, on a
+# green run. At rehearsal it is 1,329 store-days and 16,370 units. What that costs, warm, on
+# this laptop: ingest 3.1s, silver 14.4s, gold 25.2s, plus two Spark sessions.
+gold:  ## gold's tests — needs `uv sync --extra dbt` (196 MiB on top of the spark extra)
+	$(RUN) pytest -m gold
 
 # The ledger, not the executor. Each claim target plants its own mutations, so this one
 # runs nothing and instead checks the arrangement: every mutation owned by exactly one

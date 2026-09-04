@@ -1649,6 +1649,37 @@ are Databricks/Spark dialect that no engine has parsed. Gold column names (`qty`
 *Unlock condition:* phase 2, when gold is built. If gold does not match, the contracts move — not
 the other way round.
 
+> **Restated 2026-09-04 by `T011`, which is the unlock, and it paid out three times in one day.**
+> Gold was built, the artefacts were executed, and **every defect they contained was invisible to
+> reading**:
+>
+> **The dbt model's file name is an identifier.** dbt takes a model's relation name from its file
+> name, so `category_margin_per_store_week.v3.sql` reached the engine as
+> `gold`.`category_margin_per_store_week`.`v3` — `REQUIRES_SINGLE_PART_NAMESPACE`, every metric
+> model, every run. **Not a local artefact:** on Databricks the same name resolves to four parts
+> and is invalid there too, so this was a phase-3 failure found in phase 2 for nothing.
+>
+> **The readout pinned three tables with one integer.** It emitted `version as of :data_version`
+> on every relation and its own header called that *"the Delta version every source is pinned
+> to"*. Delta version counters are per table: measured, `gold.decision_economics` and
+> `gold.waste` at 0 while `gold.experiment_assignment` was at 1, and a readout pinned at 0 read
+> the assignment table's empty `CREATE` and returned nothing. Structural rather than accidental —
+> the assignment is written once before the period opens and never again, so it is by design the
+> one relation that will not advance with the others.
+>
+> **And `file_format` in a dbt profile is accepted, ignored, and green.** `dbt run` reported
+> `PASS=5 ERROR=0` over five parquet tables. It is a model config.
+>
+> The contracts moved in the first two, exactly as this entry rules. **What does not close is the
+> entry**: the SQL table function is still text no engine has read — it is `create or replace
+> function ${catalog}.metrics…`, a catalog object with a template variable, and there is no
+> catalog locally to substitute one into. The gold column names this entry lists as *assumed* —
+> `qty`, `price_paid`, `unit_cost_as_of`, `store_id`, `iso_week`, `category` — are assumed no
+> longer: `pipelines/gold/dbt/models/` produces exactly those and the metric models select them.
+> *Revised condition:* the estate, where a catalog exists and `${catalog}` resolves — which is
+> `T020`, the lakehouse layer. The prior condition stays per doctrine rule 4 and it was met; what
+> is left is the one consumer that cannot be met without a workspace.
+
 **Metric versions v1 and v2 are invented history** · deferred 2026-08-27
 They exist so that as-of resolution, the supersession chain and the restatement gate are
 non-vacuous rather than a single version agreeing with itself. No experiment ever ran under them.
