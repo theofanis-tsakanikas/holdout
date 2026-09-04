@@ -642,6 +642,19 @@ fine. Deleting the sentence is not.
 that wrote it did not survive a restart — and who has said it does not merge as it stands. **Not a
 wording call**, which is what this section said before the paragraph above was added.
 
+> **Closed 2026-09-05, and this section is now history rather than a state.** `#59` merged as
+> `e113ff9` with both defects fixed. The original sentence is back **verbatim** as the first three
+> lines of the comment, and the restatement under it names both corrections — that the earlier
+> version *"rewrote that sentence, deleted its last clause, and then labelled the rewrite as prior
+> wording"*, and that *"the deleted clause was itself a claim about a check nobody wrote.
+> `ops/figures.py` contains no occurrence of `terraform` or `infra` — there is no such row among
+> its eleven, and there never was."*
+>
+> **Left as written above rather than rewritten**, for the reason the closing table carries: a
+> review's sections are what the method produced before anyone knew which of them survived, and a
+> present-tense section in a historical document reads as current only when nothing says it is
+> not. This says it.
+
 ---
 
 ## 13 · The corpus barrier's runtime half knows one of the two spellings its source half declares
@@ -835,6 +848,27 @@ number that argues against you.
 
 *Disposition:* the two joins go to the author, in the words above. The `EXPLAINED` split is a
 branch: `evals/the-explanation-publishes-what-it-does-not-cover`.
+
+> **Answered 2026-09-05, and it went the way that costs more.** Relayed by `projects-d1`, which
+> put it to the author as the question underneath the two options rather than as the options —
+> *does the corpus gain price randomisation* — on the grounds that `CLAUDE.md` declares it as
+> design, in bold, with its reason, and a corpus without it models a system nobody designed.
+>
+> **He chose it.** So `T023` is **not** restated: two of the three joins become **phase-2** atoms
+> and the third becomes buildable once the corpus changes, with the corpus work batched against
+> the sub-cent finding — in phase 2, before any money.
+>
+> **That changes this report's closing answer and the closing answer is left as written.** It says
+> *phase 2 closes*; phase 2 now has two atoms it did not have when the sentence was written. The
+> sentence was true of the tree it was written against and is superseded rather than wrong, which
+> is the distinction doctrine rule 4 exists for.
+>
+> **Recorded as relayed, and deliberately not recorded as closed.** This session did not hear the
+> ruling; it heard a session that heard it. The register's own line is that two agents agreeing is
+> two representations agreeing — so the finding in `docs/FINDINGS.md` stays **open**, and what
+> closes it is the atoms existing with ids, written by whoever writes them. **Not by this review**,
+> whose `out_of_scope` is building any product code and whose scoping of somebody else's work
+> would be the review deciding the thing it exists to put in front of him.
 
 ---
 

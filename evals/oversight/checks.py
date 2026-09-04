@@ -140,10 +140,13 @@ EXPLAINED: dict[tuple[str, str], str] = {
     ("height", "height"): (
         "a widget's grid height in the Lakeview dashboard format — one of `x`, `y`, `width`, "
         "`height`, the vendor's own layout keys, in `generated/dashboards/*.lvdash.json`. "
-        "schema.org's `height` is a person's. The two alternatives were refused for reasons "
-        "this list already carries: emitting no positions would degrade a real dashboard into "
-        "a stub to satisfy a guard, and excluding vendor JSON keys from the scan is the "
-        "narrowing `parents` refuses by name"
+        "schema.org's `height` is a person's. Two alternatives were refused, and they are "
+        "refused on different footings: excluding vendor JSON keys from the scan is the "
+        "narrowing `parents` refuses BY NAME, and emitting no positions -- degrading a real "
+        "dashboard into a stub to satisfy a guard -- is an EXTENSION of that principle and not "
+        "a precedent this list carries. The entry first said both were 'refused for reasons "
+        "this list already carries', plural; measured over the other ten entries, one is. "
+        "Prior wording kept per doctrine rule 4"
     ),
 }
 
