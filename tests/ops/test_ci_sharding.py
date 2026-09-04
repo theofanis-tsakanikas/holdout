@@ -733,3 +733,110 @@ def test_every_emission_check_has_an_attack_that_bites_it() -> None:
     assert not unbitten, (
         f"{unbitten} are never made to fail by any emission attack, so nothing shows they bite"
     )
+
+
+# ---------------------------------- the ceiling check, planted rather than read
+
+
+def _entry_step(workflow_text: str | None = None) -> str:
+    """The `run:` body of the step that executes a matrix entry, with the placeholders bound.
+
+    Extracted from `ci.yml` rather than restated, for the reason `_discovered` gives about
+    `discover`'s own shell: reading the text cannot see what the shell does, and this check is
+    about what it does.
+    """
+    workflow = yaml.safe_load(workflow_text or CI_WORKFLOW.read_text(encoding="utf-8"))
+    bodies = [
+        step["run"]
+        for step in workflow["jobs"]["claims"]["steps"]
+        if isinstance(step.get("name"), str) and step["name"].startswith("make $")
+    ]
+    assert len(bodies) == 1, "the step that runs a matrix entry is no longer identifiable"
+    body: str = bodies[0]
+    return (
+        body.replace("${{ matrix.shard }}", "")
+        .replace("${{ matrix.target }}", "probe")
+        .replace("${{ matrix.name }}", "probe bin")
+    )
+
+
+def _run_entry_step(scratch: Path, ceiling: int, sleeps: int) -> subprocess.CompletedProcess[str]:
+    """Run that step against a planted Makefile whose one target sleeps."""
+    (scratch / "Makefile").write_text(
+        f"CI_ENTRY_CEILING := {ceiling}\n\nprobe:\n\tsleep {sleeps}\n", encoding="utf-8"
+    )
+    return subprocess.run(
+        ["bash", "-c", _entry_step()],
+        cwd=scratch,
+        env={"PATH": os.environ.get("PATH", "/usr/bin:/bin")},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_an_entry_over_the_ceiling_fails_and_names_itself(tmp_path: Path) -> None:
+    """**The check is proved by planting, because writing it correctly is not evidence.**
+
+    Every bin in this tree is comfortably under the ceiling, so a green run shows the packing
+    works and shows nothing at all about the check. This repository does not accept a guard on
+    the grounds that it reads correctly — `test_every_emission_check_has_an_attack_that_bites_it`
+    refused one two functions up, in this same change, for exactly that.
+
+    **Lowering `CI_ENTRY_CEILING` is the plant, and lowering a `<TARGET>_COST` is not.** A cost
+    changes which bin a target lands in; it never reaches this comparison. The ceiling is what
+    the elapsed time is measured against, so it is the only dial that exercises the path.
+
+    Four ways this could be silently useless and all four are covered here: the elapsed time is
+    measured over the span the step thinks it is (a target that sleeps 2s reports ~2s), the
+    comparison is in the units it thinks it is (seconds, not minutes or milliseconds), the
+    failure **propagates** out of the step rather than being swallowed by the shell, and the
+    message **names the bin** — which is the whole reason this exists rather than a slow run
+    nobody attributes.
+
+    What planting does **not** prove is that 1032 is the right number. That is a judgement,
+    justified from four observations of the critical chain's floor, and it is not a mechanism.
+    **The mechanism is proved by planting; the constant is justified by measurement.** Those are
+    two sentences on purpose.
+
+    **And this plant was itself verified vacuously the first time.** The verification removed
+    `exit 1` from a copy of `ci.yml` and re-ran — and the test stayed green, which looked like
+    the plant failing to bite. It was not: the edit searched for `that moved.` where the file
+    says `that moves.`, so nothing was replaced and the check ran **unmodified**. A verification
+    that a guard bites, performed against a file that was never broken, is the same defect as
+    the guard it was verifying. Re-run with an assertion that the substitution applied, the
+    plant goes red exactly as it should.
+    """
+    finished = _run_entry_step(tmp_path, ceiling=1, sleeps=2)
+    output = finished.stdout + finished.stderr
+    assert finished.returncode != 0, f"a bin over its ceiling passed: {output}"
+    assert "probe bin" in output, f"the failure does not name the bin that caused it: {output}"
+    assert "over the 1s ceiling" in output, output
+    assert "took 2s" in output, f"the elapsed span is not what the step measured: {output}"
+
+
+def test_an_entry_under_the_ceiling_passes_and_reports_its_cost(tmp_path: Path) -> None:
+    """The other direction, so the test above cannot be passing because everything fails."""
+    finished = _run_entry_step(tmp_path, ceiling=600, sleeps=1)
+    output = finished.stdout + finished.stderr
+    assert finished.returncode == 0, output
+    assert "against a ceiling of 600s" in output, output
+
+
+def test_an_entry_whose_tree_declares_no_ceiling_is_refused(tmp_path: Path) -> None:
+    """Silence is not the same as being within budget, so a missing ceiling is red.
+
+    Without this the check degrades to nothing the day somebody removes the declaration, and a
+    run with no ceiling looks exactly like a run under one.
+    """
+    (tmp_path / "Makefile").write_text("probe:\n\ttrue\n", encoding="utf-8")
+    finished = subprocess.run(
+        ["bash", "-c", _entry_step()],
+        cwd=tmp_path,
+        env={"PATH": os.environ.get("PATH", "/usr/bin:/bin")},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert finished.returncode != 0
+    assert "CI_ENTRY_CEILING" in finished.stdout + finished.stderr
