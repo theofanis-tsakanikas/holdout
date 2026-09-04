@@ -3165,6 +3165,269 @@ decomposition so the number is not rediscovered from the outside a third time
 *Status:* open
 
 ---
+**The contract's `rounding` block is inert on this corpus, and v3's justification with it** ·
+found 2026-09-04 · by `T012` planting two mutations that survived
+
+`contracts/metrics/*.yaml` declares `rounding: {mode: half_even, decimals: 2}`, and
+**metric v3 exists because of it.** Its own restatement:
+
+> v2 rounded half_up. Two consumers of the same definition can then disagree by one cent — the
+> dbt path through SQL round() against the Python reference implementation, whose Decimal
+> default is half_even — and claim 5 compares as integers with no tolerance, so a one-cent
+> disagreement is a failed claim for a stupid reason.
+
+**On this corpus that disagreement cannot arise.** Gold builds `price_paid` and
+`unit_cost_as_of` as `cents / 100` and `qty` is an integer, so every cell is an **exact number
+of cents**:
+
+    qty 3 · price 1.26 · cost 1.00  ->  0.78, exponent -2
+    rounding it to 2dp changes it:  False
+
+`bround(x, 2)` on a value already exact in cents is the **identity function**, and `half_even`
+and `half_up` differ only on an exact half at the third decimal that this data never has. **So
+the block is inert across every consumer** — the dbt model, the SQL function, the readout and
+both Python paths — and v3's justification is **unverifiable on this data.**
+
+**And it is a controlled comparison rather than an argument, which is the form worth reading.**
+One mutation, correctly built, unchanged: it **rounds each row before summing.**
+
+    over 480 corpus cells        SURVIVED   nothing to round; bround(x, 2) is the identity
+    over the same run plus one
+    constructed cell at 0.1250   BIT        the exact sum rounds to 0.12, the early-rounded
+                                            rows to 0.13
+
+**The only thing that changed is the data.** A reader can check that without following any
+arithmetic about exponents: `half_even` and `half_up` cannot part company on this corpus, and
+here is the cell where they do.
+
+**The same comparison sharpens v3's problem rather than softening it.** The distinction v3 exists
+for is now demonstrably **real** — the cell proves it — and demonstrably **unreachable from the
+corpus**. Both halves measured rather than one asserted.
+
+A second plant survived beside the first for an unrelated reason recorded below, and reporting
+the two as one story was a mistake corrected before it reached the author.
+
+**What `T012` did about it, and what it did not.** `evals/definition/build.py` constructs **one
+cell** at `0.1250`, where `half_even` gives `0.12` and `half_up` gives `0.13`, appended to
+`gold.decision_economics` so all three mechanisms read it. That is claim 4's practice, not a new
+one — `evals/censoring/`'s `C2` asks its question *"over every censored store-day the corpus
+produced and every one the sweep constructed"*, and `CLAUDE.md` endorses it by name.
+
+**A constructed cell proves three mechanisms round alike on a value the corpus never produces.
+It does not prove the corpus should produce one**, and it does not make the block live for
+anything else that reads it. **A reader who sees `make claim-5` green should not conclude the
+rounding question is settled.**
+
+**The eventual answer is a corpus with sub-cent content** — real grocery has it wherever cost is
+per kilogram — which would make the block load-bearing everywhere rather than in one constructed
+cell. That is deliberately not this branch: it changes the data under claims 1 through 4 and must
+not ride in on claim 5.
+
+*Site:* `contracts/metrics/category_margin_per_store_week.v3.yaml` :: `    half_even is now the contract and every consumer is compiled to it.`
+*Site:* `evals/definition/build.py` :: `CONSTRUCTED_CELL = ("ST-CONSTRUCTED", "2026-W01", "constructed")`
+*Disposition:* none — the constructed cell closes the *mechanism* question and this is the
+*corpus* question, which is a task nobody has opened. Filed against the contract and the corpus
+rather than against `evals/definition/`: claim 5 is where it was found, not what it is about
+*Status:* open
+
+---
+**`TASKS.md` asserts what a `DECISIONS.md` entry says, and the entry says otherwise** ·
+found 2026-09-04 · by `T012` reading the cited entry rather than the citing sentence
+
+`TASKS.md`'s `T012` block: *"`make preview-audit` … **This is where `preview-audit` first has
+something to act on; `DECISIONS.md` defers it to exactly here.**"*
+
+`docs/DECISIONS.md`'s entry: *"Unlock condition: **the first Terraform layer, and** the first
+time a preview surface is considered."*
+
+**`T012` is `evals/definition/`. It is not a Terraform layer, and there is still no `infra/`.**
+So the deferral does not unlock here and the sentence claiming it does is false about the file
+it cites.
+
+**And the surface that fired the other half is gone from the design.** `T015` fired *a preview
+surface has been considered* on the **PostgreSQL connector for Lakeflow Connect**; route 2 then
+removed the connector, the gateway and the RDS, and `T019` closed *not built*. This register
+already carries the distinction, from the `gone` finding: **route 2 removes a surface, not the
+condition.**
+
+**So the inventory is not empty — it is undetermined**, and those are different. The connector is
+removed; **Zerobus is unresolved in one direction** (`docs/DAY-ONE.md` records an overview page
+carrying no preview banner and one unconfirmed contrary search result); the Unity Catalog metric
+view is out of scope by `T012`'s own block and lives on the estate. **A gate over an undetermined
+population is worse than one over an empty population**: it would report *no claim's proof path
+touches a preview surface* while nobody knows what the surfaces are.
+
+**Both facts are true and both keep the deferral open**: the condition is unmet **and** the
+inventory is unknown.
+
+**This is the second instance, and how both were found is the transferable part.** `F2` on `T011`
+was the same shape — `TASKS.md` deferring the generated SQL's execution to phase 3 while the
+entry it cited unlocked at phase 2 — and **both were found by opening the cited entry rather than
+by reading the citing sentence.** Instances recorded, no rule: two is not a shape, and the
+correction each time is that a deferral naming its own unlock outranks a parenthetical about it.
+
+**A third was proposed on 2026-09-04 and refused, and the ground is recorded because the next
+reader will make the same surface match.** The candidate was `docs/DECISIONS.md`'s claim-2-README
+deferral naming `T012` as its unlock. It shares the shape — *a sentence about another document
+that turned out wrong* — and not the mechanism. `F2` and the entry above describe an **existing
+text** incorrectly and are **detectable by reading**, which is how both were found; the countermeasure
+is a habit, open the cited entry. That one **cites nothing**: it predicts what a task not yet
+written would touch, and it failed because the task chose differently, which no reading of any file
+could have caught in advance. Its countermeasure is a different rule and already exists — *a
+condition names an event, not a session*, and not a task. **Two failure modes, two countermeasures,
+and a rule generalised from a miscounted three is scoped to whatever the three happened to wear.**
+This register's own history is the argument: the *guard tested by its author* row took nine
+instances, and every early version was scoped to the form the known cases wore.
+
+*Site:* `TASKS.md` :: `              any claim's proof path touches one. This is where preview-audit first has something`
+*Site:* `docs/DECISIONS.md` :: `*Unlock condition:* the first Terraform layer, and the first time a preview surface is considered.`
+*Disposition:* none — the correction is a restatement in `TASKS.md`, which `T012` makes, and the
+deferral stays open on its unmet half. What has no owner is the inventory being undetermined,
+which is `T015`'s Zerobus question and is the author's to settle
+*Status:* open
+
+---
+**A packed job's ceiling check abstains for every target with no world cache** ·
+found 2026-09-04 · by `T012` reading the check it was about to be measured by
+
+`ci.yml`'s packed job compares its own elapsed time to `CI_ENTRY_CEILING`, and abstains first:
+
+    if [ "${{ steps.worlds-cache.outputs.cache-hit }}" != "true" ]; then
+      echo "cold: the world cache missed, so this entry regenerated what a warm one restores."
+      exit 0
+    fi
+
+**The escape is correct for what it was written against and reads one thing while meaning
+another.** `cache-hit != true` is being used as a proxy for *this entry regenerated its worlds*.
+The two coincide for every target that existed when it was written, because all of them either
+use `evals/uplift/cache.py` or are fast enough never to matter.
+
+**`.worlds` is written by `evals/uplift/cache.py` and by nothing else** — measured, one file in
+the tree names that directory. `claim-5` builds its world through `corpus.world.prepare` directly
+and writes no cache entry, so its key is never populated, `cache-hit` is `false` on **every** run,
+and the ceiling is never applied to it. Not on the first run — permanently.
+
+**This is the disarm the check's own comment predicted, arriving one target later in a shape the
+comment did not name.** It says: *"it is a check that can be silently disarmed by a cache that
+stops working, and nothing here detects that. A run where every entry reports cold is the visible
+symptom."* The symptom named is a cache that **breaks**. What actually happened is a target that
+never had one, and it produces a single permanently-cold entry among warm ones — which reads as
+normal rather than as a symptom.
+
+**The condition that would be right is available in the job and is not a target list.** After the
+run, an entry that regenerated worlds has a non-empty `.worlds` and an entry that never uses them
+does not, so *abstain only when the cache missed and this entry actually built worlds* separates
+the three cases with no hard-coded names. **It is deliberately not changed here.** It is `T00M`'s
+mechanism, `claim-5` has never run on a four-core runner, and enabling the ceiling for it on the
+strength of a laptop measurement is the defect `CLAUDE.md` names about numbers in configuration —
+in the very check whose job is to catch it. **The first CI run is the measurement**, and whoever
+declares `CLAIM_5_COST` from it is the one who can also close this.
+
+> **Measured 2026-09-04, run 33848508391, and the falsifier was named before it ran.** This entry
+> predicts that `claim-5` prints `cold` and is never judged; the thing that would refute it is the
+> bin printing `warm`, which was said in advance rather than after. It printed:
+>
+>     this entry took 674s against a ceiling of 1032s
+>     cold: the world cache missed, so this entry regenerated what a warm one restores
+>
+> **674s against a 1,032s ceiling, and the ceiling was not applied.** The entry is comfortably
+> inside it, so nothing was hidden this time — which is exactly why the defect is worth keeping
+> open. **A check that would have passed anyway did not run**, and nothing on the run distinguishes
+> that from a check that ran and passed. `CLAIM_5_COST` is now declared at 750, so a future change
+> that made this target slower would be a stale cost — and the mechanism that turns a stale cost
+> into a red run naming the bin is the one that abstains here, permanently.
+
+*Site:* `.github/workflows/ci.yml` :: `          if [ "${{ steps.worlds-cache.outputs.cache-hit }}" != "true" ]; then`
+*Site:* `evals/uplift/cache.py` :: `CACHE_DIR = Path(os.environ.get("HOLDOUT_WORLD_CACHE", REPO_ROOT / ".worlds"))`
+*Disposition:* the next task that declares `CLAIM_5_COST`, which needs the same run this needs
+*Status:* open
+
+---
+**A seal test searched a wall clock for a three-digit needle, and went red 1 run in 241** ·
+found 2026-09-04 · by `T012` running the suite, not by reading it
+
+`tests/corpus/test_world_seal.py::test_the_truth_is_not_lying_in_the_file_in_plain_sight` reads
+the whole sealed file as text and asserts that five strings **taken from the truth itself** do not
+appear in it. The docstring's argument is right and is the reason the test is good: *a hand-written
+list would test the author's imagination; this tests the file.*
+
+**One of the five needles is a bare integer, and one part of the haystack is a clock.** The nonce
+is derived rather than random — `corpus/world/seal.py` says so, deliberately, so that a rebuilt
+world produces a byte-identical seal — so **`sealed_at` is the only byte that changes between
+runs**. At `W3`, `smoke`, seed `seal`, `totals["acks_failed"]` is **248**, and a three-digit needle
+inside `2026-09-04T07:55:39.540625+00:00` collides in **0.414% of runs — about 1 in 241**, measured
+over 500,000 sampled timestamps.
+
+**A clock reading `…:24:8…` is not the truth leaking.** The collision answers a question nobody
+asked, and it can only ever produce a false red: the assertion is a `not in`, so chance moves it in
+one direction. Every job that runs the suite carries the 1-in-241, which is why it showed up as a
+single unreproducible failure inside a full run and passed on every attempt to reproduce it.
+
+**Fixed by narrowing the haystack rather than the needles.** The search now runs over the seal with
+`sealed_at` removed — the deterministic part, which is the only part that could carry a leak. The
+needles are unchanged and still come from the truth. **Checked by planting**: a needle written into
+the seal's `note` is still seen, so the narrowing removed a chance collision and not the guard.
+
+**How it was found is the part worth keeping.** It appeared in a `make check` run for an unrelated
+change and passed on the next four; the temptation is to call it a flake and move on. It is a flake
+— *with a mechanism*, a probability, and a one-line fix, and every one of those came from measuring
+the needle against the haystack instead of re-running until it went green. **Pre-existing; nothing
+in `T012` touches this file or the seal.**
+
+*Site:* `tests/corpus/test_world_seal.py` :: `def test_the_truth_is_not_lying_in_the_file_in_plain_sight(sealed: Path, readout: Path) -> None:`
+*Site:* `corpus/world/seal.py` :: `        "sealed_at": datetime.now(UTC).isoformat(),`
+*Disposition:* fixed in the test on 2026-09-04. What is **not** closed is the general shape — a
+needle that is a bare number searched in text containing a timestamp — and nothing enumerates the
+other places it could occur
+*Status:* open
+
+---
+**A packing claim was verified against a target list typed by hand** ·
+found 2026-09-04 · by `T012` reading the job name on the run after
+
+The commit declaring `CLAIM_5_COST := 750` asserted, in the `Makefile` and in `TASKS.md`, that it
+**changed no packing decision** and that `claim-5` was *"its own bin at 674, at 750 and at the
+default alike"*. Both are false. Measured over the population `discover` actually enumerates:
+
+    undeclared   800 [claim-5]              742 [claim-1, gate-proof]
+    at 750       780 [claim-5, gate-proof]  712 [claim-1]
+
+The declaration moved `gate-proof` (30s) out of `claim-1`'s bin into `claim-5`'s. Five bins either
+way, so no slot moved — but **two bins changed contents, so two cache namespaces changed**, and the
+next run's job is named `claim-5 gate-proof`. That name is how it was found.
+
+**The claim was not unchecked. It was checked against the wrong population.** The verification ran
+`ci_pack.pack` over a list of targets typed into a one-off script, and that list omitted
+`gate-proof`. `discover` reads its population out of the Makefile with
+`^(claim-[0-9]+|gate-proof|preview-audit|silver|gold):`, and asking it would have cost the same
+keystrokes as typing eight names.
+
+**This is this repository's coverage rule applied one layer in.** *A gate reports on what it
+examined; it becomes a lie when it reports what it examined as if it were what exists.* Every
+instance recorded so far is a **gate** enumerating its own population — `ruff`'s file list, `ci`'s
+`claim-[1-7]`, the `layout` row. This one is a **verification** doing it: not a check that ships,
+but the act of confirming a sentence before committing it. It has no gate behind it and never will,
+which is the same place the *guard tested by its author* defects live.
+
+**And the shape is the sharpest available**, because it happened inside a commit whose entire
+subject was setting a number from a measurement rather than a projection, written by a session that
+had spent the day restating other people's unmeasured figures. **The care was real and it was
+pointed at the number. Nothing was pointed at the population the number was checked over.**
+
+**Second observation, incidentally: the bin took 653s** — `claim-5` plus a 30s target, in less wall
+clock than `claim-5` alone took at 674s. Two points, 674 and 653, about 7% apart across consecutive
+runs of unchanged work, which is the first direct evidence for the variance argument the
+declaration rests on and does not change it.
+
+*Site:* `Makefile` :: `CLAIM_5_COST := 750`
+*Site:* `.github/workflows/ci.yml` :: `          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit|silver|gold):' Makefile \`
+*Disposition:* the sentences are restated in place per doctrine rule 4 and the delta is recorded.
+What has no owner is whether a verification of a packing claim should be a target rather than a
+script somebody types — `ops/ci_pack.py` could expose the population `discover` reads, and nothing
+today makes using it easier than not
+*Status:* open
+
+---
 
 ## Closed
 

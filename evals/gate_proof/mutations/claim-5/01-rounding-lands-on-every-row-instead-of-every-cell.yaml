@@ -1,0 +1,32 @@
+# The defect the contract's `rounding` block exists to prevent, planted in the one path where
+# it looks like tidiness. Rounding each contribution as it lands reads as normalising early;
+# what it does is accumulate a half-cent of error per row, and at 422,137 rows the cells drift
+# by far more than the one cent claim 5 refuses to tolerate.
+#
+# It is planted on `combine_then_aggregate` rather than on its sibling because this is the path
+# where a row *has* a value of its own to round — the other sums three terms and has nothing
+# row-shaped to spoil. A mutation has to be plantable in the shape the code actually takes.
+
+id:          rounding-lands-on-every-row-instead-of-every-cell
+claim:       5
+eval_module: evals.definition
+targets:     [D2.integer-equal, D3.integer-equal]
+
+breaks: >-
+  each receipt line is rounded to the contract's scale before it is added to its cell, so the
+  metric becomes a sum of rounded contributions rather than a rounded sum — the exact
+  difference `rounding: {mode, decimals}` is declared once, at one place, to prevent.
+
+file: evals/definition/combine_then_aggregate.py
+
+anchor: |
+        running[key] += count * Decimal(str(line["price_paid"])) - count * Decimal(
+            str(line["unit_cost_as_of"])
+        )
+replacement: |
+        running[key] += Decimal(
+            metric.rounding.canonical_integer(
+                count * Decimal(str(line["price_paid"]))
+                - count * Decimal(str(line["unit_cost_as_of"]))
+            )
+        ) / (10**metric.rounding.decimals)

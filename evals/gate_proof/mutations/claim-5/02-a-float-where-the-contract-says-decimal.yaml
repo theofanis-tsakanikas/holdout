@@ -1,0 +1,34 @@
+# The one-cent bug `contracts/metrics/*.yaml` has a `rounding` block *because of*. A float sum
+# depends on the order the rows arrived in, so two implementations of the same definition differ
+# in the last cent for a reason nobody can find — `sql.py`'s `DECIMAL` constant carries that
+# sentence about the SQL side, and this plants it on the Python side.
+#
+# **Re-aimed after it survived.** The first version wrote `Decimal(str(float(x)))` per term, and
+# `str()` of a float is the shortest repr that round-trips — so the error it planted was undone
+# on the same line and the mutation was arithmetically a no-op. What is lossy is *accumulating*
+# in float, which is what this does: the running total is carried through binary at every step.
+#
+# It bites on the constructed cell and could not bite anywhere else. `evals/definition/build.py`
+# holds the reason: every corpus cell is an exact number of cents, an accumulation error of one
+# ULP is ~4e-16, and it changes nothing unless the exact total sits *on* a rounding boundary.
+# The constructed cell sits on one — revenue 0.1 + 0.2 is 0.30000000000000004 in float, the
+# metric lands at 0.12500000000000004 instead of 0.1250, and half_even takes it to 0.13.
+
+id:          a-float-where-the-contract-says-decimal
+claim:       5
+eval_module: evals.definition
+targets:     [D1.integer-equal, D3.integer-equal]
+
+breaks: >-
+  the aggregate-then-combine path carries its running revenue through binary floating point, so
+  the sum depends on the order the rows arrived in and a cell sitting exactly on a rounding
+  boundary falls the wrong side of it.
+
+file: evals/definition/aggregate_then_combine.py
+
+anchor: |
+        revenue[cell] += quantity * Decimal(str(row["price_paid"]))
+replacement: |
+        revenue[cell] = Decimal(
+            repr(float(revenue[cell]) + float(quantity) * float(str(row["price_paid"])))
+        )

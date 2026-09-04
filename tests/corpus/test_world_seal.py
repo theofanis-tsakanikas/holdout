@@ -123,8 +123,21 @@ def test_the_truth_is_not_lying_in_the_file_in_plain_sight(sealed: Path, readout
     The strings searched for are taken **from the truth itself** after it is opened, not from
     a list somebody wrote while thinking about what to hide. A hand-written list would test
     the author's imagination; this tests the file.
+
+    **`sealed_at` is excluded from the text searched, and the reason is a measurement.** Every
+    other byte of the seal is deterministic — the nonce is derived rather than random, exactly so
+    that a rebuilt world produces a byte-identical seal — and `sealed_at` is a wall clock. One of
+    the five needles is `acks_failed`, which at this world and scale is the bare integer **248**,
+    and a three-digit needle looked for inside `2026-09-04T07:55:39.540625+00:00` collides by
+    chance in **0.414% of runs, about 1 in 241** (500,000 sampled timestamps). That is what went
+    red once on 2026-09-04 in a full-suite run and passed on every attempt to reproduce it.
+    **The collision proves nothing about hiding**: a clock reading `…:24:8…` is not the truth
+    leaking. Searching the deterministic part asks the question the docstring above claims to ask
+    and nothing else — a needle read off the truth is right, and reading the haystack off a clock
+    is not.
     """
-    raw = sealed.read_text(encoding="utf-8")
+    document = json.loads(sealed.read_text(encoding="utf-8"))
+    raw = json.dumps({key: value for key, value in document.items() if key != "sealed_at"})
     truth = open_after_readout(sealed, readout)
     for phrase in (
         truth.injection["violates"],

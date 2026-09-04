@@ -61,6 +61,7 @@ directory and mutates the copy, so an interrupted run cannot leave a planted mut
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -107,7 +108,18 @@ REPO_ROOT = HERE.parents[1]
 #: pointed out that three of the thirty committed mutations edit `evals/uplift/`, because
 #: claim 2's machinery is partly what claim 2 is proving. The rule was never about which tree
 #: the planter may touch. It is about the two it may not.
-COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", ".worlds")
+#: **`pipelines` arrived 2026-09-04 with `T012`, and its absence reported as `NOT-ARMED`.**
+#: Claim 5 is the first eval that runs the pipeline: its SQL mechanism is the compiled artefact
+#: *executed*, so `evals/definition/build.py` imports `pipelines.gold` and the workspace has to
+#: hold it. Without it all three of claim 5's mutations came back
+#: `ModuleNotFoundError: No module named 'pipelines'` — and the harness was right to call that
+#: NOT-ARMED rather than SURVIVED, because the mutated eval never produced a verdict and no gate
+#: was ever asked.
+#:
+#: **The list is what an eval needs to run, not what a mutation may edit.** Those are different
+#: questions and the paragraph above answers the second one: `ledger.no-mutation-edits-the-
+#: detector` refuses a mutation under `ops/` or `corpus/`, and copying a tree here grants nothing.
+COPIED = ("src", "contracts", "generated", "evals", "corpus", "ops", "pipelines", ".worlds")
 
 #: A run of the eval that takes longer than this has almost certainly been mutated into a
 #: loop rather than into a bug. Bounded so `make gate-proof` cannot hang CI.
@@ -307,6 +319,34 @@ def _workspace(into: Path) -> Path:
     return workspace
 
 
+def _java() -> dict[str, str]:
+    """What a JVM needs, and nothing else, added to the deliberately minimal environment above.
+
+    **Claim 5 is the first eval that starts one.** Its SQL mechanism is the compiled artefact
+    *executed*, so its mutations run a Spark session — and under the fixed `PATH` above they came
+    back `[JAVA_GATEWAY_EXITED] Java gateway process exited before sending its port number`,
+    which the harness correctly reported as `NOT-ARMED` and which names nothing true about the
+    cause. Measured: the fixed `PATH` is what breaks it, not `HOME`; either `JAVA_HOME` or the
+    directory holding `java` is enough to fix it.
+
+    **`JAVA_HOME` rather than the caller's whole `PATH`**, because the point of the fixed `PATH`
+    is that a mutated eval runs the same way on every machine. Widening it to inherit whatever
+    the developer happens to have on theirs would make a mutation's verdict a property of the
+    machine — which is the defect `_discovered` in `tests/ops/test_ci_sharding.py` declares about
+    itself and which this repository has paid for three times.
+
+    **An absent JVM returns nothing rather than guessing**, and the eval then fails with Spark's
+    own message. That is honest: this function's job is to pass along a JVM that exists, not to
+    decide whether one is required — most claims need none, and refusing here would make every
+    other claim's mutations depend on a Java runtime they never use.
+    """
+    declared = os.environ.get("JAVA_HOME")
+    if declared:
+        return {"JAVA_HOME": declared}
+    found = shutil.which("java")
+    return {"JAVA_HOME": str(Path(found).resolve().parent.parent)} if found else {}
+
+
 def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str, float]:
     """Run one eval inside the workspace, parse its JSON, and say how long it took.
 
@@ -332,6 +372,7 @@ def _run_eval(workspace: Path, module: str) -> tuple[dict[str, Any] | None, str,
         "PYTHONPATH": f"{workspace}:{workspace / 'src'}",
         "PYTHONHASHSEED": "0",
         "HOME": str(workspace),
+        **_java(),
     }
     started = time.monotonic()
     try:

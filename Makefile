@@ -10,9 +10,11 @@
 # claim that is a paragraph is advice. `ci` discovers them by grepping this file rather than
 # by listing them, so a claim target that exists but is never run is impossible.
 #
-# Still deliberately absent: `claim-5`, `claim-6` and `preview-audit`. A green target that
+# Still deliberately absent: `claim-6` and `preview-audit`. A green target that
 # proves nothing is worse than a missing one — it is a gate disarmed before it was ever
-# armed — so each arrives with the eval that earns it.
+# armed — so each arrives with the eval that earns it. `claim-5` arrived on 2026-09-04 with
+# `evals/definition/`; `preview-audit` did not, and `TASKS.md`'s T012 block records why the
+# deferral it cites does not unlock here.
 
 UV ?= uv
 RUN := $(UV) run
@@ -26,10 +28,10 @@ PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check check-locked test lint format typecheck contracts contracts-write \
-        expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-7 silver \
+        expiry language figures findings claim-1 claim-2 claim-3 claim-4 claim-5 claim-7 silver \
         gold \
         claim-2-shard claim-2-combine claim-2-tests \
-        eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight gate-proof \
+        eval-guardrail eval-uplift eval-assignment eval-censoring eval-oversight eval-definition gate-proof \
         world roster corpus clean
 
 help:  ## show this help
@@ -442,10 +444,81 @@ CI_ENTRY_CEILING := 1032
 #:
 #: A target costing more than the budget is its own bin and that is a signal rather than an
 #: error — at a budget of 700, `claim-1` at 712 already would be.
+#:
+#: **`claim-5` was deliberately absent from this list until it had run.** `T012` added the target
+#: and declaring a cost before a runner had ever executed it would have been inventing one — the
+#: packer defaults an undeclared cost to the whole budget and gives the target its own machine,
+#: which is the rule working rather than an omission. **Measured on run 33848508391: 674s.**
+#:
+#: **Declared at 750 from one observation, and above it rather than at it.** `claim-2-tests` is
+#: the nearest sibling with a history and it moves **446, 532, 498, 533 across four runs of
+#: unchanged work — 19%**; there is no reason to think this target is steadier and there is one
+#: point behind it. The safe direction is the one the mechanism already takes when it knows
+#: nothing: a cost declared too low overruns a bin, a cost declared too high only packs less
+#: efficiently.
+#:
+#: **The margin stops short of the sibling's 19% for a reason worth stating: at 800 a declaration
+#: is indistinguishable from no declaration**, because an undeclared cost *is* the budget. So a
+#: meaningful declaration here has an upper bound of 799, and 750 is 11% above the observation
+#: rather than 19% — the one place where the fail-safe direction and saying something both pull,
+#: and they pull against each other.
+#:
+#: **And for this target the tension is not a close call, it is arithmetically unresolvable:
+#: 674 x 1.19 = 802.** A full sibling-variance margin lands **over** the budget. So exactly two
+#: declarations are available here — *less margin than the sibling's measured variance*, which is
+#: 750, or *over budget*, which the packer reads as a target oversized on merit rather than as an
+#: unknown. Neither is wrong and they say different things. **This one chooses the first and the
+#: second is recorded**, so that whoever next raises `CI_ENTRY_BUDGET` or changes the target set
+#: comes back to this line instead of re-deriving it.
+#:
+#: **What the declaration is actually for, since it buys nothing today.** `claim-5` is its own bin
+#: at 674, at 750 and at the default alike. A declared cost buys accuracy the moment the budget or
+#: the target set moves, and nothing before that.
+#:
+#: **^ That paragraph is false and the run that followed it said so. Restated 2026-09-04, doctrine
+#: rule 4 — the prior wording stays because the delta is the finding.** The declaration moved
+#: `gate-proof` (30s) out of `claim-1`'s bin and into `claim-5`'s. Measured, over the population
+#: `discover` actually enumerates:
+#:
+#:     undeclared   800 [claim-5]              742 [claim-1, gate-proof]
+#:     at 750       780 [claim-5, gate-proof]  712 [claim-1]
+#:
+#: Five bins either way, so no slot moved — but **two bins changed contents, so two cache
+#: namespaces changed**, and `claim-5`'s job is named `claim-5 gate-proof` on the run after the
+#: declaration. It packs with something at 750 and cannot at 800, which is the whole content of
+#: the sentence above being wrong.
+#:
+#: **How it was got wrong is the transferable part.** The claim *changes no packing decision* was
+#: checked — against a list of targets typed into a one-off script, which omitted `gate-proof`.
+#: `discover` reads the population out of the Makefile with
+#: `^(claim-[0-9]+|gate-proof|preview-audit|silver|gold):`, and asking it would have taken the
+#: same keystrokes. **A verification that enumerates its own population by hand reports on what it
+#: examined as though that were what exists** — this repository's own coverage rule, in the check
+#: rather than in the gate, inside the commit that was being careful about a number.
+#:
+#: **Second observation, from the run that exposed it: the bin took 653s** — `claim-5` plus a 30s
+#: target, in *less* wall clock than `claim-5` alone took at 674s. Two points, 674 and 653, moving
+#: about 7% between consecutive runs of unchanged work. That does not change the declaration and
+#: it is the first direct evidence for the variance argument the declaration rests on.
+#:
+#: **And it answers the obvious question — *why not declare 674, you measured it* — with a
+#: measurement of this target rather than with a sibling's variance.** The bin doing **more work
+#: finished faster**, so the run-to-run noise on this job **exceeds a thirty-second workload**. A
+#: cost declared to the second here would carry more digits than the instrument has. That is why
+#: the declaration is a rounded bound above the observation and not the observation.
+#:
+#: **It changes no packing decision today, and that is said rather than left to be inferred.**
+#: Nothing in this list is small enough to sit beside it under 800, so `claim-5` is its own bin
+#: at 674, at 750 and at the default alike — its own bin **on merit** rather than by default.
+#: What the declaration buys is that a future change making it slower is a stale cost rather than
+#: an unknown one. **And what would catch that never runs for this target**: the ceiling check
+#: abstains on a cold world cache, `claim-5` has no world cache, and it printed `cold` on the run
+#: that measured it. `docs/FINDINGS.md` carries that.
 CLAIM_1_COST := 712
 CLAIM_2_TESTS_COST := 533
 CLAIM_3_COST := 453
 CLAIM_4_COST := 159
+CLAIM_5_COST := 750
 CLAIM_7_COST := 98
 GATE_PROOF_COST := 30
 SILVER_COST := 165
@@ -514,6 +587,24 @@ eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 # every type added to it adds 317 attacks; and then "1m32s to 1m45s", falsified by the very
 # next run coming in *faster*. A quantity with two independent reasons to move should be
 # asserted as a bound with room in it, never as a point and never as a tight range.
+# Claim 5 is the one that had to be re-read before it could be built. `CLAUDE.md` names three
+# consumers -- dbt model, SQL function, readout -- and they are **one** mechanism: all three are
+# rendered by `metric_parts` and their arithmetic is byte-identical, so comparing them proves the
+# engine is deterministic and nothing about the definition. The three here are the compiled SQL
+# executed over gold, and two Python implementations that differ in the order of operations and
+# may not share a line.
+#
+# It builds a rehearsal-scale world through bronze, silver and gold before it can compare
+# anything, so it needs the `dbt` extra and it is minutes rather than seconds. That cost is the
+# claim: the SQL mechanism is the compiled artefact **executed**, and an eval that skipped the
+# pipeline would compare three implementations against data no engine ever produced.
+claim-5:  ## claim 5 — one definition, three mechanisms, the same integer
+	$(RUN) python -m evals.definition
+	$(RUN) python -m evals.gate_proof --claim 5
+
+eval-definition:  ## just claim 5's eval, without the mutations
+	$(RUN) python -m evals.definition
+
 claim-7:  ## claim 7 — a decision that targets a person is structurally impossible
 	$(RUN) python -m evals.oversight
 	$(RUN) python -m evals.gate_proof --claim 7
