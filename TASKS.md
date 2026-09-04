@@ -2138,8 +2138,23 @@ quantity whose nearest sibling with a history moves **19% across four runs of un
 **But 674 x 1.19 = 802**, so a full sibling-variance margin lands over the budget, and exactly two
 declarations exist — less margin than the sibling's variance, or a target oversized on merit. The
 first is taken and the second is written down, because at 800 a declaration is indistinguishable
-from no declaration: an undeclared cost *is* the budget. It changes no packing today; `claim-5` is
-its own bin at 674, at 750 and at the default alike.
+from no declaration: an undeclared cost *is* the budget.
+
+> **The sentence that stood here — *it changes no packing today; `claim-5` is its own bin at 674,
+> at 750 and at the default alike* — is false, and the run after it said so.** The declaration
+> moved `gate-proof` (30s) out of `claim-1`'s bin into `claim-5`'s: `800 [claim-5]` and
+> `742 [claim-1, gate-proof]` became `780 [claim-5, gate-proof]` and `712 [claim-1]`. Five bins
+> either way, so no slot moved — but two bins changed contents and therefore two cache namespaces,
+> and the job is named `claim-5 gate-proof` on the next run, which is how it was found.
+>
+> **It was checked, against the wrong population.** The verification ran the packer over a list of
+> targets typed into a one-off script that omitted `gate-proof`; `discover` reads the population
+> out of the Makefile and asking it would have cost the same keystrokes. **Every recorded instance
+> of this repository's coverage rule is a *gate* enumerating its own population; this is a
+> *verification* doing it**, which has no gate behind it and never will. It happened inside the
+> commit whose whole subject was setting a number from a measurement rather than a projection: the
+> care was real and it was pointed at the number, and nothing was pointed at the population the
+> number was checked over. Filed, and the prior wording stays per doctrine rule 4.
 
 **And the run printed what the ceiling finding predicted, with the falsifier named first.** *If it
 prints warm I was wrong about the mechanism* — it printed `cold`. **674 is comfortably inside

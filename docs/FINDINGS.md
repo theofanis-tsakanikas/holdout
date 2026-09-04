@@ -3382,6 +3382,52 @@ other places it could occur
 *Status:* open
 
 ---
+**A packing claim was verified against a target list typed by hand** ·
+found 2026-09-04 · by `T012` reading the job name on the run after
+
+The commit declaring `CLAIM_5_COST := 750` asserted, in the `Makefile` and in `TASKS.md`, that it
+**changed no packing decision** and that `claim-5` was *"its own bin at 674, at 750 and at the
+default alike"*. Both are false. Measured over the population `discover` actually enumerates:
+
+    undeclared   800 [claim-5]              742 [claim-1, gate-proof]
+    at 750       780 [claim-5, gate-proof]  712 [claim-1]
+
+The declaration moved `gate-proof` (30s) out of `claim-1`'s bin into `claim-5`'s. Five bins either
+way, so no slot moved — but **two bins changed contents, so two cache namespaces changed**, and the
+next run's job is named `claim-5 gate-proof`. That name is how it was found.
+
+**The claim was not unchecked. It was checked against the wrong population.** The verification ran
+`ci_pack.pack` over a list of targets typed into a one-off script, and that list omitted
+`gate-proof`. `discover` reads its population out of the Makefile with
+`^(claim-[0-9]+|gate-proof|preview-audit|silver|gold):`, and asking it would have cost the same
+keystrokes as typing eight names.
+
+**This is this repository's coverage rule applied one layer in.** *A gate reports on what it
+examined; it becomes a lie when it reports what it examined as if it were what exists.* Every
+instance recorded so far is a **gate** enumerating its own population — `ruff`'s file list, `ci`'s
+`claim-[1-7]`, the `layout` row. This one is a **verification** doing it: not a check that ships,
+but the act of confirming a sentence before committing it. It has no gate behind it and never will,
+which is the same place the *guard tested by its author* defects live.
+
+**And the shape is the sharpest available**, because it happened inside a commit whose entire
+subject was setting a number from a measurement rather than a projection, written by a session that
+had spent the day restating other people's unmeasured figures. **The care was real and it was
+pointed at the number. Nothing was pointed at the population the number was checked over.**
+
+**Second observation, incidentally: the bin took 653s** — `claim-5` plus a 30s target, in less wall
+clock than `claim-5` alone took at 674s. Two points, 674 and 653, about 7% apart across consecutive
+runs of unchanged work, which is the first direct evidence for the variance argument the
+declaration rests on and does not change it.
+
+*Site:* `Makefile` :: `CLAIM_5_COST := 750`
+*Site:* `.github/workflows/ci.yml` :: `          targets="$(grep -oE '^(claim-[0-9]+|gate-proof|preview-audit|silver|gold):' Makefile \`
+*Disposition:* the sentences are restated in place per doctrine rule 4 and the delta is recorded.
+What has no owner is whether a verification of a packing claim should be a target rather than a
+script somebody types — `ops/ci_pack.py` could expose the population `discover` reads, and nothing
+today makes using it easier than not
+*Status:* open
+
+---
 
 ## Closed
 

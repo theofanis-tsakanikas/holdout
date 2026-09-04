@@ -475,6 +475,32 @@ CI_ENTRY_CEILING := 1032
 #: at 674, at 750 and at the default alike. A declared cost buys accuracy the moment the budget or
 #: the target set moves, and nothing before that.
 #:
+#: **^ That paragraph is false and the run that followed it said so. Restated 2026-09-04, doctrine
+#: rule 4 — the prior wording stays because the delta is the finding.** The declaration moved
+#: `gate-proof` (30s) out of `claim-1`'s bin and into `claim-5`'s. Measured, over the population
+#: `discover` actually enumerates:
+#:
+#:     undeclared   800 [claim-5]              742 [claim-1, gate-proof]
+#:     at 750       780 [claim-5, gate-proof]  712 [claim-1]
+#:
+#: Five bins either way, so no slot moved — but **two bins changed contents, so two cache
+#: namespaces changed**, and `claim-5`'s job is named `claim-5 gate-proof` on the run after the
+#: declaration. It packs with something at 750 and cannot at 800, which is the whole content of
+#: the sentence above being wrong.
+#:
+#: **How it was got wrong is the transferable part.** The claim *changes no packing decision* was
+#: checked — against a list of targets typed into a one-off script, which omitted `gate-proof`.
+#: `discover` reads the population out of the Makefile with
+#: `^(claim-[0-9]+|gate-proof|preview-audit|silver|gold):`, and asking it would have taken the
+#: same keystrokes. **A verification that enumerates its own population by hand reports on what it
+#: examined as though that were what exists** — this repository's own coverage rule, in the check
+#: rather than in the gate, inside the commit that was being careful about a number.
+#:
+#: **Second observation, from the run that exposed it: the bin took 653s** — `claim-5` plus a 30s
+#: target, in *less* wall clock than `claim-5` alone took at 674s. Two points, 674 and 653, moving
+#: about 7% between consecutive runs of unchanged work. That does not change the declaration and
+#: it is the first direct evidence for the variance argument the declaration rests on.
+#:
 #: **It changes no packing decision today, and that is said rather than left to be inferred.**
 #: Nothing in this list is small enough to sit beside it under 800, so `claim-5` is its own bin
 #: at 674, at 750 and at the default alike — its own bin **on merit** rather than by default.
