@@ -330,6 +330,22 @@ claim-2-tests:  ## claim 2's own tests — exactly what `make test` deselects
 #: says about `max over min`, arriving one line later in the number this branch wrote rather than
 #: in the one it was quoting.
 #:
+#: **Second warm run, `33824423170`, and it lands on the other side of the bound:**
+#:
+#:     legs           273 280 257 179 280 281 217 s    max 281, min 179, max/min 1.57
+#:     claim-2-tests                            533 s
+#:
+#: **So the ~302s bound is exceeded on one warm run and met on the other** — 314 then 281 — which
+#: is the same statement as the one above, now with a case on each side of it rather than an
+#: argument. `claim-2-tests` is 446, 532, 498, 533 across four runs, and `max over min` moved 1.23
+#: to 1.57 on a split that did not change, exactly as the paragraph about the eight-way figures
+#: says it does.
+#:
+#: **Two observations are not a spread and nothing here claims one.** They are recorded next to
+#: each other because that is what there is, and **this line does not ask for a third**: the
+#: quantity is a bound to be judged against `claim-2-tests` on whatever run is in front of you,
+#: not a number to be pinned down by collecting more of them.
+#:
 #: **`main` will pay cold once too.** Its caches are not this branch's, so the first run after
 #: this merges is a cold seven-way at about what is measured above — expected, not a regression.
 CLAIM_2_SHARDS := 7
