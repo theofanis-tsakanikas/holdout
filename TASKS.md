@@ -1927,6 +1927,114 @@ status        closed
 > drops, and a single version parameter applied to three tables whose version counters are
 > independent. Under the phase-3 reading all three would have been found on a paid estate.
 
+**Its first act was to find that the constraint it was given was not the operative one**, and
+that is the reason it exists rather than a story about it. The task asked for a shard count. The
+answer is that **the shard count was the wrong question.**
+
+**`T012` could not start.** It adds two discovered targets and the run was at **20 of 20**, the
+account's documented ceiling — the wall `T011` hit and paid for by shaving `CLAIM_2_SHARDS` from
+8 to 7. Two more answers were considered and both bought slots the same way: `7 -> 5` for **114
+seconds** of run, `7 -> 4` for **213**.
+
+**Then the run was measured instead of reasoned about, and it is slot-bound rather than
+time-bound.** Ten unsharded entries carry **2,375s** of work against a critical chain of
+**1,032s** — every one of them with slack, on twenty machines doing work that fits in about six.
+
+    critical chain    max_leg 288 + combine 744 = 1032s
+    the other ten     claim-1 712 · claim-2-tests 490 · claim-3 335 · gate 241 · gold 224
+                      claim-4 157 · silver 151 · claim-7 98 · gate-proof 30 · secrets 12
+
+**Three framings were handed to this task and measurement refuted all three.**
+
+**The leg does not compete with `claim-2-tests`.** That comparison had been the target for two
+messages, and `claim-2-tests` is its own parallel matrix entry: it gates nothing and nothing gates
+it. **The shards gate `combine`**, and `max_leg + combine` is the critical path on every run at
+roughly twice the next-longest chain — so there is no headroom-until-500s and **every second added
+to the slowest leg is a second on the run, linearly, from the first one.**
+
+**The per-leg fixed cost is indistinguishable from zero.** Differencing the totals at N=8 and N=7
+gives **−14s** — removing a leg did not reduce total work — against a scatter an order larger. The
+work is a parallel map over independent tasks and divides cleanly, so **there is no economy of
+consolidation to find** and legs scale as `W/N` with `W ≈ 1797s`.
+
+**And the mutations cannot be made concurrent.** `combine` is **99.6% `gate_proof`** — 2.7s of
+`uplift --combine` against **731s** of eight mutations run one at a time — so the shard count is a
+dial on **28%** of the critical chain. Running four at once looked like `731 -> 185`.
+`evals/uplift/parallel.py` already runs `ProcessPoolExecutor(os.cpu_count())`, and its own comment
+says *"four on a GitHub runner"*: **each mutation already uses the whole machine.** The arithmetic
+was over a resource that was already spent, and the answer was in a docstring three lines above
+the code. `docs/DECISIONS.md` carries the refusal, because the next person will have the same idea.
+
+**So entries are packed rather than counted**, under `CI_ENTRY_BUDGET` in the `Makefile`, by
+`ops/ci_pack.py`. A bin costs the run **nothing** until it exceeds the chain, so four bins replace
+ten entries and the wall clock does not move:
+
+    claim-1 + gate-proof   742s      claim-3 + silver + claim-4   777s
+    claim-2-tests + gold   758s      claim-7                       98s
+
+**`packable_work / budget` is the whole arithmetic, and it is why this is a rule rather than a
+grouping.** A new target adds *work*, not a slot: it falls into an existing bin while the total
+stays under a multiple of the budget, and costs one more bin when it does not. **Nobody makes a
+packing decision when a target arrives.** `T012`'s two targets and `T014`'s one are work, not
+three slots.
+
+**Two numbers, because they are two questions, and they were nearly given one.** `CI_ENTRY_BUDGET`
+is where the packer stops adding, 800s. `CI_ENTRY_CEILING` is where a bin starts **costing** the
+run, 1,032s, and a packed job checks its own elapsed time against **that** one. Packing puts every
+bin *at* the budget by construction — the largest is 777 of 800 — so a self-check at the budget
+would have fired on ordinary variance nearly every run, and `claim-2-tests` moves **19%** across
+four runs of unchanged work. **A budget reused as a failure threshold is a flake generator**, and
+that is what was very nearly built.
+
+**The budget is 800 and not 850, which frees one fewer slot.** 850 packs into three bins instead
+of four; it is refused because it spends four points of margin on a chain floor with **four**
+observations behind it, over costs that are themselves maxima of four, and `claim-3` alone spread
+**1.72x** across them. Margin that absorbs a fifth observation is worth more than a slot.
+
+**An undeclared cost is the whole budget, so an unmeasured target is packed alone.** Unmeasured
+means unpacked: a new target costs one machine rather than a wrong bin, and stops costing it the
+moment somebody measures it. That is the direction it has to fail in.
+
+**And no local gate can check a declared cost against reality** — the truth is in run history and
+a test that reached for it would be flaky and would need the network. What checks a cost is **the
+packed job itself**, comparing its own elapsed time to the ceiling, so a stale cost is a red run
+naming the exact bin rather than a slow run nobody attributes.
+
+**`CLAIM_2_SHARDS` stays at 7.** It is the only dial linear in the run's length and packing makes
+it unnecessary to touch. It is 9 of the 20 slots — 45% of the CI for one claim — and whether that
+fan-out still earns its slots is a separate question this did not answer.
+
+**The headroom exists, is measured, and is being declined.** The run goes from 20 jobs to 16;
+`T012`'s two unmeasured targets and `T014`'s one take three of those four, leaving **one**. That
+is a different sentence from *there is none left*: once those three are measured they pack like
+everything else, and the steady state is `2375 + their work` over 800 — **four bins, which is
+where this started.** What is left over is not slack in the ceiling; it is that the ceiling
+stopped being the thing tasks hit.
+
+**Three things this deliberately did not do.** It did not merge `gate` with anything — `gate` and
+`secrets` are **required contexts** with fixed names, read off the ruleset rather than assumed,
+and they are the only two names branch protection knows besides `claims-complete`. It did not
+touch the shard count. And it did not look at `gate_proof` taking 731s of a 1,032s chain, which is
+now the largest number in the run and is recorded in `docs/FINDINGS.md` rather than acted on.
+
+```
+id            T00M
+title         CI entries are packed under a budget, because the run is slot-bound
+branch        ops/the-run-is-slot-bound
+depends_on    T011
+closes        The twenty-job ceiling stops being a wall tasks hit and becomes a budget the run
+              lives inside: unsharded targets are packed into bins under CI_ENTRY_BUDGET by
+              ops/ci_pack.py, a packed job checks itself against CI_ENTRY_CEILING, and an
+              undeclared cost is packed alone. T012 is unblocked.
+out_of_scope  gate_proof's 731s of the 1,032s chain, which is now the largest number in the run
+              and is filed rather than acted on. Whether claim 2's nine slots still earn
+              themselves. Any change to CLAIM_2_SHARDS.
+stop_at       When discover emits packed entries, every target still runs, and the run is under
+              the ceiling with room for T012.
+review        yes
+status        closed
+```
+
 ```
 id            T012
 title         evals/definition/ — make claim-5 + make preview-audit

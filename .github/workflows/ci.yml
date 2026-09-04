@@ -243,14 +243,17 @@ jobs:
           # nobody has to keep one.
           entries=""
           combines=""
+          unsharded=""
           for t in $targets; do
             var="$(printf '%s' "$t" | tr 'a-z-' 'A-Z_')_SHARDS"
             n="$(grep -oE "^${var}[[:space:]]*:=[[:space:]]*[0-9]+" Makefile \
                  | grep -oE '[0-9]+$' || true)"
             n="${n:-1}"
             if [ "$n" -le 1 ]; then
-              entries="$entries$(jq -nc --arg t "$t" \
-                        '{target:$t,shard:"",slug:"",name:$t}')\n"
+              # **Collected rather than emitted.** An unsharded target is packed with others
+              # into a bin under `CI_ENTRY_BUDGET`; the packing runs once, below, because
+              # first-fit needs every item before it can place any of them.
+              unsharded="$unsharded $t"
             else
               combines="$combines $t"
               for i in $(seq 1 "$n"); do
@@ -274,11 +277,41 @@ jobs:
             # other unsharded targets for the un-suffixed key -- it generates ~11 MB of worlds
             # and `actions/cache` is first-writer-wins.
             if grep -qE "^${t}-tests:" Makefile; then
-              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \
-                        --arg name "$t tests" \
-                        '{target:$t,shard:"",slug:$slug,name:$name}')\n"
+              unsharded="$unsharded ${t}-tests"
             fi
           done
+
+          # ------------------------------------------------------- packing the unsharded
+          #
+          # **The run was slot-bound, not time-bound.** Ten unsharded entries carried 2,375s
+          # against a critical chain of 1,032s, every one with slack, on an account whose
+          # ceiling is twenty jobs -- so `T012` could not start for want of two machines that
+          # were already idle. Packing them into bins under a declared budget costs **zero**
+          # wall clock, because a bin does not touch the run until it exceeds the chain.
+          #
+          # **The rule lives in `ops/ci_pack.py`, not here**, for the reason every other number
+          # in this step is read out of the Makefile: this file names no claim, no shard count
+          # and now no budget. It is stdlib-only and `python3` is on the runner image, so it
+          # needs none of the project's dependencies -- `discover` installs nothing.
+          #
+          # The packing is a pure function of the declared costs, and that is load-bearing
+          # rather than tidy: a bin's slug is its contents and the slug is the world cache's
+          # namespace, so a packing that reshuffled between runs would leave every cache cold.
+          command -v python3 >/dev/null || {
+            echo "::error::python3 is not on this runner, so entries cannot be packed."
+            echo "An unpacked matrix would still be correct and would silently ask for one"
+            echo "machine per target, which is the arrangement this replaced."
+            exit 1
+          }
+          # **`while read` and not `for row in $(...)`.** A bin's `target` is
+          # `claim-2-tests gold` -- it contains a space -- so command substitution word-splits
+          # each JSON object into fragments and the matrix arrives unparseable. That is not
+          # hypothetical: it is what this loop did on its first run, and the error surfaced as
+          # a JSONDecodeError three files away in the test that reproduces this step.
+          packed="$(python3 -m ops.ci_pack $unsharded)"
+          while IFS= read -r row; do
+            entries="$entries$row\n"
+          done < <(printf '%s' "$packed" | jq -c '.[]')
           echo "targets=$(printf "$entries" | jq -sc .)" >> "$GITHUB_OUTPUT"
 
           if [ -z "$combines" ]; then
@@ -397,8 +430,13 @@ jobs:
       # A test that cannot import it **fails**, never skips:
       # `tests/boundary/test_the_engine_is_never_skipped.py` refuses the two spellings that
       # would turn an absent engine into a green run, and it was written before silver was.
+      # **`contains` over a padded string, not equality, because an entry now carries a bin.**
+      # `matrix.target` is `claim-3 silver claim-4` where it used to be `silver`, so `==` would
+      # silently stop installing the engine and `make silver` would fail inside a packed job
+      # for a reason naming Python rather than the matrix. The padding makes it a word match:
+      # a target named `silverware` would not trip it.
       - name: the engine, for the one target that needs it
-        if: matrix.target == 'silver'
+        if: contains(format(' {0} ', matrix.target), ' silver ')
         run: uv sync --locked --extra spark
 
       # **Gold's extra contains silver's**, so this is one sync rather than two:
@@ -408,7 +446,7 @@ jobs:
       # figure is whatever this step's own log says, which is the only place it can honestly
       # come from.
       - name: dbt, for the gold target
-        if: matrix.target == 'gold'
+        if: contains(format(' {0} ', matrix.target), ' gold ')
         run: uv sync --locked --extra dbt
 
       # Claim 2 generates its worlds once per command and reads them back — `.worlds/`, keyed
@@ -437,18 +475,105 @@ jobs:
       # shard keys while leaving the combine restoring counterfactual worlds built by the
       # previous generator — not a slow run, a **wrong answer with no red**, which is the
       # failure T00G's narrowing warning names, in the key this change adds.
+      # **`id` because the entry's own ceiling check reads whether this hit.** A cold entry
+      # regenerates its worlds and is legitimately slow for a reason that is not a stale cost,
+      # so the ceiling is reported and not enforced there. See the check below.
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: worlds-cache
         with:
           path: .worlds
           key: worlds-${{ runner.os }}-${{ steps.worlds.outputs.digest }}${{ matrix.slug && format('-shard-{0}', matrix.slug) || '' }}
 
+      # **`${{ matrix.target }}` is unquoted and `make` takes several targets on one line**,
+      # so a packed bin runs without this step changing. That is not a new capability; it is
+      # what this step already did, and it is why packing needed no edit here.
+      #
+      # **The self-check is against the CEILING, not the budget, and the two are different
+      # questions.** Packing puts every bin *at* the budget by construction -- the largest is
+      # 777 of 800 -- so checking against 800 would fire on ordinary variance nearly every run,
+      # and `claim-2-tests` moves 19% across four runs of unchanged work. The ceiling is where
+      # a bin starts **costing** the run: the critical chain, 255s above the largest bin.
+      #
+      # It is here rather than in a gate because **no local check can compare a declared cost
+      # to reality** -- the truth is in run history and a test that reached for it would be
+      # flaky. The job that exceeded its budget is the one place the excess is free to observe,
+      # and a stale cost becomes a red run naming the exact bin instead of a slow run nobody
+      # attributes.
       - name: make ${{ matrix.name }}
         run: |
           set -euo pipefail
+          started=$SECONDS
           if [ -n "${{ matrix.shard }}" ]; then
             make ${{ matrix.target }}-shard SHARD=${{ matrix.shard }}
           else
             make ${{ matrix.target }}
+          fi
+          elapsed=$((SECONDS - started))
+          ceiling="$(grep -oE '^CI_ENTRY_CEILING[[:space:]]*:=[[:space:]]*[0-9]+' Makefile \
+                     | grep -oE '[0-9]+$' || true)"
+          if [ -z "$ceiling" ]; then
+            echo "::error::the Makefile declares no CI_ENTRY_CEILING, so this job cannot say"
+            echo "whether it cost the run anything. Silence here is not the same as being"
+            echo "within budget."
+            exit 1
+          fi
+          echo "this entry took ${elapsed}s against a ceiling of ${ceiling}s"
+
+          # **A cold entry is not judged, and that is measured rather than cautious.** The world
+          # cache is keyed on the bin's slug, so **re-packing gives every bin a new key and the
+          # first run after a packing change is cold by construction.** On this branch's own
+          # first run that cost `claim-2-tests` 1340s against a warm 533s -- and the check below
+          # fired, correctly by its own terms, for a reason that is not a stale cost:
+          #
+          #     Cache not found for input keys: worlds-Linux-<digest>-shard-claim-2-tests-gold
+          #
+          # The same fact as `CLAIM_2_SHARDS` 8 to 7 invalidating seven shard caches, arriving
+          # in bins. So the ceiling is **enforced only when the entry started warm**, and a cold
+          # one prints its time and says the ceiling was not applied.
+          #
+          # **And the reason this is not merely honest but necessary: without it the check
+          # cannot reach a state where it works.** A failing job does not run its cache-save
+          # step. So a bin that fails *for being cold* never writes the cache whose absence
+          # made it cold, and the next run misses again:
+          #
+          #     cold -> over ceiling -> red -> no cache save -> cold
+          #
+          # That is a **loop, not a delay**, and every re-run of it reads as a stubborn stale
+          # cost rather than as a mechanism that cannot start. Measured on this branch: the
+          # first packed run failed and saved nothing, the second was cold again, abstained,
+          # and **wrote the key** -- which is the only reason a third run can judge that bin at
+          # all. **An escape that only made the check polite would be worth arguing about; this
+          # one is what lets it ever run.**
+          #
+          # **And the general form, which this is the third application of: a change is not
+          # verified by its own run; the run after it verifies.** `CLAIM_2_SHARDS` 8 to 7 was
+          # the first -- every shard key changed, so the run that made the change could not
+          # measure it. `T011`'s prediction was the second, written to be tested by a run that
+          # turned out to be cold for the same reason. This is the third and the parameter is
+          # the packing itself. **So the escape is not a hole in the check: the first run after
+          # a packing change has nothing to say, and the second is where the ceiling speaks.**
+          #
+          # **What that costs, said rather than left to be found: an entry whose cache never
+          # hits is never judged.** The direction is deliberate -- a check that cried wolf on
+          # every packing change would be turned off by the third one -- but it is a check that
+          # can be silently disarmed by a cache that stops working, and nothing here detects
+          # that. A run where every entry reports "cold" is the visible symptom. Named by the
+          # change that introduced it rather than left for whoever meets it.
+          if [ "${{ steps.worlds-cache.outputs.cache-hit }}" != "true" ]; then
+            echo "cold: the world cache missed, so this entry regenerated what a warm one"
+            echo "restores. The ceiling is not applied to a cold entry -- re-packing gives every"
+            echo "bin a new key, so the first run after a packing change is cold by construction."
+            exit 0
+          fi
+
+          if [ "$elapsed" -gt "$ceiling" ]; then
+            echo "::error::${{ matrix.name }} took ${elapsed}s, over the ${ceiling}s ceiling."
+            echo "That ceiling is the critical chain: past it this entry is no longer free and"
+            echo "is lengthening the run. Either a declared <TARGET>_COST is stale, or the work"
+            echo "grew. Re-measure the targets in this bin and update their costs in the"
+            echo "Makefile -- and note that re-packing invalidates the world cache of every bin"
+            echo "that moves."
+            exit 1
           fi
 
       # A shard's draws, on their way to whatever combines them. Named by the slug so the

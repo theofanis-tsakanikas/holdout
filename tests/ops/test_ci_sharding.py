@@ -561,8 +561,24 @@ def _discovered(workflow_text: str | None = None) -> list[dict[str, str]]:
     return entries
 
 
+def _emitted_targets(workflow_text: str | None = None) -> list[str]:
+    """Every target the matrix runs, flattened out of the entries that carry them.
+
+    **An entry carries a bin, not a target, since `T00M`.** `ci.yml` runs
+    `make ${{ matrix.target }}` unquoted and `make` takes several targets on one line, so
+    `claim-2-tests gold` is one entry running two targets. Every check below asks *is this
+    target run* rather than *does this target have an entry* — which is the property that
+    always mattered and was, until packing existed, indistinguishable from the other one.
+    """
+    return [t for e in _discovered(workflow_text) for t in e["target"].split()]
+
+
 def _tests_entries(workflow_text: str | None = None) -> list[dict[str, str]]:
-    return [e for e in _discovered(workflow_text) if e["target"].endswith("-tests")]
+    return [
+        e
+        for e in _discovered(workflow_text)
+        if any(t.endswith("-tests") for t in e["target"].split())
+    ]
 
 
 def check_every_tests_target_gets_a_job(workflow_text: str | None = None) -> None:
@@ -574,7 +590,7 @@ def check_every_tests_target_gets_a_job(workflow_text: str | None = None) -> Non
     """
     declared = sorted(re.findall(r"^(claim-[\w-]*-tests):", _MAKEFILE, re.MULTILINE))
     assert declared, "no -tests target exists, so this check is asserting nothing"
-    emitted = [entry["target"] for entry in _discovered(workflow_text)]
+    emitted = _emitted_targets(workflow_text)
     missing = [target for target in declared if target not in emitted]
     assert not missing, (
         f"the Makefile declares {missing} and discover emits no job for them, so they run on "
@@ -601,7 +617,7 @@ def check_every_generating_entry_has_its_own_cache_namespace(
         f"two matrix entries share a cache namespace: {sorted(namespaced)}"
     )
     for entry in entries:
-        if entry["target"].endswith("-tests"):
+        if any(t.endswith("-tests") for t in entry["target"].split()):
             assert entry["slug"], (
                 f"{entry['name']} generates worlds and has no cache namespace, so it races the "
                 "unsharded targets for the un-suffixed key and loses to the fastest of them"
@@ -618,9 +634,15 @@ def test_the_run_stays_under_the_concurrency_ceiling() -> None:
     Twenty is what this account documents. The count moved from 18 to 19 when the marked tests
     were given their own entry, and the whole reason to compute it here rather than to write it
     down is that the next entry will move it again.
+
+    **It did, and it refused: `gold` made it 21 and this is what stopped the branch.** What
+    followed is `T00M` — the run was slot-bound rather than time-bound, and unsharded targets
+    are now packed into bins under `CI_ENTRY_BUDGET`. So this counts **entries**, which is
+    machines, while the checks above count **targets**, which is work. The two were the same
+    number until packing existed and the difference is the whole point of it.
     """
     entries = _discovered()
-    combines = sum(1 for t in {e["target"] for e in entries} if _declared_shards(t, _MAKEFILE) > 1)
+    combines = sum(1 for t in set(_emitted_targets()) if _declared_shards(t, _MAKEFILE) > 1)
     jobs = 3 + len(entries) + combines + 1
     assert jobs <= 20, (
         f"a run would launch {jobs} jobs against a documented ceiling of 20. Past the ceiling "
@@ -635,15 +657,32 @@ def test_the_run_stays_under_the_concurrency_ceiling() -> None:
 #: these are checked by **running** it, because what `discover` emits is not visible in the
 #: text — the defect they model is a shell loop that stops emitting, not a key that changed.
 EMISSION_ATTACKS: dict[str, tuple[str, str]] = {
-    "the tests entry no longer emitted": (
+    "the tests entry no longer collected": (
         '            if grep -qE "^${t}-tests:" Makefile; then\n'
-        '              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \\\n',
-        "            if false; then\n"
-        '              entries="$entries$(jq -nc --arg t "${t}-tests" --arg slug "tests" \\\n',
+        '              unsharded="$unsharded ${t}-tests"\n',
+        '            if false; then\n              unsharded="$unsharded ${t}-tests"\n',
     ),
-    "the tests entry given no cache namespace": (
-        '--arg t "${t}-tests" --arg slug "tests"',
-        '--arg t "${t}-tests" --arg slug ""',
+    # **Re-aimed by `T00M`, and where it moved to is the finding.** This used to blank the
+    # `--arg slug "tests"` in `ci.yml`, because the namespace was decided there. It is now
+    # decided by `ops/ci_pack.py`, which derives a bin's slug from its contents — so the
+    # namespace cannot be blanked from this file at all and an attack that tried would be
+    # aiming at text that no longer decides anything.
+    #
+    # What is still expressible here is the seam: the packer's output being **discarded**.
+    # That leaves the matrix with no unsharded entry at all, which both checks must refuse —
+    # and the property the old attack proved, that a generating entry has its own namespace,
+    # is now asserted directly over `ops.ci_pack.entries` in `test_ci_pack.py`, where it lives.
+    "the packed entries discarded": (
+        'packed="$(python3 -m ops.ci_pack $unsharded)"',
+        'packed="[]"',
+    ),
+    # The other half of what the blanked-slug attack used to prove, expressed at the seam that
+    # still exists in this file: a packer that emits entries **without** a namespace. It models
+    # a real regression — `ops/ci_pack.entries` dropping the slug — from the one place `ci.yml`
+    # can still reach it, which is by standing in for the packer entirely.
+    "the packer emits entries with no cache namespace": (
+        'packed="$(python3 -m ops.ci_pack $unsharded)"',
+        'packed="$(python3 -m ops.ci_pack $unsharded | jq -c \'[.[] | .slug = ""]\')"',
     ),
 }
 
@@ -681,9 +720,28 @@ def test_each_emission_attack_is_refused(attack: str) -> None:
 
 
 def test_every_emission_check_has_an_attack_that_bites_it() -> None:
+    """**The third substitution site, and the only one that was not asserting it applied.**
+
+    `_broken` and `_bitten_by` both require their anchor to occur exactly once before replacing;
+    this loop did not. A stale anchor here makes `broken` identical to the original, no check
+    fires, and the failure reads *"X is never made to fail by any emission attack"* — **which
+    blames the check when what is stale is the attack.**
+
+    That is not hypothetical. Verifying the ceiling plant by hand, `exit 1` was removed from a
+    copy of `ci.yml` with a search string that did not match; the file was unchanged, the plant
+    stayed green, and it read as the plant failing to bite. **A break that never broke, reported
+    as the guard not biting** — the same misdiagnosis this assertion now prevents, arriving by
+    hand instead of through this loop.
+    """
     bitten: set[str] = set()
     for attack, (old, new) in EMISSION_ATTACKS.items():
-        broken = CI_WORKFLOW.read_text(encoding="utf-8").replace(old, new, 1)
+        text = CI_WORKFLOW.read_text(encoding="utf-8")
+        assert text.count(old) == 1, (
+            f"the attack {attack!r} anchors on text occurring {text.count(old)} time(s) in "
+            "ci.yml, so it would edit nothing and this loop would report the checks as unbitten "
+            "— the attack is stale, not the checks"
+        )
+        broken = text.replace(old, new, 1)
         for name, check in EMISSION_CHECKS.items():
             try:
                 check(broken)
@@ -693,4 +751,145 @@ def test_every_emission_check_has_an_attack_that_bites_it() -> None:
     unbitten = sorted(set(EMISSION_CHECKS) - bitten)
     assert not unbitten, (
         f"{unbitten} are never made to fail by any emission attack, so nothing shows they bite"
+    )
+
+
+# ---------------------------------- the ceiling check, planted rather than read
+
+
+def _entry_step(workflow_text: str | None = None, *, cache_hit: str = "true") -> str:
+    """The `run:` body of the step that executes a matrix entry, with the placeholders bound.
+
+    Extracted from `ci.yml` rather than restated, for the reason `_discovered` gives about
+    `discover`'s own shell: reading the text cannot see what the shell does, and this check is
+    about what it does.
+    """
+    workflow = yaml.safe_load(workflow_text or CI_WORKFLOW.read_text(encoding="utf-8"))
+    bodies = [
+        step["run"]
+        for step in workflow["jobs"]["claims"]["steps"]
+        if isinstance(step.get("name"), str) and step["name"].startswith("make $")
+    ]
+    assert len(bodies) == 1, "the step that runs a matrix entry is no longer identifiable"
+    body: str = bodies[0]
+    bound = (
+        body.replace("${{ matrix.shard }}", "")
+        .replace("${{ matrix.target }}", "probe")
+        .replace("${{ matrix.name }}", "probe bin")
+        .replace("${{ steps.worlds-cache.outputs.cache-hit }}", cache_hit)
+    )
+    # **Every expression must be bound, or the plant tests the wrong script.** An unsubstituted
+    # `${{ ... }}` survives into the shell as a literal, and the cold-entry escape compares it
+    # against `"true"` — so a missed substitution makes every planted entry look cold and
+    # **exit 0 before reaching the check these tests exist to prove.** The plant would pass
+    # while testing nothing, which is this branch's own recurring defect aimed at itself.
+    assert "${{" not in bound, (
+        f"an expression was left unbound in the extracted step: {bound!r}. A literal `${{{{ }}}}` "
+        "reaching the shell would make the cold-entry escape fire and the plant pass vacuously."
+    )
+    return bound
+
+
+def _run_entry_step(
+    scratch: Path, ceiling: int, sleeps: int, *, cache_hit: str = "true"
+) -> subprocess.CompletedProcess[str]:
+    """Run that step against a planted Makefile whose one target sleeps."""
+    (scratch / "Makefile").write_text(
+        f"CI_ENTRY_CEILING := {ceiling}\n\nprobe:\n\tsleep {sleeps}\n", encoding="utf-8"
+    )
+    return subprocess.run(
+        ["bash", "-c", _entry_step(cache_hit=cache_hit)],
+        cwd=scratch,
+        env={"PATH": os.environ.get("PATH", "/usr/bin:/bin")},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_an_entry_over_the_ceiling_fails_and_names_itself(tmp_path: Path) -> None:
+    """**The check is proved by planting, because writing it correctly is not evidence.**
+
+    Every bin in this tree is comfortably under the ceiling, so a green run shows the packing
+    works and shows nothing at all about the check. This repository does not accept a guard on
+    the grounds that it reads correctly — `test_every_emission_check_has_an_attack_that_bites_it`
+    refused one two functions up, in this same change, for exactly that.
+
+    **Lowering `CI_ENTRY_CEILING` is the plant, and lowering a `<TARGET>_COST` is not.** A cost
+    changes which bin a target lands in; it never reaches this comparison. The ceiling is what
+    the elapsed time is measured against, so it is the only dial that exercises the path.
+
+    Four ways this could be silently useless and all four are covered here: the elapsed time is
+    measured over the span the step thinks it is (a target that sleeps 2s reports ~2s), the
+    comparison is in the units it thinks it is (seconds, not minutes or milliseconds), the
+    failure **propagates** out of the step rather than being swallowed by the shell, and the
+    message **names the bin** — which is the whole reason this exists rather than a slow run
+    nobody attributes.
+
+    What planting does **not** prove is that 1032 is the right number. That is a judgement,
+    justified from four observations of the critical chain's floor, and it is not a mechanism.
+    **The mechanism is proved by planting; the constant is justified by measurement.** Those are
+    two sentences on purpose.
+
+    **And this plant was itself verified vacuously the first time.** The verification removed
+    `exit 1` from a copy of `ci.yml` and re-ran — and the test stayed green, which looked like
+    the plant failing to bite. It was not: the edit searched for `that moved.` where the file
+    says `that moves.`, so nothing was replaced and the check ran **unmodified**. A verification
+    that a guard bites, performed against a file that was never broken, is the same defect as
+    the guard it was verifying. Re-run with an assertion that the substitution applied, the
+    plant goes red exactly as it should.
+    """
+    finished = _run_entry_step(tmp_path, ceiling=1, sleeps=2)
+    output = finished.stdout + finished.stderr
+    assert finished.returncode != 0, f"a bin over its ceiling passed: {output}"
+    assert "probe bin" in output, f"the failure does not name the bin that caused it: {output}"
+    assert "over the 1s ceiling" in output, output
+    assert "took 2s" in output, f"the elapsed span is not what the step measured: {output}"
+
+
+def test_an_entry_under_the_ceiling_passes_and_reports_its_cost(tmp_path: Path) -> None:
+    """The other direction, so the test above cannot be passing because everything fails."""
+    finished = _run_entry_step(tmp_path, ceiling=600, sleeps=1)
+    output = finished.stdout + finished.stderr
+    assert finished.returncode == 0, output
+    assert "against a ceiling of 600s" in output, output
+
+
+def test_an_entry_whose_tree_declares_no_ceiling_is_refused(tmp_path: Path) -> None:
+    """Silence is not the same as being within budget, so a missing ceiling is red.
+
+    Without this the check degrades to nothing the day somebody removes the declaration, and a
+    run with no ceiling looks exactly like a run under one.
+    """
+    (tmp_path / "Makefile").write_text("probe:\n\ttrue\n", encoding="utf-8")
+    finished = subprocess.run(
+        ["bash", "-c", _entry_step()],
+        cwd=tmp_path,
+        env={"PATH": os.environ.get("PATH", "/usr/bin:/bin")},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert finished.returncode != 0
+    assert "CI_ENTRY_CEILING" in finished.stdout + finished.stderr
+
+
+def test_a_cold_entry_over_the_ceiling_is_reported_and_not_failed(tmp_path: Path) -> None:
+    """The relaxation, planted — because it is the escape that could disarm everything above.
+
+    **The world cache is keyed on the bin's slug, so re-packing gives every bin a new key** and
+    the first run after a packing change is cold by construction. On this branch's own first run
+    that cost `claim-2-tests` **1340s against a warm 533s**, and the ceiling check fired — for a
+    reason that is not a stale cost. So a cold entry is reported and not failed.
+
+    **An escape hatch needs a plant more than the check it relaxes**, because it is the thing
+    that makes the check stop firing. This asserts it fires only where it should: the same
+    over-ceiling run that fails warm passes cold and says why.
+    """
+    finished = _run_entry_step(tmp_path, ceiling=1, sleeps=2, cache_hit="false")
+    output = finished.stdout + finished.stderr
+    assert finished.returncode == 0, f"a cold entry was failed for being cold: {output}"
+    assert "cold: the world cache missed" in output, output
+    assert "over the 1s ceiling" not in output, (
+        "a cold entry reached the ceiling comparison, so the escape is above the wrong line"
     )
