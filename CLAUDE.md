@@ -163,7 +163,7 @@ workspace and no credentials. If a change does not serve one of them, question i
 | **4** | **A stock-out is never read as zero demand.** *Trap: a simulator that generates censoring with the model that corrects it → validated on a held-out segment with full shelf availability.* | `evals/censoring/` |
 | **5** | **One definition, three mechanisms, the same number.** The source of truth is the contract in this repository, compiled into a Delta view, the agent's tool definition and the experiment readout. Compared as integers, no tolerance. *Trap: two consumers calling the same function prove nothing → three genuinely different mechanisms, sharing only the definition.* | `evals/definition/` |
 | **6** | **The design engine refuses an invalid design regardless of where the judgment came from** — human, declared policy, or model. When the source is a model: N designs proposed, M refused, and K of those would have produced a confidently wrong number. *Trap: an LLM judge in the same family is a correlated critic → **the judge never rules on validity**; code does. The judge rules only on design quality.* | `evals/design/` |
-| **7** | **A decision that targets a person is structurally impossible.** The decision key has no customer dimension, and a test goes red if one appears — on every type on the decision path and in the contracts, which compile into four consumers without a Python type moving. *Trap: a list of person-shaped words written by whoever also wrote the field names is one function agreeing with itself → the words come from two published vocabularies, and the guard is the **closed field set**, which reads no names at all.* **Measured: the hand-written list catches 35 of 317; the closed field set refuses 17,752 of 17,752.** | `evals/oversight/` |
+| **7** | **A decision that targets a person is structurally impossible.** The decision key has no customer dimension, and a test goes red if one appears — on every type on the decision path and in the contracts, which compile into four consumers without a Python type moving. *Trap: a list of person-shaped words written by whoever also wrote the field names is one function agreeing with itself → the words come from two published vocabularies, and the guard is the **closed field set**, which reads no names at all.* **Measured: the hand-written list catches 35 of 317; the closed field set refuses 18,069 of 18,069.** | `evals/oversight/` |
 
 **Claim 2 is the one that separates this from a demo. Claim 6 is the one nobody builds.**
 
@@ -452,7 +452,10 @@ D · the decision record     decisions          (immutable, written at decision 
   point-in-time correct and free to change. Training on a business metric means that the day the
   metric is redefined, the model has learned something that no longer exists.
 - **The assignment table is written before the period opens**, from the committed seed, and is
-  then read-only.
+  then **append-only**. `delta.appendOnly` refuses an update, a delete and an insert overwrite,
+  and **permits an insert** — three of four, measured in `pipelines/gold/assignment.py` against
+  delta-spark 4.4.0. *Read-only* is what phase 3's storage makes true and what this line claimed
+  before it; the doctrine rule 7 block above already says so and this one did not.
 - **The readout pins a Delta version.** Without it, re-running last month's readout returns a
   different number as late data arrives.
 
@@ -608,7 +611,7 @@ only **what may be claimed**.
 ## The contract layer
 
 `contracts/` is the source of truth, versioned in this repository, and it is what claims 1, 5 and
-6 rest on. Four families, none of which is a vendor feature.
+6 rest on. Five families, none of which is a vendor feature.
 
 ### `metrics/` — one definition, four consumers
 
@@ -706,6 +709,18 @@ nothing about demand, which is the model's territory and not the envelope's.
 M refused, K would have been wrong" exists only because the reasons are enumerable. Adding a code
 is a code change with a test.
 
+### `ml/` — what a training run is judged by
+
+`training.yaml` — the time split, claim 4's correction, the calibration gate, the five promotion
+gates and the named approver. **Seven values, each a `{value, source}` pair**, all
+`scenario_assumption`, all walked by the provenance check.
+
+**A fifth family rather than a corner of `design/`, because a training run is not an experiment
+design.** `design/` is read by the engine that decides whether an experiment may *exist*, and
+nothing in `pipelines/ml/` is that engine. It landed with `T014` and this heading did not; the
+count above said **four** until 2026-09-05, which is the same defect as a directory described in
+the present tense before it exists, in the other direction.
+
 ### The six rules
 
 1. Every contract is versioned and **never deleted**.
@@ -750,6 +765,8 @@ pipelines/ingest/      the Zerobus driver and the S3 bulk load, which is the ERP
 pipelines/silver/      Spark Declarative Pipelines — the as-of reference, the derived
                        stock-out, and the quarantine the OSS framework does not provide
 pipelines/gold/        dbt
+pipelines/ml/          training, evaluation, promotion — the time split, claim 4's correction,
+                       the calibration gate and the five promotion gates
 evals/                 one directory per claim · report.py is the shared shape
   gate_proof/          the planted mutations: green first, named target, STALE on a moved one
 ops/                   the rules the product code is measured by — the corpus barrier and
@@ -761,6 +778,10 @@ docs/
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
 .github/               the five workflows — ci on every push, and the four that dispatch
+infra/                 Terraform. **`lakehouse/` is the only layer that exists** — the catalog,
+                       the schemas and the two compiled AI/BI dashboards. The other five
+                       (`bootstrap · foundation · pipelines · ml · serving`) are phase 3, and
+                       `make terraform` validates every layer the glob finds rather than a list
 ```
 
 `notes/` is **not** in this map and is not repository content: it is gitignored scratch that
@@ -774,10 +795,15 @@ the present tense beside directories that do. That is the same defect as a parag
 production path through dbt while the only two implementations are Python.
 
 ```
-pipelines/ml/          training, evaluation, promotion
-infra/                 bootstrap · foundation · lakehouse · pipelines · ml · serving
 experiments/           one YAML per experiment, in git, with its full history
 ```
+
+**`pipelines/ml/` and `infra/` were in this block until 2026-09-05 and both were built on
+2026-09-04**, by `T014` and `T013`. The rule this block states — *a directory that does not exist
+may not be described in the present tense beside directories that do* — has a second half nobody
+wrote down: **a directory that exists may not be described as unbuilt.** `make figures` reads the
+block above and would have gone red on a package missing from it; it has nothing to say about a
+package named twice, once truthfully and once not.
 
 ---
 
@@ -825,7 +851,7 @@ decoration on top of it.
 Unity Catalog **lineage** already draws the graph from `esl_acks` to `experiment_readout` — free,
 native, and the best governance shot available. A **notebook** carries the live question and the
 what-if, which is how a data scientist actually works. And the **terminal** carries the figures
-that matter most — `9/200 = 4.5%`, `gate-proof`, `200 / 47 / 12`. Numbers that hurt read better in
+that matter most — `8/200 = 4.0%`, `gate-proof`, `200 / 47 / 12`. Numbers that hurt read better in
 a monospace font, which is why `manifest` shows `34/34` in a terminal and not in a chart.
 
 **Genie** over the same tables comes free and answers the backward-looking questions — the

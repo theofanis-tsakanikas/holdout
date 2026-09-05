@@ -1632,6 +1632,16 @@ estate — which is the distinction the whole claim turns on. The merge also car
 demand types and claim 3's `Contamination.dropped` into `ops/personhood.py`, and the guard named
 them itself: `unlisted()` and `misdeclared()` printed exactly the seven and the one.
 
+**Restated again 2026-09-05, and the second restatement is the finding.** The products moved a
+second time — 56 → **57** types, 242 → **244** fields, 17,752 → **18,069** attacks, 1,960 →
+**1,995** refused by the word list; 35 of 317 and 11.0% did not move, again. **The block above is
+kept as written and is correct for the day it was measured.** What was not correct was every
+*present-tense* copy of it — `CLAUDE.md`'s claim row, the `Makefile`'s comment, the eval's own
+README in four places, and `corpus/real/MANIFEST.yaml`, which still said **222 fields** and so was
+already a whole epoch behind the restatement three lines above this one. Nothing compared any copy
+against the measurement, and a phase-2 review reading prose found one of them. Claim 7's five
+figures are now registered in `ops/figures.PROSE`.
+
 ```
 id            T007
 title         docs/SCENARIO.md
@@ -2825,6 +2835,87 @@ that barrier once already.
 **`T017` may open and phase 2 closes.** What is not ready is `T023`. The report says so in those
 words rather than in a summary.
 
+
+```
+id            T016A
+title         The author's list says what is true, and its one figure is read off its measurement
+branch        ops/a-published-figure-is-read-off-its-measurement
+depends_on    T016
+closes        `docs/reviews/phase-2.md` §9 entire — all five `CLAUDE.md` lines — and §8's count
+              limb. Claim 7's five figures registered in `ops/figures.PROSE`, and every
+              present-tense site restated: `CLAUDE.md`, the `Makefile`, `evals/oversight/README.md`
+              and `corpus/real/MANIFEST.yaml`.
+              Added after the hostile read: `SPEC-T003.md`'s three specimen figures restated,
+              and `*Status:*` made to agree with `*Closed:*` in `ops/findings.py` with the six
+              drifted entries corrected.
+out_of_scope  The `EXPLAINED` pair-key question, which is row 12's. This branch takes the
+              *count* of explanations because registering it is the mechanism; what a same-name
+              key means is untouched. Claim 2's `8/200`: a sharded 200-draw result `make check`
+              cannot re-run, so it stays `[M]` with the command beside it.
+stop_at       When `make figures` re-runs claim 7's figures on every `make check` and the five
+              lines say what the evals print.
+review        yes
+status        open
+```
+
+**§9 was the author's and he delegated it on 2026-09-05**, in the words *do the most professional
+thing*. What that turned out to mean is the whole of this atom: **the professional thing was not
+to write five lines.**
+
+**The review found one stale figure because it was reading `CLAUDE.md`. The mechanism finds
+thirteen.** `17,752` was also in the `Makefile`'s `claim-7` comment, in `evals/oversight/README.md`
+four times and in `corpus/real/MANIFEST.yaml` — which said **222 fields** against this file's own
+record, three restatements up, of the move to 242. **That site had been stale for an epoch and
+nobody reading prose had found it.**
+
+**And the eval was printing both numbers at once.** Its *what this does not prove* block said *the
+eleven explained collisions* three lines under a table printing `12`. `height` was added and the
+prose was not restated — the exact shape of `EXPLAINED`'s own comment, *the fix is a conversation,
+never an addition made in the same commit as the name*. That count is now read off `EXPLAINED`
+rather than typed, which is doctrine rule 3 rather than a new gate.
+
+**§8 is overturned on one limb and named as overturned**, because a review section saying
+*deliberately not* and a later branch doing it anyway, with no sentence between them, is how a
+decision becomes invisible. Its count limb — *one measurement of one stale figure* — does not
+survive counting. Its second limb, that a hand-kept `PROSE` is the same act as a hand-kept
+`NOT_CONTENT`, stands and is not claimed against: the list is still by hand, still a judgment
+about which text asserts the present tense, and still prints its own size. `PROSE` holds **17**.
+
+**Four findings came back from the hostile read and all four were taken.** The deferred import's
+comment asserted a protection that does not exist — `make figures` fails on a broken eval either
+way, planted and measured; what the deferral actually buys is that `tests/ops/test_figures.py`
+collects. **That comment was written against the intent rather than against what runs**, which is
+the family this atom is about, inside the atom. A second pattern was disambiguated from its
+neighbour only by whether the number was spelled in words or digits. `SPEC-T003.md` was left
+alone on the argument that a spec is a record of the question — **and the table's third column is
+headed `figure`**, which is not the question; three of its specimens are stale and one changed
+denominator. And the *declared and never to be built* finding was re-anchored twice: first to the
+paragraph stating the rule, which **can never change and is a tripwire with nothing on it**, then
+to `experiments/`, the entry whose construction is the moment the finding's premise changes.
+
+**One of the four was wrong twice, and the second time it was mine.** The status-line drift was
+reported as a miscount — the gate reading a closure and reporting the entry open, and
+`phase-2.md` §7's `64 open` wrong. **It is neither**: `is_open` derives from `*Closed:*` and never
+from `*Status:*`, and every count this register printed was right. I measured that and refuted it.
+
+**Then I built the fix on the half I had not measured.** `*Status:*` has two values, `open` and
+`concurred`; `_STATUS` matches nothing else and `test_concurred_cannot_be_spelled_as_closed` says
+so in its own name. **They are two axes — agreement and fix — not one field written twice.** The
+first fix made `closed` a legal status, required it beside every closure, rewrote three correct
+entries into it, and **would have deleted the ability to record that a closed finding had ever
+been `concurred`** — the one thing that field carries, in a register whose doctrine is that
+agreement is not closure. **The session that raised the finding caught it, against its own
+report, before merge.**
+
+**The real defect is four entries writing a value the field does not have**, plus three writing
+none, with `_STATUS` failing to match and the gate saying nothing. `parse()` refuses both now, the
+seven are corrected, and the pinned contract does not move: only the volume of its refusal does.
+
+**What the ops id scheme could not supply.** `T00N`–`T00Z` are the review's twelve and `T00O` is
+the letter nobody should take; the alphabet was exhausted inside the review that filled it, which
+that review says in one paragraph. This atom uses the file's own insertion precedent (`T002B`)
+rather than minting a scheme. **The scheme is one line in a schema the author owns and it is still
+his to extend.**
 
 ---
 

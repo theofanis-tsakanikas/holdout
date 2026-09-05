@@ -807,10 +807,37 @@ class Figure:
     says: str
 
 
+#: The tens, so that a compound written the way English writes it can be read. Added when
+#: `evals/oversight/README.md`'s *"every one of the fifty-six types"* came back as **an
+#: instrument that could not answer** rather than as a disagreement -- which is the right
+#: report and is exactly why that bucket is separate, but it is not a state to leave in place.
+#:
+#: **A rule for compounds rather than eighty more entries.** `twenty-one` through `ninety-nine`
+#: is the whole of what English hyphenates below a hundred, and enumerating them would be a
+#: hand-kept population of the kind this module exists to refuse. Above ninety-nine, prose in
+#: this repository uses digits, and a figure written `one hundred and six` is still reported as
+#: unreadable rather than guessed at.
+TENS: dict[str, int] = {
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "sixty": 60,
+    "seventy": 70,
+    "eighty": 80,
+    "ninety": 90,
+}
+
+
 def _as_int(written: str) -> int | None:
     cleaned = written.strip().lower().replace(",", "").replace("**", "")
     if cleaned.isdigit():
         return int(cleaned)
+    if "-" in cleaned:
+        tens, _, unit = cleaned.partition("-")
+        if tens in TENS and unit in WORDS and 1 <= WORDS[unit] <= 9:
+            return TENS[tens] + WORDS[unit]
+        return None
     return WORDS.get(cleaned)
 
 
@@ -823,6 +850,50 @@ def _as_int(written: str) -> int | None:
 #: than a rule -- which is why this list is written by hand and its size is printed on every run
 #: rather than implied. `docs/SCENARIO.md` does the same job with `[M]` tags and the command
 #: beside each figure; this is the half a command can re-run.
+#: Claim 7's populations and results, computed by the modules the eval itself computes them
+#: with, never re-derived here. `ops.personhood` owns the registry half and is an `ops` module
+#: already; `evals.oversight` owns the attack half and is imported **inside** the function.
+#:
+#: **What that deferral buys, measured rather than intended.** The first version of this comment
+#: said it kept `make figures` running while an eval was mid-edit. It does not, and the claim
+#: was written against the intent rather than against what runs: `prose_failures()` calls
+#: `compute()` on every entry that matches, so the import happens on every healthy invocation
+#: and a broken `evals/oversight/build.py` fails the gate either way. Planted and measured:
+#:
+#:     python -m ops.figures   ->  RuntimeError, raised through this function's import line
+#:
+#: What it does buy is one layer narrower and is worth keeping. `tests/ops/test_figures.py`
+#: does `from ops import figures` at module scope, so a module-scope import here would make a
+#: broken eval fail **collection** — 23 tests that have nothing to do with claim 7 disappearing
+#: rather than failing. With the import deferred, collection succeeds and only the assertions
+#: that need the eval go red. It is not a cycle either: `ops.figures` -> `evals.oversight.build`
+#: -> `ops.personhood` imports cleanly at module scope, tested rather than assumed.
+#:
+#: Measured 2026-09-05 on this laptop: the whole thing is 0.02s. Nothing here is deferred for
+#: cost.
+@cache
+def claim_7_figures() -> dict[str, int]:
+    from evals.oversight.build import attacks, lexicon
+    from evals.oversight.checks import EXPLAINED, refused_by_the_word_list
+
+    from ops.personhood import FIELDS_ON_THE_DECISION_PATH, core_types, field_names
+
+    names = lexicon()
+    planted = list(attacks(names))
+    return {
+        "names": len(names),
+        "types": len(FIELDS_ON_THE_DECISION_PATH),
+        "fields": sum(len(field_names(cls)) for cls in core_types()),
+        "attacks": len(planted),
+        "word_list": sum(1 for attack in planted if refused_by_the_word_list(attack)),
+        "explanations": len(EXPLAINED),
+    }
+
+
+def _claim_7(key: str) -> Callable[[], int]:
+    return lambda: claim_7_figures()[key]
+
+
 PROSE: tuple[Figure, ...] = (
     Figure(
         "ops/language.py",
@@ -835,6 +906,120 @@ PROSE: tuple[Figure, ...] = (
         r"outside\s+the\s+(?P<n>[a-z]+)\s+excepted\s+paths",
         lambda: len(language.EXCEPTED_PATHS),
         "how many excepted paths there are",
+    ),
+    # ---------------------------------------------------------------- claim 7's figures
+    #
+    # **Overturning `docs/reviews/phase-2.md` §8, on one of its two limbs and not the other.**
+    # §8 declined to widen this list and said why: *"one measurement of one stale figure is not
+    # grounds to widen `PROSE`, and widening it by hand is the same act as keeping
+    # `NOT_CONTENT` by hand"*. The first limb is overturned by counting. It was not one figure
+    # and it was not one site: **five figures across nine registered sites**, plus two records
+    # restated in `PLAN.md` and `TASKS.md`, plus `corpus/real/MANIFEST.yaml`, which was already
+    # stale by a whole epoch before this one -- it said 222 fields against `TASKS.md`'s own
+    # record of the move to 242, and nothing anywhere had noticed.
+    #
+    # The second limb is **not** overturned and is not claimed to be. This list is still kept
+    # by hand, still a judgment about which text asserts the present tense, and still prints
+    # its own size on every run. That defence is written above and it is the same defence.
+    #
+    # Why claim 7 and not every claim's numbers: its figures are enumerations of what exists,
+    # computed in 0.02s from modules that share nothing with the prose. Claim 2's `8/200` is a
+    # result of a sharded 200-draw eval and cannot be re-run inside `make check` -- it stays
+    # `[M]` with the command beside it, which is `docs/SCENARIO.md`'s half of the same rule.
+    Figure(
+        "CLAUDE.md",
+        r"closed\s+field\s+set\s+refuses\s+(?P<n>[\d,]+)\s+of\s+[\d,]+",
+        _claim_7("attacks"),
+        "how many attacks the closed field set refuses, in claim 7's row",
+    ),
+    Figure(
+        "CLAUDE.md",
+        r"closed\s+field\s+set\s+refuses\s+[\d,]+\s+of\s+(?P<n>[\d,]+)",
+        _claim_7("attacks"),
+        "how many attacks are planted, in claim 7's row",
+    ),
+    Figure(
+        "CLAUDE.md",
+        r"hand-written\s+list\s+catches\s+35\s+of\s+(?P<n>[\d,]+)",
+        _claim_7("names"),
+        "how many published person-names there are, in claim 7's row",
+    ),
+    Figure(
+        "Makefile",
+        r"plants\s+(?P<n>[\d,]+)\s+person-names",
+        _claim_7("attacks"),
+        "how many attacks `claim-7`'s comment says it plants",
+    ),
+    Figure(
+        "Makefile",
+        r"person-names\s+on\s+(?P<n>[\d,]+)\s+types",
+        _claim_7("types"),
+        "how many decision-path types `claim-7`'s comment says it plants them on",
+    ),
+    Figure(
+        "evals/oversight/README.md",
+        r"on\s+every\s+one\s+of\s+the\s+(?P<n>[a-z-]+)\s+types",
+        _claim_7("types"),
+        "how many types the eval's README says are attacked",
+    ),
+    Figure(
+        "evals/oversight/README.md",
+        r"\*\*(?P<n>[\d,]+)\s+attacks\*\*",
+        _claim_7("attacks"),
+        "how many attacks the eval's README says are planted",
+    ),
+    Figure(
+        "evals/oversight/README.md",
+        r"attacks\s+planted\s+(?P<n>[\d,]+)",
+        _claim_7("attacks"),
+        "how many attacks the eval's README's measurement block reports",
+    ),
+    Figure(
+        "evals/oversight/README.md",
+        r"refused\s+by\s+the\s+closed\s+field\s+set\s+(?P<n>[\d,]+)",
+        _claim_7("attacks"),
+        "how many of them the closed field set refuses, in that block",
+    ),
+    Figure(
+        "evals/oversight/README.md",
+        # Anchored on the clause **after** the number, not on the number's spelling. The
+        # sentence above -- *on every one of the fifty-six types* -- shares the whole prefix,
+        # and the two were told apart only by one being spelled in words and one in digits.
+        # A README edit writing `57` there would have matched this pattern and compared it
+        # against 18,069: red for a reason that is not a stale figure.
+        r"every\s+one\s+of\s+the\s+(?P<n>[\d,]+),\s+and\s+it\s+would",
+        _claim_7("attacks"),
+        "how many attacks the README's argument for the structure names",
+    ),
+    Figure(
+        "evals/oversight/README.md",
+        r"the\s+(?P<n>[a-z]+)\s+explained\s+collisions\s+are\s+the\s+only",
+        _claim_7("explanations"),
+        "how many explained collisions the README's disclaimer names",
+    ),
+    Figure(
+        "evals/oversight/README.md",
+        r"refused\s+by\s+the\s+hand-written\s+word\s+list\s+(?P<n>[\d,]+)",
+        _claim_7("word_list"),
+        "how many attacks the word list refuses, in the eval's README",
+    ),
+    Figure(
+        "evals/oversight/README.md",
+        r"The\s+(?P<n>[a-z]+)\s+explained\s+collisions,\s+published",
+        _claim_7("explanations"),
+        "how many explained collisions the eval's README publishes",
+    ),
+    Figure(
+        "corpus/real/MANIFEST.yaml",
+        r"any\s+of\s+the\s+(?P<n>[\d,]+)\s+fields",
+        _claim_7("fields"),
+        "how many fields `O4` scans, as the manifest states it",
+    ),
+    Figure(
+        "corpus/real/MANIFEST.yaml",
+        r"the\s+(?P<n>[\d,]+)\s+types\s+in\s+`holdout\.core`",
+        _claim_7("types"),
+        "how many types carry those fields, as the manifest states it",
     ),
 )
 

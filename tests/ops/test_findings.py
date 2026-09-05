@@ -163,6 +163,7 @@ Planted by `tests/ops/test_findings.py`.
 *Disposition:* branch `some/branch`
 *Closed:* 2026-08-31 — branch some/branch landed and the gate went red to green
 *Now:* `subject.md` :: `the line as it reads now`
+*Status:* open
 
 """
 
@@ -231,13 +232,41 @@ def test_concurred_is_counted_open(tmp_path: Path) -> None:
     assert "counts as OPEN" in out
 
 
+def test_an_entry_with_no_status_line_is_refused(tmp_path: Path) -> None:
+    """Saying nothing is not one of the two answers.
+
+    Three entries in the real register carried no `*Status:*` line at all and passed, for the
+    same reason the four that wrote `closed` passed: `_STATUS` did not match, and not matching
+    was silence. **A field is only maintained while something reads it**, and this one is read
+    by people rather than by `is_open`.
+    """
+    entry = ANCHORED.replace("*Status:* open\n", "")
+    with pytest.raises(RegistryError, match="no \\*Status:\\* line"):
+        _run(_registry(tmp_path, entry))
+
+
 def test_concurred_cannot_be_spelled_as_closed(tmp_path: Path) -> None:
     """`*Status:* closed` is not a status this registry has. Closure needs a `*Closed:*` line
-    with a date and a transition, so agreement cannot be written as closure by accident."""
+    with a date and a transition, so agreement cannot be written as closure by accident.
+
+    **Restated 2026-09-05. The sentence above is unchanged and is now enforced rather than
+    merely true.** This test asserted that such an entry is *accepted and counted open*: the
+    value matched nothing, `status` came back `None`, and the line was invisible. Four entries in
+    the real register had written it and the gate had never said so — **a value the parser could
+    not read, read as nothing**, which is the shape this repository keeps finding.
+
+    So the refusal is loud now. **The contract does not move**: `closed` is still not a status
+    this registry has, `*Status:*` still carries only the agreement axis, and a closed finding
+    can still be `concurred`. Only the volume changes, and this assertion with it.
+
+    **A first attempt went the other way** — making `closed` a legal status and requiring it
+    beside every closure — and it was wrong at the root. It would have rewritten correctly
+    written entries into the vocabulary this test exists to refuse, and cost the field the one
+    thing it carries: that a closed finding was ever agreed rather than demonstrated.
+    """
     entry = ANCHORED.replace("*Status:* open", "*Status:* closed")
-    code, out = _run(_registry(tmp_path, entry))
-    assert code == 0, out
-    assert "1 open, 0 closed" in out
+    with pytest.raises(RegistryError, match="this field has two values"):
+        _run(_registry(tmp_path, entry))
 
 
 # ------------------------------------------------------------ and the real registry stands

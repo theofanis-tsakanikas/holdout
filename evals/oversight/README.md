@@ -22,8 +22,8 @@ asked who wrote it.
 ## 1 · What is attacked
 
 Three hundred and seventeen names that two published vocabularies use for a person are
-planted, one at a time, on every one of the fifty-six types a decision passes through —
-**17,752 attacks** — and the question is who refuses.
+planted, one at a time, on every one of the fifty-seven types a decision passes through —
+**18,069 attacks** — and the question is who refuses.
 
 | id | the question it would answer `false` |
 |---|---|
@@ -107,9 +107,9 @@ them is planted*. Nothing under `ops/` is ever a mutation target — the planter
 ## 4 · The measurement, which is the whole point
 
 ```
-attacks planted                          17,752
-  refused by the closed field set        17,752
-  refused by the hand-written word list  1,960 (35/317 = 11.0% of the names)
+attacks planted                          18,069
+  refused by the closed field set        18,069
+  refused by the hand-written word list  1,995 (35/317 = 11.0% of the names)
 ```
 
 **The word list this repository was carrying catches eleven per cent of the names two
@@ -129,23 +129,29 @@ and its own prose was written the same way.
 
 That is not an argument for a longer list. A list twice as long would be the same function
 agreeing with itself twice as loudly, and the next name would be the one nobody wrote down.
-It is the argument for the *structure*: `O2` refuses every one of the 17,752, and it would
+It is the argument for the *structure*: `O2` refuses every one of the 18,069, and it would
 refuse a field called `q7` on the same evidence, because it never reads the name at all.
 
 `O7` is that sentence made into a gate: **no attack may ever be caught by the word list
 alone.** If one were, claim 7 would be resting on words somebody here chose.
 
-### The eleven explained collisions, published rather than filtered
+### The twelve explained collisions, published rather than filtered
 
 Ordinary engineering English and the vocabulary of personhood overlap, and hiding the overlap
 would mean curating the input. So it is printed in full, with a reason each — nine of them in
-`src/holdout/`, two more in the compiled consumers under `generated/`: `AGENT`, `agent`,
+`src/holdout/`, three more in the compiled consumers under `generated/`: `AGENT`, `agent`,
 `agent_tool` and `compile_agent_tool` are the design engine's LLM and the tool definition it
 is given, not schema.org's person; `candidate` is a candidate *price* and `candidate_weeks` a
 duration; `members` are the units in a stratum; `parents` is `pathlib`'s keyword in
-`mkdir(parents=True)`; `url` is where a guardrail value's citation points; `weight_c` and
-`weight_t` are the estimator's arm weights. A twelfth appearing turns `O5` or `O10` red, and
-the fix is a conversation — never an addition made in the same commit as the name.
+`mkdir(parents=True)`; `url` is where a guardrail value's citation points; `height` is a
+widget's grid height in the Lakeview dashboard format; `weight_c` and `weight_t` are the
+estimator's arm weights. A thirteenth appearing turns `O5` or `O10` red, and the fix is a
+conversation — never an addition made in the same commit as the name.
+
+**The twelfth was `height`, and this paragraph read *eleven* while the table three lines above
+it printed `12`.** Both numbers were on the same screen, on every run, and it was a human
+reading prose that caught it. That is why the count is now read off `EXPLAINED` — in the
+eval's own disclaimer, and here by `ops/figures.PROSE`.
 
 **Each entry is keyed by the *pair* — the name here and the name there — and that was a
 finding too.** It was keyed on the bare identifier until oversight level 2 asked what that
@@ -211,7 +217,7 @@ itself.
 * **That a person could not be re-identified by joining store, SKU and time outside this
   system.** Claim 7 is that no decision *targets* a person. It is not a statement about what
   somebody else could infer from an aggregate, and it would be dishonest to let it read as one.
-* **That the eleven explained collisions are the only ones that will ever be innocent.** Each
+* **That the twelve explained collisions are the only ones that will ever be innocent.** Each
   new overlap is a conversation.
 * **That the mutation set is complete.** Seven breaks are the breaks we thought of — and one
   of the seven exists only because a reviewer thought of a spelling we had not. A gate can be

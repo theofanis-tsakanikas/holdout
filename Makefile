@@ -649,7 +649,7 @@ eval-guardrail:  ## just claim 1's eval, without the mutations — the fast half
 	$(RUN) python -m evals.guardrail
 
 # Claim 7 is a structural claim and therefore the cheapest target here: it imports the
-# package, parses it, and plants 17,752 person-names on 56 types without touching a corpus of
+# package, parses it, and plants 18,069 person-names on 57 types without touching a corpus of
 # prices or generating a world. Measured on a fourteen-core laptop: the eval alone 4.0s, the
 # whole target 37s — one baseline run plus seven mutated ones. **This sets no new number.** It
 # runs in the `claims` matrix under a budget that was measured for claim 2, and a target two
