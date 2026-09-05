@@ -95,10 +95,17 @@ that is meant to die.
 
 ```
 cd infra/bootstrap
-terraform init                       # no backend; state is local
+export GITHUB_TOKEN=$(gh auth token)   # publishes the deploy role's ARN; never stored
+terraform init                         # no backend; state is local
 terraform plan  -var budget_alert_email=<address> -out bootstrap.tfplan
 terraform apply bootstrap.tfplan
 ```
+
+**`GITHUB_TOKEN` is required and its absence fails at plan time**, which is the correct failure.
+The layer creates the role a workflow assumes and **publishes its ARN into the repository's
+secrets from inside the apply** — the ARN carries the account id, so it cannot be a literal in a
+public workflow file, and setting it in a browser is a console action. An apply that skipped it
+would report success for a bootstrap after which GitHub still cannot authenticate.
 
 **`budget_alert_email` has no default and the plan stops without it** — which is the guard from
 `tests/infra/test_variable_declarations.py` doing what a description says it does, rather than

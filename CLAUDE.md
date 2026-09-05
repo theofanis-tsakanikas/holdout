@@ -777,7 +777,8 @@ tests/                 the suite the gates run
 docs/
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
-.github/               the five workflows — ci on every push, and the four that dispatch
+.github/               **`ci.yml`, and it is the only one.** The four that dispatch are phase 3
+                       and are listed below as declared rather than built
 infra/                 Terraform. **Two layers exist**: `bootstrap/` — state backend, OIDC,
                        the deploy role, the published parameters and the budget, applied from a
                        laptop once — and `lakehouse/` — the catalog, the schemas and the two
@@ -921,15 +922,29 @@ construction.
 SSM parameters and the deploy role. Nothing else — verified by asking the account, never by
 reading a workflow's exit code.
 
-### Five workflows
+### Five workflows — one of which exists
 
-| | runs | does |
-|---|---|---|
-| `ci` | every push | the suite, every eval, `gate-proof`, `make contracts`, `make expiry`, `make preview-audit`, `terraform validate` |
-| `deploy` | dispatch | the whole suite **first**, then apply five layers |
-| `backfill` | dispatch | load history, build silver and gold, train, gate, register, apply `serving` |
-| `run` | dispatch | drive the day, run both experiments, answer a live question, assert against the account |
-| `destroy` | dispatch | takes a target: `serving` (the expensive layer, ~2 min) or `all` (reverse order), then asks the account |
+> **Restated 2026-09-05, and the table below was a description of a repository that is not this
+> one.** `.github/workflows/` holds **`ci.yml` and nothing else**. The four dispatch workflows are
+> designed and unwritten, and this heading and the layout block above both described all five in
+> the present tense — in the file every session reads first, for the whole of phase 2.
+>
+> **Nothing could have caught it.** `make figures` enumerates directories and packages; it has no
+> row for workflows, so `.github/` was covered as a directory and its contents were covered by
+> nothing. The `status` column that `.claude/skills/` gained for exactly this reason was never
+> extended here.
+>
+> **The prior wording stays per doctrine rule 4** and the `built` column is the delta. Each of the
+> four is written by the task that first needs it: `deploy` cannot apply layers that do not exist,
+> and `foundation` is `T018`.
+
+| | runs | built | does |
+|---|---|---|---|
+| `ci` | every push | **yes** | the suite, every eval, `gate-proof`, `make contracts`, `make expiry`, `make preview-audit`, `terraform validate` |
+| `deploy` | dispatch | **no** | the whole suite **first**, then apply five layers |
+| `backfill` | dispatch | **no** | load history, build silver and gold, train, gate, register, apply `serving` |
+| `run` | dispatch | **no** | drive the day, run both experiments, answer a live question, assert against the account |
+| `destroy` | dispatch | **no** | takes a target: `serving` (the expensive layer, ~2 min) or `all` (reverse order), then asks the account |
 
 **The suite runs upstream of every apply.** Nothing reaches AWS until all of it is green.
 

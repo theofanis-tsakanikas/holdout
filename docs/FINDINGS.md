@@ -4758,3 +4758,62 @@ cannot see is worse than one it disagrees with**, and it is the same shape as th
 exited 1, the `claim-[1-7]` that could not see a `claim-8`, and the `fifty-six` this branch had to
 teach `_as_int` to read.
 
+---
+**`CLAUDE.md` described five workflows for the whole of phase 2 and one existed** ·
+found 2026-09-05 · by the author asking to run a deploy
+
+`.github/workflows/` holds **`ci.yml` and nothing else.** `CLAUDE.md` named *the five workflows*
+in the layout block's **what exists today** half, and carried a table of all five in the present
+tense under its own heading. **Both were read by every session for the length of a phase.**
+
+**Nothing could have caught it, and the reason is the sharp part.** `make figures` enumerates
+top-level directories and packages under `src/holdout/`, so `.github/` was covered **as a
+directory** and its contents by nothing at all. The skills table gained a `status` column on
+2026-08-31 for precisely this defect — *it listed four skills as living here and one did* — and
+that column's own entry in this register says **nothing enumerates this table against
+`.claude/skills/`**. It was then given a coverage row. **Nobody extended the idea one directory
+sideways**, and `.github/` sat in the same file, four lines away.
+
+**And it was found by somebody trying to use it**, which is the only instrument that was ever
+pointed at it: the author asked to run the deploy.
+
+*Site:* `ops/figures.py` :: `        "every *.yml under .github/workflows/",`
+*Disposition:* branch `infra/bootstrap-publishes-its-own-trust`
+*Closed:* 2026-09-05 — a `workflows` coverage row, mirroring the `skills` pair exactly: the
+population is `*.yml` under `.github/workflows/`, the examined side is the rows whose `built`
+column says `yes`, and a second check reports a row claiming a workflow that is not there, because
+over-claiming is not under-coverage and the one-sided rule cannot see it. Planted: marking
+`deploy` as built prints `1 exists / 2 examined` and names `deploy`. Both `CLAUDE.md` sites are
+restated with the prior wording kept
+*Now:* `ops/figures.py` :: `        "every *.yml under .github/workflows/",`
+*Status:* open
+
+---
+**A trust anchor that is created and not published leaves a hand-copy nobody wrote down** ·
+found 2026-09-05 · by reading `fintelliguard`'s bootstrap workflow
+
+`infra/bootstrap` created `aws_iam_role.deploy` and published its ARN to **SSM**. A workflow
+cannot read SSM without first assuming that role, and cannot assume it without naming its ARN —
+which carries the account id and therefore cannot be a literal in a public repository. **So the
+ARN had to reach a GitHub repository secret, and nothing put it there.**
+
+**The gap is one hand-copy, and a hand-copy into a browser is a console action** — which
+`CLAUDE.md` forbids for AWS in the same words it would forbid here: *IaC only. No console
+actions, ever.*
+
+**Found in another project's record rather than by reading this one.**
+`fintelliguard/.github/workflows/bootstrap.yml` carries the history: an earlier version of it
+assumed `secrets.AWS_DEPLOY_ROLE_ARN` in order to run the layer whose whole purpose is to create
+that role, and its correction states the rule — ***the trust anchor cannot be derived from the
+trust it anchors.*** Its bootstrap writes the secret from inside the local apply.
+
+*Site:* `infra/bootstrap/github.tf` :: `resource "github_actions_secret" "deploy_role_arn" {`
+*Disposition:* branch `infra/bootstrap-publishes-its-own-trust`
+*Closed:* 2026-09-05 — the layer that creates the role publishes it, so the apply leaves GitHub
+able to authenticate and there is no window in which the role exists and the repository does not
+know it. The token is read from the environment and never enters the repository, the state or the
+configuration; an apply without one fails at plan time, which is correct — a bootstrap that
+skipped this silently would report success for a bootstrap that is not one
+*Now:* `infra/bootstrap/github.tf` :: `resource "github_actions_secret" "deploy_role_arn" {`
+*Status:* open
+
