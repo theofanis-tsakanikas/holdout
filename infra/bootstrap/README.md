@@ -61,17 +61,21 @@ library of trusted CAs, so a thumbprint is not consulted — and the Terraform p
 that a thumbprint list, once declared, **keeps being used even after it is removed**. Declaring
 none is reversible; declaring one is not. Both sources are quoted with their dates in `oidc.tf`.
 
-**2 · The trust condition pins `ref:refs/heads/main`, not the repository.** `repo:owner/name:*`
-also matches `repo:owner/name:pull_request`, and **this repository is public**: anybody may open
-a pull request, and a workflow running on one receives an OIDC token with exactly that subject.
-`ci.yml` never assumes this role; the four dispatch workflows run from `main`.
+**2 · The trust condition names two environments, in two forms, and nothing else.** A wildcard
+`repo:owner/name:*` trusts every branch and **every pull request, including one a stranger
+opens** — this repository is public. An *environment* rather than a branch is what makes a
+dispatch wait for a named reviewer, which is the human gate before anything spends. And the
+**id** form — `repo:owner@<owner id>/repo@<repo id>:environment:deploy` — is the one that cannot
+be taken over, because a released account name can be re-registered and an id cannot.
 
-**And the coupling that comes with it, which is written in `oidc.tf` because the person who hits
-it will be reading a stack trace rather than Terraform.** A job that declares an `environment:`
-gets the subject `repo:OWNER/NAME:environment:NAME` — GitHub **replaces** the `ref:` form rather
-than adding to it. **A protected environment with required reviewers is the ordinary way to make
-a workflow wait for a human before it spends money**, and adding one without changing this
-condition stops `deploy` assuming the role at all.
+**The environments are created here too**, with a required reviewer and `protected_branches`.
+Every sibling project creates them by hand; this is the one place this layer deliberately does
+not follow them, because *IaC only, no console actions* applies hardest to the protection that
+most needs proving. Without them the trust condition matches nothing; with them misconfigured,
+federation works and the gate is not there.
+
+**This layer trusted `ref:refs/heads/main` until 2026-09-05**, while `manifest`, `watermark` and
+`attestor` were already on the environment-and-id form.
 
 **3 · The deploy role can hold state and apply nothing.** The layers it will apply do not exist,
 and a permission set written for undeclared resources is either `AdministratorAccess` — which
@@ -97,7 +101,7 @@ things in the way were accidents: `force_destroy` unset, so a non-empty bucket r
 deletion being a scheduled window rather than an act. Removing one on purpose means editing that
 block first, in a commit somebody reviews.
 
-Everything here is also tagged `Lifetime = permanent`, which is not decoration: `infra/foundation`'s TTL reaper destroys what is
+Everything here is also tagged `holdout:lifetime = permanent`, which is not decoration: `infra/foundation`'s TTL reaper destroys what is
 tagged and older than N hours, and it has to be able to tell the survivors apart from an estate
 that is meant to die.
 

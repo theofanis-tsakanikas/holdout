@@ -95,30 +95,49 @@ locals {
   )
 }
 
-# **The trust condition pins a branch, not the repository.** `repo:owner/name:*` would also match
-# `repo:owner/name:pull_request`, and this repository is **public** — anybody may open a pull
-# request against it, and a workflow running on a same-repository pull request receives an OIDC
-# token whose subject is exactly that. Pinning `ref:refs/heads/main` means a token minted for a
-# pull request does not match, whoever opened it.
+# **Every trusted subject names this repository and exactly one environment**, spelled out as a
+# list rather than reached with a wildcard: `repo:owner/repo:*` trusts every branch and every
+# pull request, **including one a stranger opens** — this repository is public — and it reads as
+# a small convenience right up until it is the whole of the breach.
 #
-# `ci.yml` runs on pull requests and never assumes this role; the four dispatch workflows
-# (`deploy`, `backfill`, `run`, `destroy`) run from `main` and are the only callers.
+# **An environment rather than a branch, and that is the human gate.** GitHub environment
+# protection is what makes a workflow wait for a named reviewer before it spends anything, and
+# it is the property the author reserved to himself in words. `ref:refs/heads/main` is not that:
+# it trusts every push that reaches `main`, with no moment at which a person decides.
 #
-# **A coupling nobody would find while debugging, so it is written here rather than discovered.**
-# When a job declares an `environment:`, GitHub's subject claim becomes
-# `repo:OWNER/NAME:environment:NAME` — it **replaces** the `ref:` form rather than adding to it.
+# **Two forms of the same claim, because the account decides which it sends and not this file.**
 # GitHub's OIDC reference, read 2026-09-05
-# (https://docs.github.com/en/actions/reference/security/oidc): the three forms are
-# `repo:octo-org/octo-repo:ref:refs/heads/demo-branch`,
-# `repo:octo-org/octo-repo:environment:Production` and `repo:octo-org/octo-repo:pull_request`,
-# and the branch appears *"only if the job doesn't reference an environment"*.
+# (https://docs.github.com/en/actions/reference/security/oidc): the subject is
+# `repo:OWNER/NAME:environment:NAME` when a job declares an environment, and the branch form
+# appears *"only if the job doesn't reference an environment"*. Accepting the name form and the
+# id form widens nothing — both name one repository and one environment — and **the id form is
+# the one that cannot be taken over, because a released account name can be re-registered by
+# somebody else and an id cannot.**
 #
-# **So a protected environment with required reviewers — the standard way to make a workflow
-# wait for a human before it spends money, and the property the author has reserved to himself —
-# would stop `deploy` assuming this role at all.** The condition below must change in the same
-# commit that adds the environment, and the failure if it does not is an
-# `AssumeRoleWithWebIdentity` refusal at dispatch time, in the layer that costs money, with
-# nothing in the workflow file pointing here.
+# `deploy` and `destroy` are written here rather than taken from a variable: they must equal the
+# `environment:` lines in `deploy.yml` and `destroy.yml` exactly, so a knob is one that silently
+# breaks federation when turned — and the failure is an `AssumeRoleWithWebIdentity` denial that
+# names nothing.
+#
+# **`ci.yml` runs on pull requests and never assumes this role**, and none of the four dispatch
+# workflows exists yet — each is written by the task that first needs one, and each will declare
+# its environment here by name.
+#
+# **This layer trusted `ref:refs/heads/main` until 2026-09-05.** Every sibling project in this
+# portfolio — `manifest`, `watermark`, `attestor` — was already on the environment-and-id form,
+# and `watermark`'s own comment carries the argument this paragraph is built from. **The pattern
+# was copied from them and this half of it was not**, which is the second time in one day that
+# sentence has been true of this layer.
+locals {
+  trusted_subjects = [
+    "repo:${var.repository}:environment:deploy",
+    "repo:${var.repository}:environment:destroy",
+    "repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repository_id}:environment:deploy",
+    "repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repository_id}:environment:destroy",
+  ]
+  owner = split("/", var.repository)[0]
+  repo  = split("/", var.repository)[1]
+}
 data "aws_iam_policy_document" "deploy_trust" {
   statement {
     effect  = "Allow"
@@ -138,7 +157,7 @@ data "aws_iam_policy_document" "deploy_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.repository}:ref:refs/heads/main"]
+      values   = local.trusted_subjects
     }
   }
 }
