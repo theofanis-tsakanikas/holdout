@@ -778,10 +778,12 @@ docs/
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
 .github/               the five workflows — ci on every push, and the four that dispatch
-infra/                 Terraform. **`lakehouse/` is the only layer that exists** — the catalog,
-                       the schemas and the two compiled AI/BI dashboards. The other five
-                       (`bootstrap · foundation · pipelines · ml · serving`) are phase 3, and
-                       `make terraform` validates every layer the glob finds rather than a list
+infra/                 Terraform. **Two layers exist**: `bootstrap/` — state backend, OIDC,
+                       the deploy role, the published parameters and the budget, applied from a
+                       laptop once — and `lakehouse/` — the catalog, the schemas and the two
+                       compiled AI/BI dashboards. The other four (`foundation · pipelines · ml ·
+                       serving`) are phase 3, and `make terraform` validates every layer the
+                       glob finds rather than a list
 ```
 
 `notes/` is **not** in this map and is not repository content: it is gitignored scratch that
