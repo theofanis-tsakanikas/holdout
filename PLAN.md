@@ -2015,6 +2015,18 @@ The only phase that costs money. It is entered with every locally provable claim
   budget posture — **1,000 USD with alerts at 50/80/100% and no stop action**, a stop action only
   at 150%. A budget that halts a run mid-way costs more than it saves. Enforcement is the TTL
   reaper in `foundation`, not the budget.
+
+  > **Written 2026-09-05, not applied.** The configuration exists and `make terraform` validates
+  > it; `T017` stays open because its `stop_at` names an apply and no session applies anything.
+  > **Three decisions in it are worth finding again from here.** The OIDC provider declares **no
+  > thumbprint** — AWS validates GitHub against its own trusted-CA library, and a thumbprint once
+  > declared keeps being used after it is removed, so declaring one is the irreversible choice.
+  > The trust condition pins **`ref:refs/heads/main`** rather than the repository, because
+  > `repo:owner/name:*` also matches `pull_request` and **this repository is public**. And the
+  > deploy role can hold state and **apply nothing**: the layers it will apply do not exist, and
+  > a permission set written for undeclared resources is either `AdministratorAccess` or a guess
+  > wrong in both directions — each layer's task adds what that layer needs, reviewed with that
+  > layer's resources on the page.
 - `infra/foundation/`, `lakehouse/`, `pipelines/`, `ml/` applied by `deploy`;
   `infra/serving/` applied by `backfill`, once a model version exists. CI only. Layer boundaries follow lifetime, blast radius, dependency direction and apply cost.
 - **Before this phase begins**, not inside it: verify the network path from the Databricks

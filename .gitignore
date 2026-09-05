@@ -58,3 +58,17 @@ pipelines/gold/dbt/.user.yml
 # `.terraform.lock.hcl` is the pin every platform verifies against, and `.terraform/` is 67 MB
 # of binary that `terraform init` fetches from it.
 infra/**/.terraform/
+
+# Terraform state. **`infra/bootstrap/` keeps its state locally** — it creates the bucket every
+# other layer's backend uses, so it cannot store its own state there — and a `terraform.tfstate`
+# in a public repository publishes every account id, key arn, role arn and bucket name that
+# `infra/bootstrap/*.tf` is written to keep out of the tree. The plan file is here for the same
+# reason: `terraform plan -out` writes the same values, in a binary somebody would not think to
+# read before committing.
+terraform.tfstate
+terraform.tfstate.*
+*.tfplan
+# Variable files are never committed either. `budget_alert_email` is personal data and this is
+# where an applier would put it.
+*.tfvars
+*.tfvars.json

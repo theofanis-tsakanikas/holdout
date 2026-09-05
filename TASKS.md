@@ -2958,6 +2958,30 @@ review        yes
 status        open
 ```
 
+**The configuration landed on 2026-09-05 and the task stays open, which is the honest state
+rather than a bookkeeping one.** `infra/bootstrap/` is written, `terraform validate` passes, and
+`make terraform` reports `2 of 2 director(y/ies) under infra/ are layers`. **Its `stop_at` names
+an apply, and no session applies anything** — phase 3 spends money and is the author's to begin.
+So what closes this task is him running `terraform apply` and the budget existing in an account,
+and until then the branch has delivered the half that can be delivered without spending.
+
+**Not a restatement of the `stop_at`.** `T015`'s was restated because it asked for a measurement
+between two endpoints that phase 3 is what creates — unachievable by anybody. This one is
+achievable; it is simply not achievable *by a session*, and a stopping condition that names the
+author is a stopping condition working as written.
+
+**The two decisions the author took on 2026-09-05**, recorded here because neither is derivable
+from the tree: the region is **`eu-west-1`**, which settles `docs/DAY-ONE.md` §2 — it is in
+Zerobus's availability list, the binding constraint, and his identity provider is already
+Ireland single-region. And **row 11 of the phase-2 review lands before this**, so the layer that
+costs money gained its variable-declaration guard before a second layer was written into it.
+
+**What `terraform validate` proves about this layer is almost nothing, and the README says so
+first rather than last.** Row 11 is the evidence: `infra/lakehouse` carried a variable whose
+description asserted it had no default two lines above `default = ""`, and validate passed both
+ways. The configuration parses, its references resolve and its provider is pinned. Whether a
+bucket policy denies what it means to deny is not knowable until somebody applies it.
+
 ```
 id            T018
 title         infra/foundation — VPC, keys, S3 zones, workspace, metastore, TTL reaper
