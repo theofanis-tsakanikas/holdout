@@ -873,7 +873,7 @@ blast radius · consumes only from below · expensive or slow to apply.**
 
 | layer | applied | holds |
 |---|---|---|
-| `bootstrap` | **locally, once** | state bucket + KMS, OIDC provider, deploy role, **the budget and its alerts**, published parameters |
+| `bootstrap` | **locally, once** | state bucket + KMS, the deploy role, **the budget and its alerts**, published parameters — and it **reads** the account's GitHub OIDC provider rather than owning it, because that object is unique per issuer per account and another project created it first |
 | `foundation` | `deploy` | VPC, keys, S3 zones, the workspace, metastore attachment, **TTL reaper** |
 | `lakehouse` | `deploy` | catalogs, schemas, grants, external locations, Lakebase, the two AI/BI dashboards |
 | `pipelines` | `deploy` | SDP pipelines, dbt jobs, Lakeflow Jobs, Zerobus endpoints, bulk-load jobs |

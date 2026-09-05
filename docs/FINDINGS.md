@@ -4817,3 +4817,51 @@ skipped this silently would report success for a bootstrap that is not one
 *Now:* `infra/bootstrap/github.tf` :: `resource "github_actions_secret" "deploy_role_arn" {`
 *Status:* open
 
+---
+**A per-project layer claimed to own an account-scoped object, and the apply is what said so** ·
+found 2026-09-05 · by `terraform apply` failing
+
+`infra/bootstrap` declared `aws_iam_openid_connect_provider.github` as a `resource`. An IAM OIDC
+provider is unique **per issuer URL per account**, and this account has had one since 2026-07-04,
+created by another project in the portfolio.
+
+```
+Error: creating IAM OIDC Provider: EntityAlreadyExists:
+Provider with url https://token.actions.githubusercontent.com already exists.
+```
+
+**The defect is not the collision; it is the ownership claim.** A layer that creates an
+account-scoped object works for whichever project applies first and fails for every one after —
+**and the failure is loud only because AWS refuses.** Had two projects each declared it with
+different `client_id_list` values, the second apply would have *succeeded* at overwriting a
+dependency the first one relies on, with nothing anywhere saying so.
+
+**And the thing being shared is the trust anchor.** `fintelliguard`'s bootstrap comment says *the
+trust anchor cannot be derived from the trust it anchors*; this is a second sentence beside it —
+**the trust anchor is not per project, and a project that thinks it owns one is wrong about the
+account it lives in.**
+
+**And it lands on `CLAUDE.md`'s own checklist, in the entry written for exactly this.** *If the
+pattern comes from another project in this portfolio: what problem did it solve there, and do we
+actually have that problem?* The OIDC-provider-plus-deploy-role pattern was copied from projects
+that apply into this same account — **the pattern was copied and the account was not.** The
+bootstrap is right that a project needs a trust anchor and wrong that it owns one, and the
+checklist question, asked about the *account* rather than about the *problem*, is what would have
+caught it before an apply did.
+
+**Nothing local could have found it.** `terraform validate` reads configuration and does not talk
+to AWS, `make terraform` runs exactly that, and this layer's own README says so first: *validate
+agrees with almost anything.* **It was found by the first apply**, which is the earliest moment it
+could exist — the shape `docs/DAY-ONE.md` already settled for a check that cannot precede the
+thing it checks.
+
+*Site:* `infra/bootstrap/oidc.tf` :: `data "aws_iam_openid_connect_provider" "github" {`
+*Disposition:* branch `infra/the-trust-anchor-is-shared`
+*Closed:* 2026-09-05 — the provider is read by default and created only behind
+`create_github_oidc_provider`, so the layer stays complete for an account that has none. What is
+read carries a `postcondition` asserting `sts.amazonaws.com` is in its `client_id_list`: another
+project owns that list, and without the assertion a change to it would surface as every workflow
+failing at `AssumeRoleWithWebIdentity` with this layer green
+*Now:* `infra/bootstrap/oidc.tf` :: `data "aws_iam_openid_connect_provider" "github" {`
+*Status:* open
+

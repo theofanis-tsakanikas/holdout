@@ -46,6 +46,16 @@ describes.
 
 ## The four decisions worth arguing about
 
+**0 · The OIDC provider is read, not created — and an apply is what said so.** An IAM OIDC
+provider is unique per issuer URL **per account**, and this account has had one since 2026-07-04,
+created by another project. The first apply of this layer failed with `EntityAlreadyExists`.
+**A per-project layer declaring it as a `resource` claims to own an account-scoped object, and
+the second project to apply is the one that finds out.** The resource is kept behind
+`create_github_oidc_provider`, defaulting to reading, so the layer is still complete for an
+account that has none — and what is read carries a postcondition asserting the audience, because
+another project owns that list and a workflow would otherwise fail at `AssumeRoleWithWebIdentity`
+with nothing here having noticed.
+
 **1 · No thumbprint on the OIDC provider.** AWS validates GitHub's JWKS endpoint against its own
 library of trusted CAs, so a thumbprint is not consulted — and the Terraform provider documents
 that a thumbprint list, once declared, **keeps being used even after it is removed**. Declaring
