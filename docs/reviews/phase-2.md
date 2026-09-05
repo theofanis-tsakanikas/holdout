@@ -931,6 +931,30 @@ What was actually checked and held, so this report's coverage is known and not o
 **Row 1 is first because it is the only one that touches whether a claim is true**, and rows 2 and 3
 follow because they touch what a claim publishes. The rest are documents and instruments.
 
+### And the twelve exhaust the ops id scheme, which is a consequence of this review rather than a finding about the tree
+
+`TASKS.md`'s schema declares ops ids as *"`T000`, `T00A`, `T00B`, `T00C`"*. Measured against the
+file after these twelve land:
+
+```
+26 ops ids in use   T000 · T00A–T00N · T00P–T00Z
+letters used        25 of 26 — the only free one is O
+```
+
+**And the free one is the one nobody should take.** `T00O` beside `T000` is a letter that reads as
+the digit next to it, which is why it was skipped here rather than used.
+
+**The file already contains that hazard once**, and nobody has recorded it: `T00I` and `T001` both
+exist today. So the skip was a judgment applied on one letter and not the other, by different
+sessions, with nothing written down either time — which is what makes this worth one paragraph
+rather than none.
+
+**Not a defect and not routed anywhere.** The two joins and the corpus work `§15` produced are
+**product** atoms in phase 2, where the file's precedent for an insertion is `T002B` and the ops
+alphabet does not apply. What has no answer is the *next ops atom*, and the scheme is one line in
+a schema the author owns. It is named here because it became true in this review's own diff, and a
+scheme that runs out inside the change that fills it is the kind of thing nobody goes looking for.
+
 ---
 
 ## What this report does not cover
