@@ -2845,6 +2845,9 @@ closes        `docs/reviews/phase-2.md` §9 entire — all five `CLAUDE.md` line
               limb. Claim 7's five figures registered in `ops/figures.PROSE`, and every
               present-tense site restated: `CLAUDE.md`, the `Makefile`, `evals/oversight/README.md`
               and `corpus/real/MANIFEST.yaml`.
+              Added after the hostile read: `SPEC-T003.md`'s three specimen figures restated,
+              and `*Status:*` made to agree with `*Closed:*` in `ops/findings.py` with the six
+              drifted entries corrected.
 out_of_scope  The `EXPLAINED` pair-key question, which is row 12's. This branch takes the
               *count* of explanations because registering it is the mechanism; what a same-name
               key means is untouched. Claim 2's `8/200`: a sharded 200-draw result `make check`
@@ -2877,6 +2880,25 @@ decision becomes invisible. Its count limb — *one measurement of one stale fig
 survive counting. Its second limb, that a hand-kept `PROSE` is the same act as a hand-kept
 `NOT_CONTENT`, stands and is not claimed against: the list is still by hand, still a judgment
 about which text asserts the present tense, and still prints its own size. `PROSE` holds **17**.
+
+**Four findings came back from the hostile read and all four were taken.** The deferred import's
+comment asserted a protection that does not exist — `make figures` fails on a broken eval either
+way, planted and measured; what the deferral actually buys is that `tests/ops/test_figures.py`
+collects. **That comment was written against the intent rather than against what runs**, which is
+the family this atom is about, inside the atom. A second pattern was disambiguated from its
+neighbour only by whether the number was spelled in words or digits. `SPEC-T003.md` was left
+alone on the argument that a spec is a record of the question — **and the table's third column is
+headed `figure`**, which is not the question; three of its specimens are stale and one changed
+denominator. And the *declared and never to be built* finding was re-anchored twice: first to the
+paragraph stating the rule, which **can never change and is a tripwire with nothing on it**, then
+to `experiments/`, the entry whose construction is the moment the finding's premise changes.
+
+**One of the four was half right, and measuring it made it better.** The status-line drift was
+reported as a miscount — the gate reading a closure and reporting the entry open, and
+`phase-2.md` §7's `64 open` wrong. It is neither: `is_open` derives from `*Closed:*` and never
+from `*Status:*`, and every count this register printed was right. **The real defect is that
+`*Status:*` is the field a person reads and nothing compared it to the field the gate reads**, so
+it drifted invisibly in six entries. That is worse than a miscount and it is now refused.
 
 **What the ops id scheme could not supply.** `T00N`–`T00Z` are the review's twelve and `T00O` is
 the letter nobody should take; the alphabet was exhausted inside the review that filled it, which

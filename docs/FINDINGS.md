@@ -1116,6 +1116,7 @@ are real; the unit cost is a construct, and it is named as one every time.
 *Now:* `corpus/real/README.md` :: `So the accurate description of what claim 1 is driven by is`
 *Now:* `corpus/real/MANIFEST.yaml` :: `It is a corpus device for deriving a plausible`
 *Now:* `evals/guardrail/build.py` :: `A sector median over 2008-2020, standing in for a quantity no public dataset contains.`
+*Status:* closed
 
 **The finding miscites the article it rests on** · found 2026-08-31 · by the reviewing session
 Split out of the entry above on 2026-08-31. `PLAN.md`'s record of oversight level 2's third
@@ -1137,6 +1138,7 @@ repository. That is the argument for this file rather than a footnote to it.
 *Disposition:* branch `corpus/legal-claims-restated`
 *Closed:* 2026-08-31 — restated in `PLAN.md` by `corpus/legal-claims-restated`, with the prior wording kept beside it per doctrine rule 4
 *Now:* `PLAN.md` :: `benchmark to the trader's **own** 2025 rather than to a sector figure.`
+*Status:* closed
 
 **Half of `G7` cannot fail, and half of `C7` cannot either** · found 2026-08-31 · by oversight level 3, while arming it
 `G7.closed-vocabulary-only` asks two questions and one of them is a dead branch. *Is every reason's
@@ -2499,11 +2501,13 @@ was load-bearing twice.
 **The finding is not closed by that move and the class is untouched.** The block still has two
 states for a thing that has three, and it now has a fourth thing to say — *built, and here is
 which part of it* — which is what the `infra/` line in the block above had to be written as. The
-site is restated to the paragraph that states the rule, because the rule is what has no third
-marking; anchoring to any one directory's line meant the finding died whenever that directory
-changed state, which is exactly what just happened.
+site is restated to **`experiments/`, the block's one surviving entry** — not to the paragraph
+stating the rule, which was the first re-anchor and was wrong. **A rule's sentence will never
+change, and an anchor that cannot move is a tripwire with nothing on it.** Anchored to
+`experiments/`, the finding fires the day that directory is built and the block empties, which is
+the moment its premise changes and the moment somebody has to decide what the block is for.
 
-*Site:* `CLAUDE.md` :: `**Declared and not yet built — phase 2 and later.** These are named because the layering is a`
+*Site:* `CLAUDE.md` :: `experiments/           one YAML per experiment, in git, with its full history`
 *Disposition:* none — the instance is closed by the author's edit. The class is a third state the
 layout block has no marking for, and adding one is a change to `CLAUDE.md`'s structure rather than
 its content, which is his
@@ -2742,6 +2746,7 @@ enough to re-read** — which is not a gate and is the only thing that caught it
 `T010` deliberately**: the flake is on `main` and taxes every branch, and *we shipped a latent
 flake and this is the fix* is a record that belongs in its own pull request rather than inside a
 six-commit argument about Spark. **Left open rather than closed by its own author**
+*Status:* open
 **A mark cannot isolate an environment; only an import site can** · found 2026-09-03 · by CI,
 on a branch whose author had run the full gate locally and seen it green
 
@@ -4512,7 +4517,7 @@ that never did.
 **And the price is recorded rather than absorbed.** Route 2 buys back *serverless only* by giving
 up change capture against a live source: the estate now demonstrates **incremental load of
 successive drops**. Smaller, deliberately, and put to the author as smaller.
-*Status:* open
+*Status:* closed
 
 ---
 
@@ -4564,7 +4569,7 @@ red the moment the sources-table row moved, refusing to let an anchored line cha
 somebody saying whether it was fixed or had gone stale. **The ruling and its closure are one
 piece of work because the anchor rule makes them one** — which is the register doing exactly what
 it is for, on the day it was tested by an edit it had never seen.
-*Status:* open
+*Status:* closed
 
 ---
 
@@ -4647,7 +4652,7 @@ the left, the workflow's own pattern and its `_SHARDS` derivation on the right �
 left side raising rather than passing vacuously.
 *Now:* `ops/figures.py` :: `ANY_TARGET_NAME = re.compile(r"^(?P<name>[a-z][\w.-]*):", re.MULTILINE)`
 *Now:* `ops/figures.py` :: `#: Every target in the Makefile, by name, so each can be asked what its recipe does.`
-*Status:* open
+*Status:* closed
 
 ---
 **A mutation's printed output, recorded in three files, and the population under it moved** ·
@@ -4679,4 +4684,43 @@ names, and registering it needs a mechanism that plants a mutation to compute a 
 gate here has. The candidate owner is `gate-proof`, whose ledger already knows which mutation
 targets which check
 *Status:* open
+
+---
+**Six findings' `*Status:*` lines disagreed with their own closures, and nothing read the field** ·
+found 2026-09-05 · by `holdout-98` reading `#62` hostilely, then measured
+
+Three entries carried a `*Closed:*` line with a date and a transition and said **`*Status:* open`**
+under it. Three carried **no `*Status:*` line at all**, two of them closed.
+
+**The consequence stated when it was raised was wrong, and measuring it made the finding better.**
+It was reported as *the gate reads the closure and reports the entry open*, and as making
+`docs/reviews/phase-2.md` §7's published `72 · 64 open` wrong. It does neither:
+`Finding.is_open` is derived from `*Closed:*` and **never from the status line**, so every count
+this register has ever printed was right.
+
+```
+91 entries · 80 open · 11 closed        <- the gate, before and after the fix
+11 *Closed:* lines · 6 *Status:* closed <- the two fields, before it
+```
+
+**Which is the actual defect and it is worse than a miscount.** `*Status:*` is the field a *person*
+reads; `*Closed:*` is the field the gate reads. **Nothing compared them**, so the human-facing half
+drifted for four days and the machine-facing half stayed correct — and the drift is invisible
+precisely because the count never moved. **A field nothing reads is a field nothing maintains.**
+
+**It is §2b's own defect surviving its own fix, one layer in.** `ops/expiry-knows-what-closed`
+landed on 2026-08-31 because four closures were written in prose the gate could not read. These
+were written in the marker the gate *can* read, and the gate still let the other line say
+otherwise.
+
+*Site:* `ops/findings.py` :: `_STATUS_LOOSE = re.compile(r"^\*Status:\*[ \t]*(?P<what>\S+)", re.MULTILINE)`
+*Disposition:* branch `ops/a-published-figure-is-read-off-its-measurement` — the same atom, because
+a register that says `open` on a closed finding is the instrument this one is about
+*Closed:* 2026-09-05 — `parse()` refuses a `*Closed:*` beside any status but `closed`, refuses
+`closed` with no closure, and refuses an entry with no status line at all. All six corrected. The
+check is in `parse()` rather than in `failures()` deliberately, following the `*Closed:*`-shape
+precedent already there: a register whose two fields contradict each other is not a register that
+can be read and then reported on
+*Now:* `ops/findings.py` :: `_STATUS_LOOSE = re.compile(r"^\*Status:\*[ \t]*(?P<what>\S+)", re.MULTILINE)`
+*Status:* closed
 

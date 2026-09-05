@@ -163,6 +163,7 @@ Planted by `tests/ops/test_findings.py`.
 *Disposition:* branch `some/branch`
 *Closed:* 2026-08-31 — branch some/branch landed and the gate went red to green
 *Now:* `subject.md` :: `the line as it reads now`
+*Status:* closed
 
 """
 
@@ -233,11 +234,22 @@ def test_concurred_is_counted_open(tmp_path: Path) -> None:
 
 def test_concurred_cannot_be_spelled_as_closed(tmp_path: Path) -> None:
     """`*Status:* closed` is not a status this registry has. Closure needs a `*Closed:*` line
-    with a date and a transition, so agreement cannot be written as closure by accident."""
+    with a date and a transition, so agreement cannot be written as closure by accident.
+
+    **Restated 2026-09-05, and the contract it pins is deliberately changed.** It asserted that
+    such an entry is *accepted and counted open* — the word was powerless and silently ignored.
+    It is now **refused**, and the reason is the defect that prompted the change: six entries in
+    the real register had a `*Status:*` line disagreeing with their own closure, three of them
+    saying `open` under a dated `*Closed:*`. **A word nothing reads is a word nobody maintains**,
+    and the field this one lives in is the one a *person* reads.
+
+    **What the test was protecting is protected more strongly, not less.** Its subject is that
+    agreement must never become closure by accident, and a red gate says so where silence did
+    not. What changes is only the shape of the refusal.
+    """
     entry = ANCHORED.replace("*Status:* open", "*Status:* closed")
-    code, out = _run(_registry(tmp_path, entry))
-    assert code == 0, out
-    assert "1 open, 0 closed" in out
+    with pytest.raises(RegistryError, match="no \\*Closed:\\* line"):
+        _run(_registry(tmp_path, entry))
 
 
 # ------------------------------------------------------------ and the real registry stands

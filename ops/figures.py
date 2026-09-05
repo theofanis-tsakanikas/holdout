@@ -852,13 +852,25 @@ def _as_int(written: str) -> int | None:
 #: beside each figure; this is the half a command can re-run.
 #: Claim 7's populations and results, computed by the modules the eval itself computes them
 #: with, never re-derived here. `ops.personhood` owns the registry half and is an `ops` module
-#: already; `evals.oversight` owns the attack half and is imported **inside** the function
-#: rather than at module scope, because `make figures` runs before the suite and before any
-#: claim target, and a coverage checker that cannot start while an eval is mid-edit would
-#: refuse the whole gate for a reason that is not a coverage defect.
+#: already; `evals.oversight` owns the attack half and is imported **inside** the function.
 #:
-#: Measured 2026-09-05 on this laptop: the whole thing is 0.02s, so nothing here is deferred
-#: for cost. It is deferred for blast radius.
+#: **What that deferral buys, measured rather than intended.** The first version of this comment
+#: said it kept `make figures` running while an eval was mid-edit. It does not, and the claim
+#: was written against the intent rather than against what runs: `prose_failures()` calls
+#: `compute()` on every entry that matches, so the import happens on every healthy invocation
+#: and a broken `evals/oversight/build.py` fails the gate either way. Planted and measured:
+#:
+#:     python -m ops.figures   ->  RuntimeError, raised through this function's import line
+#:
+#: What it does buy is one layer narrower and is worth keeping. `tests/ops/test_figures.py`
+#: does `from ops import figures` at module scope, so a module-scope import here would make a
+#: broken eval fail **collection** — 23 tests that have nothing to do with claim 7 disappearing
+#: rather than failing. With the import deferred, collection succeeds and only the assertions
+#: that need the eval go red. It is not a cycle either: `ops.figures` -> `evals.oversight.build`
+#: -> `ops.personhood` imports cleanly at module scope, tested rather than assumed.
+#:
+#: Measured 2026-09-05 on this laptop: the whole thing is 0.02s. Nothing here is deferred for
+#: cost.
 @cache
 def claim_7_figures() -> dict[str, int]:
     from evals.oversight.build import attacks, lexicon
@@ -970,7 +982,12 @@ PROSE: tuple[Figure, ...] = (
     ),
     Figure(
         "evals/oversight/README.md",
-        r"every\s+one\s+of\s+the\s+(?P<n>[\d,]+)",
+        # Anchored on the clause **after** the number, not on the number's spelling. The
+        # sentence above -- *on every one of the fifty-six types* -- shares the whole prefix,
+        # and the two were told apart only by one being spelled in words and one in digits.
+        # A README edit writing `57` there would have matched this pattern and compared it
+        # against 18,069: red for a reason that is not a stale figure.
+        r"every\s+one\s+of\s+the\s+(?P<n>[\d,]+),\s+and\s+it\s+would",
         _claim_7("attacks"),
         "how many attacks the README's argument for the structure names",
     ),

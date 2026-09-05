@@ -448,6 +448,25 @@ to multiprocessing alone. §13 prices both.
 
 Numbers, in a monospace font, whether or not anything failed.
 
+> **Restated 2026-09-05 by `ops/a-published-figure-is-read-off-its-measurement`, and the column
+> heading is the reason.** The third column is headed **`figure`**, and the three specimens in it
+> were written *before anything ran*. They read as measurements and they are not:
+>
+> | | this table says | published today by `PLAN.md` and `TASKS.md` |
+> |---|---|---|
+> | `U1` | `9/200 = 4.5%` | **`8/200 = 4.0%`** |
+> | `U3` | `4/200 = 2.0%` | **`0/200`** |
+> | `U4` | `191/200 = 95.5%` | **`163/170 = 95.9%`** |
+>
+> **`U4`'s denominator moved from 200 to 170**, so that row is not a figure drifting — the
+> *shape* of the measurement changed and this table still describes the old one.
+>
+> **The rows are kept as written**, per doctrine rule 4: column two is the falsifiable sentence
+> and it is what a spec asks for, and every one of those still stands. **What is corrected is
+> only the reading** — these are illustrations of what each check would print, not results. They
+> are deliberately **not** registered in `ops/figures.PROSE`, because a document that was never
+> claiming to measure would go red for saying what it always said.
+
 | id | the falsifiable sentence | figure |
 |---|---|---|
 | `U1.aa-false-positive-rate` | on an A/A split the system reports a significant effect no more often than α | `9/200 = 4.5%`, and the one-sided binomial p at `binomial_level` |
