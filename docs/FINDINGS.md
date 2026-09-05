@@ -4915,3 +4915,46 @@ and renamed `holdout-estate` as the siblings name theirs. **The limit is unchang
 *Now:* `infra/bootstrap/oidc.tf` :: `  trusted_subjects = [`
 *Status:* open
 
+---
+**A dependency added to prevent a wrong reading deleted the guard instead** ·
+found 2026-09-05 · by `terraform apply`, ten minutes after the change it was in
+
+The budget gained a `cost_filter` and a rename to `holdout-estate`. A rename forces replacement,
+so Terraform deleted the old budget first. The new one carried
+`depends_on = [aws_ce_cost_allocation_tag.project]`, that resource failed — AWS has not yet seen
+the newly namespaced tag key on a billed resource, which takes up to 24 hours and is documented
+in the file — **and the budget was never created.**
+
+```
+aws budgets describe-budgets  ->  attestor-estate · manifest-estate · watermark-estate
+```
+
+**For about ten minutes the account held no holdout budget: no alerts, no ceiling.**
+
+**The `depends_on` was added on purpose and the purpose was sound.** A `TagKeyValue` filter naming
+an inactive key matches nothing, so the budget would read **zero** until AWS caught up — the state
+`watermark`'s comment warns about, where *a budget at zero looks exactly like a project that is
+not spending.* The dependency was there to stop that.
+
+> **It converted a transient wrong reading into the guard's total absence.** A budget reading zero
+> for a day, on a project with nothing running, is a declared and harmless window. A budget that
+> does not exist is not a window.
+
+**The rule this is an instance of, and it is not one this repository had written down:** *the
+failure mode of an improvement may not be worse than the thing it improves.* The improvement was
+real; what was not checked is what happens when its prerequisite is not met — and the prerequisite
+was **known** to be unmeetable that day, in a comment two lines above the resource.
+
+**And it is the third time in one day that the answer was only available by doing it.** The
+log-delivery grant, the account-scoped OIDC provider, and now this: `terraform validate` and a
+plan both showed `must be replaced` and neither could show that the replacement would not happen.
+
+*Site:* `infra/bootstrap/budget.tf` :: `# **And there is deliberately no `depends_on` from the budget to this, which is a correction the`
+*Disposition:* branch `infra/the-budget-outlives-its-filter`
+*Closed:* 2026-09-05 — the budget applies with its filter regardless of whether the key is active
+yet, and the cost-allocation-tag resource is allowed to fail on its own. `terraform apply` stays
+red until AWS lists the key, which is honest rather than convenient: something is not yet true and
+the file says which thing and when it stops being so
+*Now:* `infra/bootstrap/budget.tf` :: `# **And there is deliberately no `depends_on` from the budget to this, which is a correction the`
+*Status:* open
+
