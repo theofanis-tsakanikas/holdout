@@ -1909,6 +1909,48 @@ Claim 5. The pipelines and the training code, proved local.
 **Then an integration session**, before the next phase opens: read the whole repository against
 `CLAUDE.md` and report conceptual drift. It builds nothing.
 
+**It ran on 2026-09-05 and `docs/reviews/phase-2.md` is what it produced.** Twelve proposed
+branches, `T00N`–`T00Z`, and one thing that is not a branch.
+
+*Every claim target was run rather than inherited, `make eval-uplift` included — 13/13 at
+`harness`, 8m33s warm — because the phase-1 report never said whether it had run claim 2's eval and
+the `integration-review` skill names that silence as a hole in its own record. Claim 5, `silver` and
+`gold` were run in an isolated environment with the `dbt` extra so that the shared checkout's
+virtualenv was never touched.*
+
+**Two findings came from attacking rather than reading, which is the half a level-3 session is
+least likely to do.** A mutation planted on `metric_parts` — the mechanism claim 5's own printed
+note calls *the load-bearing third*, and the one none of its three mutations touches — left `make
+contracts` **green at 15/15 bytes** and claim 5 **red on D1 and D2**. That both arms the gap and
+demonstrates, rather than argues, why a byte comparison cannot stand in for the claim: a
+wrong-but-consistent compiler agrees with itself. It also surfaced the finding underneath —
+`_disagreements` stops at five and publishes the truncated length as the check's figure, so **349
+missing cells printed as `5 disagreeing`** under a docstring that says *every*.
+
+And the corpus barrier's **runtime** half blocks one of the two spellings `ops/isolation.py`
+declares: `_Refuse(("holdout",))` does not block `src.holdout`, and with that finder installed
+exactly as the test installs it, `importlib.import_module("src.holdout.core.money")` returns
+`Money`. `tests/boundary/conftest.py` says a test *"plants both spellings"*; `src.holdout` occurs
+nowhere in that file. **This is the barrier claim 2's answer to *your simulator is rigged* rests
+on**, and the repository's own history records the same spelling costing the source half once
+already.
+
+**The largest section of the report is not a defect in anything.** §15 puts `T013`'s half and
+`T014`'s half beside `TASKS.md` and measures that **three joins on the path phase 3 drives have no
+implementation and no task id**: `Scenario(...)` is constructed only under `tests/core/`,
+`experiment.close()` is called only from `evals/`, `gold.readout` is read by the compiled dashboard
+and written by nothing, and no module under `pipelines/` takes a trigger and produces a decision.
+`T023`'s `closes` requires the output of two of them. **Each half was filed by the atom that found
+it and each was correct to say it was not theirs** — a gap with no owner is the one kind that
+survives every atom — and nobody had asked the registry which atom owns the wire. The answer is
+none.
+
+**So phase 2 closes and `T017` may open; `T023` cannot close as written.** Either the joins become
+atoms placed before `T021` — a pipeline layer that deploys jobs ought to know which job writes the
+readout — or phase 3's scope is restated to the demonstration this corpus and this code can give,
+and the shot list moves with it. Both change what the project shows rather than how it is built, so
+both are the author's, and the choice has to be taken before `T018`.
+
 ### Open
 
 Everything requiring a real workspace and a real bill.
