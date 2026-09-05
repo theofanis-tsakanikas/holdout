@@ -13,7 +13,19 @@ could have been found: reading the two tests, they look right.
 
 A `sys.meta_path` finder is the level every import mechanism goes through — the statement,
 `__import__`, `importlib.import_module`, and a lazy loader. `tests/boundary/test_blocking.py`
-plants both spellings against this fixture and requires each to raise.
+plants each of those against this fixture and requires it to raise, and plants the two *names*
+`ops/isolation.py` declares — `holdout` and `src.holdout` — against it as well.
+
+**That sentence read *"plants both spellings against this fixture and requires each to raise"*,
+and *spelling* named two different things in this subsystem.** An import has a mechanism and it
+has a name; `test_blocking.py` drove three of the four mechanisms listed above — the statement,
+`__import__` and `importlib.import_module`, not a lazy loader — and one name of the two. The
+sentence was true of the axis it covered and was read as covering the other, which is how
+`tests/boundary/test_corpus_imports_nothing.py` came to install this fixture with one root out
+of the two. The prior wording is kept per doctrine rule 4; the measurement is in
+`docs/FINDINGS.md`, and the delta is the finding: **a word that names two dimensions certifies
+whichever one the reader was already thinking of, so correcting it is not enough — the axes are
+named apart.**
 
 `ops/isolation.py` learned the same lesson the same way: one implementation, two callers, and
 the copy that drifts is the one nobody reads.

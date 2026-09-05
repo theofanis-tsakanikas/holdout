@@ -25,11 +25,25 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from ops.isolation import FORBIDDEN, POLICED, REFUSAL, offences
+from ops.isolation import FORBIDDEN, FORBIDDEN_ROOTS, POLICED, REFUSAL, offences
 from ops.isolation import _by_text as by_text_only
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CORPUS = REPO_ROOT / POLICED
+
+
+def _block_the_system(block_imports: Callable[..., None]) -> None:
+    """The runtime half's block: **every** root `ops.isolation` declares, not only the first.
+
+    One implementation, two callers, which is the argument `ops/isolation.py` makes one layer
+    along — two hand-written copies of a rule drift, and the copy that drifts is the one nobody
+    reads. The two callers ask different questions and neither is worth much on its own:
+    `test_the_runtime_block_refuses_both_spellings` asks whether this block bites on each root,
+    and `test_every_corpus_module_imports_with_the_system_absent` asks whether any module under
+    `corpus/` reaches past it. If they installed different blocks, the first would be certifying
+    something the second does not run.
+    """
+    block_imports(*FORBIDDEN_ROOTS, evict=(POLICED,))
 
 
 def _modules() -> list[Path]:
@@ -130,18 +144,28 @@ def test_every_corpus_module_imports_with_the_system_absent(
     node to find.
 
     So this closes the module-level half of it from the other side: every module under
-    `corpus/` is imported with `holdout` unreachable through `sys.meta_path`, which is the
-    level every import mechanism goes through. A dynamic import taken at import time raises
-    here, whatever it was spelled as. The first version of this test blocked
-    `builtins.__import__` instead and **did not catch the case it was written for** — see
+    `corpus/` is imported with **every root `ops.isolation` declares** unreachable through
+    `sys.meta_path`, which is the level every import mechanism goes through. A dynamic import
+    taken at import time raises here whatever mechanism it was written with, and whichever of
+    the two names it used. The first version of this test blocked `builtins.__import__`
+    instead and **did not catch the case it was written for** — see
     `tests/boundary/conftest.py` and `test_blocking.py`.
+
+    **The sentence above read *"raises here, whatever it was spelled as"*, and this test
+    installed the block with `FORBIDDEN` rather than `FORBIDDEN_ROOTS`.** Measured on a file
+    planted under `corpus/world/` — the step `docs/reviews/phase-2.md` §13 named as not taken —
+    a module-level `importlib.import_module("src.holdout.core.money")` bound `Money`, and all
+    four gates were silent on it: `offences` returned `[]`, `scan` returned `{}`, the hook
+    exited 0, and this file passed 40/40. One word changed to `holdout` and this test failed.
+    The prior wording is kept per doctrine rule 4; the delta is that *spelling* named two
+    dimensions here and the block only ever had one of them.
 
     **What it still does not catch, and the reason the source scan stays.** A dynamic import
     *inside a function* never runs during import, so nothing here executes it — which is
     exactly the case the text scan was written for, pointing the other way. Neither check
     subsumes the other, and this file needs both.
     """
-    block_imports(FORBIDDEN, evict=(POLICED,))
+    _block_the_system(block_imports)
     names = [
         f"{POLICED}." + str(path.relative_to(CORPUS).with_suffix("")).replace("/", ".")
         for path in _modules()
@@ -150,3 +174,47 @@ def test_every_corpus_module_imports_with_the_system_absent(
     assert len(names) >= 10, "too few corpus modules for this to be worth asserting"
     for name in sorted(set(names)):
         importlib.import_module(name)
+
+
+@pytest.mark.parametrize(
+    ("name", "refused"),
+    [
+        pytest.param("holdout.core.money", True, id="the installed name"),
+        pytest.param("src.holdout.core.money", True, id="the path spelling — it imports and runs"),
+        pytest.param("src", False, id="the namespace package itself is not the system"),
+        pytest.param("json", False, id="an ordinary import"),
+    ],
+)
+def test_the_runtime_block_refuses_both_spellings(
+    name: str, refused: bool, block_imports: Callable[..., None]
+) -> None:
+    """The block above, driven on each name rather than trusted to have been given them all.
+
+    The test it shares `_block_the_system` with imports every corpus module and asserts none of
+    them reaches the system. That passes for two reasons which look identical from outside: no
+    module reaches it, or the block never covered the name a module would have reached it by.
+    This separates them, and it is what fails on the un-fixed version — with
+    `block_imports(FORBIDDEN, ...)` the second row imports `Money` and returns it.
+
+    **The names are literals and not derived from `FORBIDDEN_ROOTS`.** Read off the same tuple
+    the block is handed, this would be one constant agreeing with itself and would stay green
+    if a root were deleted from it. `tests/hooks/test_corpus_isolation.py` writes the second
+    spelling out for the same reason.
+
+    The two negative rows are the other direction. `src` is an implicit namespace package that
+    holds the system and is not the system, and a block that took it down would be wider than
+    it says; `json` is the control that a blocker blocking everything would fail.
+
+    **The `src` row is planted against rather than left on faith.** It passes on every version
+    of this block that has ever existed, so *never red* is not evidence — a check that has
+    never refused anything has not been tested. Widening the helper to
+    `block_imports(FORBIDDEN, "src", ...)` fails this row and **only** this row; the path
+    spelling still raises, because blocking the parent blocks the child too. That is the
+    difference between three measurements and one assumption sitting beside them.
+    """
+    _block_the_system(block_imports)
+    if refused:
+        with pytest.raises(ModuleNotFoundError, match="blocked for this test"):
+            importlib.import_module(name)
+    else:
+        assert importlib.import_module(name) is not None

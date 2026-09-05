@@ -850,8 +850,25 @@ out_of_scope  The declared hole — a dynamic import inside a function, which no
               can see and which .claude/README.md and the boundary test both state.
 stop_at       When the second spelling is planted against the fixture and raises, and the conftest
               sentence is true of the file it names.
+              RESTATED 2026-09-05, before the build, by the reading rather than by it. The
+              defect is at THREE prose sites and this named one: tests/boundary/conftest.py,
+              tests/boundary/test_corpus_imports_nothing.py, and .claude/README.md line 99 —
+              which is the section headed "what the hooks do not catch, stated rather than
+              assumed", so a declared-holes section carried an undeclared hole. A stopping
+              condition narrower than the closing condition stops the work before the title
+              is true: this atom's title is "and the prose stops claiming it already does".
+              Prior wording kept per doctrine rule 4.
+              AND the sentences are ambiguous rather than false. .claude/README.md uses
+              "spelling" to mean a MECHANISM one line below where the finding reads it as a
+              NAME, so under that reading each quoted sentence is true. The barrier has two
+              axes — the mechanism an import is written with, and the name it is written as —
+              and one word covered both, so prose true of the covered axis read as covering
+              the uncovered one. Correcting the wording is not the fix; naming the axes apart
+              is, and test_blocking.py gains the name axis it never had. The overstatement is
+              filed against the review by T016's session, not here: a build session correcting
+              the reviewer inside its own branch is the beneficiary judging.
 review        yes
-status        open
+status        closed
 ```
 
 ```
@@ -3152,6 +3169,14 @@ L28 docs/reviews/phase-2.md — the phase-2 integration review (oversight level 
     deferrals closed in prose and counted open. And §15: three joins on the path phase 3 drives,
     with no implementation and no task, which is the author's.
                                            branch docs/phase-2-integration status closed
+L29 tests/boundary/ + .claude/README.md — the corpus barrier's runtime half blocks every root
+    ops/isolation.py declares, not the first of two. The composite the review named as not run
+    was run: a planted corpus module binding Money from src.holdout.core.money left offences [],
+    scan {}, the hook at exit 0 and the boundary test 40/40 green at once. The word "spelling"
+    named two axes — mechanism and name — and the file had four of the first and none of the
+    second; three prose sites, not one, and no third route (sys.path carries two entries).
+                                           branch ops/the-barrier-blocks-both-spellings
+                                                                            status closed
 ```
 
 **And it went stale again, by two, before `L23` was written.** `T011` and `T00M` closed on
