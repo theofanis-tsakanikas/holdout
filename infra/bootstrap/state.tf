@@ -185,6 +185,16 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
   }
 }
 
+# **The logs bucket is versioned too, as `manifest` and `watermark` version theirs.** It records
+# who touched the state bucket; an object overwritten in it is a record of an access, and the one
+# access worth overwriting is the one somebody wanted gone.
+resource "aws_s3_bucket_versioning" "logs" {
+  bucket = aws_s3_bucket.logs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "logs" {
   bucket = aws_s3_bucket.logs.id
 

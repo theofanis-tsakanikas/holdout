@@ -13,12 +13,52 @@
 # against a modelled 100–600 for the whole phase, so the action fires only in a world where the
 # model is wrong by more than a factor of two. **That is a fire alarm, not a thermostat.**
 
+# **Activating the tag key, and without it the filter below matches nothing.**
+#
+# A `TagKeyValue` cost filter names a key AWS has been told to allocate costs by. Until that key
+# is `Active`, the filter matches no resource that has ever existed, **the budget reports zero for
+# ever, and the ceiling is a resource that exists and cannot fire** — `watermark` carries that
+# sentence and learned it against a real account. The console is the usual place this is done,
+# which is why it is usually forgotten and never noticed: **a budget at zero looks exactly like a
+# project that is not spending.**
+#
+# **AWS lists a key here only once it has seen it on a billed resource**, which can take up to
+# 24 hours after the first tagged thing is created. This layer's tag keys were namespaced on
+# 2026-09-05, so `holdout:project` is new to the account and this resource may fail on the first
+# apply after that. **The fix is to apply again the next day, never to reach for the console.**
+resource "aws_ce_cost_allocation_tag" "project" {
+  tag_key = "holdout:project"
+  status  = "Active"
+}
+
 resource "aws_budgets_budget" "estate" {
-  name         = "holdout"
+  # `<project>-estate`, as every sibling names it. It was `holdout` for one hour.
+  name         = "holdout-estate"
   budget_type  = "COST"
   limit_amount = var.budget_limit_usd
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
+
+  # **Only what this project tagged, and the first version of this file had no filter at all.**
+  #
+  # Measured an hour after the first apply, with holdout having spent nothing: **actual 0.638
+  # USD, forecast 35.35 USD, `CostFilters: null`.** Every cent of that is another project in the
+  # same account. `watermark`'s own comment states the consequence and it is sharper here than
+  # there, because this is the only budget in the account carrying an **automatic** action: *a
+  # ceiling that counts somebody else's spend disables this project's deploy role for a bill it
+  # did not run up.*
+  #
+  # **And the window this opens is declared rather than discovered.** Between this applying and
+  # AWS backfilling cost data for the newly activated key, the budget reads **zero** — which is
+  # the failure mode two paragraphs up. It is harmless here and only because of a fact that is
+  # true today and will not be true after `T018`: **nothing in this project is running.** The
+  # first thing that spends is the estate, and the tag will have been active for days by then.
+  cost_filter {
+    name   = "TagKeyValue"
+    values = ["user:holdout:project$holdout"]
+  }
+
+  depends_on = [aws_ce_cost_allocation_tag.project]
 
   # Actual spend, not forecast, at all three. A forecast alert on a workload that runs in bursts
   # of a few hours fires on the burst and says nothing about the month — and the number the

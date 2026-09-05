@@ -28,7 +28,7 @@ provider "github" {
 }
 
 resource "github_actions_secret" "deploy_role_arn" {
-  repository      = split("/", var.repository)[1]
+  repository      = local.repo
   secret_name     = "AWS_DEPLOY_ROLE_ARN"
   plaintext_value = aws_iam_role.deploy.arn
 }
@@ -38,7 +38,55 @@ resource "github_actions_secret" "deploy_role_arn" {
 # `secrets` that is not secret teaches a reader that everything in there is arbitrary, and the
 # one thing in there that matters is the account id inside the role ARN.
 resource "github_actions_variable" "aws_region" {
-  repository    = split("/", var.repository)[1]
+  repository    = local.repo
   variable_name = "AWS_REGION"
   value         = var.region
+}
+
+# **The two environments the trust condition names, created here rather than in a browser.**
+#
+# `oidc.tf` trusts `environment:deploy` and `environment:destroy` and nothing else, so **these
+# two objects are half of that trust**: without them no workflow can present a subject the role
+# accepts, and with them wrong — no reviewer, or an unprotected branch policy — the human gate
+# the environment exists for is not there while the federation still works.
+#
+# **Every sibling project creates these by hand.** That is the one place this layer deliberately
+# does not follow them: `CLAUDE.md` says *IaC only. No console actions, ever*, and a required
+# reviewer configured by clicking is a protection whose existence nobody can prove from the
+# repository. It is also the protection most worth proving.
+#
+# `required_reviewers` is what makes a dispatch wait. `protected_branches` is the second half:
+# without it an environment can be targeted from any branch, and a reviewer who approves a
+# deployment is approving a branch nobody reviewed.
+resource "github_repository_environment" "deploy" {
+  repository  = local.repo
+  environment = "deploy"
+
+  reviewers {
+    users = [var.github_owner_id]
+  }
+
+  deployment_branch_policy {
+    protected_branches     = true
+    custom_branch_policies = false
+  }
+}
+
+# **`destroy` is protected too, and the reason is not symmetry.** A teardown is not a safe
+# operation to leave unguarded because it is cheap: `CLAUDE.md` is explicit that on a failure
+# tearing down destroys the evidence, and that `destroy` is *always a deliberate dispatch, never
+# automatic*. An environment with a reviewer is what makes "deliberate" a property of the system
+# rather than of somebody's intention.
+resource "github_repository_environment" "destroy" {
+  repository  = local.repo
+  environment = "destroy"
+
+  reviewers {
+    users = [var.github_owner_id]
+  }
+
+  deployment_branch_policy {
+    protected_branches     = true
+    custom_branch_policies = false
+  }
 }

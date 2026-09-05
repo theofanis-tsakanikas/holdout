@@ -23,16 +23,27 @@
 provider "aws" {
   region = var.region
 
+  # **Namespaced keys, and the namespace is the point rather than the tidiness.**
+  #
+  # This account holds four projects. A generic `Project` key is one key that all four would
+  # write, and **activating a tag key for cost allocation is an account-level act** — the same
+  # ownership mistake as `oidc.tf` records, two hours later and in a different resource. Every
+  # sibling project in this portfolio namespaces: `watermark:project`, `manifest:layer`,
+  # `attestor:managed`. This one had `Project` and `Layer` until 2026-09-05.
   default_tags {
     tags = {
-      Project = "holdout"
-      Layer   = "bootstrap"
-      # **`Lifetime = permanent` is load-bearing rather than decorative.** `CLAUDE.md` names what
-      # survives a teardown — the state bucket and its access-log bucket, the state KMS key, the
-      # SSM parameters and the deploy role — and `infra/foundation`'s TTL reaper destroys what is
-      # tagged and older than N hours. Everything in this layer is on the survivor list, so the
-      # reaper must be able to tell it apart from an estate that is meant to die.
-      Lifetime = "permanent"
+      "holdout:project" = "holdout"
+      "holdout:layer"   = "bootstrap"
+      "holdout:managed" = "terraform"
+
+      # **Load-bearing rather than decorative.** `CLAUDE.md` names what survives a teardown —
+      # the state bucket and its access-log bucket, the state KMS key, the SSM parameters and
+      # the deploy role — and `infra/foundation`'s TTL reaper destroys what is tagged and older
+      # than N hours. Everything in this layer is on the survivor list, so the reaper must be
+      # able to tell it apart from an estate that is meant to die. `manifest` and `watermark`
+      # express the same thing by carrying no expiry on this layer at all, and say why: *a
+      # reaper that eats the backend leaves an estate nothing can reach.*
+      "holdout:lifetime" = "permanent"
     }
   }
 }

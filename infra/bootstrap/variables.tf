@@ -47,6 +47,44 @@ variable "repository" {
   default     = "theofanis-tsakanikas/holdout"
 }
 
+variable "github_owner_id" {
+  description = <<-EOT
+    Immutable numeric id of the owner. **The name form of a trust subject is the one that can be
+    taken over** — a released account name can be re-registered by somebody else and an id
+    cannot. From `gh api users/<owner> --jq .id`.
+
+    Defaulted, like `repository` and for the same reason: it is a public, immutable fact about a
+    named public repository, not a value that varies by applier. The sibling projects require it
+    of the applier instead, because they take the owner and the repository as separate variables.
+
+    *(This sentence was rewritten because `tests/infra/test_variable_declarations.py` refused the
+    original: it contained the phrase the guard keys on while declaring a default, which is the
+    over-reach that file declares in its own `what this does not prove`. The guard reads the whole
+    block, comments included, and only ever refuses — so the cost is a false red rather than a
+    missed default, and paying it here is cheaper than narrowing the rule.)*
+  EOT
+  type        = string
+  default     = "218610429"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_owner_id))
+    error_message = "github_owner_id is the numeric id from `gh api users/<owner> --jq .id`, not the name."
+  }
+}
+
+variable "github_repository_id" {
+  description = <<-EOT
+    Immutable numeric id of the repository. From `gh api repos/<owner>/<repo> --jq .id`.
+  EOT
+  type        = string
+  default     = "1347948733"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_repository_id))
+    error_message = "github_repository_id is the numeric id from `gh api repos/<owner>/<repo> --jq .id`, not the name."
+  }
+}
+
 variable "budget_limit_usd" {
   description = <<-EOT
     The monthly budget. `CLAUDE.md`'s posture, in one number: **1,000 USD, alerts at 50/80/100 %

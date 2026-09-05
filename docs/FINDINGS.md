@@ -4865,3 +4865,53 @@ failing at `AssumeRoleWithWebIdentity` with this layer green
 *Now:* `infra/bootstrap/oidc.tf` :: `data "aws_iam_openid_connect_provider" "github" {`
 *Status:* open
 
+---
+**Three portfolio patterns were copied and their hardest halves were not** ·
+found 2026-09-05 · by the author asking whether this layer matches its siblings
+
+`infra/bootstrap` was written from the shape `manifest`, `watermark` and `attestor` use. Read
+against them, three things it took were the easy halves.
+
+| | the siblings | this layer, until now |
+|---|---|---|
+| trust subject | `environment:deploy` · `environment:destroy` | `ref:refs/heads/main` — **no human gate at all** |
+| subject form | name **and** `owner@<id>/repo@<id>` | name only, which a released name lets somebody else claim |
+| budget scope | `watermark` filters to its own tag | **unfiltered — the whole account** |
+
+**The budget one is the measurable one.** An hour after the first apply, with this project having
+spent nothing:
+
+```
+holdout           limit 1000 · actual 0.638 · forecast 35.35 · CostFilters: null
+watermark-estate  limit  250 · actual 0.131 · TagKeyValue user:watermark:project$watermark
+```
+
+**Every cent of that is another project.** And this is the only budget in the account carrying an
+**automatic** action, so `watermark`'s own sentence is sharper here than where it was written: *a
+ceiling that counts somebody else's spend disables this project's deploy role for a bill it did
+not run up.*
+
+**And the tag half is the trap under it.** A `TagKeyValue` filter naming a key AWS has not been
+told to allocate by matches nothing, so the budget reads **zero for ever** and the ceiling is a
+resource that exists and cannot fire — *a budget at zero looks exactly like a project that is not
+spending.* Only `watermark:project` and `manifest:expires-at` were active in this account.
+
+**The tag keys were generic — `Project`, `Layer` — where every sibling namespaces.** Activating a
+generic key for cost allocation is an **account-level act**: the same ownership mistake
+`oidc.tf` records, in a different resource, two hours later.
+
+**What this layer does not copy, deliberately.** The siblings create their GitHub environments by
+hand. `CLAUDE.md` says *IaC only. No console actions, ever*, and a required reviewer configured by
+clicking is a protection nobody can prove from the repository — so the environments are Terraform
+here. **`attestor` also still declares the OIDC provider as a `resource` only**, which is the
+defect this layer hit on its first apply; `manifest` and `watermark` already carry both forms.
+
+*Site:* `infra/bootstrap/oidc.tf` :: `  trusted_subjects = [`
+*Disposition:* branch `infra/the-budget-measures-this-project`
+*Closed:* 2026-09-05 — four trusted subjects, two environments in two forms; the environments
+created here with a required reviewer and `protected_branches`; the tag keys namespaced to
+`holdout:*`; `aws_ce_cost_allocation_tag` activating `holdout:project`; the budget filtered to it
+and renamed `holdout-estate` as the siblings name theirs. **The limit is unchanged at 1,000 USD**
+*Now:* `infra/bootstrap/oidc.tf` :: `  trusted_subjects = [`
+*Status:* open
+
