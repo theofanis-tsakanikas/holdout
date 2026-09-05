@@ -1028,9 +1028,29 @@ closes        infra/lakehouse/dashboards.tf's warehouse_id variable, whose descr
               with the default removed, so the stated reason does not hold.
 out_of_scope  Anything else in the layer. Proposed to land before T017, because T017 is the next
               thing to touch infra/ and a second layer would copy the pattern.
+              RESTATED 2026-09-05, because this branch went past it rather than outgrew it
+              quietly. A test about the layer is arguably "anything else in the layer", and
+              tests/infra/test_variable_declarations.py is one. It is here because the stop_at
+              above is met by deleting a single line and nothing in this repository would have
+              noticed that line coming back — make terraform runs validate, which passed with
+              the default and passes without it. A fix that can regress silently is not closed.
+              The scope line stands as written per doctrine rule 4; what is recorded is that it
+              was exceeded, by how much, and why.
 stop_at       When the layer validates with no default and an apply that omits warehouse_id stops.
+              Both measured on 2026-09-05 with Terraform v1.15.5: validate reports Success, and
+              plan -input=false stops with "The root module input variable warehouse_id is not
+              set, and has no default value."
+              WIDENED beyond this stop_at, deliberately, and recorded rather than absorbed. The
+              two measurements above are met by deleting one line, and deleting one line leaves
+              nothing that would notice it coming back: make terraform runs validate, which
+              passed with the default and passes without it, so no gate in this repository ever
+              read a .tf declaration. tests/infra/test_variable_declarations.py is the guard,
+              written as a RULE rather than as an assertion about warehouse_id — a variable whose
+              description says it has no default may not declare one — because a test naming that
+              one variable is a hand-kept population of one and says nothing to T017, which is
+              the next layer and the whole reason this landed before it. Planted against.
 review        yes
-status        open
+status        closed
 ```
 
 ```
@@ -3267,6 +3287,14 @@ L29 tests/boundary/ + .claude/README.md — the corpus barrier's runtime half bl
     named two axes — mechanism and name — and the file had four of the first and none of the
     second; three prose sites, not one, and no third route (sys.path carries two entries).
                                            branch ops/the-barrier-blocks-both-spellings
+                                                                            status closed
+L30 infra/lakehouse/dashboards.tf + tests/infra/ — a variable description asserting the absence
+    of the default declared two lines below it, in the first layer of the estate. Both halves
+    measured rather than inherited: validate succeeds without the default, and plan -input=false
+    stops without it. The guard is a rule, not an assertion about one variable — a description
+    that says "no default" against a declaration that has one — because nothing here had ever
+    read a .tf declaration and T017 is the next layer to write some.
+                                           branch infra/the-warehouse-has-no-default
                                                                             status closed
 ```
 

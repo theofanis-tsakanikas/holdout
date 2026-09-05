@@ -15,7 +15,6 @@ variable "warehouse_id" {
     warehouse rather than inheriting one somebody typed here.
   EOT
   type        = string
-  default     = "" # validate-only: T020 supplies the real one
 }
 
 variable "parent_path" {
