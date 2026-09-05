@@ -1951,6 +1951,31 @@ readout — or phase 3's scope is restated to the demonstration this corpus and 
 and the shot list moves with it. Both change what the project shows rather than how it is built, so
 both are the author's, and the choice has to be taken before `T018`.
 
+**Answered 2026-09-05, and the sentence above is superseded rather than wrong.** The author took
+the question underneath the two options — *does the corpus gain price randomisation* — and chose
+it, so `T023` is **not** restated: two of the three joins become phase-2 atoms and the third
+becomes buildable once the corpus changes. Phase 2 therefore has atoms it did not have when the
+report's closing sentence was written against the tree it was written against.
+
+**`T00N` landed 2026-09-05 — the corpus barrier's runtime half now blocks every root
+`ops/isolation.py` declares.** The composite the report named as *not planted* was planted: a
+module under `corpus/world/` doing a module-level `importlib.import_module("src.holdout.core.money")`
+bound `Money`, and **all four gates were silent on that one file at once** — `offences` `[]`,
+`scan` `{}`, the hook at exit 0, and `pytest tests/boundary/test_corpus_imports_nothing.py`
+**40 passed**, the fortieth being the plant's own parametrisation: the barrier counted the file
+as one more module it had checked. One word changed to `holdout`
+and the boundary test failed, which is what separates the two names.
+
+**The finding's prose half shrank under the build session's reading, and the code half grew.**
+The three sentences are ambiguous rather than false: `.claude/README.md` uses *spelling* to mean a
+**mechanism** one line below where §13 reads it as a **name**. The barrier has two axes — the
+mechanism an import is written with, and the name it is written as — and `test_blocking.py` drove
+**three** of the first (the statement, `__import__`, `importlib.import_module`) and **none** of
+the second, so prose true of the covered axis read as covering the uncovered one. That is the defect; the wording was the symptom, and the axes are now named
+apart at all three sites rather than restated more loudly. **Two roots is also the whole
+population**, measured rather than assumed: `sys.path` carries exactly two entries inside the tree,
+so `holdout` resolves from `src/`, `src.holdout` from the repository root, and `core` from nothing.
+
 ### Open
 
 Everything requiring a real workspace and a real bill.

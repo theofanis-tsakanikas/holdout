@@ -4171,10 +4171,55 @@ a direct measurement; the composite is inference from them.
 
 *Site:* `tests/boundary/conftest.py` :: `plants both spellings against this fixture and requires each to raise.`
 *Site:* `tests/boundary/test_corpus_imports_nothing.py` :: `    block_imports(FORBIDDEN, evict=(POLICED,))`
+*Site:* `.claude/README.md` :: `dynamic import taken at import time raises whatever it was spelled as`
 *Disposition:* branch `ops/the-barrier-blocks-both-spellings`, first of the eleven proposed —
 `block_imports(*FORBIDDEN_ROOTS)`, with `test_blocking.py` planting the second spelling, which is
 what its own conftest already claims
-*Status:* open
+*Closed:* 2026-09-05 — by `T00N`. **The composite stopped being inference: the plant ran**, in a
+worktree beside the repository rather than in the shared checkout. A `corpus/world/` module doing
+a module-level `importlib.import_module("src.holdout.core.money")` bound `Money`, and all four
+gates were silent on the same file at once — `offences` `[]`, `scan` `{}`, the hook exit 0, and
+`pytest tests/boundary/test_corpus_imports_nothing.py` **40 passed** (39 of them plus the plant's
+own parametrisation, which is how the barrier counted it: as one more module it had checked). One word changed to `holdout` and the boundary test failed, so the
+two names are separated by the runtime half and by nothing else.
+
+**Two things the finding did not have.** *There is no third route*: `sys.path` carries exactly two
+entries inside the tree — `site-packages`, and `src` from `_editable_impl_holdout.pth` — so
+`holdout` resolves from `src/`, `src.holdout` from the repository root, and `core` from nothing
+(`find_spec("core")` is `None`). Two roots is the whole population, which is worth having measured
+rather than assumed of a barrier that declares two. And the prose is at **three** sites, not one;
+the third is in `.claude/README.md`'s *what the hooks do not catch, stated rather than assumed*,
+where a declared-holes section carried an undeclared hole. Its neighbour at `:51` was re-read and
+is correct — right about the half that reads and wrong about the half that runs, four lines apart.
+
+**And the finding overstated its own prose half, which is filed separately against the review.**
+The three sentences are ambiguous rather than false: `.claude/README.md` uses *spelling* to mean a
+**mechanism** one line below where §13 reads it as a **name**, and under that reading every
+sentence quoted is true. What is defective is that one word named two axes — the mechanism an
+import is written with, and the name it is written as — so prose true of the covered axis read as
+covering the uncovered one. Correcting the wording would not have been enough; the axes are named
+apart in all three places, and `test_blocking.py` gains the name axis it never had.
+**And the ninth instance of *a value not read off its source* was committed inside the branch
+fixing it.** Writing the correction, this session put *"`test_blocking.py` drove **four**
+mechanisms"* into the conftest, `PLAN.md` and the commit message. Counted rather than asserted, it
+drives **three** — the statement, `__import__`, `importlib.import_module`; the fourth thing in that
+sentence is *a lazy loader*, which the conftest lists as something `sys.meta_path` covers and which
+no test drives. **The count had been taken off the sentence listing the axis instead of off the
+tests driving it — in a branch whose whole subject is a sentence read instead of the thing it
+governs.** The family's own shape, committed by the person writing about it, in the file about it.
+Caught in the worktree and corrected before the branch left it.
+
+A second, smaller one in the same hour: the plant's result was written as *"`tests/boundary/` 40
+passed"* when the command was one file, and the 40 needed its denominator — `main`'s copy of
+`test_corpus_imports_nothing.py` collects **39**, so the fortieth was the plant's own
+parametrisation. **The barrier counted the planted file as one more module it had checked and
+passed on it**, which is the sentence the finding wanted and which a count with no denominator
+cannot produce.
+
+*Now:* `tests/boundary/conftest.py` :: `plants each of those against this fixture and requires it to raise, and plants the two *names*`
+*Now:* `tests/boundary/test_corpus_imports_nothing.py` :: `    block_imports(*FORBIDDEN_ROOTS, evict=(POLICED,))`
+*Now:* `.claude/README.md` :: `of the two names it used. A dynamic import *inside a function* still runs neither check, and`
+*Status:* closed
 
 ---
 **A variable's description asserts the absence of the default declared two lines below it** ·
