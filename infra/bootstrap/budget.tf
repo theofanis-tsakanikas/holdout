@@ -24,8 +24,30 @@
 #
 # **AWS lists a key here only once it has seen it on a billed resource**, which can take up to
 # 24 hours after the first tagged thing is created. This layer's tag keys were namespaced on
-# 2026-09-05, so `holdout:project` is new to the account and this resource may fail on the first
-# apply after that. **The fix is to apply again the next day, never to reach for the console.**
+# 2026-09-05, so `holdout:project` is new to the account and this resource fails until AWS has
+# seen it. **The fix is to apply again the next day, never to reach for the console.**
+#
+# ---
+#
+# **And there is deliberately no `depends_on` from the budget to this, which is a correction the
+# apply made rather than the reading.**
+#
+# There was one. The intent was that the filter should not be applied before the key it names is
+# active, so the budget would never read zero. What it actually did: the budget's rename forced a
+# replacement, Terraform deleted the old one, this resource failed, and **the new budget was
+# never created.** For about ten minutes the account held no holdout budget at all — no alerts,
+# no ceiling — measured rather than inferred:
+#
+#     aws budgets describe-budgets  ->  attestor-estate · manifest-estate · watermark-estate
+#
+# **A dependency added to prevent a transient wrong reading turned it into the guard's total
+# absence.** A budget reading zero for a day on a project that is not spending is a declared and
+# harmless window; a budget that does not exist is not a window, it is a hole. **The failure mode
+# of an improvement may not be worse than the thing it improves**, and this one was.
+#
+# So the budget applies with its filter regardless, and this resource is allowed to fail on its
+# own. `terraform apply` is red until the key appears, which is honest: something is not yet
+# true, and the file says which thing and when it stops being so.
 resource "aws_ce_cost_allocation_tag" "project" {
   tag_key = "holdout:project"
   status  = "Active"
@@ -57,8 +79,6 @@ resource "aws_budgets_budget" "estate" {
     name   = "TagKeyValue"
     values = ["user:holdout:project$holdout"]
   }
-
-  depends_on = [aws_ce_cost_allocation_tag.project]
 
   # Actual spend, not forecast, at all three. A forecast alert on a workload that runs in bursts
   # of a few hours fires on the burst and says nothing about the month — and the number the
