@@ -293,7 +293,7 @@ tests fail against the previous hook and pass against this one, which is how the
 rather than asserted — and a fourth spelling, `GIT_DIR=`, was found by review of the fix itself and
 would have left defect 1 alive in a different form.
 *Now:* `.claude/hooks/main_guard.py` :: `    here = Path(cwd) if isinstance(cwd, str) else Path.cwd()`
-*Status:* closed
+*Status:* open
 
 **`test_the_truth_is_not_lying_in_the_file_in_plain_sight` fails about 1 run in 254** · found
 2026-08-31 · by `evals/world-cache-measured`, from one red in a suite run
@@ -412,7 +412,7 @@ limit above
 left open with nobody able to close it
 *Now:* `PLAN.md` :: `Every cold run in the sample was a **spurious** invalidation, so 18.4 is what a spurious`
 *Now:* `evals/README.md` :: `**That last clause was a projection until 2026-08-31, and the number that replaced it is from a`
-*Status:* closed
+*Status:* open
 
 **A branch name in the record is a checkable assertion, and nothing offline can check it** · found
 2026-08-31 · by `evals/world-cache-measured`, which built the gate and measured it wrong
@@ -566,7 +566,7 @@ requirement that the prior value and the reason stay recoverable is actually met
 *Closed:* 2026-08-31 — all five corrected, the number measured rather than copied from the review
 *Now:* `PLAN.md` :: `somebody chose. `make claim-4` is green at 12/12 checks with 9/9 mutations biting, in about a`
 *Now:* `TASKS.md` :: `L9  src/holdout/core/demand/, evals/censoring/, make claim-4 — claim 4 green at 12/12 with 9/9`
-*Status:* closed
+*Status:* open
 
 **A guardrail rule id does two jobs, and a rename breaks the second one** · found 2026-08-31 · by
 oversight level 2 on `contracts/floor-rule-id`, and the check that produced it was proposed rather
@@ -1116,7 +1116,7 @@ are real; the unit cost is a construct, and it is named as one every time.
 *Now:* `corpus/real/README.md` :: `So the accurate description of what claim 1 is driven by is`
 *Now:* `corpus/real/MANIFEST.yaml` :: `It is a corpus device for deriving a plausible`
 *Now:* `evals/guardrail/build.py` :: `A sector median over 2008-2020, standing in for a quantity no public dataset contains.`
-*Status:* closed
+*Status:* open
 
 **The finding miscites the article it rests on** · found 2026-08-31 · by the reviewing session
 Split out of the entry above on 2026-08-31. `PLAN.md`'s record of oversight level 2's third
@@ -1138,7 +1138,7 @@ repository. That is the argument for this file rather than a footnote to it.
 *Disposition:* branch `corpus/legal-claims-restated`
 *Closed:* 2026-08-31 — restated in `PLAN.md` by `corpus/legal-claims-restated`, with the prior wording kept beside it per doctrine rule 4
 *Now:* `PLAN.md` :: `benchmark to the trader's **own** 2025 rather than to a sector figure.`
-*Status:* closed
+*Status:* open
 
 **Half of `G7` cannot fail, and half of `C7` cannot either** · found 2026-08-31 · by oversight level 3, while arming it
 `G7.closed-vocabulary-only` asks two questions and one of them is a dead branch. *Is every reason's
@@ -4238,7 +4238,7 @@ cannot produce.
 *Now:* `tests/boundary/conftest.py` :: `plants each of those against this fixture and requires it to raise, and plants the two *names*`
 *Now:* `tests/boundary/test_corpus_imports_nothing.py` :: `    block_imports(*FORBIDDEN_ROOTS, evict=(POLICED,))`
 *Now:* `.claude/README.md` :: `of the two names it used. A dynamic import *inside a function* still runs neither check, and`
-*Status:* closed
+*Status:* open
 
 ---
 **A variable's description asserts the absence of the default declared two lines below it** ·
@@ -4385,7 +4385,7 @@ count rather than the impression.
 *Disposition:* was `none` — recorded rather than acted on, deliberately. Overturned by branch `ops/a-published-figure-is-read-off-its-measurement` on **one of its two limbs**
 *Closed:* 2026-09-05 — the count limb does not survive re-measurement. It said *one measurement of one stale figure is not grounds to widen `PROSE`*; it was **five figures across thirteen present-tense sites**, one of which (`corpus/real/MANIFEST.yaml`'s 222 fields) had been stale since before this entry was written and was not found by anyone reading. Claim 7's five are now registered and `PROSE` holds **17**. The second limb — *widening it by hand is the same act as keeping `NOT_CONTENT` by hand* — is **not** overturned and is not claimed to be: the list is still kept by hand, still a judgment about which text asserts the present tense, and still prints its own size on every run. What is registered is enumerations computable in 0.02s; claim 2's `8/200` is a sharded 200-draw result that `make check` cannot re-run and stays `[M]` with the command beside it. `src/holdout/contracts/compilers/__init__.py`'s consumer count is still filed separately and still unregistered
 *Now:* `ops/figures.py` :: `    # ---------------------------------------------------------------- claim 7's figures`
-*Status:* closed
+*Status:* open
 
 ---
 **Five `CLAUDE.md` lines the author's, one of them a measured figure that has moved** ·
@@ -4411,7 +4411,7 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 *Now:* `CLAUDE.md` :: `infra/                 Terraform. **`lakehouse/` is the only layer that exists** — the catalog,`
 *Now:* `CLAUDE.md` :: `  then **append-only**. `delta.appendOnly` refuses an update, a delete and an insert overwrite,`
 *Now:* `CLAUDE.md` :: `6 rest on. Five families, none of which is a vendor feature.`
-*Status:* closed
+*Status:* open
 
 ---
 **An explanation that pre-approves the collision it explains, now five of twelve** ·
@@ -4517,7 +4517,7 @@ that never did.
 **And the price is recorded rather than absorbed.** Route 2 buys back *serverless only* by giving
 up change capture against a live source: the estate now demonstrates **incremental load of
 successive drops**. Smaller, deliberately, and put to the author as smaller.
-*Status:* closed
+*Status:* open
 
 ---
 
@@ -4569,7 +4569,7 @@ red the moment the sources-table row moved, refusing to let an anchored line cha
 somebody saying whether it was fixed or had gone stale. **The ruling and its closure are one
 piece of work because the anchor rule makes them one** — which is the register doing exactly what
 it is for, on the day it was tested by an edit it had never seen.
-*Status:* closed
+*Status:* open
 
 ---
 
@@ -4652,7 +4652,7 @@ the left, the workflow's own pattern and its `_SHARDS` derivation on the right �
 left side raising rather than passing vacuously.
 *Now:* `ops/figures.py` :: `ANY_TARGET_NAME = re.compile(r"^(?P<name>[a-z][\w.-]*):", re.MULTILINE)`
 *Now:* `ops/figures.py` :: `#: Every target in the Makefile, by name, so each can be asked what its recipe does.`
-*Status:* closed
+*Status:* open
 
 ---
 **A mutation's printed output, recorded in three files, and the population under it moved** ·
@@ -4686,41 +4686,55 @@ targets which check
 *Status:* open
 
 ---
-**Six findings' `*Status:*` lines disagreed with their own closures, and nothing read the field** ·
-found 2026-09-05 · by `holdout-98` reading `#62` hostilely, then measured
-
-Three entries carried a `*Closed:*` line with a date and a transition and said **`*Status:* open`**
-under it. Three carried **no `*Status:*` line at all**, two of them closed.
-
-**The consequence stated when it was raised was wrong, and measuring it made the finding better.**
-It was reported as *the gate reads the closure and reports the entry open*, and as making
-`docs/reviews/phase-2.md` §7's published `72 · 64 open` wrong. It does neither:
-`Finding.is_open` is derived from `*Closed:*` and **never from the status line**, so every count
-this register has ever printed was right.
-
-```
-91 entries · 80 open · 11 closed        <- the gate, before and after the fix
-11 *Closed:* lines · 6 *Status:* closed <- the two fields, before it
-```
-
-**Which is the actual defect and it is worse than a miscount.** `*Status:*` is the field a *person*
-reads; `*Closed:*` is the field the gate reads. **Nothing compared them**, so the human-facing half
-drifted for four days and the machine-facing half stayed correct — and the drift is invisible
-precisely because the count never moved. **A field nothing reads is a field nothing maintains.**
-
-**It is §2b's own defect surviving its own fix, one layer in.** `ops/expiry-knows-what-closed`
-landed on 2026-08-31 because four closures were written in prose the gate could not read. These
-were written in the marker the gate *can* read, and the gate still let the other line say
-otherwise.
+**Four entries wrote a status this register does not have, and the parser read it as nothing** ·
+found 2026-09-05 · by `holdout-98` reading `#62` hostilely, then twice measured
 
 *Site:* `ops/findings.py` :: `_STATUS_LOOSE = re.compile(r"^\*Status:\*[ \t]*(?P<what>\S+)", re.MULTILINE)`
-*Disposition:* branch `ops/a-published-figure-is-read-off-its-measurement` — the same atom, because
-a register that says `open` on a closed finding is the instrument this one is about
-*Closed:* 2026-09-05 — `parse()` refuses a `*Closed:*` beside any status but `closed`, refuses
-`closed` with no closure, and refuses an entry with no status line at all. All six corrected. The
-check is in `parse()` rather than in `failures()` deliberately, following the `*Closed:*`-shape
-precedent already there: a register whose two fields contradict each other is not a register that
-can be read and then reported on
+*Disposition:* branch `ops/a-published-figure-is-read-off-its-measurement`
+*Closed:* 2026-09-05 — `parse()` refuses a `*Status:*` value that is not `open` or `concurred`,
+and refuses an entry with none. The four are corrected to `open` and the three missing ones now
+have a line. `test_concurred_cannot_be_spelled_as_closed` keeps its name, its subject and its
+docstring's first sentence, and its assertion moves from *accepted and counted open* to *refused*
 *Now:* `ops/findings.py` :: `_STATUS_LOOSE = re.compile(r"^\*Status:\*[ \t]*(?P<what>\S+)", re.MULTILINE)`
-*Status:* closed
+*Status:* open
+
+**`*Status:*` has two values, `open` and `concurred`, and `closed` is not one of them.** It is the
+**agreement** axis — doctrine's *a finding does not close because two sessions agree* is the whole
+reason it exists — and `*Closed:*` is the **fix** axis. `is_open` reads only the second. Four
+entries wrote `*Status:* closed` anyway; `_STATUS` matched nothing, `status` came back `None`, the
+entry passed, and **the gate never said a word.** A value the parser could not read, read as
+nothing. Three more entries carried no status line at all, with the same silence.
+
+```
+main, 89 entries · 9 with *Closed:*
+  *Status:* closed  4     <- a value this field does not have
+  *Status:* open    3     <- correct: closed on one axis, unagreed on the other
+  no line           2
+```
+
+> **RESTATED 2026-09-05, before merge, because the first version of this entry was wrong at the
+> root and the fix built on it was worse.** It was filed as *six entries whose status contradicts
+> their own closure*, and the fix made `closed` a legal status, required it beside every closure,
+> and rewrote the three correct `open` entries into it. **Those three were right as written** — a
+> closed finding still has an answer on the agreement axis. The change would have made it
+> impossible to record that a closed finding had ever been `concurred`, **deleting the one thing
+> the field carries**, inside a register whose own doctrine is that agreement is not closure.
+>
+> **The prior wording is not kept as prose because it was never a true statement of the defect**,
+> and rule 4 preserves superseded *statements*, not a misreading of a format. What is kept is the
+> account of it, here, in the entry it belongs to.
+>
+> **Three things went wrong and only one of them was the report.** It was raised with a
+> consequence that did not exist — that the gate miscounts the open set, and that
+> `docs/reviews/phase-2.md` §7's `72 · 64 open` is wrong by three. I measured that and refuted
+> it. **Then I built the fix on the half I had not measured**, which was the claim that the two
+> fields are one axis, and I overturned a test that says the opposite in its own name. **The
+> author of the report caught it, against his own finding, before it merged.**
+
+**The reframing survives and belongs to the four.** *The machine-facing half stayed correct and
+the human-facing half drifted, invisibly, precisely because no count moved.* A miscount announces
+itself the moment somebody adds up; this did not, and could not. **A status value the parser
+cannot see is worse than one it disagrees with**, and it is the same shape as the `grep -P` that
+exited 1, the `claim-[1-7]` that could not see a `claim-8`, and the `fifty-six` this branch had to
+teach `_as_int` to read.
 

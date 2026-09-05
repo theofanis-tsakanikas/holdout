@@ -29,12 +29,13 @@ What is refused, and what is only reported
   `ops/claims-are-required`;
 * a finding with **no disposition line at all** — `none — <reason>` is a disposition; saying
   nothing is not;
-* a `*Status:*` line that contradicts the entry's own closure, or is missing. `is_open` is
-  derived from `*Closed:*` and never from this line, so a disagreement moves no count — it
-  drifted in six entries for four days for exactly that reason. **`*Closed:*` is the field the
-  gate reads and `*Status:*` is the field a person reads, and nothing compared them.**
-  `*Status:* closed` with no closure is refused rather than ignored: it used to be powerless and
-  silent, which is how agreement gets written where a transition belongs.
+* a `*Status:*` line carrying a value this field does not have, or missing entirely. **The two
+  values are `open` and `concurred`, and `closed` is not one of them** — this field and
+  `*Closed:*` are two axes, not one written twice. `*Status:*` answers *has anybody agreed
+  this*; `*Closed:*` answers *is it fixed*; `is_open` reads only the second. Four entries wrote
+  `*Status:* closed` anyway and `_STATUS` simply failed to match them, so **a value the parser
+  could not read was read as nothing and nothing went red** — which is worse than a value it
+  disagrees with, and is the shape this repository keeps finding. It refuses now.
 * a `*Closed:*` with no transition after the date. Closure is a transition, never a verdict;
 * a closed entry whose sites have no `*Now:*` line, or whose restated text no longer occurs
   exactly once. **Closure restates a site; it does not release it** — see below.
@@ -122,13 +123,17 @@ _CLOSED = re.compile(
     re.MULTILINE,
 )
 _CLOSED_LOOSE = re.compile(r"^\*Closed:\*", re.MULTILINE)
-#: The status word as written, whatever it is. `_STATUS` above reads only the two words that
-#: mean *not closed*, which is what the report needs; this one reads the line the way a person
-#: reads it, so the two can be compared. Nothing compared them until 2026-09-05, and six entries
-#: had drifted -- three saying `open` under a `*Closed:*` line with a date and a transition, and
-#: three carrying no status line at all. **None of them moved a count**, because `is_open` is
-#: derived from `*Closed:*` and never from this line, which is exactly what let them drift: a
-#: field nothing reads is a field nothing maintains, and this one is the field a *human* reads.
+#: The status word as written, whatever it is -- so that a value `_STATUS` cannot read is a
+#: refusal rather than a silence. `_STATUS` matches only `open|concurred`, and until 2026-09-05
+#: anything else simply did not match: `status` came back `None`, `concurred` came back `False`,
+#: and the entry passed. **Four entries wrote `*Status:* closed`, which this field does not
+#: have, and the gate never said so** -- a value it could not read, read as nothing.
+#:
+#: **`closed` is not a status and adding it would cost the field its subject.** `*Status:*` is
+#: the agreement axis -- doctrine's *a finding does not close because two sessions agree* lives
+#: in it -- and `*Closed:*` is the fix axis. Requiring `closed` beside every closure would make
+#: it impossible to record that a closed finding had ever been `concurred`, which is the one
+#: thing this field exists to carry.
 _STATUS_LOOSE = re.compile(r"^\*Status:\*[ \t]*(?P<what>\S+)", re.MULTILINE)
 #: What a site says **after** the finding was closed. A closed entry does not stop being checked;
 #: it is re-pointed at the text that replaced the defect, and that text is then held to the same
@@ -227,20 +232,17 @@ def parse(text: str) -> list[Finding]:
         written = _STATUS_LOOSE.search(entry)
         if written is None:
             raise RegistryError(
-                f"{title}: no *Status:* line. Every entry says what it is, in the word a "
-                "reader looks for."
+                f"{title}: no *Status:* line. Every entry says where it stands on the axis "
+                "this field carries, and saying nothing is not one of the two answers."
             )
-        word = written.group("what")
-        if closed is not None and word != "closed":
+        if status is None:
             raise RegistryError(
-                f"{title}: *Closed:* carries a date and a transition, and *Status:* says "
-                f"`{word}`. The count is taken from the closure and is right either way — "
-                "what disagrees is the line a person reads. Flip it, or take the closure out."
-            )
-        if closed is None and word == "closed":
-            raise RegistryError(
-                f"{title}: *Status:* says `closed` with no *Closed:* line. Closure is a "
-                "transition with a date and a `*Now:*` for every site, never a word."
+                f"{title}: *Status:* says `{written.group('what')}`, and this field has two "
+                "values: `open` and `concurred`. **`closed` is not one of them** — closure is "
+                "a `*Closed:*` line with a date, a transition and a `*Now:*` for every site, "
+                "and this field answers a different question: has anybody agreed it. A closed "
+                "finding still has an answer to that, and it is `open` unless two parties "
+                "concurred."
             )
         try:
             findings.append(

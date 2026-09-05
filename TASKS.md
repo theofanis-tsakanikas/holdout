@@ -2893,12 +2893,23 @@ denominator. And the *declared and never to be built* finding was re-anchored tw
 paragraph stating the rule, which **can never change and is a tripwire with nothing on it**, then
 to `experiments/`, the entry whose construction is the moment the finding's premise changes.
 
-**One of the four was half right, and measuring it made it better.** The status-line drift was
+**One of the four was wrong twice, and the second time it was mine.** The status-line drift was
 reported as a miscount — the gate reading a closure and reporting the entry open, and
-`phase-2.md` §7's `64 open` wrong. It is neither: `is_open` derives from `*Closed:*` and never
-from `*Status:*`, and every count this register printed was right. **The real defect is that
-`*Status:*` is the field a person reads and nothing compared it to the field the gate reads**, so
-it drifted invisibly in six entries. That is worse than a miscount and it is now refused.
+`phase-2.md` §7's `64 open` wrong. **It is neither**: `is_open` derives from `*Closed:*` and never
+from `*Status:*`, and every count this register printed was right. I measured that and refuted it.
+
+**Then I built the fix on the half I had not measured.** `*Status:*` has two values, `open` and
+`concurred`; `_STATUS` matches nothing else and `test_concurred_cannot_be_spelled_as_closed` says
+so in its own name. **They are two axes — agreement and fix — not one field written twice.** The
+first fix made `closed` a legal status, required it beside every closure, rewrote three correct
+entries into it, and **would have deleted the ability to record that a closed finding had ever
+been `concurred`** — the one thing that field carries, in a register whose doctrine is that
+agreement is not closure. **The session that raised the finding caught it, against its own
+report, before merge.**
+
+**The real defect is four entries writing a value the field does not have**, plus three writing
+none, with `_STATUS` failing to match and the gate saying nothing. `parse()` refuses both now, the
+seven are corrected, and the pinned contract does not move: only the volume of its refusal does.
 
 **What the ops id scheme could not supply.** `T00N`–`T00Z` are the review's twelve and `T00O` is
 the letter nobody should take; the alphabet was exhausted inside the review that filled it, which
