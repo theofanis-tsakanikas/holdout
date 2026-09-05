@@ -28,9 +28,71 @@
 # describes — its example titled *"Create an IAM OIDC provider without a thumbprint"* declares no
 # such attribute — so the code says what the paragraph above says, rather than saying it in a
 # spelling that needs a footnote.
+#
+# ---
+#
+# **This layer usually reads the provider rather than creating it, and that is a correction made
+# by an apply rather than by a reading.**
+#
+# An IAM OIDC provider is unique per issuer URL **per account**, not per project. The first
+# `terraform apply` of this layer failed:
+#
+#     Error: creating IAM OIDC Provider: EntityAlreadyExists:
+#     Provider with url https://token.actions.githubusercontent.com already exists.
+#
+# It was created on 2026-07-04 by another project in this portfolio. **So a per-project layer
+# declaring `resource` here is a layer claiming to own an account-scoped object, and the second
+# project to apply is the one that finds out.** Holdout was the second.
+#
+# The variable defaults to reading because that is true of the account this estate lives in. A
+# fresh account sets it to `true` — the resource is kept rather than deleted precisely so the
+# layer stays complete for an account that has none, which is what `IaC only` requires.
+#
+# **And what is read is asserted rather than assumed.** The audience is the other half of the
+# trust condition below: a provider whose `client_id_list` does not carry `sts.amazonaws.com`
+# would let every workflow fail at `AssumeRoleWithWebIdentity` with nothing here having noticed.
+# Another project owns that list and could change it, so the postcondition below is this layer's
+# only guard on a dependency it does not control.
+
+variable "create_github_oidc_provider" {
+  description = <<-EOT
+    Whether this layer creates the GitHub OIDC provider or reads the one already in the account.
+    An IAM OIDC provider is unique per issuer URL per **account**, so at most one project may own
+    it. Defaults to reading, because this estate's account has had one since 2026-07-04. Set it
+    to `true` in an account that has none.
+  EOT
+  type        = bool
+  default     = false
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
+  count          = var.create_github_oidc_provider ? 1 : 0
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
+}
+
+data "aws_iam_openid_connect_provider" "github" {
+  count = var.create_github_oidc_provider ? 0 : 1
+  url   = "https://token.actions.githubusercontent.com"
+
+  lifecycle {
+    postcondition {
+      condition     = contains(self.client_id_list, "sts.amazonaws.com")
+      error_message = <<-EOT
+        The account's GitHub OIDC provider does not accept `sts.amazonaws.com` as an audience,
+        and the deploy role's trust condition requires it. Another project owns that provider;
+        adding the audience is an account-level change and not this layer's to make silently.
+      EOT
+    }
+  }
+}
+
+locals {
+  github_oidc_arn = (
+    var.create_github_oidc_provider
+    ? one(aws_iam_openid_connect_provider.github[*].arn)
+    : one(data.aws_iam_openid_connect_provider.github[*].arn)
+  )
 }
 
 # **The trust condition pins a branch, not the repository.** `repo:owner/name:*` would also match
@@ -64,7 +126,7 @@ data "aws_iam_policy_document" "deploy_trust" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
+      identifiers = [local.github_oidc_arn]
     }
 
     condition {
