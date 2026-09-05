@@ -4271,6 +4271,26 @@ paid for in dollars and in forty-minute applies.
 *Disposition:* branch `infra/the-warehouse-has-no-default` — delete the default, and the
 description becomes true. Proposed to land before `T017`, because `T017` is the next thing to touch
 `infra/` and a second layer would copy the pattern
+*Closed:* 2026-09-05 — by `T00Y`, and **both halves measured on this laptop with Terraform
+v1.15.5 rather than inherited from the finding**. With the default gone,
+`terraform init -backend=false && terraform validate` still reports *Success! The configuration is
+valid.*, and `terraform plan -input=false` **stops**: *"The root module input variable
+"warehouse_id" is not set, and has no default value."* So nothing needed the default and something
+needed its absence — which is the finding's own claim, run in both directions rather than one.
+
+**And the fix on its own would have been a fix that regresses.** Nothing in this repository read a
+`.tf` declaration; `make terraform` runs `validate`, which passed with the default and passes
+without it, so the defect was invisible to every gate and would have been re-introduced by the
+next person who wanted `validate` to be quiet. `tests/infra/test_variable_declarations.py` is the
+guard, and it is a **rule rather than an assertion about `warehouse_id`**: a variable whose
+description says it has *no default* may not declare one. A test naming that one variable would
+have been a hand-kept population of one and would have said nothing to `T017`, which is the next
+layer and the reason this landed first.
+
+**Planted against, because a guard that has never refused anything has not been tested.** Putting
+the default back — substitution asserted at one site, and removed again with the count checked —
+fails `test_a_variable_that_says_it_has_no_default_declares_none` by name and nothing else.
+*Now:* `infra/lakehouse/dashboards.tf` :: `    warehouse rather than inheriting one somebody typed here.`
 *Status:* open
 
 ---

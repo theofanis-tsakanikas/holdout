@@ -1970,6 +1970,25 @@ bound `Money`, and **all four gates were silent on that one file at once** — `
 as one more module it had checked. One word changed to `holdout`
 and the boundary test failed, which is what separates the two names.
 
+**`T00Y` landed 2026-09-05 — the first layer of the estate no longer carries a default that
+contradicts its own description.** `infra/lakehouse/dashboards.tf`'s `warehouse_id` said it was
+*"declared with no default"* two lines above `default = ""`, and the default removed exactly the
+protection the description claimed: an apply that forgot it would have bound two dashboards to
+the warehouse named by the empty string rather than stopping.
+
+**Both halves measured with Terraform v1.15.5 rather than inherited from the finding**: with the
+default gone `terraform validate` still reports *Success*, and `terraform plan -input=false`
+**stops** with *"The root module input variable "warehouse_id" is not set, and has no default
+value."* Nothing needed the default; something needed its absence.
+
+**And the one-line fix would have regressed.** No gate in this repository had ever read a `.tf`
+declaration — `make terraform` runs `validate`, which passed with the default and passes without
+it — so the defect was invisible and the next person wanting a quiet `validate` would have put it
+back. `tests/infra/test_variable_declarations.py` is a **rule rather than an assertion about one
+variable**: a description that says *no default* against a declaration that has one. Planted
+against, and it refuses that variable by name and nothing else. It is here before `T017` because
+`T017` is the next thing to write a layer, which is the finding's own argument for the ordering.
+
 **The finding's prose half shrank under the build session's reading, and the code half grew.**
 The three sentences are ambiguous rather than false: `.claude/README.md` uses *spelling* to mean a
 **mechanism** one line below where §13 reads it as a **name**. The barrier has two axes — the
