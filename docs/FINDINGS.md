@@ -2489,7 +2489,21 @@ the change was *about* reaches it. **Grep the name of the thing being removed, n
 the things it touches**, which is a method rather than a piece of luck and should run on every
 future deletion of a named thing.
 
-*Site:* `CLAUDE.md` :: `infra/                 bootstrap · foundation · lakehouse · pipelines · ml · serving`
+**Re-anchored 2026-09-05 by `ops/a-published-figure-is-read-off-its-measurement`, and the move is
+itself the third instance.** The site was the `infra/` line in the *declared and not yet built*
+block. That branch moved `infra/` **out** of the block — it was built on 2026-09-04 and the block
+was describing a built directory as unbuilt — so the anchor is gone and `make findings` reported
+`MOVED` rather than passing quietly, which is the gate doing its job on a line nobody remembered
+was load-bearing twice.
+
+**The finding is not closed by that move and the class is untouched.** The block still has two
+states for a thing that has three, and it now has a fourth thing to say — *built, and here is
+which part of it* — which is what the `infra/` line in the block above had to be written as. The
+site is restated to the paragraph that states the rule, because the rule is what has no third
+marking; anchoring to any one directory's line meant the finding died whenever that directory
+changed state, which is exactly what just happened.
+
+*Site:* `CLAUDE.md` :: `**Declared and not yet built — phase 2 and later.** These are named because the layering is a`
 *Disposition:* none — the instance is closed by the author's edit. The class is a third state the
 layout block has no marking for, and adding one is a change to `CLAUDE.md`'s structure rather than
 its content, which is his
@@ -4363,10 +4377,10 @@ hand is the same act as keeping `NOT_CONTENT` by hand. What is recorded is the s
 count rather than the impression.
 
 *Site:* `ops/figures.py` :: `PROSE: tuple[Figure, ...] = (`
-*Disposition:* none — recorded rather than acted on, deliberately, with the count and the argument
-for not acting yet. The first candidate that costs nothing is
-`src/holdout/contracts/compilers/__init__.py`'s consumer count, filed separately
-*Status:* open
+*Disposition:* was `none` — recorded rather than acted on, deliberately. Overturned by branch `ops/a-published-figure-is-read-off-its-measurement` on **one of its two limbs**
+*Closed:* 2026-09-05 — the count limb does not survive re-measurement. It said *one measurement of one stale figure is not grounds to widen `PROSE`*; it was **five figures across thirteen present-tense sites**, one of which (`corpus/real/MANIFEST.yaml`'s 222 fields) had been stale since before this entry was written and was not found by anyone reading. Claim 7's five are now registered and `PROSE` holds **17**. The second limb — *widening it by hand is the same act as keeping `NOT_CONTENT` by hand* — is **not** overturned and is not claimed to be: the list is still kept by hand, still a judgment about which text asserts the present tense, and still prints its own size on every run. What is registered is enumerations computable in 0.02s; claim 2's `8/200` is a sharded 200-draw result that `make check` cannot re-run and stays `[M]` with the command beside it. `src/holdout/contracts/compilers/__init__.py`'s consumer count is still filed separately and still unregistered
+*Now:* `ops/figures.py` :: `    # ---------------------------------------------------------------- claim 7's figures`
+*Status:* closed
 
 ---
 **Five `CLAUDE.md` lines the author's, one of them a measured figure that has moved** ·
@@ -4386,8 +4400,13 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 *Site:* `CLAUDE.md` :: `infra/                 bootstrap · foundation · lakehouse · pipelines · ml · serving`
 *Site:* `CLAUDE.md` :: `  then read-only.`
 *Site:* `CLAUDE.md` :: `Four families, none of which is a vendor feature.`
-*Disposition:* the author's. Joins the four `CLAUDE.md` lines already with him; `docs/reviews/phase-2.md` §9 is the same table with the commands beside it
-*Status:* open
+*Disposition:* branch `ops/a-published-figure-is-read-off-its-measurement` — was *the author's*, and he delegated all five on 2026-09-05 in the words *do the most professional thing*
+*Closed:* 2026-09-05 — all five restated, and the first of them registered so it cannot recur. The figure was **not one line**: `18,069` was wrong in `CLAUDE.md`, the `Makefile`, `evals/oversight/README.md` four times and `corpus/real/MANIFEST.yaml`, which was a whole epoch behind. The fifth row had no site of its own and is restated at `CLAUDE.md` :: `that matter most — ``8/200 = 4.0%``` — the number the eval prints, kept illustrative but no longer a figure nobody measured. `SPEC-T003.md`'s `9/200` is **not** touched: a spec written before the measurement is a record of what was asked for, and editing it would rewrite the question
+*Now:* `CLAUDE.md` :: `the closed field set refuses 18,069 of 18,069.`
+*Now:* `CLAUDE.md` :: `infra/                 Terraform. **`lakehouse/` is the only layer that exists** — the catalog,`
+*Now:* `CLAUDE.md` :: `  then **append-only**. `delta.appendOnly` refuses an update, a delete and an insert overwrite,`
+*Now:* `CLAUDE.md` :: `6 rest on. Five families, none of which is a vendor feature.`
+*Status:* closed
 
 ---
 **An explanation that pre-approves the collision it explains, now five of twelve** ·
@@ -4629,3 +4648,35 @@ left side raising rather than passing vacuously.
 *Now:* `ops/figures.py` :: `ANY_TARGET_NAME = re.compile(r"^(?P<name>[a-z][\w.-]*):", re.MULTILINE)`
 *Now:* `ops/figures.py` :: `#: Every target in the Makefile, by name, so each can be asked what its recipe does.`
 *Status:* open
+
+---
+**A mutation's printed output, recorded in three files, and the population under it moved** ·
+found 2026-09-05 · by `ops/a-published-figure-is-read-off-its-measurement`, registering the
+population that mutation counts
+
+`O2`'s figure is `len(FIELDS_ON_THE_DECISION_PATH) - len(offences)` over the same denominator, so
+planting one offence prints `N-1/N`. Three files record that output as **`FAIL O2 · 55/56 types
+agree`**, written when the registry held 56. It holds **57**, so the same plant prints `56/57`
+today.
+
+**Not restated, and the reason is the distinction this branch is about.** These are not
+present-tense assertions about what exists — they are records of what a specific mutation printed
+on a specific day, which doctrine rule 4 keeps. `PLAN.md`'s is the one that reads closest to the
+present tense (*"putting the registry back gives …"*), and it is still a narrative of a run rather
+than a claim about today.
+
+**What is worth the entry is that nothing distinguishes them.** A registered figure and a recorded
+one look identical in prose, and the only thing separating them is a judgment made by whoever
+writes the sentence. `ops/figures.PROSE` cannot register a mutated-state output — its producer
+would have to plant a break, which is `gate-proof`'s mechanism and not `figures`' — so this class
+of figure has **no instrument at all**, in either direction.
+
+*Site:* `PLAN.md` :: `set — and putting the registry back gives `FAIL O2 · 55/56 types agree`. The tenth form of the rule`
+*Site:* `TASKS.md` :: `                  FAIL O2 · 55/56 types agree.`
+*Site:* `docs/DECISIONS.md` :: `> `FAIL O2.every-decision-path-type-carries-exactly-the-fields-written-down — 55/56 types agree``
+*Disposition:* none — recorded rather than acted on. Restating a record would be the defect rule 4
+names, and registering it needs a mechanism that plants a mutation to compute a figure, which no
+gate here has. The candidate owner is `gate-proof`, whose ledger already knows which mutation
+targets which check
+*Status:* open
+

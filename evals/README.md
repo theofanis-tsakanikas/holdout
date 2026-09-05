@@ -73,7 +73,7 @@ false if the check failed. If it cannot be written that way, it is measuring som
 rather than asserting it, and it belongs in `numbers`.
 
 **3 · Numbers are published whether or not anything failed.** `CLAUDE.md`: *numbers, not a
-green tick*. `9/200 = 4.5%` says more than PASS ever will, and a figure that only appears on
+green tick*. `8/200 = 4.0%` says more than PASS ever will, and a figure that only appears on
 failure is a figure nobody has looked at.
 
 **4 · Coverage is itself a check.** An eval whose inputs cannot reach half the vocabulary has

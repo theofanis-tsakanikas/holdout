@@ -693,6 +693,10 @@ the bound rather than a second assertion.
 *Figures restated after merging `main`: claims 3 and 4 added seven types and twenty fields to the
 registry, so the products moved — 15,533 → 17,752 attacks over 49 → 56 types. The 35 of 317 and the
 11.0% did not move, because they are properties of the two vocabularies and not of this estate.*
+*Figures restated again 2026-09-05: 17,752 → 18,069 attacks over 56 → 57 types, and 1,960 → 1,995
+refused by the word list. The block above is kept as measured. **The lesson is the second
+restatement rather than the numbers:** a figure that moves twice in six days is a figure nothing
+was comparing, and claim 7's five are now in `ops/figures.PROSE` — re-run on every `make check`.*
 
 **Still missing from the "read this first" table:** `docs/SCENARIO.md` and `docs/DAY-ONE.md`.
 *Restated 2026-08-30 by T007: `docs/SCENARIO.md` exists. `docs/DAY-ONE.md` is still absent and has

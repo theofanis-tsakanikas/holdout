@@ -14,7 +14,7 @@ would be false if the check failed. If it cannot be written as such a sentence, 
 is measuring something rather than asserting it, and it belongs in `numbers`.
 
 **Numbers are published whether or not anything failed.** CLAUDE.md: *numbers, not a green
-tick*. `9/200 = 4.5%` said more than "PASS" ever will, and a figure that only appears on
+tick*. `8/200 = 4.0%` said more than "PASS" ever will, and a figure that only appears on
 failure is a figure nobody has looked at. Every check prints its figure both ways.
 
 **A failure carries counterexamples.** A red check that says "342 rows violated the margin

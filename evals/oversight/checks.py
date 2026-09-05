@@ -748,8 +748,12 @@ def run() -> Report:
             "that a person could not be re-identified by joining store, SKU and time outside "
             "this system. Claim 7 is that no decision *targets* a person; it is not a "
             "statement about what somebody else could infer from an aggregate",
-            "that the eleven explained collisions are the only ones that will ever be "
-            "innocent. Ordinary engineering English overlaps with the vocabulary of "
-            "personhood, and each new overlap is a conversation rather than an addition",
+            # The count is read off `EXPLAINED` rather than written here, because this
+            # sentence and the table three lines above it are printed in the same block and
+            # said `eleven` and `12` at the same time for a day. A number that has a source
+            # in the same module is not a number to type — doctrine rule 3.
+            f"that the {len(EXPLAINED)} explained collisions are the only ones that will "
+            "ever be innocent. Ordinary engineering English overlaps with the vocabulary "
+            "of personhood, and each new overlap is a conversation rather than an addition",
         ),
     )
