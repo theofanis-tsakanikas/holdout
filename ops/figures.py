@@ -396,6 +396,54 @@ def layout_packages_named() -> int:
     return named
 
 
+#: A row of `CLAUDE.md`'s workflow table: the name in backticks, then `runs`, then `built`.
+_WORKFLOW_ROW = re.compile(
+    r"^\|\s*`(?P<name>[a-z][a-z-]*)`\s*\|[^|]*\|\s*(?P<built>[^|]+?)\s*\|", re.MULTILINE
+)
+
+
+def workflows_that_exist() -> int:
+    """Every `*.yml` under `.github/workflows/`."""
+    root = REPO_ROOT / ".github" / "workflows"
+    if not root.is_dir():
+        raise InstrumentMissingError(
+            ".github/workflows/ is not where this module looks for it, so the workflows the "
+            "table claims cannot be checked against the workflows that are there."
+        )
+    return sum(1 for f in root.iterdir() if f.suffix in (".yml", ".yaml"))
+
+
+def workflows_the_table_marks_as_built() -> int:
+    """How many rows say **yes**.
+
+    **The same defect as the skills table, found the same way and four days later.** `CLAUDE.md`
+    described five workflows in the present tense — in the layout block and in a table of its own
+    — for the whole of phase 2, while `.github/workflows/` held `ci.yml` and nothing else. The
+    skills table gained a status column on 2026-08-31 for exactly this, and **nobody extended the
+    idea to the directory beside it**: `make figures` covered `.github/` as a directory and its
+    contents as nothing at all.
+
+    It was found by the author asking to run a deploy that does not exist.
+    """
+    table = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    return sum(1 for m in _WORKFLOW_ROW.finditer(table) if m.group("built").strip("* ") == "yes")
+
+
+def workflows_claimed_that_are_not_there() -> tuple[list[str], list[str]]:
+    """The other direction: a row saying **yes** for a workflow file that is not there."""
+    root = REPO_ROOT / ".github" / "workflows"
+    if not root.is_dir():
+        return [], [".github/workflows/ is not there, so the table's claims cannot be checked"]
+    present = {f.stem for f in root.iterdir() if f.suffix in (".yml", ".yaml")}
+    table = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    invented = [
+        m.group("name")
+        for m in _WORKFLOW_ROW.finditer(table)
+        if m.group("built").strip("* ") == "yes" and m.group("name") not in present
+    ]
+    return invented, []
+
+
 def _tracked_paths() -> list[str]:
     """What git tracks, which is the only defensible answer to *what is repository content*."""
     listing = _tool_output(["git", "ls-files"])
@@ -733,6 +781,15 @@ COVERAGE: tuple[Coverage, ...] = (
         "the status column was added because the table listed four skills and one existed. "
         "Nothing enumerated the column against the directory, so a third status going stale "
         "would have looked exactly like the two that did not.",
+    ),
+    Coverage(
+        "workflows",
+        "every *.yml under .github/workflows/",
+        workflows_that_exist,
+        workflows_the_table_marks_as_built,
+        "CLAUDE.md described five workflows in the present tense while one existed, for the "
+        "whole of phase 2. The skills table gained a status column for exactly this defect four "
+        "days earlier and nobody extended it to the directory beside it.",
     ),
     Coverage(
         "suite",
@@ -1240,6 +1297,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
     unrun, unrun_missing = unrun_target_failures()
     fabricated, fabricated_missing = layout_fabrications()
     invented, invented_missing = skills_claimed_that_are_not_there()
+    ghosts, ghost_missing = workflows_claimed_that_are_not_there()
     prose, prose_missing = prose_failures()
     missing = [
         *missing,
@@ -1247,6 +1305,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         *unrun_missing,
         *fabricated_missing,
         *invented_missing,
+        *ghost_missing,
         *prose_missing,
     ]
     print("figures  a gate reports on what it examined; this is the difference", file=out)
@@ -1276,6 +1335,14 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
             f"FAIL    the skills table claims {len(invented)} skill(s) that are not there", file=out
         )
         for line in invented:
+            print(f"        {line}", file=out)
+        print("", file=out)
+    if ghosts:
+        print(
+            f"FAIL    the workflow table claims {len(ghosts)} workflow(s) that are not there",
+            file=out,
+        )
+        for line in ghosts:
             print(f"        {line}", file=out)
         print("", file=out)
     if fabricated:
@@ -1314,7 +1381,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         )
         print("        as if it were what exists.", file=out)
         return 1
-    if missing or floors or unrun or fabricated or invented or prose:
+    if missing or floors or unrun or fabricated or invented or ghosts or prose:
         return 1
 
     print(f"  {len(PROSE)} figure(s) in prose re-run and unchanged", file=out)
