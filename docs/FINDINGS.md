@@ -4518,7 +4518,7 @@ a temporary `GIT_INDEX_FILE` with `read-tree HEAD`, `add -A`, `write-tree`, `com
 tree or its index** — which is how the content was made durable while the review view it belonged
 to stayed exactly as the reviewing session had it
 *Now:* `.claude/skills/integration-review/SKILL.md` :: `**Commit on the branch. Then `git diff main..branch`.**`
-*Status:* open
+*Status:* concurred
 
 ---
 
