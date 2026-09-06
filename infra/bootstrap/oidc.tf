@@ -346,12 +346,31 @@ data "aws_iam_policy_document" "deploy_state" {
 # backend changes, which is close to never; this one grows with every layer, and a reader asking
 # *what may this role build* should not have to read past four statements about a bucket.
 #
-# **`resources = ["*"]` on the network and compute statements, and the reason is not laziness.**
-# A VPC, a KMS key and an IAM role are created by an apply, so their ARNs do not exist when this
-# policy is written -- a resource-scoped statement would have to name the ARN of something that
-# does not yet exist, and the two ways to do that are a wildcard on a name pattern, which a
-# rename defeats silently, or a second apply, which makes the layer's first apply depend on its
-# own output. **The scoping that is available is by tag and by action, and both are used below.**
+# **Everything that can be scoped is scoped, and the three that cannot are named.**
+#
+# Two rules do the work. **A name prefix**, where the resource carries its name into the create
+# request -- buckets, roles, functions, rules, topics, log groups -- because every name this
+# project chooses begins `holdout-` by construction. **A resource tag**, where the resource is
+# named by the caller only after it exists: `aws:ResourceTag/holdout:project` on the keys.
+#
+# `resources = ["*"]` survives in exactly two statements, and both are read-only or resourceless:
+# `CreateAKey`, and `AskTheAccountWhatExists`. Each says beneath it why.
+#
+# > **This paragraph argued the opposite until 2026-09-06 and three of its claims were false by
+# > then.** It read *`resources = ["*"]` on the network and compute statements, and the reason is
+# > not laziness* -- and there is no network statement, `022964b` having removed the VPC; the
+# > compute statements are no longer on `*`, `0616eac` having scoped them; and it listed *a
+# > wildcard on a name pattern, which a rename defeats silently* as one of two bad options, which
+# > is precisely the technique the body now uses in five statements. Its premise -- *their ARNs do
+# > not exist when this policy is written* -- was already contradicted below it by
+# > `RolesThisProjectOwns`, which was ARN-scoped on the day the paragraph was written.
+# >
+# > **It is the third header in two days to survive the fix below it**, after `deploy.yml`'s and
+# > the log-group comment two statements down, and the shape is worth naming: **a fix lands where
+# > the finding pointed, findings point at statements, and no statement's diff touches the
+# > paragraph that introduces it.** The introduction to a thing is the part a reader reads first
+# > and the part least likely to be re-read when the thing changes. The prior wording stays per
+# > doctrine rule 4.
 data "aws_iam_policy_document" "deploy_estate" {
   # ---------------------------------------------------------------- storage the layer creates
   statement {
@@ -392,14 +411,45 @@ data "aws_iam_policy_document" "deploy_estate" {
   # ---------------------------------------------------------------- the estate's data key
   #
   # **`kms:CreateKey` is the one action here that genuinely takes no resource**, and it is alone
-  # in this statement for that reason. A key that does not exist has no ARN, so there is nothing
-  # to name; what bounds it is that the provider's `default_tags` puts `holdout:project` on the
-  # key at creation, which is what every statement below is then able to key on.
+  # in this statement for that reason: a key that does not exist has no ARN to name.
+  #
+  # **The condition is what bounds it, and the sentence it replaced named a mechanism IAM cannot
+  # see.** That sentence said the grant was bounded because *the provider's `default_tags` puts
+  # `holdout:project` on the key at creation*. `default_tags` is a provider block in
+  # `infra/foundation`; **IAM cannot read it, cannot require it, and is not affected by it.** The
+  # role could have created an untagged key -- from a stray CLI call, or from a `foundation` whose
+  # provider block somebody edited -- and an untagged key falls outside
+  # `ManageThisProjectsKeys`'s tag condition, so the role could create a key it could then neither
+  # rotate, nor tag, nor schedule for deletion. **The reaper deletes nothing in AWS by design, so
+  # nothing else would collect it either**: an orphan CMK, about a dollar a month, removable only
+  # by a human with different credentials.
+  #
+  # `aws:RequestTag` makes the tag **a precondition of creation enforced by IAM** rather than a
+  # convention enforced in another layer, which is the property the split between this statement
+  # and the next one assumed and did not have.
+  #
+  # **This is stricter than any sibling and that is stated rather than hidden.** `manifest` and
+  # `watermark` both put `kms:CreateKey` and an *unconditioned* `kms:TagResource` in one statement
+  # -- which closes the same loop by letting the role tag any key, including another project's,
+  # and then manage it under the tag condition. Neither uses `aws:RequestTag` anywhere.
+  #
+  # **The risk this takes, named because it is the author who runs the first apply**: if the AWS
+  # provider ever tags a KMS key in a second call rather than in `CreateKey` itself, this
+  # condition refuses the create. That failure is `AccessDenied` on the first key of the first
+  # apply -- immediate, named, and before anything expensive exists -- and the remedy is to move
+  # `kms:TagResource` into this statement under the same `aws:RequestTag` condition. **A loud stop
+  # is the direction this repository chooses over a silent orphan.**
   statement {
     sid       = "CreateAKey"
     effect    = "Allow"
-    actions   = ["kms:CreateKey", "kms:ListAliases", "kms:ListKeys"]
+    actions   = ["kms:CreateKey"]
     resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/holdout:project"
+      values   = ["holdout"]
+    }
   }
 
   # **Managing keys this project owns, and only those.**
@@ -590,6 +640,16 @@ data "aws_iam_policy_document" "deploy_estate" {
   # **Every layer ends by asking the account what it built** -- `CLAUDE.md`: *verified by asking
   # the account, never by reading a workflow's exit code.* These are the calls that answer, and
   # every one of them is a read.
+  #
+  # **They read the account, not this project, and the sid overstates it.** `s3:ListAllMyBuckets`
+  # returns every bucket in an account holding four other projects; `iam:ListRoles` returns their
+  # roles and trust policies; `tag:GetResources` returns everything tagged. **None of the five
+  # accepts a resource or a tag condition** -- each is a List or a Get with no resource type -- so
+  # the filtering to this project happens in the caller and can happen nowhere else.
+  #
+  # That is the inverse of the argument `reap.py` inherits, where a tag condition belongs on the
+  # policy rather than in the code. **For these five it cannot be, and that is a fact about the
+  # API rather than a choice made here.**
   statement {
     sid    = "AskTheAccountWhatExists"
     effect = "Allow"
@@ -599,6 +659,7 @@ data "aws_iam_policy_document" "deploy_estate" {
       "iam:ListRoles",
       "s3:ListAllMyBuckets",
       "kms:ListKeys",
+      "kms:ListAliases",
     ]
     resources = ["*"]
   }
