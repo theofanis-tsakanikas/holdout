@@ -14,6 +14,13 @@ terraform {
       source  = "databricks/databricks"
       version = "1.130.0"
     }
+    # Used once, by `reaper.tf`, to zip the handler. Pinned exactly for the same reason as the
+    # two above: a patch release that changed the archive's bytes would change the Lambda's
+    # source hash and plan a replacement for a file nobody edited.
+    archive = {
+      source  = "hashicorp/archive"
+      version = "2.7.1"
+    }
   }
 
   # **A backend, because this layer applies from CI, and a partial one because the alternative

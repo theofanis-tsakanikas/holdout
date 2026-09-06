@@ -57,10 +57,12 @@ of every other layer.
 
 from __future__ import annotations
 
+import base64
 import datetime as dt
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -163,6 +165,53 @@ def estate_age_hours(session: Any, landing_bucket: str) -> float | None:
     return None
 
 
+def _oauth_token(session: Any, account_id: str) -> str:
+    """Exchange the account service principal's OAuth credentials for a short-lived token.
+
+    **The credentials are read from SSM `SecureString` at run time rather than carried in the
+    function's environment.** A Lambda environment variable is stored in the function's
+    configuration in plaintext and is readable by anything holding `lambda:GetFunction` — which
+    is a wider set than the reaper's own role, and includes every reader of a CloudFormation or
+    Terraform plan that renders it. `CLAUDE.md`'s rule is *no long-lived credentials*; this is the
+    same rule one level down, about where a credential rests rather than how long it lives.
+
+    The token that comes back lives about an hour, which is longer than any run of this function.
+    """
+    ssm = session.client("ssm")
+    fetched = ssm.get_parameters(
+        Names=[
+            f"{PUBLISHED_PREFIX}foundation/reaper_client_id",
+            f"{PUBLISHED_PREFIX}foundation/reaper_client_secret",
+        ],
+        WithDecryption=True,
+    )
+    values = {p["Name"].rsplit("/", 1)[1]: p["Value"] for p in fetched["Parameters"]}
+    missing = {"reaper_client_id", "reaper_client_secret"} - set(values)
+    if missing:
+        raise RuntimeError(
+            f"the reaper has no credentials: {sorted(missing)} is not published under "
+            f"{PUBLISHED_PREFIX}foundation/. This is the loud failure rather than the quiet one — "
+            "an estate past its TTL with the expensive half uncollected."
+        )
+
+    body = urllib.parse.urlencode({"grant_type": "client_credentials", "scope": "all-apis"}).encode(
+        "utf-8"
+    )
+    request = urllib.request.Request(
+        f"https://accounts.cloud.databricks.com/oidc/accounts/{account_id}/v1/token",
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    credentials = base64.b64encode(
+        f"{values['reaper_client_id']}:{values['reaper_client_secret']}".encode()
+    ).decode("ascii")
+    request.add_header("Authorization", f"Basic {credentials}")
+    with urllib.request.urlopen(request, timeout=30) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return str(payload["access_token"])
+
+
 def _databricks(host: str, token: str, path: str, method: str = "GET") -> dict[str, Any]:
     request = urllib.request.Request(
         f"{host}/api/2.0/{path}",
@@ -238,13 +287,19 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:  # noqa: ARG
         return report.as_dict()
 
     host = os.environ.get("DATABRICKS_HOST", "")
-    token = os.environ.get("DATABRICKS_TOKEN", "")
-    if not host or not token:
+    account_id = os.environ.get("DATABRICKS_ACCOUNT_ID", "")
+    if not host or not account_id:
         report.errors.append(
-            "no Databricks credentials in the environment, so the billing surfaces were not "
-            "examined. This is the one failure that must be loud: the estate is past its TTL and "
-            "the expensive half of it was not collected."
+            "no workspace host or account id in the environment, so the billing surfaces were "
+            "not examined. This is the one failure that must be loud: the estate is past its TTL "
+            "and the expensive half of it was not collected."
         )
+        return report.as_dict()
+
+    try:
+        token = _oauth_token(session, account_id)
+    except (RuntimeError, urllib.error.URLError, KeyError) as error:
+        report.errors.append(f"could not obtain a Databricks token: {error}")
         return report.as_dict()
 
     collect_billing_surfaces(host, token, report, dry_run)
