@@ -46,6 +46,10 @@ name: deploy
 on:
   workflow_dispatch:
     inputs:
+      reaper_dry_run:
+        description: "Reaper reports instead of deleting. Leave true until one dry run is read."
+        type: boolean
+        default: true
       create_metastore:
         description: "Create the account's UC metastore. TRUE ONLY ON THE FIRST APPLY OF A REGION."
         type: boolean
@@ -240,6 +244,12 @@ jobs:
           # not. `infra/foundation/metastore.tf` carries the trap in full: flipping this from
           # `true` back to `false` plans a destroy of the metastore and everything in it.
           TF_VAR_create_metastore: ${{ inputs.create_metastore }}
+
+          # **Defaults to reporting, and the dispatch has to opt out.** `variables.tf` carries the
+          # argument: forgetting it under-deletes, which costs money, rather than over-deletes,
+          # which costs data — and `collect_billing_surfaces` has never been pointed at a live
+          # workspace, so the first real apply exercises an unrun path against real compute.
+          TF_VAR_reaper_dry_run: ${{ inputs.reaper_dry_run }}
 
           # **Declared here rather than inherited from the credentials action.**
           # `aws-actions/configure-aws-credentials` does export `AWS_REGION` for later steps, so
