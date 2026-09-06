@@ -91,8 +91,19 @@ _ENVIRONMENT_RESOURCE = re.compile(
 _ENVIRONMENTS_LOCAL = re.compile(r"^\s*environments\s*=\s*\[(?P<items>[^\]]*)\]", re.MULTILINE)
 
 #: The `for_each` **inside** the `dynamic "reviewers"` block, told apart from the resource's own
-#: `for_each` by indentation. `terraform fmt` is what makes that reliable, and `make terraform`
-#: is what runs it.
+#: `for_each` by indentation — four spaces against two, which is what `terraform fmt` writes.
+#:
+#: **No target runs `terraform fmt`.** `make terraform` runs `init -backend=false` and `validate`
+#: and nothing else; `fmt` appears nowhere in the Makefile. This sentence replaces one asserting
+#: that it did — prose naming a check nobody wrote, which is the defect this repository has
+#: catalogued more than any other, arriving inside a gate file written the same night as two of
+#: its instances. The formatting is a convention here, not a checked precondition.
+#:
+#: **What makes the dependency safe anyway is measured, not assumed: every mis-indentation tried
+#: fails red rather than passing.** Indent the resource body by two more spaces and the
+#: resource's own `for_each` matches here, whereupon `toset(local.environments)` is neither a
+#: ternary nor a literal list and `_exempt` raises. Dedent the guard to two and nothing matches,
+#: whereupon the count assertion names it. The dependency costs a false red, never a false pass.
 _NESTED_FOR_EACH = re.compile(r"^ {4}for_each\s*=\s*(?P<expr>.+?)\s*$", re.MULTILINE)
 
 #: The one spelling this gate reads: a condition, then an empty list, then a non-empty one.
