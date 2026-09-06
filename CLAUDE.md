@@ -941,12 +941,57 @@ reading a workflow's exit code.
 | | runs | built | does |
 |---|---|---|---|
 | `ci` | every push | **yes** | the suite, every eval, `gate-proof`, `make contracts`, `make expiry`, `make preview-audit`, `terraform validate` |
-| `deploy` | dispatch | **no** | the whole suite **first**, then apply five layers |
+| `deploy` | dispatch | **yes** | **asserts the suite was green on the dispatched sha**, then applies a layer or all of them, bottom-up |
 | `backfill` | dispatch | **no** | load history, build silver and gold, train, gate, register, apply `serving` |
 | `run` | dispatch | **no** | drive the day, run both experiments, answer a live question, assert against the account |
 | `destroy` | dispatch | **no** | takes a target: `serving` (the expensive layer, ~2 min) or `all` (reverse order), then asks the account |
 
 **The suite runs upstream of every apply.** Nothing reaches AWS until all of it is green.
+
+> **Restated 2026-09-06, and the mechanism changed rather than the guarantee.** The sentence
+> above described `deploy` re-running the suite. It does not: **it asserts that `ci` was green on
+> the sha it is about to apply**, and refuses otherwise.
+>
+> **`ci` takes roughly twenty-five minutes, and that sentence is deliberately all the precision
+> this argument gets.** Re-running it inside `deploy` would spend that proving what was already
+> proved — the argument holds at any value between twenty-three and twenty-seven, so the digits
+> were never load-bearing.
+>
+> **Three sets of figures were published for this one quantity before the sentence replaced them,
+> and none named the query that produced it.** The first five were real and **sorted**, which
+> destroyed which run was which and made them unpairable to a sha. The second range was written
+> while correcting the first and **was never measured at all**. The third, from a reviewer, used
+> a different population — `branch=main&status=completed` — and agreed on the mean while
+> disagreeing on both extremes.
+>
+> **That is `[M]` failing three times in one paragraph about not repeating work.** A figure with
+> no command beside it is not a measurement, and *the conclusion was right every time* is what
+> stopped anybody looking at the inputs. The rule this instantiates is the one this repository
+> already has: **publish the command, or publish nothing that has to be checked.**
+>
+> **And the two gates protect different objects, which is why both exist.** A required context is
+> evaluated on the **pull request's head**; a squash-merge then produces a **new commit**, and no
+> required check ever runs on it. Measured on the most recent merge: `#68`'s head was `4235127f`
+> and `main` became `3b39c563`. So the merge gate protects `main`'s **content**, and `deploy`'s
+> check protects the **applied sha** — `verified` queries `head_sha` for the commit it is about to
+> apply and demands a completed success for *that*. **A future session reading only the merge
+> guarantee could remove the workflow's check as redundant, and be wrong with nothing red.**
+>
+> **The operational consequence, because it fires at three in the morning.** A squash commit needs
+> its **own** `push` run to *finish* before `deploy` can be dispatched — 23 to 27 minutes. Dispatch
+> sooner and the check refuses, correctly, on a run that is merely still going.
+>
+> **It is not weaker.** A re-run can pass where the recorded run failed, so a workflow that
+> re-runs until green hides flakiness and one that asserts the record cannot. It is also this
+> repository's own rule — *a change is not verified by its own run* — with the run already in
+> existence. **And `cancelled` is not green**: `ci` cancels in progress on `main`, so two quick
+> merges cancel the first run, and `deploy` refuses a sha whose only run was cancelled — which is
+> `claims-complete`'s own rule about `skipped` one layer up.
+>
+> **Two alternatives were rejected and are named so the question is not re-opened.** `ci.yml`
+> carries no `workflow_call` trigger, so it cannot be invoked from `deploy`. Re-declaring its
+> steps there would be two enumerations of one population, which is the defect
+> `docs/two-enumerations-of-one-population` is named after.
 
 ---
 

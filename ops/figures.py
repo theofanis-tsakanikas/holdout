@@ -396,14 +396,56 @@ def layout_packages_named() -> int:
     return named
 
 
-#: A row of `CLAUDE.md`'s workflow table: the name in backticks, then `runs`, then `built`.
+#: The workflow table itself, sliced out of `CLAUDE.md` before any row is read.
+#:
+#: **The population is the table, not the row shape, and the difference was a real defect.**
+#: `_WORKFLOW_ROW` alone matches **eleven** rows in this document and **six of them are the
+#: Terraform layers table** — `| bootstrap | locally, once | state bucket + KMS… |` has exactly
+#: the shape `| name | something | something |`. It gave the right answer only because that
+#: table's third column is prose and prose never equals `yes`: **the guard held by an accident of
+#: the data rather than by its own logic**, with a comment above it asserting the logic.
+#:
+#: **And the accident has an expiry.** The skills table gained a `status` column on 2026-08-31
+#: because its rows went stale; the workflows table gained `built` on 2026-09-05 for the same
+#: reason; **the layers table is the obvious next candidate** — `foundation` through `serving` are
+#: all unbuilt and described in the present tense beside a `bootstrap` that is applied. The day
+#: somebody adds `built` there for that reason, six layer rows start being counted as workflows.
+#:
+#: So the slice runs from the workflow table's own heading to the next horizontal rule, and the
+#: row shape then only has to be unambiguous **within one table**, which it is. This is
+#: `make figures`' own rule turned on `make figures`: it declares how its population is
+#: enumerated everywhere else, and here the declaration had been a comment over a document-wide
+#: regular expression.
+_WORKFLOW_TABLE = re.compile(r"^### Five workflows.*?(?=^---$)", re.MULTILINE | re.DOTALL)
+
+#: A row of that table: the name in backticks, then `runs`, then `built`.
 _WORKFLOW_ROW = re.compile(
     r"^\|\s*`(?P<name>[a-z][a-z-]*)`\s*\|[^|]*\|\s*(?P<built>[^|]+?)\s*\|", re.MULTILINE
 )
 
 
+def _workflow_table() -> str:
+    """The slice, or a raise. An instrument that cannot find its population does not report zero."""
+    document = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    found = _WORKFLOW_TABLE.search(document)
+    if found is None:
+        raise InstrumentMissingError(
+            "CLAUDE.md's workflow table is not there in the shape this module slices it out of, "
+            "so the rows claiming a workflow is built cannot be counted. A heading that moved is "
+            "a population that cannot be enumerated, which is not a count of zero."
+        )
+    return found.group(0)
+
+
 def workflows_that_exist() -> int:
-    """Every `*.yml` under `.github/workflows/`."""
+    """Every `*.yml` **or `*.yaml`** under `.github/workflows/`.
+
+    Both suffixes, because a workflow may be either and a gate that saw only one would be the
+    `claim-[1-7]` defect with a file extension. `tests/ops/test_workflow_shell.py` states the same
+    population as a glob, `*.y*ml` — **two declarations of one population, agreeing today and
+    written differently in two files**, which is worth knowing about rather than leaving to be
+    discovered when they stop agreeing.
+    """
     root = REPO_ROOT / ".github" / "workflows"
     if not root.is_dir():
         raise InstrumentMissingError(
@@ -425,8 +467,11 @@ def workflows_the_table_marks_as_built() -> int:
 
     It was found by the author asking to run a deploy that does not exist.
     """
-    table = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
-    return sum(1 for m in _WORKFLOW_ROW.finditer(table) if m.group("built").strip("* ") == "yes")
+    return sum(
+        1
+        for m in _WORKFLOW_ROW.finditer(_workflow_table())
+        if m.group("built").strip("* ") == "yes"
+    )
 
 
 def workflows_claimed_that_are_not_there() -> tuple[list[str], list[str]]:
@@ -435,10 +480,9 @@ def workflows_claimed_that_are_not_there() -> tuple[list[str], list[str]]:
     if not root.is_dir():
         return [], [".github/workflows/ is not there, so the table's claims cannot be checked"]
     present = {f.stem for f in root.iterdir() if f.suffix in (".yml", ".yaml")}
-    table = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     invented = [
         m.group("name")
-        for m in _WORKFLOW_ROW.finditer(table)
+        for m in _WORKFLOW_ROW.finditer(_workflow_table())
         if m.group("built").strip("* ") == "yes" and m.group("name") not in present
     ]
     return invented, []
