@@ -85,9 +85,21 @@ _ENVIRONMENT_RESOURCE = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 
-#: `environments = ["plan", "deploy", "destroy"]` in a `locals` block. This is the population the
-#: resource iterates, so it is read from the same tree rather than restated here — a hand-kept
-#: copy would be a second definition of a contract value, which is doctrine rule 3.
+#: A top-level `locals { ... }` block, closing brace anchored at column zero.
+_LOCALS_BLOCK = re.compile(r"^locals\s*\{(?P<body>.*?)^\}", re.MULTILINE | re.DOTALL)
+
+#: `environments = ["plan", "deploy", "destroy"]`, looked for **only inside a `locals` block**.
+#: This is the population the resource iterates, so it is read from the same tree rather than
+#: restated here — a hand-kept copy would be a second definition of a contract value, doctrine
+#: rule 3.
+#:
+#: **It was `^\s*environments\s*=` over the whole file, and that was the `_WORKFLOW_ROW` defect
+#: again — a population defined by the shape of a line rather than by the block that owns it.**
+#: Measured: a `locals { environments = ["only-this-one"] }` planted in `budget.tf`, which sorts
+#: before `oidc.tf`, was read as the population and **the gate stayed green** — `plan`, `deploy`
+#: and `destroy` were then never checked at all, by any assertion in this file. That is not a
+#: decoy: `infra/foundation` is unwritten, `environments` is an ordinary name for a different
+#: thing, and any file sorting before `oidc.tf` would have silently taken over.
 _ENVIRONMENTS_LOCAL = re.compile(r"^\s*environments\s*=\s*\[(?P<items>[^\]]*)\]", re.MULTILINE)
 
 #: The `for_each` **inside** the `dynamic "reviewers"` block, told apart from the resource's own
@@ -126,13 +138,36 @@ def _layers() -> list[Path]:
     return sorted(p for p in INFRA.iterdir() if p.is_dir() and any(p.glob("*.tf")))
 
 
-def _declared_environments(layer: Path) -> list[str]:
-    """The names `local.environments` holds, read out of the layer that declares them."""
+def _declared_environments(layer: Path) -> list[tuple[str, list[str]]]:
+    """Every `(file, names)` in the layer whose `locals` block declares `environments`.
+
+    **It returns all of them rather than the first**, so that two candidate populations are a
+    failure instead of a silent choice between them. The docstring of this file states the rule
+    — an instrument that cannot enumerate its population does not report zero — and this used to
+    apply it to *zero* matches while resolving *two* by sort order.
+    """
+    found: list[tuple[str, list[str]]] = []
     for path in sorted(layer.glob("*.tf")):
-        match = _ENVIRONMENTS_LOCAL.search(path.read_text(encoding="utf-8"))
-        if match:
-            return [m.group("name") for m in _QUOTED.finditer(match.group("items"))]
-    return []
+        source = path.read_text(encoding="utf-8")
+        for block in _LOCALS_BLOCK.finditer(source):
+            match = _ENVIRONMENTS_LOCAL.search(block.group("body"))
+            if match:
+                names = [m.group("name") for m in _QUOTED.finditer(match.group("items"))]
+                found.append((path.name, names))
+    return found
+
+
+def _one_population(candidates: list[tuple[str, list[str]]], where: str) -> list[str]:
+    """The single declared population, or a failure naming the candidates."""
+    if len(candidates) != 1:
+        raise AssertionError(
+            f"{where}: {len(candidates)} `locals` blocks under this layer declare "
+            f"`environments` ({[c[0] for c in candidates]}). With none there is no population to "
+            "check and every assertion below passes vacuously; with two this gate would pick one "
+            "by filename order and check a population the resource never iterates — measured, "
+            "and it stayed green. Neither is answerable, so both refuse."
+        )
+    return candidates[0][1]
 
 
 def _exempt(expr: str, names: list[str], where: str) -> set[str]:
@@ -173,11 +208,11 @@ def _exempt(expr: str, names: list[str], where: str) -> set[str]:
     return matched
 
 
-def _environments() -> list[tuple[str, str, list[str], str]]:
-    """Every `(where, label, declared names, body)` this repository's Terraform creates."""
-    found: list[tuple[str, str, list[str], str]] = []
+def _environments() -> list[tuple[str, str, list[tuple[str, list[str]]], str]]:
+    """Every `(where, label, population candidates, body)` this repository's Terraform creates."""
+    found: list[tuple[str, str, list[tuple[str, list[str]]], str]] = []
     for layer in _layers():
-        names = _declared_environments(layer)
+        candidates = _declared_environments(layer)
         for path in sorted(layer.glob("*.tf")):
             source = path.read_text(encoding="utf-8")
             for match in _ENVIRONMENT_RESOURCE.finditer(source):
@@ -185,7 +220,7 @@ def _environments() -> list[tuple[str, str, list[str], str]]:
                     (
                         str(path.relative_to(REPO_ROOT)),
                         match.group("label"),
-                        names,
+                        candidates,
                         match.group("body"),
                     )
                 )
@@ -205,21 +240,19 @@ def test_there_is_an_environment_resource_to_check() -> None:
         "no `github_repository_environment` resource is declared under infra/ — every assertion "
         "in this file would pass vacuously. If the environments moved, this gate moves with them."
     )
-    for where, label, names, _ in _ENVIRONMENTS:
-        assert names, (
-            f"{where}: `{label}` exists and no `environments = [...]` local was found in its "
-            "layer, so the population it iterates is unknown and nothing below is checked."
-        )
+    for where, label, candidates, _ in _ENVIRONMENTS:
+        _one_population(candidates, f"{where}::{label}")
 
 
 @pytest.mark.parametrize(
-    ("where", "label", "names", "body"),
+    ("where", "label", "candidates", "body"),
     _ENVIRONMENTS,
     ids=[f"{where}::{label}" for where, label, _, _ in _ENVIRONMENTS],
 )
 def test_only_an_allowlisted_environment_may_have_no_reviewer(
-    where: str, label: str, names: list[str], body: str
+    where: str, label: str, candidates: list[tuple[str, list[str]]], body: str
 ) -> None:
+    names = _one_population(candidates, f"{where}::{label}")
     guards = _NESTED_FOR_EACH.findall(body)
     assert len(guards) == 1, (
         f"{where}: `{label}` has {len(guards)} nested `for_each` expressions where this gate "
@@ -248,19 +281,23 @@ def test_only_an_allowlisted_environment_may_have_no_reviewer(
 
     unprotected = sorted(declared - exempt)
     assert unprotected, (
-        f"{where}: `{label}` gives no environment a required reviewer. `deploy` and `destroy` "
-        "spend money and destroy evidence; the trust policy issues their tokens on a dispatch "
-        "alone, and the reviewer is the only human in that path."
+        f"{where}: `{label}` declares {sorted(declared)} and every one of them is reviewerless, "
+        "so no human stands in any federated path. An environment that spends money or destroys "
+        "evidence has its token issued on a dispatch alone, and the required reviewer is the "
+        "only person in between. This names what the layer actually declares rather than "
+        "`deploy` and `destroy`, which it said before and which a smaller estate does not "
+        "contain — a gate that bites correctly and explains itself with names the reader cannot "
+        "find is most of the way to not biting at all."
     )
 
 
 @pytest.mark.parametrize(
-    ("where", "label", "names", "body"),
+    ("where", "label", "candidates", "body"),
     _ENVIRONMENTS,
     ids=[f"{where}::{label}" for where, label, _, _ in _ENVIRONMENTS],
 )
 def test_every_environment_is_reachable_only_from_a_protected_branch(
-    where: str, label: str, names: list[str], body: str
+    where: str, label: str, candidates: list[tuple[str, list[str]]], body: str
 ) -> None:
     """The half that makes the reviewer worth having.
 
