@@ -105,6 +105,39 @@ Everything here is also tagged `holdout:lifetime = permanent`, which is not deco
 tagged and older than N hours, and it has to be able to tell the survivors apart from an estate
 that is meant to die.
 
+## The order, and it is the step nobody had written down
+
+**Every permission a layer above needs is a change to *this* layer, and this layer applies from a
+laptop.** `oidc.tf` says the first half — *each layer's task adds what that layer needs* — and the
+ordering that follows from it was written nowhere: not here, not in `TASKS.md`, not in `PLAN.md`.
+
+```
+  1  a branch that adds a layer merges          (T018, T020, …)
+  2  THE AUTHOR RE-APPLIES infra/bootstrap LOCALLY      <- this step
+  3  only now can `deploy` dispatch successfully
+```
+
+**Skip step 2 and the failure is not a refusal to start.** It is `AccessDenied` **mid-apply**,
+after the VPC, the subnets and possibly the workspace exist — **an estate standing and billing
+while somebody reads a stack trace.** It is `budget.tf`'s own sentence with an IAM denial in place
+of a budget: *what stops a run mid-way leaves everything it built running and removes the thing
+that would have torn it down.*
+
+**Three things step 2 must carry before the first `deploy`, and each is a precondition rather than
+a convenience.**
+
+| | what | why it cannot wait |
+|---|---|---|
+| **`ssm:PutParameter`** | the deploy role has `GetParameter*` and no write | **`CLAUDE.md` requires every layer to publish through SSM**, and the TTL reaper's population *is* those published names. **The reaper is not merely inconvenienced without it — it is incorrect**, because an object whose name never reached SSM is an object it cannot reap |
+| **`max_session_duration`** | 3600s against a `deploy` modelled at ~40 min and a `backfill` at ~1.5 h | `configure-aws-credentials` does not refresh. The credential dies **mid-apply**, and the repair lives here — so it is a laptop, at the moment the estate is up |
+| **`environment: plan`** | added by this branch | `deploy.yml`'s plan job presents `:environment:plan` and the trust policy must already accept it. **An environment that does not exist refuses the token that names it** |
+
+**Where this came from.** `watermark`'s permission set was copied and `manifest`'s layering
+doctrine was copied, and they are complete only separately: `manifest` carries `published.tf` in
+every layer above bootstrap **and** the write permissions to match, while `watermark` has neither.
+**The pattern was copied and its writing half was not** — which is the fourth time that sentence
+has been true of this layer in one day.
+
 ## Applying it, when the author decides to
 
 ```
@@ -114,6 +147,17 @@ terraform init                         # no backend; state is local
 terraform plan  -var budget_alert_email=<address> -out bootstrap.tfplan
 terraform apply bootstrap.tfplan
 ```
+
+**Read the plan for `destroy` lines, and expect none unless one is intended.** `terraform
+validate` reads the configuration and **never reads the state**, so a rename is invisible to every
+check this repository runs — and a rename of an applied resource plans as *destroy and create*. It
+was caught once, on 2026-09-06, when collapsing two environments into one `for_each` planned two
+destroys for a change whose content was one addition. **The `moved` blocks in `github.tf` are what
+turned it into `1 to add, 2 to change, 0 to destroy`**, and the only thing that could have shown
+the difference is the plan.
+
+**This layer is the only one where that question is answerable on the laptop**, because its state
+is local — which is the same property that makes it the layer applied by hand.
 
 **`GITHUB_TOKEN` is required and its absence fails at plan time**, which is the correct failure.
 The layer creates the role a workflow assumes and **publishes its ARN into the repository's

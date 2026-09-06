@@ -58,12 +58,29 @@ resource "github_actions_variable" "aws_region" {
 # `required_reviewers` is what makes a dispatch wait. `protected_branches` is the second half:
 # without it an environment can be targeted from any branch, and a reviewer who approves a
 # deployment is approving a branch nobody reviewed.
-resource "github_repository_environment" "deploy" {
+# **Three environments from one list**, so `oidc.tf`'s `local.environments` and these resources
+# cannot drift: the trusted subjects and the objects that produce them are generated from the
+# same source. `oidc.tf:117`'s argument for writing the names literally was that a knob silently
+# breaks federation when turned — **one list turned by one hand is not that knob**; two lists that
+# must agree is.
+#
+# **`plan` has no reviewer and that is the whole reason it exists.** An approval on a job that has
+# not planned yet is an approval of a layer name; the plan job runs unattended, and the reviewer
+# on `deploy` then approves a diff. **`protected_branches` is on all three**, because an
+# environment reachable from any branch is a reviewer approving a branch nobody reviewed.
+resource "github_repository_environment" "estate" {
+  for_each    = toset(local.environments)
   repository  = local.repo
-  environment = "deploy"
+  environment = each.key
 
-  reviewers {
-    users = [var.github_owner_id]
+  dynamic "reviewers" {
+    # No reviewer on `plan`. `for_each` over a one-or-zero list rather than a `count` on the
+    # resource, because the environment must exist either way — it is half of the trust
+    # condition, and an environment that does not exist refuses the token that names it.
+    for_each = each.key == "plan" ? [] : [1]
+    content {
+      users = [var.github_owner_id]
+    }
   }
 
   deployment_branch_policy {
@@ -72,21 +89,46 @@ resource "github_repository_environment" "deploy" {
   }
 }
 
-# **`destroy` is protected too, and the reason is not symmetry.** A teardown is not a safe
-# operation to leave unguarded because it is cheap: `CLAUDE.md` is explicit that on a failure
-# tearing down destroys the evidence, and that `destroy` is *always a deliberate dispatch, never
-# automatic*. An environment with a reviewer is what makes "deliberate" a property of the system
-# rather than of somebody's intention.
-resource "github_repository_environment" "destroy" {
-  repository  = local.repo
-  environment = "destroy"
 
-  reviewers {
-    users = [var.github_owner_id]
-  }
 
-  deployment_branch_policy {
-    protected_branches     = true
-    custom_branch_policies = false
-  }
+# **Two `moved` blocks, because this refactor changes an address that is already applied.**
+#
+# `github_repository_environment.deploy` and `.destroy` exist in the account and in this layer's
+# state, applied 2026-09-05. Collapsing them into one `for_each` resource changes **both** the
+# label and the address shape — `.deploy` becomes `.estate["deploy"]` — and Terraform matches
+# state to configuration **by address**. Without these, the plan is *two destroys and three
+# creates* for a change whose whole content is one addition.
+#
+# **Three reasons that is not merely noisy**, in order:
+#
+# **It asks for approval of a plan containing destroys, on the trust anchor, applied by hand.**
+# `CLAUDE.md`'s posture is that a destroy is deliberate and never incidental; a surprise
+# `- destroy` in a hand-applied plan is either rubber-stamped or aborted, and both are wrong for
+# a change whose content is one addition.
+#
+# **It erases the environments' deployment history** — who approved which dispatch and when,
+# which is the audit trail of the human gate. Doctrine rule 4 says a correction never erases what
+# was previously stated, and this would erase it as a side effect of a rename.
+#
+# **And it opens a window where an environment named in the trust policy does not exist.**
+# Terraform may destroy `deploy` before creating `estate["deploy"]`, and the comment above calls
+# these objects half of that trust.
+#
+# **`moved` rather than `terraform state mv`**, for the reason this file already gives about the
+# environments themselves: state surgery is a console-shaped act performed once by whoever
+# happens to run it, and a `moved` block is configuration that goes through a pull request.
+#
+# **And the general lesson is worth more than the fix: `terraform validate` reads configuration
+# and never reads state, so a rename is invisible to the check this branch is green on.**
+# `infra/bootstrap` keeps its state locally — by design, for the chicken-and-egg reason `main.tf`
+# gives — which makes *what will this plan do to what is already applied* answerable on this
+# laptop, and this is the only layer in the estate where that is true.
+moved {
+  from = github_repository_environment.deploy
+  to   = github_repository_environment.estate["deploy"]
+}
+
+moved {
+  from = github_repository_environment.destroy
+  to   = github_repository_environment.estate["destroy"]
 }

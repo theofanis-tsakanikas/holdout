@@ -4974,7 +4974,45 @@ defect this layer hit on its first apply; `manifest` and `watermark` already car
 created here with a required reviewer and `protected_branches`; the tag keys namespaced to
 `holdout:*`; `aws_ce_cost_allocation_tag` activating `holdout:project`; the budget filtered to it
 and renamed `holdout-estate` as the siblings name theirs. **The limit is unchanged at 1,000 USD**
-*Now:* `infra/bootstrap/oidc.tf` :: `  trusted_subjects = [`
+*Now:* `infra/bootstrap/oidc.tf` :: `"repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repository_id}:environment:${e}"`
+*Now:* `infra/bootstrap/oidc.tf` :: `token.actions.githubusercontent.com:repository_id`
+
+> **The `*Now:*` above was restated 2026-09-06 and `make findings` is what asked for it.** The
+> anchor was `trusted_subjects = [`, a literal list of four; the list is now generated from
+> `local.environments` in both subject forms, so the line the closure named no longer exists and
+> the gate reported `REVERTED` rather than passing quietly. **That is closure restating a site
+> instead of releasing it, doing its job on the first change that touched the line** — and it is
+> the second time in two days that this mechanism has caught a correction going stale.
+>
+> **And the finding's own subject moved with it.** It closed on *the subject form is name-and-id*;
+> what is true now is **name-and-id across three environments, with the takeover property carried
+> by two ANDed conditions on `repository_id` and `repository_owner_id` rather than by the id form
+> being in a disjunction.** The prior wording stays per doctrine rule 4.
+>
+> **Then it was restated a second time, the same day, because the first replacement did not
+> bite — and the difference between the two is the whole content of this note.** The first
+> anchor was `  environments = ["plan", "deploy", "destroy"]`: the line that best *describes*
+> what the branch did, three environments generated from one list. It matched, exactly once,
+> and `make findings` went green on it. Then the mutation: **delete the id-form comprehension
+> from `local.trusted_subjects` — the entire defect this finding is named for — and the anchor
+> still matches, and the gate stays green.** The entry would have gone on reading `closed`
+> about a defect that had come back, which is the exact failure the `*Now:*` mechanism exists
+> to prevent, arriving inside a `*Now:*` line.
+>
+> The two anchors above were chosen against that test instead, each occurring exactly once, and
+> each planted against separately: remove the id form and the gate reports `REVERTED` by name;
+> change `token.actions.githubusercontent.com:repository_id` to the owner claim and it reports
+> `REVERTED` again. **They cover the two halves of what is now true** — the first watches the
+> pattern-copy the finding was about, the second watches the property that replaced it.
+>
+> **An author anchors on what the change *is*. The anchor's job is to notice what the change
+> stops being.** Those are different criteria and the first is the one in front of you while
+> you are writing the diff, which is why the headline of a branch is the anchor that comes to
+> hand and the one least likely to bite. That is `gate-proof`'s own idea one layer over, and
+> **no mutation has ever been planted against a `*Now:*` anchor** — every closed entry's
+> continued examination is asserted rather than tested. Whether that becomes a mutation in
+> `evals/gate_proof/` is a decision and is not taken here; the two anchors are, because they
+> were measured.
 *Status:* open
 
 ---

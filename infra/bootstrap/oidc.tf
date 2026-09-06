@@ -109,19 +109,27 @@ locals {
 # GitHub's OIDC reference, read 2026-09-05
 # (https://docs.github.com/en/actions/reference/security/oidc): the subject is
 # `repo:OWNER/NAME:environment:NAME` when a job declares an environment, and the branch form
-# appears *"only if the job doesn't reference an environment"*. Accepting the name form and the
-# id form widens nothing — both name one repository and one environment — and **the id form is
-# the one that cannot be taken over, because a released account name can be re-registered by
-# somebody else and an id cannot.**
+# appears *"only if the job doesn't reference an environment"*. Accepting both forms widens
+# nothing: each names one repository and one environment.
 #
-# `deploy` and `destroy` are written here rather than taken from a variable: they must equal the
-# `environment:` lines in `deploy.yml` and `destroy.yml` exactly, so a knob is one that silently
-# breaks federation when turned — and the failure is an `AssumeRoleWithWebIdentity` denial that
-# names nothing.
+# **What listing the id form does NOT do is make anything unfalsifiable, and this file claimed it
+# did until 2026-09-06.** The sentence read *"the id form is the one that cannot be taken over,
+# because a released account name can be re-registered by somebody else and an id cannot."* Every
+# fact in it is true and the conclusion does not follow: **`StringEquals` over a list is a
+# disjunction, and the weakest member sets the level.** While the name form is accepted, whatever
+# the id form protects against is accepted. **The protection is the two ANDed conditions below,
+# not the two extra strings in this list** — and the prior wording stays per doctrine rule 4
+# because the delta is the finding.
 #
-# **`ci.yml` runs on pull requests and never assumes this role**, and none of the four dispatch
-# workflows exists yet — each is written by the task that first needs one, and each will declare
-# its environment here by name.
+# **The environment names are generated from `local.environments` rather than written three
+# times.** `deploy.yml` and `destroy.yml` must carry these strings exactly, and the failure when
+# they do not is an `AssumeRoleWithWebIdentity` denial that names nothing — **which is an argument
+# for one source, not for three literals.** `tests/ops/` is where the workflows are checked
+# against this list.
+#
+# **`ci.yml` runs on pull requests and never assumes this role.** `deploy.yml` exists and declares
+# `environment: deploy`; the other three do not yet, and each is written by the task that first
+# needs one.
 #
 # **This layer trusted `ref:refs/heads/main` until 2026-09-05.** Every sibling project in this
 # portfolio — `manifest`, `watermark`, `attestor` — was already on the environment-and-id form,
@@ -129,15 +137,65 @@ locals {
 # was copied from them and this half of it was not**, which is the second time in one day that
 # sentence has been true of this layer.
 locals {
-  trusted_subjects = [
-    "repo:${var.repository}:environment:deploy",
-    "repo:${var.repository}:environment:destroy",
-    "repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repository_id}:environment:deploy",
-    "repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repository_id}:environment:destroy",
-  ]
+  #: The three environments, in both subject forms. **`plan` carries no reviewer and that is its
+  #: purpose**: a job that produces a plan cannot ask for approval, because the approval is meant
+  #: to be given *against* the plan. Without it, `deploy`'s reviewer approves a layer name and a
+  #: ref and has never seen a diff — which is a gate on the dispatch rather than on the change,
+  #: and `CLAUDE.md`'s doctrine 5 is about the change.
+  #:
+  #: **A credentialed job cannot simply omit the environment.** GitHub emits the ref form when a
+  #: job declares none, and the ref form is deliberately absent from this list — so a plan job
+  #: without an environment is refused with a message that names nothing.
+  #:
+  #: **And `plan` and `apply` assume the same role, which is the cost of this and is not closed
+  #: here.** Nothing downstream of `AssumeRoleWithWebIdentity` knows which environment minted a
+  #: token, so a no-reviewer environment is an unattended path to a write-capable role, and its
+  #: confinement to planning lives in `deploy.yml`'s text. **The threat is not an attacker** —
+  #: `main` is protected and a workflow change is a reviewed merge. It is a future session using
+  #: the affordance because it is the one that does not wait, against a `CLAUDE.md` that says
+  #: `destroy` is *never automatic*. `tests/ops/test_plan_environment.py` is what makes the
+  #: confinement structural rather than textual.
+  #:
+  #: A second, read-only role trusted only from `:environment:plan` is the other repair and is
+  #: **deliberately not taken yet**: a read-only policy mirroring the write policy resource for
+  #: resource is two enumerations of one population, growing with every layer, and
+  #: `ReadOnlyAccess` instead would grant `s3:GetObject` across an account holding four other
+  #: projects' state files. It becomes right the day the plan job needs to differ from the apply
+  #: job in *what it may touch*, and that condition is written here rather than left implied.
+  environments = ["plan", "deploy", "destroy"]
+
+  trusted_subjects = concat(
+    [for e in local.environments : "repo:${var.repository}:environment:${e}"],
+    [for e in local.environments :
+      "repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repository_id}:environment:${e}"
+    ],
+  )
+
   owner = split("/", var.repository)[0]
   repo  = split("/", var.repository)[1]
 }
+
+# **Two conditions that make the takeover claim true by construction, rather than by a toggle
+# nobody set.**
+#
+# The paragraph above says the id form *cannot be taken over*. **That does not follow from
+# listing it.** `StringEquals` over a list is a **disjunction**, and the weakest member sets the
+# level: while `repo:owner/name:environment:deploy` is accepted, whatever the id form protects
+# against is accepted. Measured 2026-09-06,
+# `gh api repos/OWNER/REPO/actions/oidc/customization/sub`:
+#
+#     {"use_default": true, "use_immutable_subject": false,
+#      "sub_claim_prefix": "repo:theofanis-tsakanikas@218610429/holdout@1347948733"}
+#
+# GitHub computes the prefix exactly as this file builds it — **the pattern is real and it is
+# switched off**, and `integrations/github` 6.6.0 carries no `use_immutable_subject` attribute at
+# any casing, so turning it on is an API or console action. **Which is the shape `github.tf`
+# argues against three files away**: a protection whose existence nobody can prove from the
+# repository.
+#
+# `repository_id` and `repository_owner_id` are **claims GitHub puts in every token**, present
+# whatever the `sub` format. Conditions are **ANDed**, so these hold whichever subject arrives —
+# and the sentence above becomes a property of this trust policy rather than of a setting.
 data "aws_iam_policy_document" "deploy_trust" {
   statement {
     effect  = "Allow"
@@ -158,6 +216,35 @@ data "aws_iam_policy_document" "deploy_trust" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values   = local.trusted_subjects
+    }
+
+    # **These two are in THIS statement, and the first attempt put them in a second document
+    # merged with `source_policy_documents`. That would have been decorative.**
+    #
+    # Conditions AND **within a statement** and statements OR **within a policy**. The provider
+    # merges sourced documents by `sid`, and neither statement carried one — so they would have
+    # been appended, giving *(subject in list) OR (ids match)*, and the weaker branch decides.
+    # **The whole point of adding them is that a disjunction's weakest member sets the level**,
+    # which is the defect they were added to close, reproduced by the mechanism chosen to close
+    # it.
+    #
+    # `repository_id` and `repository_owner_id` are claims GitHub puts in **every** token,
+    # whatever the `sub` format — measured 2026-09-06 against
+    # `gh api repos/OWNER/REPO/actions/oidc/customization/sub`, which reports
+    # `use_immutable_subject: false` while computing the prefix this file builds. So the id form
+    # in `local.trusted_subjects` may match no token that ever arrives; **these two hold
+    # regardless**, and they are what makes the paragraph above true of this policy rather than
+    # of a GitHub setting nobody has turned on.
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository_id"
+      values   = [var.github_repository_id]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository_owner_id"
+      values   = [var.github_owner_id]
     }
   }
 }
