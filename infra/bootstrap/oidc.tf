@@ -315,6 +315,192 @@ data "aws_iam_policy_document" "deploy_state" {
     actions   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
     resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/holdout/*"]
   }
+
+  # **`ssm:PutParameter`, and it is a correctness requirement rather than a convenience.**
+  #
+  # `CLAUDE.md` requires every layer to publish what the layers above it consume, and
+  # `infra/foundation/reaper/reap.py`'s second enumeration *is* those published names: an object
+  # whose name never reached SSM is an object the reaper can report as uncollectable and can never
+  # collect. Without this the reaper is not inconvenienced -- it is incorrect.
+  #
+  # The delete is here for the same reason the write is: a parameter this project published and
+  # then stopped publishing must go, or the reaper's second enumeration accumulates names for
+  # resources that no longer exist and its report drifts toward noise.
+  statement {
+    sid       = "PublishForTheLayersAbove"
+    effect    = "Allow"
+    actions   = ["ssm:PutParameter", "ssm:DeleteParameter", "ssm:AddTagsToResource"]
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/holdout/*"]
+  }
+}
+
+# **What `foundation` needs, written with that layer's resources on the page.**
+#
+# The document above is what `T017` closed with: state, and nothing that builds. This one is
+# `T018`'s half of the same decision, and the comment above `aws_iam_role.deploy` is the
+# instruction it follows -- *each layer's task adds what that layer needs, with the resources it
+# actually declares in front of whoever writes it.*
+#
+# **It is a second document rather than more statements in the first**, because the two have
+# different lifetimes and different reviewers. `deploy_state` is the backend and changes when the
+# backend changes, which is close to never; this one grows with every layer, and a reader asking
+# *what may this role build* should not have to read past four statements about a bucket.
+#
+# **`resources = ["*"]` on the network and compute statements, and the reason is not laziness.**
+# A VPC, a KMS key and an IAM role are created by an apply, so their ARNs do not exist when this
+# policy is written -- a resource-scoped statement would have to name the ARN of something that
+# does not yet exist, and the two ways to do that are a wildcard on a name pattern, which a
+# rename defeats silently, or a second apply, which makes the layer's first apply depend on its
+# own output. **The scoping that is available is by tag and by action, and both are used below.**
+data "aws_iam_policy_document" "deploy_estate" {
+  # ---------------------------------------------------------------- storage the layer creates
+  statement {
+    sid    = "TheEstatesBuckets"
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:PutBucketPolicy",
+      "s3:GetBucketPolicy",
+      "s3:DeleteBucketPolicy",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:PutBucketVersioning",
+      "s3:GetBucketVersioning",
+      "s3:PutEncryptionConfiguration",
+      "s3:GetEncryptionConfiguration",
+      "s3:PutBucketTagging",
+      "s3:GetBucketTagging",
+      "s3:ListBucket",
+      "s3:ListBucketVersions",
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+    ]
+    # **Scoped by name prefix, which is the one scoping a bucket makes available.** Bucket names
+    # are chosen by this project and carry the `holdout-` prefix by construction; the state bucket
+    # is `holdout-tfstate-*` and is deliberately *not* excluded here, because `deploy_state`
+    # already grants exactly what the backend needs and a `Deny` would be a second place the
+    # survivor list is written.
+    resources = [
+      "arn:${data.aws_partition.current.partition}:s3:::holdout-*",
+      "arn:${data.aws_partition.current.partition}:s3:::holdout-*/*",
+    ]
+  }
+
+  # ---------------------------------------------------------------- the estate's data key
+  statement {
+    sid    = "TheEstatesDataKey"
+    effect = "Allow"
+    actions = [
+      "kms:CreateKey",
+      "kms:CreateAlias",
+      "kms:DeleteAlias",
+      "kms:ScheduleKeyDeletion",
+      "kms:DescribeKey",
+      "kms:EnableKeyRotation",
+      "kms:GetKeyRotationStatus",
+      "kms:GetKeyPolicy",
+      "kms:PutKeyPolicy",
+      "kms:TagResource",
+      "kms:ListResourceTags",
+      "kms:ListAliases",
+    ]
+    # `kms:CreateKey` takes no resource -- a key that does not exist has no ARN -- so this cannot
+    # be scoped by ARN. It is scoped by action instead: nothing here reads or writes ciphertext,
+    # so this statement cannot decrypt another project's data even where it can see the key.
+    resources = ["*"]
+  }
+
+  # ---------------------------------------------------------------- the cross-account role
+  #
+  # **The narrowest statement in this document, and the one that would matter most if it were
+  # not.** `iam:*` on `*` would let a workflow in a public repository mint a role with any policy
+  # in the account. Every name this project creates is `holdout-`-prefixed, and that prefix is
+  # what turns an IAM grant into a scoped one.
+  statement {
+    sid    = "RolesThisProjectOwns"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:PassRole",
+      "iam:TagRole",
+      "iam:ListRoleTags",
+      "iam:PutRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:UpdateAssumeRolePolicy",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/holdout-*"]
+  }
+
+  # ---------------------------------------------------------------- the reaper
+  #
+  # Level 1 of the three teardown guarantees is a Lambda and a schedule, so the role that applies
+  # `foundation` must be able to create both. **This is the statement that makes the net exist**,
+  # and it is worth naming that it is granted to the same identity the net protects the account
+  # from -- which is why the reaper's own policy, one layer over, can delete nothing in AWS.
+  statement {
+    sid    = "TheReaperAndItsSchedule"
+    effect = "Allow"
+    actions = [
+      "lambda:CreateFunction",
+      "lambda:DeleteFunction",
+      "lambda:GetFunction",
+      "lambda:GetFunctionConfiguration",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:AddPermission",
+      "lambda:RemovePermission",
+      "lambda:GetPolicy",
+      "lambda:TagResource",
+      "lambda:ListTags",
+      "events:PutRule",
+      "events:DeleteRule",
+      "events:DescribeRule",
+      "events:ListTagsForResource",
+      "events:TagResource",
+      "events:PutTargets",
+      "events:RemoveTargets",
+      "events:ListTargetsByRule",
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:DescribeLogGroups",
+      "logs:PutRetentionPolicy",
+      "logs:ListTagsForResource",
+      "logs:TagResource",
+    ]
+    resources = ["*"]
+  }
+
+  # ---------------------------------------------------------------- reading the account back
+  #
+  # **Every layer ends by asking the account what it built** -- `CLAUDE.md`: *verified by asking
+  # the account, never by reading a workflow's exit code.* These are the calls that answer, and
+  # every one of them is a read.
+  statement {
+    sid    = "AskTheAccountWhatExists"
+    effect = "Allow"
+    actions = [
+      "tag:GetResources",
+      "sts:GetCallerIdentity",
+      "iam:ListRoles",
+      "s3:ListAllMyBuckets",
+      "kms:ListKeys",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "deploy_estate" {
+  name   = "holdout-deploy-estate"
+  role   = aws_iam_role.deploy.id
+  policy = data.aws_iam_policy_document.deploy_estate.json
 }
 
 data "aws_partition" "current" {}

@@ -779,13 +779,29 @@ docs/
                        and settings.json
 .github/               **`ci.yml`, and it is the only one.** The four that dispatch are phase 3
                        and are listed below as declared rather than built
-infra/                 Terraform. **Two layers exist**: `bootstrap/` — state backend, OIDC,
+infra/                 Terraform. **Three layers exist**: `bootstrap/` — state backend, OIDC,
                        the deploy role, the published parameters and the budget, applied from a
-                       laptop once — and `lakehouse/` — the catalog, the schemas and the two
-                       compiled AI/BI dashboards. The other four (`foundation · pipelines · ml ·
-                       serving`) are phase 3, and `make terraform` validates every layer the
-                       glob finds rather than a list
+                       laptop once — `foundation/` — the data key, the four S3 zones, the
+                       workspace, the metastore switch and the TTL reaper — and `lakehouse/` —
+                       the catalog, the schemas and the two compiled AI/BI dashboards. The other
+                       three (`pipelines · ml · serving`) are phase 3, and `make terraform`
+                       validates every layer the glob finds rather than a list
 ```
+
+> **This block said `Two layers exist` and named `foundation` among the four that do not, until
+> `T018` built it on 2026-09-06.** The rule stated below — *a directory that does not exist may
+> not be described in the present tense beside directories that do* — has the second half this
+> file already learned once: **a directory that exists may not be described as unbuilt.** It went
+> stale here for the second time in two days, and for the same mechanical reason: `make figures`
+> reads this block to check that every package which exists is named, and has nothing to say about
+> a package named in the wrong sentence.
+>
+> **`foundation` is also the first layer whose Python is read by a gate.** `infra/` was in neither
+> `PYTHON_DIRS` nor `[tool.mypy]`'s `files`, so `reaper/reap.py` would have been the only Python
+> in this repository that nothing lints and nothing typechecks. Both lists were widened, and
+> widening one of them first is what made `make figures` report `typecheck 249 examined of 250
+> exists` — the coverage gate doing exactly what it was built for, on the change that created the
+> gap, in seconds.
 
 `notes/` is **not** in this map and is not repository content: it is gitignored scratch that
 exists on one machine and not on a clean checkout. It was listed here for about an hour, and CI
