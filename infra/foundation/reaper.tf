@@ -70,6 +70,26 @@ data "aws_iam_policy_document" "reaper" {
   }
 
   statement {
+    sid    = "ReportItsOwnFailure"
+    effect = "Allow"
+    # Lambda publishes to the dead-letter topic **as the function's role**, so without this the
+    # raise in `reap.py` produces a failed invocation that reaches nobody -- which is the state
+    # the raise was added to end.
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.reaper_failures.arn]
+  }
+
+  statement {
+    sid    = "EncryptThatReport"
+    effect = "Allow"
+    # The topic is KMS-encrypted with the estate's data key, and publishing to an encrypted topic
+    # needs a data key from it. `kms:Decrypt` is already granted above for the reaper's own
+    # credentials; this is the other direction.
+    actions   = ["kms:GenerateDataKey"]
+    resources = [aws_kms_key.data.arn]
+  }
+
+  statement {
     sid    = "WriteItsOwnLogs"
     effect = "Allow"
     actions = [
@@ -136,11 +156,34 @@ resource "aws_lambda_function" "reaper" {
       LANDING_BUCKET        = aws_s3_bucket.zone["landing"].bucket
       DATABRICKS_HOST       = databricks_mws_workspaces.this.workspace_url
       DATABRICKS_ACCOUNT_ID = var.databricks_account_id
-      DRY_RUN               = "false"
+      DRY_RUN               = tostring(var.reaper_dry_run)
     }
   }
 
+  # **The dead-letter topic is what makes a failed run visible**, and it is the half of this
+  # pattern that was copied from `watermark` without its loud end. `reap.py` raises after the
+  # sweep; without a destination for that failure the Lambda would simply be marked failed in a
+  # console nobody opens, and *a reaper that silently fails to delete is indistinguishable from
+  # one that had nothing to do.*
+  dead_letter_config {
+    target_arn = aws_sns_topic.reaper_failures.arn
+  }
+
   depends_on = [aws_iam_role_policy.reaper]
+}
+
+# **A topic rather than an alarm, and no subscription declared here.**
+#
+# A subscription carries an email address, which is personal data and has no default anywhere in
+# this repository -- `infra/bootstrap/variables.tf` makes the same argument about
+# `budget_alert_email`. The topic is the durable half and it is what the function's failures land
+# on; who hears about them is a decision with a person in it.
+#
+# **It is deliberately not the budget's topic.** The budget says *the model was wrong*; this says
+# *the net did not hold*, and `CLAUDE.md` ranks them as different levels of the same guarantee.
+resource "aws_sns_topic" "reaper_failures" {
+  name              = "holdout-reaper-failures"
+  kms_master_key_id = aws_kms_key.data.id
 }
 
 # ---------------------------------------------------------------- the schedule

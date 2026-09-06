@@ -89,3 +89,21 @@ variable "databricks_client_secret" {
   # No default. The other half, and the half that is a secret in the ordinary sense.
   description = "Account service principal's OAuth secret. No default: it is a credential."
 }
+
+variable "reaper_dry_run" {
+  type    = bool
+  default = true
+  # **The default is `true` and that is the safe direction rather than the common one.**
+  #
+  # `watermark` inverted the same switch deliberately, and its argument transfers whole: a
+  # deployment that forgets the variable then **under-deletes, which costs money, rather than
+  # over-deletes, which costs data.** Here the asymmetry is sharper still, because
+  # `collect_billing_surfaces` has never been pointed at a live workspace -- a first apply that
+  # defaulted to deleting would exercise an unrun code path against real compute.
+  #
+  # `infra/foundation/README.md` says the honest first-run sequence is one dry run read in the log
+  # before it is trusted with `false`. **This variable is what makes that sequence followable**;
+  # it was a string literal `"false"` in the function's environment, so following the stated
+  # procedure meant editing Terraform, applying, reading, editing back and applying again.
+  description = "Report what the reaper would delete instead of deleting it. Default: report."
+}

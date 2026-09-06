@@ -1098,9 +1098,36 @@ job can be cancelled. Three independent levels, in order of trust:
 
 | | what | why |
 |---|---|---|
-| **1** | **TTL reaper** in `foundation` — a scheduled job that destroys anything tagged and older than N hours, whatever happened | the real net. Depends on no workflow's control flow |
+| **1** | **TTL reaper** in `foundation` — a scheduled job that destroys the **Databricks compute** of an estate older than N hours, whatever happened, and **deletes nothing in AWS**. Restated below | the real net. Depends on no workflow's control flow |
 | **2** | **Budget policy** in `bootstrap`, applied before anything can bill | catches what escapes level 1 |
 | **3** | `destroy` — **always a deliberate dispatch**, never automatic | convenience |
+
+> **This row said *destroys anything tagged* until 2026-09-06, and `T018` built it two ways
+> narrower.** Both are decisions and both are argued in `infra/foundation/reaper/reap.py`.
+>
+> **It deletes no AWS resource at all.** The bill is compute: this table's own next row says
+> `serving` *is the most expensive layer and the only one that bills while idle*, and the cost
+> model puts all S3 for the whole corpus at **1–3 USD per cycle**. A reaper that took the four
+> zones would save single-digit dollars and destroy the thing the paragraph below refuses to
+> destroy automatically — *on success the estate is exactly what console screenshots and video
+> need*, and that is the one input a rerun cannot regenerate. **Storage is collected by
+> `destroy all`, which is a deliberate dispatch, and by nothing else.**
+>
+> **And the Databricks surfaces it sweeps are a hand-written list**, not everything tagged. Today:
+> serving endpoints, SQL warehouses and Lakebase instances. **What is outside it is named in the
+> file** — the agent runtime and the AI Gateway — because on the AWS side an unrecognised type
+> lands in `unknown` and is counted, and on the Databricks side a surface nobody wrote down is
+> not seen at all. A listing that fails is an **error rather than a skip**, so a path that is
+> wrong screams on the next scheduled run instead of quietly collecting nothing.
+>
+> **The prior wording was not merely broad; it described a guard that does not exist.** `reap.py`
+> carried a `SURVIVORS` list and a sentence saying it *stands between the reaper and the state of
+> every other layer* — and nothing in the reaper could delete an AWS resource, so it stood between
+> the reaper and nothing. That is prose claiming a check nobody wrote, in the component whose
+> whole justification is that it works when nobody is watching. The list is kept and relabelled;
+> the sentence is replaced.
+>
+> The prior wording stays per doctrine rule 4, and the delta is the finding.
 
 **`destroy` is never automatic, on success or on failure.** On failure, tearing down destroys the
 evidence — the Lakebase rows, the Delta state, the endpoint's configuration — and re-deploying to
