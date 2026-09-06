@@ -2984,8 +2984,8 @@ bucket policy denies what it means to deny is not knowable until somebody applie
 
 ```
 id            T018
-title         infra/foundation — VPC, keys, S3 zones, workspace, metastore, TTL reaper
-branch        infra/foundation
+title         infra/foundation — keys, S3 zones, workspace, metastore, TTL reaper
+branch        infra/foundation-and-the-reaper
 depends_on    T017
 closes        The foundation layer, including the TTL reaper — the scheduled job that destroys
               anything tagged and older than N hours whatever happened. The real net; depends on no
@@ -2995,6 +2995,20 @@ out_of_scope  Lakehouse, pipelines, ml.
               RESTATED 2026-09-02 by the route-2 ruling. It read "Sources, lakehouse, pipelines,
               ml"; there is no sources layer to be out of scope of. The VPC stays -- the workspace
               needs it -- and the private networking that existed for the RDS does not.
+              --
+              RESTATED AGAIN 2026-09-06, and the sentence above is the half that was wrong.
+              "The VPC stays -- the workspace needs it" is false: `network_id` is optional on
+              `databricks_mws_workspaces`, measured against the provider schema, and a
+              customer-managed VPC hosts classic compute, which a serverless-only estate never
+              launches. The title carried `VPC` too. Both are restated, the layer declares no
+              `network.tf`, and `CLAUDE.md`'s row and `docs/FINDINGS.md` carry the measurement
+              and the NAT-gateway cost argument. **Decided by the author.**
+              --
+              And the branch name was `infra/foundation`, which is not the branch this was
+              built on. Two rows, one task, both stale in the same direction: this registry is
+              the introduction to the work, and the introduction is the part no fix's diff
+              touches. Third instance in two days -- `deploy.yml`'s header, `oidc.tf`'s header,
+              this.
 stop_at       When foundation applies via deploy and the reaper is scheduled.
 review        yes
 status        open
