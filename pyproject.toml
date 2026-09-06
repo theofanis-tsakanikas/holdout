@@ -134,7 +134,7 @@ quote-style = "double"
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src", "tests", "evals", "corpus", "ops", "pipelines", ".claude/hooks"]
+files = ["src", "tests", "evals", "corpus", "ops", "pipelines", "infra", ".claude/hooks"]
 strict = true
 warn_unreachable = true
 warn_return_any = true
@@ -152,7 +152,7 @@ no_implicit_reexport = false
 # occur. `test_every_engine_is_ignorable_by_mypy` now compares this list against `ENGINES` so
 # the two cannot fall out of step again silently.
 [[tool.mypy.overrides]]
-module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*"]
+module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

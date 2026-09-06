@@ -3178,7 +3178,25 @@ resolve — it is `make check-locked`, one command with a name, which is not a g
 pretend to be one. What it changes is that *did you run `make check-locked`* has an answer and
 *did you remember the two-step thing* does not.
 
-*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*"]`
+> **The first `*Site:*` was restated 2026-09-06 by `T018` and `make findings` reported `MOVED`
+> before anything else did.** The override list gained `boto3.*` when `infra/` entered the
+> typecheck population, so the anchored text changed and the gate refused to let the change pass
+> quietly. The finding itself is untouched and stays open on the same linkage.
+>
+> **And the addition is the finding's own subject with a new population, which is why this note
+> exists rather than a bare restatement.** `T018` widened two hand-kept lists that must agree —
+> `PYTHON_DIRS` in the `Makefile` and `files` in `[tool.mypy]` — and widened one of them first.
+> **`make figures` caught it, by name, in the direction it was built for:**
+>
+>     lint         250       261      *.py under the directories PYTHON_DIRS names
+>     typecheck    250       249  <<  1 of 250 never looked at
+>
+> A file existed in the population and mypy never read it. That is the same shape as *three lists
+> name the packages this tree may not have* — hand-kept enumerations of one population, drifting —
+> and the difference is that this one has a gate over it and went red in seconds rather than on a
+> runner four days later. The prior wording stays per doctrine rule 4.
+
+*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*"]`
 *Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def test_every_engine_is_ignorable_by_mypy() -> None:`
 *Site:* `Makefile` :: `check-locked:  ## make check in the environment CI's`
 *Disposition:* `pipelines/gold`, which is this branch, for the two lists that can be compared and
