@@ -874,7 +874,7 @@ blast radius · consumes only from below · expensive or slow to apply.**
 | layer | applied | holds |
 |---|---|---|
 | `bootstrap` | **locally, once** | state bucket + KMS, the deploy role, **the budget and its alerts**, published parameters — and it **reads** the account's GitHub OIDC provider rather than owning it, because that object is unique per issuer per account and another project created it first |
-| `foundation` | `deploy` | VPC, keys, S3 zones, the workspace, metastore attachment, **TTL reaper** |
+| `foundation` | `deploy` | keys, S3 zones, the workspace, metastore attachment, **TTL reaper** — **no VPC**, restated below |
 | `lakehouse` | `deploy` | catalogs, schemas, grants, external locations, Lakebase, the two AI/BI dashboards |
 | `pipelines` | `deploy` | SDP pipelines, dbt jobs, Lakeflow Jobs, Zerobus endpoints, bulk-load jobs |
 | `ml` | `deploy` | training job, evaluation, promotion gates, MLflow — **no endpoint** |
@@ -886,6 +886,47 @@ applied at a different moment**: an endpoint cannot point at a model version tha
 yet, and a version exists only after `backfill` has trained one. The agent runtime lives there too
 — it is the same lifetime, the same blast radius and the same billing shape, and two layers that
 always deploy together and never independently are one layer wearing two names.
+
+> **`foundation`'s row said `VPC` until 2026-09-06, and the design gives nothing to run in one.
+> Restated by `T018`, which is the task that would have built it.**
+>
+> A customer-managed VPC exists to host **classic compute** — clusters that run in *this* account.
+> This estate is serverless everywhere, by a decision stated three headings down in as many words:
+> *Serverless only. **No always-on cluster anywhere in the design.*** Serverless compute runs in
+> Databricks' account, reaches S3 from there, and never enters a VPC of ours. So the VPC would
+> have been created, tagged, reaped, destroyed, and used by nothing.
+>
+> **Measured rather than assumed**, because *is it optional* and *do we need it* are different
+> questions and only the first one has an answer in a schema. `terraform providers schema -json`
+> on `databricks/databricks 1.130.0`:
+>
+> | attribute | required |
+> |---|---|
+> | `account_id` · `workspace_name` | **yes** |
+> | `credentials_id` · `storage_configuration_id` · `network_id` | no |
+>
+> **`network_id` is optional**, so a workspace with no customer-managed network is a supported
+> configuration rather than a workaround.
+>
+> **And the cost half is the one that makes it worse than merely unused.** A customer-managed VPC
+> needs egress for the compute it hosts, which is a NAT gateway — **billed by the hour for as long
+> as the estate stands, whether anything runs or not.** That is an always-on line item, in a
+> project whose cost posture opens with *no always-on cluster anywhere*, paying for egress that
+> nothing would use.
+>
+> **This is the checklist's own last question, and it says the count out loud:** *if the pattern
+> comes from another project in this portfolio — what problem did it solve there, and do we
+> actually have that problem? A pattern copied with the solution to a problem you do not have is
+> cost with no benefit — **it has already happened twice here.*** Three siblings run classic
+> compute or EC2 and each needs a VPC. This one does not, and the row was written from the shape
+> of a `foundation` layer rather than from this estate's compute model.
+>
+> **What is not claimed.** Dropping the VPC drops network-level isolation this estate never had a
+> use for; it does **not** drop governance, which lives in Unity Catalog and is where every grant
+> in `lakehouse` already is. And it is reversible: `network_id` is an optional attribute, so the
+> day a classic-compute workload exists, the VPC is a file and a reference rather than a redesign.
+>
+> The prior wording stays per doctrine rule 4, and the delta is the finding.
 
 **Cross-layer references go `outputs` → SSM parameter → `data`. Never a remote state read** — that
 creates hidden coupling and destroys the isolation the layers exist for.

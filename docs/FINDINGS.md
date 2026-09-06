@@ -4521,6 +4521,62 @@ to stayed exactly as the reviewing session had it
 *Status:* concurred
 
 ---
+**A declared layer component that the design gives nothing to run in** ·
+found 2026-09-06 · by running the checklist's last question before writing the file
+
+`CLAUDE.md`'s layer table said `foundation` holds *VPC, keys, S3 zones, the workspace, metastore
+attachment, TTL reaper*. **A customer-managed VPC hosts classic compute — clusters that run in
+this account.** This estate is serverless everywhere, stated three headings down in as many words:
+*Serverless only. No always-on cluster anywhere in the design.* Serverless compute runs in
+Databricks' account and never enters a VPC of ours.
+
+**So the VPC would have been created, tagged, reaped, destroyed, and used by nothing** — and it is
+worse than unused, because the egress a customer-managed VPC needs is a **NAT gateway, billed by
+the hour for as long as the estate stands, whether anything runs or not.** An always-on line item
+in a project whose cost posture opens by refusing always-on anything.
+
+**Measured, because *is it optional* and *do we need it* are different questions and only the
+first has an answer in a schema.** `terraform providers schema -json` on
+`databricks/databricks 1.130.0`, dumped in an isolated directory:
+
+    account_id                required=True
+    workspace_name            required=True
+    aws_region                required=False
+    credentials_id            required=False
+    storage_configuration_id  required=False
+    network_id                required=False     <- a workspace needs no network of ours
+
+**Nothing was wrong with the code, because there was no code** — this is the defect at the one
+layer that has no gate behind it, caught in the only window where it costs nothing: the task that
+would have built the thing had not built it yet. Every earlier instance of this class in this file
+was found after the fact.
+
+**And it is the checklist's own last question, which names its own count**: *if the pattern comes
+from another project in this portfolio — what problem did it solve there, and do we actually have
+that problem? A pattern copied with the solution to a problem you do not have is cost with no
+benefit — it has already happened twice here.* Three siblings run classic compute or EC2 and each
+needs a VPC. The row was written from the shape of a `foundation` layer rather than from this
+estate's compute model.
+
+**What is not claimed.** Dropping the VPC drops network-level isolation this estate never had a
+use for. It does **not** drop governance, which lives in Unity Catalog and is where every grant in
+`lakehouse` already is. And it is reversible at the cost of a file: `network_id` is an optional
+attribute, so the day a classic-compute workload exists the VPC is a reference rather than a
+redesign.
+
+*Site:* `CLAUDE.md` :: `| `foundation` | `deploy` | VPC, keys, S3 zones, the workspace, metastore attachment, **TTL reaper** |`
+*Disposition:* branch `infra/foundation-and-the-reaper`
+*Closed:* 2026-09-06 — the row restated with the measurement beside it, the rule-4 block carrying
+both halves (the schema and the NAT gateway), and `infra/foundation` written with no `network.tf`.
+**Decided by the author**, because a layer's declared contents are his and the alternative was a
+session quietly not building something the file says exists — which is the same defect in the
+other direction, and this register already carries it under *a directory that exists may not be
+described as unbuilt*
+*Now:* `CLAUDE.md` :: `metastore attachment, **TTL reaper** — **no VPC**, restated below`
+*Now:* `CLAUDE.md` :: `is optional**, so a workspace with no customer-managed network is a supported`
+*Status:* open
+
+---
 
 ## Closed
 
