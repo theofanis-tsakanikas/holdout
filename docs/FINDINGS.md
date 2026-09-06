@@ -4459,6 +4459,68 @@ underneath stays open and unscoped, which is where the entry that raised it left
 *Status:* open
 
 ---
+**The review protocol made the work destroyable, and hid that no commit existed** ·
+found 2026-09-06 · by going to reuse a helper and finding the branch that holds it empty
+
+Two sessions agreed a handover protocol: send `git diff` plus `git status --short`'s `??` and
+` A` lines, **never `--cached`**, because `git add -N` leaves `--cached` empty by design. It was
+adopted so a reviewer could see new files whole, and the review it bought was real — a `moved`
+block finding came out of reading that diff.
+
+**It ran for four rounds and no commit was ever made.** Measured, when a helper on that branch was
+needed elsewhere:
+
+    branch ops/deploy-verifies-rather-than-repeats  ->  3b39c56   == main
+    git log --all -- deploy.yml, test_workflow_shell.py  ->  no commit, anywhere
+    uncommitted on disk                             ->  4 files, 524 insertions
+
+**And `add -N` is what made those 524 lines destroyable.** Measured in a scratch repository:
+
+    ` A added.txt`   (add -N)     git checkout -- .  ->  3 lines becomes 0
+    `?? untracked.txt`            git checkout -- .  ->  3 lines survives
+
+`git checkout -- <path>` and `git restore` restore **from the index**, and `add -N` puts the empty
+blob there. **As untracked files the work was immune to exactly the command that would have
+destroyed it once the protocol had touched it.** The protocol was adopted to prevent an invisible
+diff and its failure mode is a destroyed working tree — `budget.tf`'s rule, one layer up: *the
+failure mode of an improvement may not be worse than the thing it improves.*
+
+**The half worth keeping is why nobody saw it.** `??` reads as *untracked, nothing has happened to
+this*. ` A` reads as *added*. Both sessions ran `git status --short` every round and read ` A`
+lines without once asking whether a commit existed. **The instrument introduced to make the review
+honest is what hid the absence of a restore point from the reviewer**, in the output being checked
+each time.
+
+> **One session asked whether the diff was correct and never whether the history was; the other
+> had the commits to make and did not make them. Those are two failures and neither covers the
+> other.**
+
+**`CLAUDE.md` already carried the answer, which is what makes this avoidable rather than unlucky**
+— *"Inside a session, commit freely and often: those are restore points."* The correct handover was
+always a commit on the branch and `git diff main..branch`: it shows new files whole, it answers the
+same review question, it leaves a restore point, and nothing it produces is destroyable by a
+routine command. **`git diff` was reached for because it was the view already in hand.**
+
+**And the count published with the finding was wrong in the same way the finding is about.** The
+risk was reported as *428 lines* — the two new files — while `CLAUDE.md` and `ops/figures.py`
+carried ~96 more that the same `git restore .` would have taken. A figure correct for what it
+counted and wrong for the claim it supported, with an unnamed population, in the paragraph naming
+the pattern about unnamed populations.
+
+*Site:* `.claude/skills/integration-review/SKILL.md` :: `## 9 · Handing a branch to a reviewer`
+*Disposition:* branch `skills/the-handover-is-a-commit`
+*Closed:* 2026-09-06 — the 524 lines committed at `c12775f` on their own branch before anything
+else, so `git diff main..HEAD` renders the branch whole and nothing is index-destroyable; the
+protocol written into the skill as a numbered section rather than left as an agreement between two
+sessions. **The backup that preceded the commit is recorded here because it is the reusable part:
+a temporary `GIT_INDEX_FILE` with `read-tree HEAD`, `add -A`, `write-tree`, `commit-tree` and an
+`update-ref` anchors uncommitted content in another worktree without touching either its working
+tree or its index** — which is how the content was made durable while the review view it belonged
+to stayed exactly as the reviewing session had it
+*Now:* `.claude/skills/integration-review/SKILL.md` :: `**Commit on the branch. Then `git diff main..branch`.**`
+*Status:* open
+
+---
 
 ## Closed
 

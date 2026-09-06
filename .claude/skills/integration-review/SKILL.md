@@ -303,6 +303,58 @@ exist — is what the reading is for.
 
 ---
 
+## 9 · Handing a branch to a reviewer
+
+**Commit on the branch. Then `git diff main..branch`.**
+
+That is the whole protocol, and it is written down because a different one was agreed, ran for
+four rounds, and turned out to have made the work destroyable.
+
+**What was agreed instead**, and the reason it was reached for: a reviewer cannot see a new file
+in `git diff`, and `git diff --cached` is empty by design once `git add -N` has been used. So the
+handover became `git diff` plus `git status --short`'s `??` and ` A` lines, and files were staged
+with `git add -N` so that new ones would render.
+
+**It works. It is also the reason 524 lines sat with no restore point for a night**, on a branch
+pointer still equal to `main`, while both sessions read ` A` in status output every round.
+
+Two things go wrong and only the first is obvious.
+
+**`add -N` makes new files destroyable by a routine recovery command.** Measured:
+
+    ` A added.txt`   (add -N)     git checkout -- .  ->  3 lines becomes 0
+    `?? untracked.txt`            git checkout -- .  ->  3 lines survives
+
+`git checkout -- <path>` and `git restore` restore **from the index**, and `add -N` puts the empty
+blob there. An untracked file is immune to exactly the command that truncates a staged-empty one.
+
+**And the status line stops saying that nothing has happened.** `??` reads as *untracked, nothing
+has happened to this*. ` A` reads as *added*. Neither session asked whether a commit existed,
+because the output they checked each round had stopped inviting the question. **The instrument
+introduced to make the review honest is what hid the absence of a restore point from the
+reviewer.**
+
+So: **a review reads a branch, not a working tree.** `git diff main..branch` shows new files
+whole, answers the same question, leaves a restore point behind every round, and produces nothing
+a routine command can destroy. `CLAUDE.md` already said so — *"Inside a session, commit freely and
+often: those are restore points"* — which is what makes this avoidable rather than unlucky. The
+other protocol was built around what `git diff` could show, because `git diff` was the view
+already in hand.
+
+**Commit early even when the piece is not closed.** The commit is a restore point, not a claim
+that the work is finished; the squash-merge is where `main`'s history gets its one clean commit,
+and nothing about committing often costs that.
+
+**And if the work is in another session's worktree, do not commit it.** A commit there empties the
+`git diff` that session's review is running on. Anchor the content without touching either its
+working tree or its index — a temporary `GIT_INDEX_FILE`, then `read-tree HEAD`, `add -A`,
+`write-tree`, `commit-tree`, `update-ref refs/backup/<name>` — verify it per file with
+`git show <ref>:<path> | diff - <path>`, and raise the commit to whoever owns the worktree.
+**A ref nobody knows about is not a restore point in any useful sense**, so that is a way to stop
+the bleeding, never the answer.
+
+---
+
 ## What the record does not support, and what this skill therefore does not say
 
 Named rather than filled in, because a hole you can point at is worth more than a plausible
