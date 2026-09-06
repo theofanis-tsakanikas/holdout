@@ -46,6 +46,10 @@ name: deploy
 on:
   workflow_dispatch:
     inputs:
+      create_metastore:
+        description: "Create the account's UC metastore. TRUE ONLY ON THE FIRST APPLY OF A REGION."
+        type: boolean
+        default: false
       layer:
         description: "Which layer to apply. `all` applies them bottom-up in dependency order."
         type: choice
@@ -214,6 +218,37 @@ jobs:
       - name: Apply
         env:
           LAYER: ${{ inputs.layer }}
+
+          # **The three credentials `infra/foundation` declares with no default**, supplied here
+          # and nowhere else. `variables.tf` says of each of them that it has no default because
+          # it is an identifier or half of a credential, and
+          # `tests/infra/test_variable_declarations.py` refuses a block that says so and declares
+          # one — so the protection is checked rather than asserted, and this is the other end of
+          # it.
+          #
+          # `terraform validate` never needs them: validation reads configuration and contacts
+          # nothing, which is why `ci` is green on a layer these are absent from. `terraform plan`
+          # stops with *"is not set, and has no default value"*, and that stop is the behaviour
+          # the absence exists to produce.
+          TF_VAR_databricks_account_id: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+          TF_VAR_databricks_client_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          TF_VAR_databricks_client_secret: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+          # **`create_metastore` is a dispatch input with a default of `false`, and the default is
+          # the safe direction rather than the common one.** A Unity Catalog metastore is one per
+          # region per account; creating a second is impossible and destroying somebody else's is
+          # not. `infra/foundation/metastore.tf` carries the trap in full: flipping this from
+          # `true` back to `false` plans a destroy of the metastore and everything in it.
+          TF_VAR_create_metastore: ${{ inputs.create_metastore }}
+
+          # **Declared here rather than inherited from the credentials action.**
+          # `aws-actions/configure-aws-credentials` does export `AWS_REGION` for later steps, so
+          # this line is not what makes the variable exist — it is what makes this step stop
+          # depending on a third party's side effect. The backend's region is not a convenience:
+          # `init` with the wrong one writes this layer's state to a bucket in another region, or
+          # to no bucket at all, and the failure arrives as a bucket-not-found rather than as a
+          # region mismatch.
+          AWS_REGION: ${{ vars.AWS_REGION }}
         run: |
           set -euo pipefail
 
@@ -248,6 +283,29 @@ jobs:
             layers="$LAYER"
           fi
 
+          # **Read from SSM rather than passed in, for the same reason the layers read it there:**
+          # `CLAUDE.md` says cross-layer references go `outputs` -> SSM parameter -> `data`, never
+          # a remote state read. The backend's own coordinates are the one thing that cannot be
+          # read that way by Terraform itself — `init` happens before any `data` block runs — so
+          # the workflow reads them and hands them to `init`. **That is the same rule, executed by
+          # the one participant that can execute it.**
+          STATE_BUCKET=$(aws ssm get-parameter --name /holdout/bootstrap/state_bucket \
+            --query Parameter.Value --output text)
+          STATE_KMS_KEY_ARN=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn \
+            --query Parameter.Value --output text)
+
+          # A parameter that does not exist makes `aws` exit non-zero, and `set -euo pipefail`
+          # above turns that into a failed job — but the message would name a CLI call rather than
+          # the cause, so it is named here. This is the failure `infra/bootstrap/README.md`
+          # predicts for skipping the local re-apply.
+          if [ -z "$STATE_BUCKET" ] || [ -z "$STATE_KMS_KEY_ARN" ]; then
+            echo "::error::the state backend's coordinates are not published under"
+            echo "/holdout/bootstrap/. infra/bootstrap has not been applied against this account,"
+            echo "or it was applied before it published them. Every layer below would init into"
+            echo "local state on this runner. Apply infra/bootstrap from a laptop first."
+            exit 1
+          fi
+
           for layer in $layers; do
             # **The question is not whether the directory exists — it is whether the layer is
             # applyable, and those are different.** `infra/lakehouse` exists and says of itself:
@@ -272,6 +330,24 @@ jobs:
               exit 1
             fi
             echo "── infra/$layer"
-            terraform -chdir="infra/$layer" init -input=false
+
+            # **The backend is configured here, not in the file, and that is not a style choice.**
+            #
+            # `infra/foundation` declares `backend "s3" {}` with only `use_lockfile` and `encrypt`
+            # in it. The bucket is `holdout-tfstate-${substr(sha256(account_id), 0, 12)}` — not
+            # the account id, but a stable value derived from it — and this repository is public,
+            # so it may not be committed. A backend block cannot interpolate a variable, which
+            # leaves exactly one mechanism: `-backend-config` at `init`, read from the parameters
+            # `infra/bootstrap` published.
+            #
+            # **The `key` is per layer.** One key for all of them would have every layer
+            # overwriting the state of the one before it, and the second apply would plan to
+            # destroy everything the first created.
+            terraform -chdir="infra/$layer" init -input=false \
+              -backend-config="bucket=$STATE_BUCKET" \
+              -backend-config="key=$layer/terraform.tfstate" \
+              -backend-config="region=$AWS_REGION" \
+              -backend-config="kms_key_id=$STATE_KMS_KEY_ARN"
+
             terraform -chdir="infra/$layer" apply -input=false -auto-approve
           done
