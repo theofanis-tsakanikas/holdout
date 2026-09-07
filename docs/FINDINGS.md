@@ -3178,7 +3178,25 @@ resolve — it is `make check-locked`, one command with a name, which is not a g
 pretend to be one. What it changes is that *did you run `make check-locked`* has an answer and
 *did you remember the two-step thing* does not.
 
-*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*"]`
+> **The first `*Site:*` was restated 2026-09-06 by `T018` and `make findings` reported `MOVED`
+> before anything else did.** The override list gained `boto3.*` when `infra/` entered the
+> typecheck population, so the anchored text changed and the gate refused to let the change pass
+> quietly. The finding itself is untouched and stays open on the same linkage.
+>
+> **And the addition is the finding's own subject with a new population, which is why this note
+> exists rather than a bare restatement.** `T018` widened two hand-kept lists that must agree —
+> `PYTHON_DIRS` in the `Makefile` and `files` in `[tool.mypy]` — and widened one of them first.
+> **`make figures` caught it, by name, in the direction it was built for:**
+>
+>     lint         250       261      *.py under the directories PYTHON_DIRS names
+>     typecheck    250       249  <<  1 of 250 never looked at
+>
+> A file existed in the population and mypy never read it. That is the same shape as *three lists
+> name the packages this tree may not have* — hand-kept enumerations of one population, drifting —
+> and the difference is that this one has a gate over it and went red in seconds rather than on a
+> runner four days later. The prior wording stays per doctrine rule 4.
+
+*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*"]`
 *Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def test_every_engine_is_ignorable_by_mypy() -> None:`
 *Site:* `Makefile` :: `check-locked:  ## make check in the environment CI's`
 *Disposition:* `pipelines/gold`, which is this branch, for the two lists that can be compared and
@@ -4428,7 +4446,19 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 *Disposition:* branch `ops/a-published-figure-is-read-off-its-measurement` — was *the author's*, and he delegated all five on 2026-09-05 in the words *do the most professional thing*
 *Closed:* 2026-09-05 — all five restated, and the first of them registered so it cannot recur. **The `infra/` restatement moved again on 2026-09-05, when `infra/bootstrap/` landed and made *`lakehouse/` is the only layer that exists* false in the other direction — `make findings` reported `REVERTED` on the closing text rather than letting the correction go stale, which is the whole argument for closure restating a site instead of releasing it. The `*Now:*` below is the second restatement, not the first.** The figure was **not one line**: `18,069` was wrong in `CLAUDE.md`, the `Makefile`, `evals/oversight/README.md` four times and `corpus/real/MANIFEST.yaml`, which was a whole epoch behind. The fifth row had no site of its own and is restated at `CLAUDE.md` :: `that matter most — ``8/200 = 4.0%``` — the number the eval prints, kept illustrative but no longer a figure nobody measured. `SPEC-T003.md`'s `9/200` is **not** touched: a spec written before the measurement is a record of what was asked for, and editing it would rewrite the question
 *Now:* `CLAUDE.md` :: `the closed field set refuses 18,069 of 18,069.`
-*Now:* `CLAUDE.md` :: `infra/                 Terraform. **Two layers exist**: `bootstrap/` — state backend, OIDC,`
+*Now:* `CLAUDE.md` :: `infra/                 Terraform. **Three layers exist**: `bootstrap/` — state backend, OIDC,`
+
+> **This `*Now:*` was restated 2026-09-06 by `T018`, and it is the third time in two days that
+> this closure has been asked for one.** The anchor read `Two layers exist`; `T018` built
+> `infra/foundation` and the block had to say `Three`, so the line the closure named stopped
+> existing and `make findings` reported `REVERTED` rather than passing quietly.
+>
+> **The finding's subject has not moved and that is why the restatement is one word.** It closed
+> on *`infra/` is described in the tense it is in*, and that is still what is true; what changed
+> is the count, which is the part of the sentence that goes stale every time a layer lands.
+> **The anchor is on the half that moves**, which is a worse anchor than one on the half that
+> does not — and the better one is not available here, because the whole content of this site is
+> the count. Recorded rather than fixed, per doctrine rule 4.
 *Now:* `CLAUDE.md` :: `  then **append-only**. `delta.appendOnly` refuses an update, a delete and an insert overwrite,`
 *Now:* `CLAUDE.md` :: `6 rest on. Five families, none of which is a vendor feature.`
 *Status:* open
@@ -4519,6 +4549,62 @@ tree or its index** — which is how the content was made durable while the revi
 to stayed exactly as the reviewing session had it
 *Now:* `.claude/skills/integration-review/SKILL.md` :: `**Commit on the branch. Then `git diff main..branch`.**`
 *Status:* concurred
+
+---
+**A declared layer component that the design gives nothing to run in** ·
+found 2026-09-06 · by running the checklist's last question before writing the file
+
+`CLAUDE.md`'s layer table said `foundation` holds *VPC, keys, S3 zones, the workspace, metastore
+attachment, TTL reaper*. **A customer-managed VPC hosts classic compute — clusters that run in
+this account.** This estate is serverless everywhere, stated three headings down in as many words:
+*Serverless only. No always-on cluster anywhere in the design.* Serverless compute runs in
+Databricks' account and never enters a VPC of ours.
+
+**So the VPC would have been created, tagged, reaped, destroyed, and used by nothing** — and it is
+worse than unused, because the egress a customer-managed VPC needs is a **NAT gateway, billed by
+the hour for as long as the estate stands, whether anything runs or not.** An always-on line item
+in a project whose cost posture opens by refusing always-on anything.
+
+**Measured, because *is it optional* and *do we need it* are different questions and only the
+first has an answer in a schema.** `terraform providers schema -json` on
+`databricks/databricks 1.130.0`, dumped in an isolated directory:
+
+    account_id                required=True
+    workspace_name            required=True
+    aws_region                required=False
+    credentials_id            required=False
+    storage_configuration_id  required=False
+    network_id                required=False     <- a workspace needs no network of ours
+
+**Nothing was wrong with the code, because there was no code** — this is the defect at the one
+layer that has no gate behind it, caught in the only window where it costs nothing: the task that
+would have built the thing had not built it yet. Every earlier instance of this class in this file
+was found after the fact.
+
+**And it is the checklist's own last question, which names its own count**: *if the pattern comes
+from another project in this portfolio — what problem did it solve there, and do we actually have
+that problem? A pattern copied with the solution to a problem you do not have is cost with no
+benefit — it has already happened twice here.* Three siblings run classic compute or EC2 and each
+needs a VPC. The row was written from the shape of a `foundation` layer rather than from this
+estate's compute model.
+
+**What is not claimed.** Dropping the VPC drops network-level isolation this estate never had a
+use for. It does **not** drop governance, which lives in Unity Catalog and is where every grant in
+`lakehouse` already is. And it is reversible at the cost of a file: `network_id` is an optional
+attribute, so the day a classic-compute workload exists the VPC is a reference rather than a
+redesign.
+
+*Site:* `CLAUDE.md` :: `| `foundation` | `deploy` | VPC, keys, S3 zones, the workspace, metastore attachment, **TTL reaper** |`
+*Disposition:* branch `infra/foundation-and-the-reaper`
+*Closed:* 2026-09-06 — the row restated with the measurement beside it, the rule-4 block carrying
+both halves (the schema and the NAT gateway), and `infra/foundation` written with no `network.tf`.
+**Decided by the author**, because a layer's declared contents are his and the alternative was a
+session quietly not building something the file says exists — which is the same defect in the
+other direction, and this register already carries it under *a directory that exists may not be
+described as unbuilt*
+*Now:* `CLAUDE.md` :: `metastore attachment, **TTL reaper** — **no VPC**, restated below`
+*Now:* `CLAUDE.md` :: `is optional**, so a workspace with no customer-managed network is a supported`
+*Status:* open
 
 ---
 

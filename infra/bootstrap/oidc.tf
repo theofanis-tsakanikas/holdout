@@ -315,6 +315,360 @@ data "aws_iam_policy_document" "deploy_state" {
     actions   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
     resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/holdout/*"]
   }
+
+  # **`ssm:PutParameter`, and it is a correctness requirement rather than a convenience.**
+  #
+  # `CLAUDE.md` requires every layer to publish what the layers above it consume, and
+  # `infra/foundation/reaper/reap.py`'s second enumeration *is* those published names: an object
+  # whose name never reached SSM is an object the reaper can report as uncollectable and can never
+  # collect. Without this the reaper is not inconvenienced -- it is incorrect.
+  #
+  # The delete is here for the same reason the write is: a parameter this project published and
+  # then stopped publishing must go, or the reaper's second enumeration accumulates names for
+  # resources that no longer exist and its report drifts toward noise.
+  statement {
+    sid       = "PublishForTheLayersAbove"
+    effect    = "Allow"
+    actions   = ["ssm:PutParameter", "ssm:DeleteParameter", "ssm:AddTagsToResource"]
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/holdout/*"]
+  }
+}
+
+# **What `foundation` needs, written with that layer's resources on the page.**
+#
+# The document above is what `T017` closed with: state, and nothing that builds. This one is
+# `T018`'s half of the same decision, and the comment above `aws_iam_role.deploy` is the
+# instruction it follows -- *each layer's task adds what that layer needs, with the resources it
+# actually declares in front of whoever writes it.*
+#
+# **It is a second document rather than more statements in the first**, because the two have
+# different lifetimes and different reviewers. `deploy_state` is the backend and changes when the
+# backend changes, which is close to never; this one grows with every layer, and a reader asking
+# *what may this role build* should not have to read past four statements about a bucket.
+#
+# **Everything that can be scoped is scoped, and the three that cannot are named.**
+#
+# Two rules do the work. **A name prefix**, where the resource carries its name into the create
+# request -- buckets, roles, functions, rules, topics, log groups -- because every name this
+# project chooses begins `holdout-` by construction. **A resource tag**, where the resource is
+# named by the caller only after it exists: `aws:ResourceTag/holdout:project` on the keys.
+#
+# `resources = ["*"]` survives in exactly two statements, and both are read-only or resourceless:
+# `CreateAKey`, and `AskTheAccountWhatExists`. Each says beneath it why.
+#
+# > **This paragraph argued the opposite until 2026-09-06 and three of its claims were false by
+# > then.** It read *`resources = ["*"]` on the network and compute statements, and the reason is
+# > not laziness* -- and there is no network statement, `022964b` having removed the VPC; the
+# > compute statements are no longer on `*`, `0616eac` having scoped them; and it listed *a
+# > wildcard on a name pattern, which a rename defeats silently* as one of two bad options, which
+# > is precisely the technique the body now uses in five statements. Its premise -- *their ARNs do
+# > not exist when this policy is written* -- was already contradicted below it by
+# > `RolesThisProjectOwns`, which was ARN-scoped on the day the paragraph was written.
+# >
+# > **It is the third header in two days to survive the fix below it**, after `deploy.yml`'s and
+# > the log-group comment two statements down, and the shape is worth naming: **a fix lands where
+# > the finding pointed, findings point at statements, and no statement's diff touches the
+# > paragraph that introduces it.** The introduction to a thing is the part a reader reads first
+# > and the part least likely to be re-read when the thing changes. The prior wording stays per
+# > doctrine rule 4.
+data "aws_iam_policy_document" "deploy_estate" {
+  # ---------------------------------------------------------------- storage the layer creates
+  statement {
+    sid    = "TheEstatesBuckets"
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:PutBucketPolicy",
+      "s3:GetBucketPolicy",
+      "s3:DeleteBucketPolicy",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:PutBucketVersioning",
+      "s3:GetBucketVersioning",
+      "s3:PutEncryptionConfiguration",
+      "s3:GetEncryptionConfiguration",
+      "s3:PutBucketTagging",
+      "s3:GetBucketTagging",
+      "s3:ListBucket",
+      "s3:ListBucketVersions",
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+    ]
+    # **Scoped by name prefix, which is the one scoping a bucket makes available.** Bucket names
+    # are chosen by this project and carry the `holdout-` prefix by construction; the state bucket
+    # is `holdout-tfstate-*` and is deliberately *not* excluded here, because `deploy_state`
+    # already grants exactly what the backend needs and a `Deny` would be a second place the
+    # survivor list is written.
+    resources = [
+      "arn:${data.aws_partition.current.partition}:s3:::holdout-*",
+      "arn:${data.aws_partition.current.partition}:s3:::holdout-*/*",
+    ]
+  }
+
+  # ---------------------------------------------------------------- the estate's data key
+  #
+  # **`kms:CreateKey` is the one action here that genuinely takes no resource**, and it is alone
+  # in this statement for that reason: a key that does not exist has no ARN to name.
+  #
+  # **The condition is what bounds it, and the sentence it replaced named a mechanism IAM cannot
+  # see.** That sentence said the grant was bounded because *the provider's `default_tags` puts
+  # `holdout:project` on the key at creation*. `default_tags` is a provider block in
+  # `infra/foundation`; **IAM cannot read it, cannot require it, and is not affected by it.** The
+  # role could have created an untagged key -- from a stray CLI call, or from a `foundation` whose
+  # provider block somebody edited -- and an untagged key falls outside
+  # `ManageThisProjectsKeys`'s tag condition, so the role could create a key it could then neither
+  # rotate, nor tag, nor schedule for deletion. **The reaper deletes nothing in AWS by design, so
+  # nothing else would collect it either**: an orphan CMK, about a dollar a month, removable only
+  # by a human with different credentials.
+  #
+  # `aws:RequestTag` makes the tag **a precondition of creation enforced by IAM** rather than a
+  # convention enforced in another layer, which is the property the split between this statement
+  # and the next one assumed and did not have.
+  #
+  # **This is stricter than any sibling and that is stated rather than hidden.** `manifest` and
+  # `watermark` both put `kms:CreateKey` and an *unconditioned* `kms:TagResource` in one statement
+  # -- which closes the same loop by letting the role tag any key, including another project's,
+  # and then manage it under the tag condition. Neither uses `aws:RequestTag` anywhere.
+  #
+  # **The risk this takes, named because it is the author who runs the first apply**: if the AWS
+  # provider ever tags a KMS key in a second call rather than in `CreateKey` itself, this
+  # condition refuses the create. That failure is `AccessDenied` on the first key of the first
+  # apply -- immediate, named, and before anything expensive exists -- and the remedy is to move
+  # `kms:TagResource` into this statement under the same `aws:RequestTag` condition. **A loud stop
+  # is the direction this repository chooses over a silent orphan.**
+  statement {
+    sid       = "CreateAKey"
+    effect    = "Allow"
+    actions   = ["kms:CreateKey"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/holdout:project"
+      values   = ["holdout"]
+    }
+  }
+
+  # **Managing keys this project owns, and only those.**
+  #
+  # **This statement used to be part of the one above, on `resources = ["*"]`, with a comment
+  # arguing that it was safe because *nothing here reads or writes ciphertext*.** That argument
+  # was defeated by an action inside its own list: **`kms:PutKeyPolicy` is what decides who may
+  # decrypt.** The statement could not decrypt and could authorise itself to, in one call, on any
+  # key in an account holding four other projects.
+  #
+  # **And `kms:ScheduleKeyDeletion` on `*` reached the state key.** `state.tf` carries
+  # `prevent_destroy = true`, which is a *Terraform* guard -- that file's own words are that the
+  # only things standing in the way were accidents -- and an API call goes around it. The key is
+  # on `CLAUDE.md`'s survivor list because state encrypted with a deleted key is state nobody can
+  # read: the role that applies the estate could have scheduled the deletion of the key that makes
+  # every layer's state readable, including its own.
+  #
+  # The condition is `manifest`'s, verbatim in shape: `deploy_permissions.tf:299` scopes the same
+  # action list to `key/*` under `aws:ResourceTag/manifest:project`. **The list was copied from
+  # that file and the condition that bounds it was not.**
+  statement {
+    sid    = "ManageThisProjectsKeys"
+    effect = "Allow"
+    actions = [
+      "kms:DescribeKey",
+      "kms:ScheduleKeyDeletion",
+      "kms:EnableKeyRotation",
+      "kms:GetKeyRotationStatus",
+      "kms:GetKeyPolicy",
+      "kms:PutKeyPolicy",
+      "kms:TagResource",
+      "kms:ListResourceTags",
+      # A service that encrypts on this key's behalf -- an SNS topic, a log group -- asks KMS for
+      # a grant when it is attached. Without this the *consumer* fails rather than the key, and
+      # the error names the consumer.
+      "kms:CreateGrant",
+      "kms:ListGrants",
+      "kms:RevokeGrant",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/holdout:project"
+      values   = ["holdout"]
+    }
+  }
+
+  # Aliases carry no tags of their own, so they are scoped by name -- the same prefix rule that
+  # scopes roles below, and the same one this project's own naming makes true by construction.
+  statement {
+    sid       = "AliasesThisProjectNames"
+    effect    = "Allow"
+    actions   = ["kms:CreateAlias", "kms:DeleteAlias", "kms:UpdateAlias"]
+    resources = ["arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:alias/holdout-*"]
+  }
+
+  # ---------------------------------------------------------------- the cross-account role
+  #
+  # **The narrowest statement in this document, and the one that would matter most if it were
+  # not.** `iam:*` on `*` would let a workflow in a public repository mint a role with any policy
+  # in the account. Every name this project creates is `holdout-`-prefixed, and that prefix is
+  # what turns an IAM grant into a scoped one.
+  statement {
+    sid    = "RolesThisProjectOwns"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:PassRole",
+      "iam:TagRole",
+      "iam:ListRoleTags",
+      "iam:PutRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:UpdateAssumeRolePolicy",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/holdout-*"]
+  }
+
+  # ---------------------------------------------------------------- the reaper
+  #
+  # Level 1 of the three teardown guarantees is a Lambda, a schedule and a topic, so the role that
+  # applies `foundation` must be able to create all three. **This is the statement that makes the
+  # net exist**, and it is worth naming that it is granted to the same identity the net protects
+  # the account from -- which is why the reaper's own policy, one layer over, can delete nothing
+  # in AWS.
+  #
+  # **These were three statements on `resources = ["*"]`, under a premise that was wrong for
+  # every service but KMS.** The comment read *`lambda:CreateFunction` and `events:PutRule` take
+  # no resource*; they do -- the name is in the create request, and all three services support
+  # resource-level permissions on it. `manifest` scopes its log groups by ARN at
+  # `deploy_permissions.tf:352`, in this portfolio, today.
+  #
+  # **What the wildcard reached, in order of severity:**
+  #
+  # - **`lambda:UpdateFunctionCode` on `*` is arbitrary code execution in another project's
+  #   role.** Replace any function's code and it runs under *that function's* identity. This
+  #   account holds `watermark`'s reaper.
+  # - **`events:DeleteRule` and `events:RemoveTargets` on `*` disable any project's schedule** --
+  #   including another project's TTL reaper, which `CLAUDE.md` ranks as *the real net, depending
+  #   on no workflow's control flow.* It would keep billing with nothing red anywhere.
+  # - `lambda:DeleteFunction` and `logs:DeleteLogGroup` delete another project's function and its
+  #   audit trail.
+  #
+  # The prefix is what this project's naming makes true by construction, and it is the same shape
+  # as `RolesThisProjectOwns` below.
+  statement {
+    sid    = "TheReapersFunction"
+    effect = "Allow"
+    actions = [
+      "lambda:CreateFunction",
+      "lambda:DeleteFunction",
+      "lambda:GetFunction",
+      "lambda:GetFunctionConfiguration",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:AddPermission",
+      "lambda:RemovePermission",
+      "lambda:GetPolicy",
+      "lambda:TagResource",
+      "lambda:ListTags",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:holdout-*"]
+  }
+
+  statement {
+    sid    = "TheReapersSchedule"
+    effect = "Allow"
+    actions = [
+      "events:PutRule",
+      "events:DeleteRule",
+      "events:DescribeRule",
+      "events:ListTagsForResource",
+      "events:TagResource",
+      "events:PutTargets",
+      "events:RemoveTargets",
+      "events:ListTargetsByRule",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/holdout-*"]
+  }
+
+  # **The topic the reaper's failures land on.** It did not exist when this document was first
+  # written and the reaper could not have been applied without it: `reaper.tf` declares
+  # `aws_sns_topic.reaper_failures`, and a `dead_letter_config` pointing at a topic the deploy
+  # role cannot create is an apply that stops. Found by reading this file against the layer rather
+  # than by the layer failing, which is the only order in which it is cheap.
+  statement {
+    sid    = "TheReapersDeadLetterTopic"
+    effect = "Allow"
+    actions = [
+      "sns:CreateTopic",
+      "sns:DeleteTopic",
+      "sns:GetTopicAttributes",
+      "sns:SetTopicAttributes",
+      "sns:ListTagsForResource",
+      "sns:TagResource",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:sns:*:${data.aws_caller_identity.current.account_id}:holdout-*"]
+  }
+
+  statement {
+    sid    = "TheReapersLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:DescribeLogGroups",
+      "logs:PutRetentionPolicy",
+      "logs:ListTagsForResource",
+      "logs:TagResource",
+    ]
+    # Both forms of the ARN, because CloudWatch Logs is inconsistent about the trailing `:*`
+    # between actions -- `PutRetentionPolicy` names the group, the stream-level actions name the
+    # group and everything under it, and a policy carrying only one of the two fails on whichever
+    # half it omitted. `manifest` carries both at `deploy_permissions.tf:352` and `:1356`.
+    resources = [
+      "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/holdout-*",
+      "arn:${data.aws_partition.current.partition}:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/holdout-*:*",
+    ]
+  }
+
+  # ---------------------------------------------------------------- reading the account back
+  #
+  # **Every layer ends by asking the account what it built** -- `CLAUDE.md`: *verified by asking
+  # the account, never by reading a workflow's exit code.* These are the calls that answer, and
+  # every one of them is a read.
+  #
+  # **They read the account, not this project, and the sid overstates it.** `s3:ListAllMyBuckets`
+  # returns every bucket in an account holding four other projects; `iam:ListRoles` returns their
+  # roles and trust policies; `tag:GetResources` returns everything tagged. **None of the five
+  # accepts a resource or a tag condition** -- each is a List or a Get with no resource type -- so
+  # the filtering to this project happens in the caller and can happen nowhere else.
+  #
+  # That is the inverse of the argument `reap.py` inherits, where a tag condition belongs on the
+  # policy rather than in the code. **For these five it cannot be, and that is a fact about the
+  # API rather than a choice made here.**
+  statement {
+    sid    = "AskTheAccountWhatExists"
+    effect = "Allow"
+    actions = [
+      "tag:GetResources",
+      "sts:GetCallerIdentity",
+      "iam:ListRoles",
+      "s3:ListAllMyBuckets",
+      "kms:ListKeys",
+      "kms:ListAliases",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "deploy_estate" {
+  name   = "holdout-deploy-estate"
+  role   = aws_iam_role.deploy.id
+  policy = data.aws_iam_policy_document.deploy_estate.json
 }
 
 data "aws_partition" "current" {}

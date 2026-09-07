@@ -24,7 +24,7 @@ RUN := $(UV) run
 #: are linted and type-checked exactly as `src/` is: an eval is the evidence a claim rests on,
 #: a hook is a guarantee, and evidence or a guarantee held to a lower standard than the code
 #: it judges is not one for long.
-PYTHON_DIRS := src tests evals corpus ops pipelines .claude/hooks
+PYTHON_DIRS := src tests evals corpus ops pipelines infra .claude/hooks
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-locked check check-locked test lint format typecheck contracts contracts-write \

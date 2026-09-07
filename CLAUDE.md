@@ -779,13 +779,29 @@ docs/
                        and settings.json
 .github/               **`ci.yml`, and it is the only one.** The four that dispatch are phase 3
                        and are listed below as declared rather than built
-infra/                 Terraform. **Two layers exist**: `bootstrap/` — state backend, OIDC,
+infra/                 Terraform. **Three layers exist**: `bootstrap/` — state backend, OIDC,
                        the deploy role, the published parameters and the budget, applied from a
-                       laptop once — and `lakehouse/` — the catalog, the schemas and the two
-                       compiled AI/BI dashboards. The other four (`foundation · pipelines · ml ·
-                       serving`) are phase 3, and `make terraform` validates every layer the
-                       glob finds rather than a list
+                       laptop once — `foundation/` — the data key, the four S3 zones, the
+                       workspace, the metastore switch and the TTL reaper — and `lakehouse/` —
+                       the catalog, the schemas and the two compiled AI/BI dashboards. The other
+                       three (`pipelines · ml · serving`) are phase 3, and `make terraform`
+                       validates every layer the glob finds rather than a list
 ```
+
+> **This block said `Two layers exist` and named `foundation` among the four that do not, until
+> `T018` built it on 2026-09-06.** The rule stated below — *a directory that does not exist may
+> not be described in the present tense beside directories that do* — has the second half this
+> file already learned once: **a directory that exists may not be described as unbuilt.** It went
+> stale here for the second time in two days, and for the same mechanical reason: `make figures`
+> reads this block to check that every package which exists is named, and has nothing to say about
+> a package named in the wrong sentence.
+>
+> **`foundation` is also the first layer whose Python is read by a gate.** `infra/` was in neither
+> `PYTHON_DIRS` nor `[tool.mypy]`'s `files`, so `reaper/reap.py` would have been the only Python
+> in this repository that nothing lints and nothing typechecks. Both lists were widened, and
+> widening one of them first is what made `make figures` report `typecheck 249 examined of 250
+> exists` — the coverage gate doing exactly what it was built for, on the change that created the
+> gap, in seconds.
 
 `notes/` is **not** in this map and is not repository content: it is gitignored scratch that
 exists on one machine and not on a clean checkout. It was listed here for about an hour, and CI
@@ -874,7 +890,7 @@ blast radius · consumes only from below · expensive or slow to apply.**
 | layer | applied | holds |
 |---|---|---|
 | `bootstrap` | **locally, once** | state bucket + KMS, the deploy role, **the budget and its alerts**, published parameters — and it **reads** the account's GitHub OIDC provider rather than owning it, because that object is unique per issuer per account and another project created it first |
-| `foundation` | `deploy` | VPC, keys, S3 zones, the workspace, metastore attachment, **TTL reaper** |
+| `foundation` | `deploy` | keys, S3 zones, the workspace, metastore attachment, **TTL reaper** — **no VPC**, restated below |
 | `lakehouse` | `deploy` | catalogs, schemas, grants, external locations, Lakebase, the two AI/BI dashboards |
 | `pipelines` | `deploy` | SDP pipelines, dbt jobs, Lakeflow Jobs, Zerobus endpoints, bulk-load jobs |
 | `ml` | `deploy` | training job, evaluation, promotion gates, MLflow — **no endpoint** |
@@ -886,6 +902,47 @@ applied at a different moment**: an endpoint cannot point at a model version tha
 yet, and a version exists only after `backfill` has trained one. The agent runtime lives there too
 — it is the same lifetime, the same blast radius and the same billing shape, and two layers that
 always deploy together and never independently are one layer wearing two names.
+
+> **`foundation`'s row said `VPC` until 2026-09-06, and the design gives nothing to run in one.
+> Restated by `T018`, which is the task that would have built it.**
+>
+> A customer-managed VPC exists to host **classic compute** — clusters that run in *this* account.
+> This estate is serverless everywhere, by a decision stated three headings down in as many words:
+> *Serverless only. **No always-on cluster anywhere in the design.*** Serverless compute runs in
+> Databricks' account, reaches S3 from there, and never enters a VPC of ours. So the VPC would
+> have been created, tagged, reaped, destroyed, and used by nothing.
+>
+> **Measured rather than assumed**, because *is it optional* and *do we need it* are different
+> questions and only the first one has an answer in a schema. `terraform providers schema -json`
+> on `databricks/databricks 1.130.0`:
+>
+> | attribute | required |
+> |---|---|
+> | `account_id` · `workspace_name` | **yes** |
+> | `credentials_id` · `storage_configuration_id` · `network_id` | no |
+>
+> **`network_id` is optional**, so a workspace with no customer-managed network is a supported
+> configuration rather than a workaround.
+>
+> **And the cost half is the one that makes it worse than merely unused.** A customer-managed VPC
+> needs egress for the compute it hosts, which is a NAT gateway — **billed by the hour for as long
+> as the estate stands, whether anything runs or not.** That is an always-on line item, in a
+> project whose cost posture opens with *no always-on cluster anywhere*, paying for egress that
+> nothing would use.
+>
+> **This is the checklist's own last question, and it says the count out loud:** *if the pattern
+> comes from another project in this portfolio — what problem did it solve there, and do we
+> actually have that problem? A pattern copied with the solution to a problem you do not have is
+> cost with no benefit — **it has already happened twice here.*** Three siblings run classic
+> compute or EC2 and each needs a VPC. This one does not, and the row was written from the shape
+> of a `foundation` layer rather than from this estate's compute model.
+>
+> **What is not claimed.** Dropping the VPC drops network-level isolation this estate never had a
+> use for; it does **not** drop governance, which lives in Unity Catalog and is where every grant
+> in `lakehouse` already is. And it is reversible: `network_id` is an optional attribute, so the
+> day a classic-compute workload exists, the VPC is a file and a reference rather than a redesign.
+>
+> The prior wording stays per doctrine rule 4, and the delta is the finding.
 
 **Cross-layer references go `outputs` → SSM parameter → `data`. Never a remote state read** — that
 creates hidden coupling and destroys the isolation the layers exist for.
@@ -1041,9 +1098,36 @@ job can be cancelled. Three independent levels, in order of trust:
 
 | | what | why |
 |---|---|---|
-| **1** | **TTL reaper** in `foundation` — a scheduled job that destroys anything tagged and older than N hours, whatever happened | the real net. Depends on no workflow's control flow |
+| **1** | **TTL reaper** in `foundation` — a scheduled job that destroys the **Databricks compute** of an estate older than N hours, whatever happened, and **deletes nothing in AWS**. Restated below | the real net. Depends on no workflow's control flow |
 | **2** | **Budget policy** in `bootstrap`, applied before anything can bill | catches what escapes level 1 |
 | **3** | `destroy` — **always a deliberate dispatch**, never automatic | convenience |
+
+> **This row said *destroys anything tagged* until 2026-09-06, and `T018` built it two ways
+> narrower.** Both are decisions and both are argued in `infra/foundation/reaper/reap.py`.
+>
+> **It deletes no AWS resource at all.** The bill is compute: this table's own next row says
+> `serving` *is the most expensive layer and the only one that bills while idle*, and the cost
+> model puts all S3 for the whole corpus at **1–3 USD per cycle**. A reaper that took the four
+> zones would save single-digit dollars and destroy the thing the paragraph below refuses to
+> destroy automatically — *on success the estate is exactly what console screenshots and video
+> need*, and that is the one input a rerun cannot regenerate. **Storage is collected by
+> `destroy all`, which is a deliberate dispatch, and by nothing else.**
+>
+> **And the Databricks surfaces it sweeps are a hand-written list**, not everything tagged. Today:
+> serving endpoints, SQL warehouses and Lakebase instances. **What is outside it is named in the
+> file** — the agent runtime and the AI Gateway — because on the AWS side an unrecognised type
+> lands in `unknown` and is counted, and on the Databricks side a surface nobody wrote down is
+> not seen at all. A listing that fails is an **error rather than a skip**, so a path that is
+> wrong screams on the next scheduled run instead of quietly collecting nothing.
+>
+> **The prior wording was not merely broad; it described a guard that does not exist.** `reap.py`
+> carried a `SURVIVORS` list and a sentence saying it *stands between the reaper and the state of
+> every other layer* — and nothing in the reaper could delete an AWS resource, so it stood between
+> the reaper and nothing. That is prose claiming a check nobody wrote, in the component whose
+> whole justification is that it works when nobody is watching. The list is kept and relabelled;
+> the sentence is replaced.
+>
+> The prior wording stays per doctrine rule 4, and the delta is the finding.
 
 **`destroy` is never automatic, on success or on failure.** On failure, tearing down destroys the
 evidence — the Lakebase rows, the Delta state, the endpoint's configuration — and re-deploying to

@@ -72,3 +72,6 @@ terraform.tfstate.*
 # where an applier would put it.
 *.tfvars
 *.tfvars.json
+
+# The reaper's build artefact: `archive_file` writes it on every plan.
+infra/foundation/.reaper.zip
