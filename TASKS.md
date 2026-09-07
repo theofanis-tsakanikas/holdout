@@ -2955,7 +2955,29 @@ closes        State backend + KMS, OIDC provider, the deploy role, published par
 out_of_scope  Anything a workflow applies (foundation and up).
 stop_at       When bootstrap applies from a laptop and the budget + alerts exist.
 review        yes
-status        open
+status        CLOSED 2026-09-07 — applied from a laptop, and the stop_at was met twice.
+              --
+              First on 2026-09-05: the state backend, the OIDC provider read rather than owned,
+              the deploy role, the four published parameters and the budget -- 1,000 USD with
+              alerts at 50/80/100 and a halt at 150 in STANDBY, verified by asking the account
+              rather than by reading an exit code.
+              --
+              And again on 2026-09-07, three targeted applies, because T018 is what makes the
+              deploy role able to build anything. `oidc.tf`'s own comment asked for that order:
+              *each layer's task adds what that layer needs, with the resources it actually
+              declares in front of whoever writes it.* What T018 added: the deploy_estate
+              document, `ssm:PutParameter`, the `plan` environment, `max_session_duration` raised
+              from 3600 to 14400, and four rounds of read permissions that only an apply could
+              name.
+              --
+              **The applies were targeted rather than whole, and that is recorded because it is
+              a live divergence.** `-target=aws_iam_role_policy.deploy_estate` and
+              `-target=aws_iam_policy.deploy_state`, so `github.tf` was not touched -- the author
+              removed the `deploy` environment's required reviewer for the duration of the
+              bring-up, and a full apply would put it back. The code still declares it, so the
+              protection is the default and the relaxation lives only in the account. **The next
+              unrestricted apply restores it, and nothing has to be remembered for that to
+              happen.**
 ```
 
 **The configuration landed on 2026-09-05 and the task stays open, which is the honest state
@@ -3011,7 +3033,26 @@ out_of_scope  Lakehouse, pipelines, ml.
               this.
 stop_at       When foundation applies via deploy and the reaper is scheduled.
 review        yes
-status        open
+status        CLOSED 2026-09-07 — applied via `deploy`, run 34109990394, and the reaper is on an
+              hourly schedule.
+              --
+              Asked of the account rather than read off the workflow: five zone buckets, the KMS
+              key and its alias, the reaper's Lambda with DRY_RUN=true and a dead-letter topic,
+              the EventBridge rule ENABLED at rate(1 hour), a log group with 14-day retention,
+              and 13 parameters under /holdout/foundation/ -- including a metastore_id and a
+              workspace_id, which is how the Databricks half is known to have landed.
+              --
+              **Four dispatches, and every one of the seven findings was a read permission.**
+              Not one was a defect in the layer: s3:GetBucketAcl, ssm:ListTagsForResource,
+              logs:DescribeLogGroups and the rest. The generalisation is in `oidc.tf` --
+              *writes are enumerated, reads are verbs, and the bound is the resource rather than
+              the verb* -- and it was earned by two measured failures rather than chosen.
+              --
+              **The first dry run is read and correct.** `skipped: ["estate is 0.9h old, under
+              the 48h TTL"]`, `errors: []`, and both enumeration differences empty -- which is
+              the property the join fix bought: under the old join, comparing the ARN's service
+              field against layer names, both would have been the whole of both sets on every
+              run for ever.
 ```
 
 ```
