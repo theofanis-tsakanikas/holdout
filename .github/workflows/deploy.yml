@@ -208,16 +208,27 @@ jobs:
       # anything slow — a suite, a build, a wait for approval — spends the hour on work that is
       # not the apply, and the failure arrives *after* the environment approval has been used.
       #
-      # **And one hour is not obviously enough for `all`.** `CLAUDE.md` models `deploy` at ~40
-      # minutes across five layers, which is a 20-minute margin on a projection. Raising it is a
-      # change to `infra/bootstrap/oidc.tf`, which applies **from a laptop** — so it belongs in
-      # the same local re-apply as this branch's other bootstrap changes, before the first
-      # dispatch rather than after the first overrun.
+      # **The credential must outlive this job's own timeout, and it did not.**
+      #
+      # `timeout-minutes: 90` above, and a credential of 60: a dispatch that ran past the hour
+      # died on an expired credential **thirty minutes before the timeout that was supposed to end
+      # it** — after the environment approval had been spent, and with layers half applied. The
+      # timeout was not the thing ending the job, which is the whole reason a timeout is written
+      # down.
+      #
+      # **So the duration is requested here rather than inherited.** Without
+      # `role-duration-seconds` this action asks for one hour regardless of what the role permits,
+      # so raising `max_session_duration` alone would have changed nothing. Two halves, and the
+      # ceiling is the half that is easy to see.
+      #
+      # 120 minutes against a 90-minute timeout. `tests/ops/test_credential_outlives_job.py` is
+      # what keeps the two in that order when either moves.
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: holdout-deploy-${{ github.run_id }}
+          role-duration-seconds: 7200
 
       - name: Apply
         env:
