@@ -1,0 +1,270 @@
+# `destroy` — takes the estate down, then asks the account what is left.
+#
+# **Never automatic, on success or on failure.** `CLAUDE.md` argues it at length and the argument
+# is about evidence rather than about caution: on failure a teardown destroys the Lakebase rows,
+# the Delta state and the endpoint's configuration that somebody needs in order to debug, and
+# re-deploying costs forty minutes and real money. On success the standing estate **is** the
+# console screenshots and the video, which is the one input a rerun cannot regenerate.
+#
+# **It takes a target.** `serving` removes the expensive layer in about two minutes and leaves the
+# lakehouse standing to browse at almost no cost; `all` takes everything above `bootstrap`, in
+# reverse dependency order.
+#
+# **And it ends by asking the account.** `CLAUDE.md`: *what survives a teardown is the state
+# bucket and its access-log bucket, the state KMS key, the SSM parameters and the deploy role.
+# Nothing else — verified by asking the account, never by reading a workflow's exit code.* A
+# `terraform destroy` that exits 0 has removed what its state knew about; the account is the only
+# thing that can say whether that was everything.
+name: destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "`serving` kills the expensive layer only. `all` takes everything above bootstrap."
+        type: choice
+        default: serving
+        options:
+          - serving
+          - all
+        # `bootstrap` is absent for the reason it is absent from `deploy`, and more sharply here:
+        # it holds the state every other layer's destroy reads and the role this workflow assumes.
+        # A workflow that destroyed it would remove, mid-run, both the record of what it is
+        # destroying and its own right to be doing so. `CLAUDE.md`'s survivor list is that
+        # sentence as a policy, and `state.tf`'s `prevent_destroy` is it as a mechanism.
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+# **The same concurrency group as `deploy`, deliberately.** An apply and a destroy racing over one
+# state file is the failure neither of them can report honestly. `cancel-in-progress: false`
+# because cancelling a destroy half way is how an estate ends up in a state its own record does
+# not describe.
+concurrency:
+  group: estate
+  cancel-in-progress: false
+
+jobs:
+  verified:
+    name: the suite was green on this sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The dispatched sha has a successful ci run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # **`conclusion == "success"`, not `!= "failure"`.** `ci.yml` runs with
+          # `cancel-in-progress: true` on `main`, so two merges in quick succession cancel the
+          # first run — and a cancelled run is not a successful one. The tree may well have been
+          # green as a pull request; what this asserts is the record for *this sha*, and the
+          # record says `cancelled`. Re-run `ci` on the sha and dispatch again.
+          #
+          # This is `claims-complete`'s own rule one layer up: it refuses `failure`,
+          # `cancelled` **and** `skipped`, because a check that did not run is not a check
+          # that passed.
+          # `per_page=100` is a cap and is stated as one: two runs exist per sha today, `push`
+          # and `pull_request`, so the page holds the whole population — but the population is
+          # capped rather than enumerated and nothing here would notice a 101st.
+          runs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&per_page=100" \
+                   --jq '[.workflow_runs[] | {status, conclusion, event, url}]')
+
+          echo "$runs" | jq -r '.[] | "  \(.event)  \(.status)  \(.conclusion // "-")  \(.url)"'
+
+          green=$(echo "$runs" | jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length')
+
+          if [ "$green" -eq 0 ]; then
+            # **Four states, and telling them apart is the difference between good advice and
+            # advice that is wrong in the commonest case.** `status` is already in the projection
+            # above, so this branches on data the query has rather than on a guess.
+            #
+            # **A squash-merge produces a new commit and no required check has ever run on it** —
+            # the required contexts were evaluated on the pull request's head, which is a
+            # different sha. What this sha gets is its own `push` run, and that run takes 23 to
+            # 27 minutes. So *still going* is what an operator hits right after a merge, and
+            # telling them to re-run something would be wrong.
+            running=$(echo "$runs" | jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length')
+            cancelled=$(echo "$runs" | jq '[.[] | select(.conclusion == "cancelled")] | length')
+            failed=$(echo "$runs" | jq '[.[] | select(.conclusion == "failure")] | length')
+
+            if [ "$running" -gt 0 ]; then
+              echo "::error::ci is still running for ${SHA}. It takes 23-27 minutes and this sha"
+              echo "needs its own run: the required checks ran on the pull request's head, which"
+              echo "is a different commit. Wait for it to finish and dispatch again. Do not re-run."
+            elif [ "$cancelled" -gt 0 ]; then
+              echo "::error::ci was cancelled for ${SHA}. A later merge to main cancelled it —"
+              echo "ci runs with cancel-in-progress. Re-run ci on this sha, then dispatch."
+            elif [ "$failed" -gt 0 ]; then
+              echo "::error::ci failed for ${SHA}. Nothing reaches AWS on a red suite."
+            else
+              echo "::error::No ci run at all for ${SHA}. Was this commit pushed to main?"
+            fi
+            exit 1
+          fi
+          echo "OK  ${green} successful ci run(s) for ${SHA}"
+
+          # **And the sha must be on `main`, asserted here rather than assumed of the branch
+          # policy.** `CLAUDE.md` says the money workflows *dispatch from `main` only*, and what
+          # enforces that is the environment's `deployment_branch_policy` — **which nobody has
+          # verified**, because `main` is protected by a ruleset and classic branch protection
+          # reads `enabled: false`.
+          #
+          # The check above does not narrow it: measured against `#68`'s head sha, a branch tip
+          # that was never on `main`, the runs query returns a `pull_request` success. So without
+          # this line the two gates are not independent — one is unverified and the other covers
+          # a different property.
+          #
+          # Same reason `oidc.tf` carries a postcondition on a provider another project owns: a
+          # guarantee that rests entirely on a mechanism this repository cannot check is not a
+          # guarantee this repository holds.
+          if ! gh api "repos/${GITHUB_REPOSITORY}/compare/main...${SHA}" --jq '.status' \
+               | grep -qE '^(identical|behind)$'; then
+            echo "::error::${SHA} is not on main. The money workflows dispatch from main only."
+            exit 1
+          fi
+          echo "OK  ${SHA} is on main"
+
+  # ───────────────────────────────────────────────────────────────────────────────
+  # The teardown. `environment: destroy` carries a required reviewer, and that is the
+  # asymmetry this project chose on purpose: `plan` has none because it reads, `deploy`
+  # is the money, and **`destroy` is the one that cannot be undone by running it again.**
+  # ───────────────────────────────────────────────────────────────────────────────
+  destroy:
+    name: destroy ${{ inputs.target }}
+    needs: verified
+    runs-on: ubuntu-latest
+    environment: destroy
+
+    # 60 minutes against a modelled ~15, and the credential below outlives it.
+    # `tests/ops/test_credential_outlives_job.py` is what keeps those two in that order.
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: holdout-destroy-${{ github.run_id }}
+          role-duration-seconds: 5400
+
+      - name: Destroy
+        env:
+          TARGET: ${{ inputs.target }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_VAR_databricks_account_id: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+          TF_VAR_databricks_client_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          TF_VAR_databricks_client_secret: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+          # **`create_metastore` is `true` here and it is not a copy-paste from `deploy`.**
+          # The variable records whether this project *owns* the metastore, and a destroy has to
+          # agree with the apply that created it: dispatched with `false`, Terraform would read a
+          # metastore it does not manage, leave it standing, and report success — an estate
+          # reported as gone with its most account-level object still there.
+          TF_VAR_create_metastore: true
+        run: |
+          set -euo pipefail
+
+          declared="$(ls -d infra/*/ 2>/dev/null | sed 's|infra/||;s|/||' | grep -v '^bootstrap$' | sort)"
+
+          # Ready means the same thing it means in `deploy`: a layer that declares a backend.
+          # A layer with no backend was never applied from here, so there is nothing of it in a
+          # remote state to destroy — and running `destroy` against it would init local state,
+          # find nothing, and report success over an estate it never looked at.
+          ready=""
+          for l in $declared; do
+            if grep -qE '^[[:space:]]*backend[[:space:]]+"' "infra/$l"/*.tf 2>/dev/null; then
+              ready="$ready $l"
+            fi
+          done
+
+          if [ "$TARGET" = "all" ]; then
+            # **Reverse of `deploy`'s order, and reversed here rather than written out.** Two
+            # hand-kept orders that must be each other's mirror are two enumerations of one
+            # population, which is the defect this repository catalogues most; a layer added to
+            # one and forgotten in the other is an estate that cannot be taken down in the order
+            # it was built.
+            order="foundation lakehouse pipelines ml"
+            layers=""
+            for l in $order; do
+              echo "$ready" | tr ' ' '\n' | grep -qx "$l" && layers="$l $layers"
+            done
+          else
+            layers="$TARGET"
+            echo "$ready" | tr ' ' '\n' | grep -qx "$TARGET" || {
+              echo "::error::infra/$TARGET is not a layer that applies from here — it does not"
+              echo "exist, or it declares no backend. There is no remote state to destroy, and a"
+              echo "destroy that finds nothing reports success over an estate it never looked at."
+              exit 1; }
+          fi
+
+          if [ -z "$layers" ]; then
+            echo "::error::nothing to destroy: no layer is both ready and in the order. An empty"
+            echo "destroy is not a successful one."
+            exit 1
+          fi
+
+          echo "── destroying, in this order: $layers"
+
+          STATE_BUCKET=$(aws ssm get-parameter --name /holdout/bootstrap/state_bucket \
+            --query Parameter.Value --output text)
+          STATE_KMS_KEY_ARN=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn \
+            --query Parameter.Value --output text)
+
+          for layer in $layers; do
+            echo "── infra/$layer"
+            terraform -chdir="infra/$layer" init -input=false \
+              -backend-config="bucket=$STATE_BUCKET" \
+              -backend-config="key=$layer/terraform.tfstate" \
+              -backend-config="region=$AWS_REGION" \
+              -backend-config="kms_key_id=$STATE_KMS_KEY_ARN"
+
+            terraform -chdir="infra/$layer" destroy -input=false -auto-approve
+          done
+
+      # ─────────────────────────────────────────────────────────────────────────
+      # **The step that makes the sentence true.** Everything above is a workflow's
+      # control flow; this asks AWS.
+      # ─────────────────────────────────────────────────────────────────────────
+      - name: Ask the account what is left
+        if: ${{ always() && inputs.target == 'all' }}
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          set -euo pipefail
+
+          # **`always()`, because the interesting case is the failed destroy.** A teardown that
+          # exits non-zero leaves an estate whose shape nobody knows, and that is exactly when a
+          # reader needs the list. Skipping this on failure would report the account only when
+          # the account was already fine.
+          #
+          # **`tag:GetResources` rather than a per-service sweep.** The tag is what the budget
+          # filters on and what the reaper enumerates, so anything this project created and did
+          # not remove carries it — and a per-service list would be a third enumeration of a
+          # population two other things already read.
+          left=$(aws resourcegroupstaggingapi get-resources \
+                   --tag-filters "Key=holdout:project,Values=holdout" \
+                   --query 'ResourceTagMappingList[].ResourceARN' --output text | tr '\t' '\n' | sed '/^$/d')
+
+          echo "── tagged and still standing:"
+          echo "$left" | sed 's/^/    /'
+
+          # `CLAUDE.md`'s survivor list, as a predicate rather than as prose. These carry the
+          # project tag because the budget's cost filter needs them to, and they are precisely
+          # what must outlive every teardown.
+          unexpected=$(echo "$left" | grep -vE 'holdout-tfstate-|:role/holdout-deploy$|:parameter/holdout/bootstrap/' || true)
+
+          if [ -n "$unexpected" ]; then
+            echo "::error::these carry this project's tag and are not on the survivor list:"
+            echo "$unexpected" | sed 's/^/  /'
+            echo "A destroy that exits 0 has removed what its state knew about. This is the"
+            echo "account's answer, and it disagrees."
+            exit 1
+          fi
+
+          echo "OK  only the survivor list is standing: state bucket, deploy role, published parameters."
