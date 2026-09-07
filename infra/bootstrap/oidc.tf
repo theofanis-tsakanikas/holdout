@@ -330,9 +330,12 @@ data "aws_iam_policy_document" "deploy_state" {
   }
 
   statement {
-    sid       = "ReadThePublishedParameters"
-    effect    = "Allow"
-    actions   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+    sid    = "ReadThePublishedParameters"
+    effect = "Allow"
+    # Reads, as verbs rather than as a list -- this statement named three and the apply failed
+    # on a fourth, `ssm:ListTagsForResource`, which the provider calls on every refresh of a
+    # parameter it manages. Scoped to `parameter/holdout/*` by the resource below.
+    actions   = ["ssm:Get*", "ssm:List*", "ssm:Describe*"]
     resources = ["arn:${data.aws_partition.current.partition}:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/holdout/*"]
   }
 
@@ -393,6 +396,23 @@ data "aws_iam_policy_document" "deploy_state" {
 # > doctrine rule 4.
 data "aws_iam_policy_document" "deploy_estate" {
   # ---------------------------------------------------------------- storage the layer creates
+  #
+  # **Writes are enumerated. Reads are verbs.** That split is measured rather than chosen.
+  #
+  # Two dispatches failed on a *read* nobody had listed -- `s3:GetBucketAcl` on all five buckets,
+  # then `ssm:ListTagsForResource` on both of the reaper's parameters -- and each cost a full
+  # apply to discover. **A provider reads far more than a configuration sets**: it fetches every
+  # computed attribute of a resource whether or not this project declares one, and the set of
+  # those calls belongs to the provider's version rather than to this repository. Enumerating
+  # them is a projection, wrong in both directions, and re-projected on every provider upgrade.
+  #
+  # **A write is a decision and stays spelled out.** `s3:DeleteBucket`, `kms:ScheduleKeyDeletion`,
+  # `iam:PutRolePolicy` are each something this role may *do*, and a reader asking what it may do
+  # should find a list. A read is not a decision; it is how the provider answers *what is there*.
+  #
+  # **The bound is the resource, not the verb.** Every statement below scopes to this project's
+  # own names or its own tag, so `Get*` reads this estate and nothing else in an account holding
+  # four other projects. `manifest` reached the same conclusion for S3 and is applied with it.
   statement {
     sid    = "TheEstatesBuckets"
     effect = "Allow"
@@ -526,6 +546,11 @@ data "aws_iam_policy_document" "deploy_estate" {
       "kms:CreateAlias",
       "kms:DeleteAlias",
       "kms:UpdateAlias",
+
+      # Reads, as verbs rather than as a list. See the note above `TheEstatesBuckets`.
+      "kms:Describe*",
+      "kms:Get*",
+      "kms:List*",
     ]
     resources = ["arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"]
 
@@ -567,6 +592,11 @@ data "aws_iam_policy_document" "deploy_estate" {
       "iam:ListRolePolicies",
       "iam:ListAttachedRolePolicies",
       "iam:UpdateAssumeRolePolicy",
+
+      # Reads, as verbs. Scoped to `role/holdout-*` by the resource below, so this reads this
+      # project's roles and no other.
+      "iam:Get*",
+      "iam:List*",
     ]
     resources = ["arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/holdout-*"]
   }
@@ -612,7 +642,10 @@ data "aws_iam_policy_document" "deploy_estate" {
       "lambda:RemovePermission",
       "lambda:GetPolicy",
       "lambda:TagResource",
-      "lambda:ListTags",
+
+      # Reads, as verbs.
+      "lambda:Get*",
+      "lambda:List*",
     ]
     resources = ["arn:${data.aws_partition.current.partition}:lambda:*:${data.aws_caller_identity.current.account_id}:function:holdout-*"]
   }
@@ -628,7 +661,10 @@ data "aws_iam_policy_document" "deploy_estate" {
       "events:TagResource",
       "events:PutTargets",
       "events:RemoveTargets",
-      "events:ListTargetsByRule",
+
+      # Reads, as verbs.
+      "events:Describe*",
+      "events:List*",
     ]
     resources = ["arn:${data.aws_partition.current.partition}:events:*:${data.aws_caller_identity.current.account_id}:rule/holdout-*"]
   }
@@ -646,8 +682,11 @@ data "aws_iam_policy_document" "deploy_estate" {
       "sns:DeleteTopic",
       "sns:GetTopicAttributes",
       "sns:SetTopicAttributes",
-      "sns:ListTagsForResource",
       "sns:TagResource",
+
+      # Reads, as verbs.
+      "sns:Get*",
+      "sns:List*",
     ]
     resources = ["arn:${data.aws_partition.current.partition}:sns:*:${data.aws_caller_identity.current.account_id}:holdout-*"]
   }
@@ -660,8 +699,11 @@ data "aws_iam_policy_document" "deploy_estate" {
       "logs:DeleteLogGroup",
       "logs:DescribeLogGroups",
       "logs:PutRetentionPolicy",
-      "logs:ListTagsForResource",
       "logs:TagResource",
+
+      # Reads, as verbs.
+      "logs:Describe*",
+      "logs:List*",
     ]
     # Both forms of the ARN, because CloudWatch Logs is inconsistent about the trailing `:*`
     # between actions -- `PutRetentionPolicy` names the group, the stream-level actions name the
