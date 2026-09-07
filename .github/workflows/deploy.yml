@@ -1,0 +1,363 @@
+# `deploy` — applies the estate's layers, and the first workflow in this repository that can
+# spend money.
+#
+# **It does not run the suite, and that is a change to what `CLAUDE.md` promised.**
+#
+# `CLAUDE.md` said *"the whole suite **first**, then apply five layers"* and *"nothing reaches AWS
+# until all of it is green."* **`ci` takes roughly twenty-five minutes**, and re-running it here
+# would spend that proving what a run on this sha already proved. That sentence is deliberately
+# all the precision the argument gets: it holds anywhere between twenty-three and twenty-seven,
+# so the digits were never load-bearing — and three sets of them were published for this one
+# quantity before the sentence replaced them, none naming the query that produced it.
+#
+# So the guarantee is kept and its mechanism changes: **this workflow asserts that the suite was
+# green on the sha it is about to apply.**
+#
+# **And the two gates protect different objects, which is why both exist.** A required context is
+# evaluated on the **pull request's head**; a squash-merge then produces a **new commit**, and no
+# required check ever runs on it — measured on the most recent merge, `#68`'s head was `4235127f`
+# and `main` became `3b39c563`. So the merge gate protects `main`'s **content** and this check
+# protects the **applied sha**. **A future session reading only the merge guarantee could delete
+# this job as redundant, and be wrong with nothing red.**
+#
+# It is not weaker in the other direction either. A re-run can pass where the recorded run
+# failed, and a workflow that re-runs until green is a workflow that hides flakiness; asserting
+# the record cannot. It is also this repository's own rule — *a change is not verified by its own
+# run* — and here the run already exists.
+#
+# **The rejected alternatives, so the next reader does not re-open the question.** `ci.yml` has no
+# `workflow_call` trigger, so it cannot be invoked from here. Re-declaring its steps in this file
+# would be **two enumerations of one population**, which is the defect
+# `docs/two-enumerations-of-one-population` is named after: the copy drifts, and the drift is
+# invisible until the day it is missing the target that would have gone red.
+#
+# **What the first dispatch of this workflow also tests, stated so it is watched rather than
+# debugged cold.** `CLAUDE.md` says the money workflows *"dispatch from `main` only"*.
+# `workflow_dispatch` does not restrict the ref — the UI offers every branch. What refuses a
+# non-`main` dispatch is the `deployment_branch_policy { protected_branches = true }` on the
+# GitHub environment, in `infra/bootstrap/github.tf`. **`main` here is protected by a *ruleset*,
+# and classic branch protection reads `enabled: false`** — whether a deployment branch policy
+# resolves "protected" from rulesets is not established anywhere in this repository and is not
+# establishable without a dispatch. This is that dispatch. If it is refused for a reason that
+# names nothing, that is the answer.
+
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      reaper_dry_run:
+        description: "Reaper reports instead of deleting. Leave true until one dry run is read."
+        type: boolean
+        default: true
+      create_metastore:
+        description: "Create the account's UC metastore. TRUE ONLY ON THE FIRST APPLY OF A REGION."
+        type: boolean
+        default: false
+      layer:
+        description: "Which layer to apply. `all` applies them bottom-up in dependency order."
+        type: choice
+        default: foundation
+        options:
+          - all
+          - foundation
+          - lakehouse
+        # `bootstrap` is deliberately absent and its absence is the rule rather than an
+        # oversight: it creates the state backend every layer above it keeps state in and the
+        # role this workflow assumes, so it cannot be applied by something that depends on both.
+        # `CLAUDE.md`: *bootstrap is local, everything else is CI.* `fintelliguard` learned the
+        # same thing and wrote it down — *the trust anchor cannot be derived from the trust it
+        # anchors.*
+
+# **Nothing here is `write` except the OIDC token.** `ci.yml` grants `contents: read` and no
+# `id-token`; permissions are per-workflow and inherit nothing, so this line is what makes an
+# OIDC token exist at all. Without it `configure-aws-credentials` fails with a message that
+# names nothing, which is the failure `infra/bootstrap/oidc.tf` warns about twice.
+permissions:
+  contents: read
+  # Not needed today and needed the day this repository stops being public: the Actions runs
+  # endpoint answers unauthenticated on a public repo, so `gh api` works with `contents: read`
+  # alone — and `CLAUDE.md` already says the visibility setting is not a protection. Without
+  # this line the check would fail on `gh`'s error rather than on its own message.
+  actions: read
+  id-token: write
+
+concurrency:
+  # One apply at a time, and **never cancelled**. `ci.yml` cancels in progress because a
+  # superseded test run is waste; a superseded *apply* is a half-built estate that is standing
+  # and billing with no state file describing it. The second dispatch waits.
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────────
+  # No credentials in this job, on purpose. It decides whether an apply may happen;
+  # it must be able to decide *no* without having minted anything.
+  # ───────────────────────────────────────────────────────────────────────────────
+  verified:
+    name: the suite was green on this sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The dispatched sha has a successful ci run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # **`conclusion == "success"`, not `!= "failure"`.** `ci.yml` runs with
+          # `cancel-in-progress: true` on `main`, so two merges in quick succession cancel the
+          # first run — and a cancelled run is not a successful one. The tree may well have been
+          # green as a pull request; what this asserts is the record for *this sha*, and the
+          # record says `cancelled`. Re-run `ci` on the sha and dispatch again.
+          #
+          # This is `claims-complete`'s own rule one layer up: it refuses `failure`,
+          # `cancelled` **and** `skipped`, because a check that did not run is not a check
+          # that passed.
+          # `per_page=100` is a cap and is stated as one: two runs exist per sha today, `push`
+          # and `pull_request`, so the page holds the whole population — but the population is
+          # capped rather than enumerated and nothing here would notice a 101st.
+          runs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&per_page=100" \
+                   --jq '[.workflow_runs[] | {status, conclusion, event, url}]')
+
+          echo "$runs" | jq -r '.[] | "  \(.event)  \(.status)  \(.conclusion // "-")  \(.url)"'
+
+          green=$(echo "$runs" | jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length')
+
+          if [ "$green" -eq 0 ]; then
+            # **Four states, and telling them apart is the difference between good advice and
+            # advice that is wrong in the commonest case.** `status` is already in the projection
+            # above, so this branches on data the query has rather than on a guess.
+            #
+            # **A squash-merge produces a new commit and no required check has ever run on it** —
+            # the required contexts were evaluated on the pull request's head, which is a
+            # different sha. What this sha gets is its own `push` run, and that run takes 23 to
+            # 27 minutes. So *still going* is what an operator hits right after a merge, and
+            # telling them to re-run something would be wrong.
+            running=$(echo "$runs" | jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length')
+            cancelled=$(echo "$runs" | jq '[.[] | select(.conclusion == "cancelled")] | length')
+            failed=$(echo "$runs" | jq '[.[] | select(.conclusion == "failure")] | length')
+
+            if [ "$running" -gt 0 ]; then
+              echo "::error::ci is still running for ${SHA}. It takes 23-27 minutes and this sha"
+              echo "needs its own run: the required checks ran on the pull request's head, which"
+              echo "is a different commit. Wait for it to finish and dispatch again. Do not re-run."
+            elif [ "$cancelled" -gt 0 ]; then
+              echo "::error::ci was cancelled for ${SHA}. A later merge to main cancelled it —"
+              echo "ci runs with cancel-in-progress. Re-run ci on this sha, then dispatch."
+            elif [ "$failed" -gt 0 ]; then
+              echo "::error::ci failed for ${SHA}. Nothing reaches AWS on a red suite."
+            else
+              echo "::error::No ci run at all for ${SHA}. Was this commit pushed to main?"
+            fi
+            exit 1
+          fi
+          echo "OK  ${green} successful ci run(s) for ${SHA}"
+
+          # **And the sha must be on `main`, asserted here rather than assumed of the branch
+          # policy.** `CLAUDE.md` says the money workflows *dispatch from `main` only*, and what
+          # enforces that is the environment's `deployment_branch_policy` — **which nobody has
+          # verified**, because `main` is protected by a ruleset and classic branch protection
+          # reads `enabled: false`.
+          #
+          # The check above does not narrow it: measured against `#68`'s head sha, a branch tip
+          # that was never on `main`, the runs query returns a `pull_request` success. So without
+          # this line the two gates are not independent — one is unverified and the other covers
+          # a different property.
+          #
+          # Same reason `oidc.tf` carries a postcondition on a provider another project owns: a
+          # guarantee that rests entirely on a mechanism this repository cannot check is not a
+          # guarantee this repository holds.
+          if ! gh api "repos/${GITHUB_REPOSITORY}/compare/main...${SHA}" --jq '.status' \
+               | grep -qE '^(identical|behind)$'; then
+            echo "::error::${SHA} is not on main. The money workflows dispatch from main only."
+            exit 1
+          fi
+          echo "OK  ${SHA} is on main"
+
+  apply:
+    name: apply ${{ inputs.layer }}
+    needs: verified
+    runs-on: ubuntu-latest
+    # **`deploy`, lower case, and it must be on THIS job.** GitHub emits
+    # `repo:OWNER/NAME:environment:NAME` as the OIDC subject **only when the job declares an
+    # environment**; without one it emits the ref form, which is deliberately not in
+    # `infra/bootstrap/oidc.tf`'s `local.trusted_subjects`. So a job that assumes the role
+    # without this key is refused, correctly, with a message that names nothing.
+    #
+    # It is also what makes the dispatch wait for a named reviewer, which is the human gate the
+    # author reserved to himself, and what restricts the dispatch to a protected branch.
+    environment: deploy
+    # 90 minutes against a modelled ~40. The margin is deliberate and the number is a
+    # **projection, not a measurement** — `CLAUDE.md` says so of every figure in its cost model,
+    # and this repository has already been bitten once by a `timeout-minutes` set from a
+    # projection taken on the author's laptop. The first real dispatch replaces it.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.5
+          terraform_wrapper: false
+
+      # **Credentials are minted here and nowhere earlier.** `holdout-deploy`'s
+      # `max_session_duration` is one hour and `configure-aws-credentials` does not refresh: the
+      # credential expires on the wall clock from the moment of this step. Configuring it before
+      # anything slow — a suite, a build, a wait for approval — spends the hour on work that is
+      # not the apply, and the failure arrives *after* the environment approval has been used.
+      #
+      # **And one hour is not obviously enough for `all`.** `CLAUDE.md` models `deploy` at ~40
+      # minutes across five layers, which is a 20-minute margin on a projection. Raising it is a
+      # change to `infra/bootstrap/oidc.tf`, which applies **from a laptop** — so it belongs in
+      # the same local re-apply as this branch's other bootstrap changes, before the first
+      # dispatch rather than after the first overrun.
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: holdout-deploy-${{ github.run_id }}
+
+      - name: Apply
+        env:
+          LAYER: ${{ inputs.layer }}
+
+          # **The three credentials `infra/foundation` declares with no default**, supplied here
+          # and nowhere else. `variables.tf` says of each of them that it has no default because
+          # it is an identifier or half of a credential, and
+          # `tests/infra/test_variable_declarations.py` refuses a block that says so and declares
+          # one — so the protection is checked rather than asserted, and this is the other end of
+          # it.
+          #
+          # `terraform validate` never needs them: validation reads configuration and contacts
+          # nothing, which is why `ci` is green on a layer these are absent from. `terraform plan`
+          # stops with *"is not set, and has no default value"*, and that stop is the behaviour
+          # the absence exists to produce.
+          TF_VAR_databricks_account_id: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+          TF_VAR_databricks_client_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          TF_VAR_databricks_client_secret: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+          # **`create_metastore` is a dispatch input with a default of `false`, and the default is
+          # the safe direction rather than the common one.** A Unity Catalog metastore is one per
+          # region per account; creating a second is impossible and destroying somebody else's is
+          # not. `infra/foundation/metastore.tf` carries the trap in full: flipping this from
+          # `true` back to `false` plans a destroy of the metastore and everything in it.
+          TF_VAR_create_metastore: ${{ inputs.create_metastore }}
+
+          # **Defaults to reporting, and the dispatch has to opt out.** `variables.tf` carries the
+          # argument: forgetting it under-deletes, which costs money, rather than over-deletes,
+          # which costs data — and `collect_billing_surfaces` has never been pointed at a live
+          # workspace, so the first real apply exercises an unrun path against real compute.
+          TF_VAR_reaper_dry_run: ${{ inputs.reaper_dry_run }}
+
+          # **Declared here rather than inherited from the credentials action.**
+          # `aws-actions/configure-aws-credentials` does export `AWS_REGION` for later steps, so
+          # this line is not what makes the variable exist — it is what makes this step stop
+          # depending on a third party's side effect. The backend's region is not a convenience:
+          # `init` with the wrong one writes this layer's state to a bucket in another region, or
+          # to no bucket at all, and the failure arrives as a bucket-not-found rather than as a
+          # region mismatch.
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          set -euo pipefail
+
+          # **`all` is derived, not listed.** `Makefile:195` already declares the population of
+          # `infra/` as a **rule** — *every directory carrying any `.tf` file at all* — and a
+          # second hand-kept list here would be two enumerations of one population, which is the
+          # thing this file's own header rejects an alternative for being. When `pipelines` and
+          # `ml` land, a hand-kept `all` silently means two of four.
+          #
+          # The `options:` block above stays as the dispatch UI's affordance and is asserted
+          # against this rule below, so it is a display of the population rather than a second
+          # definition of it.
+          declared="$(ls -d infra/*/ 2>/dev/null | sed 's|infra/||;s|/||' | grep -v '^bootstrap$' | sort)"
+
+          if [ "$LAYER" = "all" ]; then
+            # Bottom-up, and the order is a dependency rather than a preference: every layer
+            # reads what the one below it published to SSM. Only layers that exist are named
+            # here; the intersection is taken so that the order survives a layer's arrival.
+            order="foundation lakehouse pipelines ml"
+            layers=""
+            for l in $order; do
+              echo "$declared" | grep -qx "$l" && layers="$layers $l"
+            done
+            # A layer that exists and is in no declared order would be applied by nothing.
+            for l in $declared; do
+              echo "$order" | tr ' ' '\n' | grep -qx "$l" || {
+                echo "::error::infra/$l exists and this workflow's dependency order does not name it."
+                echo "A layer applied by nothing is under-coverage, which is the one direction"
+                echo "make figures calls a lie."; exit 1; }
+            done
+          else
+            layers="$LAYER"
+          fi
+
+          # **Read from SSM rather than passed in, for the same reason the layers read it there:**
+          # `CLAUDE.md` says cross-layer references go `outputs` -> SSM parameter -> `data`, never
+          # a remote state read. The backend's own coordinates are the one thing that cannot be
+          # read that way by Terraform itself — `init` happens before any `data` block runs — so
+          # the workflow reads them and hands them to `init`. **That is the same rule, executed by
+          # the one participant that can execute it.**
+          STATE_BUCKET=$(aws ssm get-parameter --name /holdout/bootstrap/state_bucket \
+            --query Parameter.Value --output text)
+          STATE_KMS_KEY_ARN=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn \
+            --query Parameter.Value --output text)
+
+          # A parameter that does not exist makes `aws` exit non-zero, and `set -euo pipefail`
+          # above turns that into a failed job — but the message would name a CLI call rather than
+          # the cause, so it is named here. This is the failure `infra/bootstrap/README.md`
+          # predicts for skipping the local re-apply.
+          if [ -z "$STATE_BUCKET" ] || [ -z "$STATE_KMS_KEY_ARN" ]; then
+            echo "::error::the state backend's coordinates are not published under"
+            echo "/holdout/bootstrap/. infra/bootstrap has not been applied against this account,"
+            echo "or it was applied before it published them. Every layer below would init into"
+            echo "local state on this runner. Apply infra/bootstrap from a laptop first."
+            exit 1
+          fi
+
+          for layer in $layers; do
+            # **The question is not whether the directory exists — it is whether the layer is
+            # applyable, and those are different.** `infra/lakehouse` exists and says of itself:
+            # *"No backend block, deliberately. Nothing here is applied"*, with a provider host of
+            # `validate.invalid`. A `-d` test passes it.
+            #
+            # An apply against a layer with no backend runs `init` into **local state on this
+            # runner**, creates resources, and discards the state when the runner dies. The
+            # resources bill, no later `plan` can see them, and `destroy` reports success having
+            # removed nothing. Today three accidents stop it — no default for `warehouse_id`,
+            # `-input=false` turning that into an error, and the invalid host — and `T020`'s whole
+            # job is to remove the first.
+            #
+            # `make terraform` already distinguishes the two: it validates with `-backend=false`
+            # *because* nothing is applied. The predicate existed in the Makefile's reasoning and
+            # not here.
+            if ! grep -qE '^[[:space:]]*backend[[:space:]]+"' "infra/$layer"/*.tf; then
+              echo "::error::infra/$layer declares no backend. A layer applied without one writes"
+              echo "its state to this runner and discards it: the resources exist, they bill, no"
+              echo "plan can see them and destroy cannot remove them. That is not a missing input;"
+              echo "it is a layer that is not ready to be applied."
+              exit 1
+            fi
+            echo "── infra/$layer"
+
+            # **The backend is configured here, not in the file, and that is not a style choice.**
+            #
+            # `infra/foundation` declares `backend "s3" {}` with only `use_lockfile` and `encrypt`
+            # in it. The bucket is `holdout-tfstate-${substr(sha256(account_id), 0, 12)}` — not
+            # the account id, but a stable value derived from it — and this repository is public,
+            # so it may not be committed. A backend block cannot interpolate a variable, which
+            # leaves exactly one mechanism: `-backend-config` at `init`, read from the parameters
+            # `infra/bootstrap` published.
+            #
+            # **The `key` is per layer.** One key for all of them would have every layer
+            # overwriting the state of the one before it, and the second apply would plan to
+            # destroy everything the first created.
+            terraform -chdir="infra/$layer" init -input=false \
+              -backend-config="bucket=$STATE_BUCKET" \
+              -backend-config="key=$layer/terraform.tfstate" \
+              -backend-config="region=$AWS_REGION" \
+              -backend-config="kms_key_id=$STATE_KMS_KEY_ARN"
+
+            terraform -chdir="infra/$layer" apply -input=false -auto-approve
+          done
