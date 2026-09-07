@@ -701,8 +701,8 @@ data "aws_iam_policy_document" "deploy_estate" {
       "logs:PutRetentionPolicy",
       "logs:TagResource",
 
-      # Reads, as verbs.
-      "logs:Describe*",
+      # Reads, as verbs. **`logs:DescribeLogGroups` is deliberately not here** -- it is a
+      # list-all call and belongs in the statement below that says so.
       "logs:List*",
     ]
     # Both forms of the ARN, because CloudWatch Logs is inconsistent about the trailing `:*`
@@ -736,12 +736,23 @@ data "aws_iam_policy_document" "deploy_estate" {
     actions = [
       "tag:GetResources",
       "sts:GetCallerIdentity",
-      # Reading a parameter's *metadata* is a different call from reading its value, and it is
-      # the one the provider makes on refresh. The first apply failed on it for both of the
-      # reaper's SecureStrings. **It accepts no resource** -- the error names
-      # `arn:aws:ssm:eu-west-1:...:*` -- which is why it belongs in this statement rather than
-      # beside `ssm:GetParameter` in the scoped one.
+      # **Three calls that read a whole account because they take no resource, and each was
+      # found by an apply rather than by reading a table.**
+      #
+      # `ssm:DescribeParameters` reads a parameter's *metadata*, which is a different call from
+      # reading its value; the error named `arn:aws:ssm:eu-west-1:...:*`.
+      # `logs:DescribeLogGroups` reads a log group and the error named
+      # `arn:aws:logs:eu-west-1:...:log-group::log-stream:` -- **an ARN with an empty log-group
+      # name**, which is the shape of a list-all and which no prefix can ever match. Both were
+      # scoped by name first and both refused, for the same reason `s3:ListAllMyBuckets` above
+      # has always been here.
+      #
+      # **The shape is worth naming, because it is not visible in the action's name.**
+      # `DescribeParameters` and `DescribeLogGroups` look like `DescribeKey`, which *is*
+      # scopeable. What separates them is whether the call names a thing or asks for a list, and
+      # the only place that difference is written down is the error text.
       "ssm:DescribeParameters",
+      "logs:DescribeLogGroups",
       "iam:ListRoles",
       "s3:ListAllMyBuckets",
       "kms:ListKeys",
