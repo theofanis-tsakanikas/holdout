@@ -400,22 +400,31 @@ data "aws_iam_policy_document" "deploy_estate" {
       "s3:CreateBucket",
       "s3:DeleteBucket",
       "s3:PutBucketPolicy",
-      "s3:GetBucketPolicy",
       "s3:DeleteBucketPolicy",
       "s3:PutBucketPublicAccessBlock",
-      "s3:GetBucketPublicAccessBlock",
       "s3:PutBucketVersioning",
-      "s3:GetBucketVersioning",
       "s3:PutEncryptionConfiguration",
-      "s3:GetEncryptionConfiguration",
       "s3:PutBucketTagging",
-      "s3:GetBucketTagging",
-      "s3:ListBucket",
-      "s3:ListBucketVersions",
-      "s3:GetObject",
       "s3:PutObject",
       "s3:DeleteObject",
       "s3:DeleteObjectVersion",
+
+      # **Every read, as two wildcards, and this replaced a list of named reads that was wrong.**
+      #
+      # The first apply failed on `s3:GetBucketAcl` for all five buckets: the provider reads a
+      # bucket immediately after creating it, and that read covers acl, cors, website, logging,
+      # lifecycle, replication, request payment, object lock and acceleration -- attributes this
+      # configuration never sets and the provider fetches anyway because they are computed on the
+      # resource. **Naming them one at a time is a projection of what the provider calls**, and
+      # this repository's rule about numbers in configuration applies to lists of actions too: it
+      # would be wrong in both directions, and each wrong guess costs a full dispatch to discover.
+      #
+      # `manifest` reached the same place and answered it the same way --
+      # `deploy_permissions.tf` grants `s3:Get*` and `s3:List*` -- and that policy is applied and
+      # working in this account. **These are reads only**, and they are bounded by the bucket
+      # prefix below rather than by enumeration.
+      "s3:Get*",
+      "s3:List*",
     ]
     # **Scoped by name prefix, which is the one scoping a bucket makes available.** Bucket names
     # are chosen by this project and carry the `holdout-` prefix by construction; the state bucket
@@ -508,6 +517,15 @@ data "aws_iam_policy_document" "deploy_estate" {
       "kms:CreateGrant",
       "kms:ListGrants",
       "kms:RevokeGrant",
+
+      # **The alias actions are here as well as on the alias, because an alias names two
+      # resources.** The first apply failed on `kms:CreateAlias` and the message named the
+      # *key* -- `not authorized to perform: kms:CreateAlias on resource: .../key/feb6653e...` --
+      # not the alias. `AliasesThisProjectNames` below covers the alias half and was written as
+      # though that were the whole of it.
+      "kms:CreateAlias",
+      "kms:DeleteAlias",
+      "kms:UpdateAlias",
     ]
     resources = ["arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"]
 
@@ -676,6 +694,12 @@ data "aws_iam_policy_document" "deploy_estate" {
     actions = [
       "tag:GetResources",
       "sts:GetCallerIdentity",
+      # Reading a parameter's *metadata* is a different call from reading its value, and it is
+      # the one the provider makes on refresh. The first apply failed on it for both of the
+      # reaper's SecureStrings. **It accepts no resource** -- the error names
+      # `arn:aws:ssm:eu-west-1:...:*` -- which is why it belongs in this statement rather than
+      # beside `ssm:GetParameter` in the scoped one.
+      "ssm:DescribeParameters",
       "iam:ListRoles",
       "s3:ListAllMyBuckets",
       "kms:ListKeys",
