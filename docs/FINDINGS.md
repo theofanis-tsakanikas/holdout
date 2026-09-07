@@ -4308,8 +4308,35 @@ layer and the reason this landed first.
 **Planted against, because a guard that has never refused anything has not been tested.** Putting
 the default back — substitution asserted at one site, and removed again with the count checked —
 fails `test_a_variable_that_says_it_has_no_default_declares_none` by name and nothing else.
-*Now:* `infra/lakehouse/dashboards.tf` :: `    warehouse rather than inheriting one somebody typed here.`
+*Now:* `infra/lakehouse/dashboards.tf` :: gone — the variable was replaced by a reference to the warehouse this layer now creates
+*Now:* `infra/lakehouse/warehouse.tf` :: `resource "databricks_sql_endpoint" "estate" {`
+*Now:* `tests/infra/test_variable_declarations.py` :: `def test_a_variable_that_says_it_has_no_default_declares_none(`
 *Status:* open
+
+> **Restated 2026-09-06 by `T020`, and the anchor moved because the variable stopped existing.**
+> It read `warehouse rather than inheriting one somebody typed here.` — a line inside the
+> description of `var.warehouse_id`. `T020` builds the warehouse in the layer that consumes it,
+> so the dashboards reference `databricks_sql_endpoint.estate.id` directly and the variable is
+> gone.
+>
+> **`gone` is the honest answer for the site and it is checked by nothing.** This register carries
+> that finding about itself — *`*Now:* gone` is checked by nothing at all*, because it asserts an
+> absence and nothing re-reads an absence. So it is written where it is true, and **two anchors
+> that can each be taken away are written beside it**:
+>
+> - **the warehouse this layer now creates**, which is what makes the variable unnecessary. Take
+>   it away and the reference has nothing to point at. *(The reference itself was the first
+>   choice and is not usable: it appears on both dashboards, and this register refuses an anchor
+>   that occurs twice — two matches prove nothing about which line was meant.)*
+> - **the gate**, `tests/infra/test_variable_declarations.py`, which is what makes the *class*
+>   impossible rather than this instance. Delete it and the entry goes red — which is the half
+>   that survives the next layer, since the defect was never about one warehouse.
+>
+> **And the original sentence was right when it was written.** *A layer applying these resources
+> has to say which warehouse rather than inheriting one somebody typed here* — a variable with no
+> default was the strongest available statement while nothing in the layer created a warehouse.
+> A reference is stronger only because the layer now can: it cannot be answered wrongly at all.
+> The prior wording stays per doctrine rule 4.
 
 ---
 **An unlock condition fired at `T011` and nobody read it; the route it names is 541 names wide and clean** ·
