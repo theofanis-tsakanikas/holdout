@@ -147,6 +147,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # **This was missing and the first destroy died on it.** `terraform` is not on a GitHub
+      # runner by default; `deploy.yml` installs it and this file was written by copying that
+      # file's shape without that step. Exit 127 — command not found — after the layer order had
+      # been derived correctly and printed.
+      #
+      # `tests/ops/test_terraform_is_installed.py` is what stops the next workflow inheriting the
+      # same gap: `backfill.yml` and `run.yml` will be written the same way this one was.
+      - uses: hashicorp/setup-terraform@v3
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
