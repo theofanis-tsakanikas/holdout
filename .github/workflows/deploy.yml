@@ -284,22 +284,50 @@ jobs:
           # definition of it.
           declared="$(ls -d infra/*/ 2>/dev/null | sed 's|infra/||;s|/||' | grep -v '^bootstrap$' | sort)"
 
+          # **A layer that declares no backend is not applyable, and that is a declaration rather
+          # than an omission.** `infra/lakehouse/versions.tf` says it in words — *"No backend
+          # block, deliberately. Nothing here is applied"* — and the absent block is the same
+          # statement in a form this workflow can read. D2 below refuses such a layer by name when
+          # somebody dispatches it directly; this is the same predicate applied to `all`, so that
+          # `all` means *every layer that is ready*, derived, rather than a list somebody keeps.
+          #
+          # **It was not, and `all` would have failed after applying `foundation`.** The order
+          # named `lakehouse`, `lakehouse` exists, so `all` selected it and D2 refused it — a red
+          # run with half the estate standing, for a layer whose own file says it is not applied
+          # yet. Nothing was wrong with either check; what was missing was that *exists* and
+          # *ready* are different populations and `all` was reading the first.
+          ready=""
+          for l in $declared; do
+            if grep -qE '^[[:space:]]*backend[[:space:]]+"' "infra/$l"/*.tf 2>/dev/null; then
+              ready="$ready $l"
+            else
+              echo "── infra/$l declares no backend, so it is not applyable and 'all' skips it."
+            fi
+          done
+
           if [ "$LAYER" = "all" ]; then
             # Bottom-up, and the order is a dependency rather than a preference: every layer
-            # reads what the one below it published to SSM. Only layers that exist are named
-            # here; the intersection is taken so that the order survives a layer's arrival.
+            # reads what the one below it published to SSM. Intersected with the layers that are
+            # ready, so the order survives both a layer's arrival and a layer's readiness.
             order="foundation lakehouse pipelines ml"
             layers=""
             for l in $order; do
-              echo "$declared" | grep -qx "$l" && layers="$layers $l"
+              echo "$ready" | tr ' ' '\n' | grep -qx "$l" && layers="$layers $l"
             done
-            # A layer that exists and is in no declared order would be applied by nothing.
-            for l in $declared; do
+            # **A layer that is ready and in no declared order would be applied by nothing.**
+            # Checked against `ready` rather than `declared`: a layer that is not applyable is not
+            # under-covered by being absent from an apply order, it is absent from applying.
+            for l in $ready; do
               echo "$order" | tr ' ' '\n' | grep -qx "$l" || {
-                echo "::error::infra/$l exists and this workflow's dependency order does not name it."
-                echo "A layer applied by nothing is under-coverage, which is the one direction"
-                echo "make figures calls a lie."; exit 1; }
+                echo "::error::infra/$l declares a backend and this workflow's dependency order"
+                echo "does not name it. A layer applied by nothing is under-coverage, which is the"
+                echo "one direction make figures calls a lie."; exit 1; }
             done
+            if [ -z "$layers" ]; then
+              echo "::error::no layer is both ready and in the dependency order, so 'all' would"
+              echo "apply nothing and report success. An empty apply is not a successful one."
+              exit 1
+            fi
           else
             layers="$LAYER"
           fi
