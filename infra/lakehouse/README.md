@@ -1,14 +1,26 @@
-# `infra/lakehouse/` — the first Terraform layer, and it applies nothing
+# `infra/lakehouse/` — catalogs, external locations, the warehouse, Lakebase, the dashboards
 
-**This directory is not phase 3, and the sentence is here because *the first Terraform layer*
-sounds like the estate.** There is no `terraform apply` anywhere in this repository, no provider
-credential, no backend, no resource that exists, and nothing that costs a cent. What `T013`
-delivers is **definitions and `terraform validate`**; applying them is `T020`'s, which is phase 3
-and which `T013`'s own `out_of_scope` names.
+**Applied by `deploy`, from `main`.** It reads what `infra/foundation` published to SSM and
+governs it: one storage credential and one external location per zone, a catalog whose schemas
+are the medallion, the grants, the serverless SQL warehouse the dashboards run on, and Lakebase.
 
-`terraform init -backend=false` is what runs here. The backend is deliberately absent rather than
-declared and unused: a backend block with no state to keep would be a configuration that reads as
-though somebody had chosen where state lives, and nobody has.
+> **This file opened with *the first Terraform layer, and it applies nothing* until 2026-09-06.**
+> It read: *there is no `terraform apply` anywhere in this repository, no provider credential, no
+> backend, no resource that exists, and nothing that costs a cent* — every clause of which was
+> true when `T013` wrote it and none of which is true now. `T020` is this branch.
+>
+> **It is the fourth time in two days that an introduction survived the change beneath it** —
+> after `deploy.yml`'s header, `oidc.tf`'s header and `TASKS.md`'s row for `T018`. The shape is
+> recorded in `docs/FINDINGS.md` and it is the same every time: **a fix lands where the finding
+> pointed, findings point at statements, and no statement's diff touches the paragraph that
+> introduces it.** The prior wording stays per doctrine rule 4.
+
+## What it costs
+
+**Lakebase is the only thing here that bills at rest**, and it is why this layer is in `destroy`'s
+reverse order rather than left standing between cycles. The warehouse bills per second of query
+and stops after ten idle minutes; the catalog, the schemas, the credentials and the locations are
+metadata and bill nothing.
 
 ## Why the dashboards land in this layer rather than beside the code that compiles them
 
