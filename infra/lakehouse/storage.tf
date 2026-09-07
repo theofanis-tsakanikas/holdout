@@ -53,12 +53,37 @@ resource "aws_iam_role_policy" "uc" {
   policy = data.databricks_aws_unity_catalog_policy.zone[each.key].json
 }
 
-# **The same wait `infra/foundation/workspace.tf` needed, for the same reason.** Unity Catalog
-# validates a storage credential by assuming its role, and a role created milliseconds earlier is
-# frequently not yet assumable. `depends_on` orders the calls; it does not make IAM's replicas
-# agree. That failure reads as *"please use a valid cross account IAM role"* and is neither.
+# **The same wait `infra/foundation/workspace.tf` needed, for the same reason — and it was one
+# dependency short.**
+#
+# Unity Catalog validates a storage credential by assuming its role, and a role created
+# milliseconds earlier is frequently not yet assumable. `depends_on` orders the calls; it does not
+# make IAM's replicas agree. That failure reads as *"please use a valid cross account IAM role"*
+# and is neither.
+#
+# **What the first version missed is that Unity Catalog validates the *location* too, by reading
+# the bucket.** The second apply of this layer failed on exactly that, and on exactly one
+# location:
+#
+#     cannot create external location: AWS IAM role does not have READ permissions on
+#     url s3://holdout-catalog-…/  …  403 Forbidden
+#
+# **The four zones succeeded and the catalog did not, and the difference is age.** The zone
+# buckets were created by `infra/foundation` in an earlier apply and had existed for hours; the
+# catalog's bucket is created by *this* layer, seconds before Unity Catalog was asked to read it.
+# The wait covered the role and not the thing the role reads.
+#
+# So the bucket's configuration is in the chain: the encryption rule and the public-access block,
+# because a bucket whose SSE settings have not settled is a bucket a KMS-scoped role cannot read
+# yet either. **The 30 seconds now start when the bucket is finished rather than when the policy
+# is attached.**
 resource "time_sleep" "uc_iam_propagation" {
-  depends_on      = [aws_iam_role_policy.uc, aws_iam_role_policy.uc_catalog]
+  depends_on = [
+    aws_iam_role_policy.uc,
+    aws_iam_role_policy.uc_catalog,
+    aws_s3_bucket_server_side_encryption_configuration.catalog,
+    aws_s3_bucket_public_access_block.catalog,
+  ]
   create_duration = "30s"
 }
 
