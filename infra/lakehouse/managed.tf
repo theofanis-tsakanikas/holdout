@@ -112,4 +112,10 @@ resource "databricks_external_location" "catalog" {
   credential_name = databricks_storage_credential.catalog.name
   comment         = "The catalog's managed root. Every schema overrides it; it exists because a catalog cannot have none."
   force_destroy   = true
+
+  # **Explicit rather than incidental.** This resource already follows the credential, and the
+  # credential already follows the wait — so the ordering holds today by two hops. Naming the wait
+  # here says *this* resource is the one that reads the bucket, which is what the failure was
+  # about: Unity Catalog validated a location on a bucket seconds old.
+  depends_on = [time_sleep.uc_iam_propagation]
 }
