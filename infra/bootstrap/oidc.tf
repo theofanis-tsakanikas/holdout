@@ -255,7 +255,27 @@ resource "aws_iam_role" "deploy" {
   assume_role_policy = data.aws_iam_policy_document.deploy_trust.json
   # One hour. Long enough for `backfill`, which `CLAUDE.md` models at about an hour and a half —
   # so this will need raising, by the task that measures it rather than by a guess made here.
-  max_session_duration = 3600
+  # **Four hours, and the number is a ceiling rather than a duration.**
+  #
+  # `configure-aws-credentials` does not refresh: a credential expires on the wall clock from the
+  # moment it is minted, and every workflow requests its own lifetime with `role-duration-seconds`
+  # up to this ceiling. So this value is not *how long a deploy takes* -- it is *the longest
+  # lifetime any workflow may ask for*, and it exists to stop the ceiling being the thing that
+  # ends a job.
+  #
+  # **It was 3600, and that was already wrong rather than merely tight.** `deploy.yml`'s apply job
+  # carries `timeout-minutes: 90` while its credential lasted 60, so a dispatch that ran past the
+  # hour died on an expired credential **thirty minutes before its own timeout** -- after the
+  # environment approval had been spent. `CLAUDE.md` models `backfill` at ~1.5 h and `run` at ~2 h,
+  # neither of which fits in an hour either.
+  #
+  # **The bound is a projection and says so.** `CLAUDE.md`'s rule is that a number in configuration
+  # is an assertion wearing a number instead of a verb, set from a measurement of the thing that
+  # will run -- and nothing has run yet. Four hours is twice the longest modelled workflow, which
+  # is a margin rather than a measurement. **The first real `run` replaces it**, downward: a
+  # ceiling above what any workflow asks for costs nothing, and a credential valid longer than it
+  # needs to be is the only thing this number can get wrong in the other direction.
+  max_session_duration = 14400
 }
 
 # **What this role can do today is the state backend and nothing else, and that is the
