@@ -99,18 +99,34 @@ resource "aws_iam_role_policy" "cross_account" {
   policy = data.databricks_aws_crossaccount_policy.this.json
 }
 
+# **IAM is eventually consistent, and `depends_on` does not wait for it.**
+#
+# The first apply failed here with *"cannot create mws credentials: Failed credential validation
+# checks: please use a valid cross account IAM role with permissions setup correctly"* — a message
+# that reads like a wrong ARN or a wrong policy and is neither. Databricks validates the role by
+# **assuming it** at registration time, and a role created milliseconds earlier is frequently not
+# yet assumable anywhere but the region that created it.
+#
+# `depends_on` orders the calls; it does not make IAM's replicas agree. **This is the only
+# instrument that does**, and it is the shape the Databricks provider's own documentation uses for
+# this resource. Thirty seconds against a propagation that is usually under ten: the cost of being
+# generous is half a minute per apply, and the cost of being tight is a failed dispatch that looks
+# like a configuration error.
+resource "time_sleep" "iam_propagation" {
+  depends_on      = [aws_iam_role_policy.cross_account]
+  create_duration = "30s"
+}
+
 resource "databricks_mws_credentials" "this" {
   provider         = databricks.account
   account_id       = var.databricks_account_id
   role_arn         = aws_iam_role.cross_account.arn
   credentials_name = "holdout-crossaccount"
 
-  # **IAM is eventually consistent and this is the one place it bites hard.** Databricks validates
-  # the role by assuming it at registration time; a role created milliseconds earlier is
-  # frequently not yet assumable, and the failure is a generic validation error that reads like a
-  # wrong ARN. The dependency is on the *policy* rather than the role, because a role with no
-  # permission policy attached fails the same validation for a different reason.
-  depends_on = [aws_iam_role_policy.cross_account]
+  # The dependency is on the wait rather than on the policy, and the wait depends on the policy —
+  # because a role with no permission policy attached fails the same validation for a different
+  # reason, and that ordering still has to hold.
+  depends_on = [time_sleep.iam_propagation]
 }
 
 # ---------------------------------------------------------------- the workspace

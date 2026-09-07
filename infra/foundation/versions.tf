@@ -21,6 +21,12 @@ terraform {
       source  = "hashicorp/archive"
       version = "2.7.1"
     }
+    # Used once, by `workspace.tf`, to let IAM propagate before Databricks validates the
+    # cross-account role. Pinned exactly for the same reason as the others.
+    time = {
+      source  = "hashicorp/time"
+      version = "0.12.1"
+    }
   }
 
   # **A backend, because this layer applies from CI, and a partial one because the alternative
