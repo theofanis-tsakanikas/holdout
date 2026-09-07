@@ -12,9 +12,19 @@ resource "databricks_catalog" "holdout" {
   comment       = "The holdout estate. Storage is per-schema, on the zone this schema belongs to."
   force_destroy = true
 
-  # **No `storage_root` on the catalog.** A catalog-level root makes every schema inherit one
-  # location, and this estate's whole shape is one bucket per zone with its own blast radius. The
-  # storage decision belongs to the schema, where the zone is known.
+  # **A root the catalog needs and no schema uses.** `managed.tf` explains the bucket; this is why
+  # the line exists.
+  #
+  # It read *no `storage_root` on the catalog — a catalog-level root makes every schema inherit
+  # one location, and this estate's whole shape is one bucket per zone.* **That argument is still
+  # true and it was not the whole question.** Unity Catalog requires a managed location at one of
+  # three levels, and the first apply refused: *cannot create catalog: Metastore storage root URL
+  # does not exist.* A catalog needs a root **even when every schema overrides it**, because the
+  # root is what a `CREATE TABLE` falls back to before any schema is named.
+  #
+  # So every schema below still declares its own zone, the inheritance the old comment warned
+  # about does not happen, and this points at a bucket that exists for exactly this fallback.
+  storage_root = databricks_external_location.catalog.url
 }
 
 resource "databricks_schema" "zone" {

@@ -58,7 +58,7 @@ resource "aws_iam_role_policy" "uc" {
 # frequently not yet assumable. `depends_on` orders the calls; it does not make IAM's replicas
 # agree. That failure reads as *"please use a valid cross account IAM role"* and is neither.
 resource "time_sleep" "uc_iam_propagation" {
-  depends_on      = [aws_iam_role_policy.uc]
+  depends_on      = [aws_iam_role_policy.uc, aws_iam_role_policy.uc_catalog]
   create_duration = "30s"
 }
 
