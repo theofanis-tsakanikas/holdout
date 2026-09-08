@@ -196,6 +196,19 @@ jobs:
           # `0` parses as zero seconds, not as "no limit".
           databricks jobs run-now "$GOLD" --timeout 3h
 
+          # **The readout, and it is a step rather than a side effect of the gold job.**
+          #
+          # `gold.readout` is the table the assertion below queries, and until this branch it was
+          # written by nothing at all: every piece of the experiment existed — the append-only
+          # assignment table, the four validity checks, the closed refusal vocabulary — and none
+          # of them were ever called. This is the call. It re-derives the design deterministically
+          # from the baseline's covariates, verifies the assignment table against the seal rather
+          # than trusting it, and writes one row per declared experiment.
+          READOUT=$(aws ssm get-parameter --name /holdout/pipelines/job_experiment_readout \
+            --query Parameter.Value --output text)
+          echo "── reading out both experiments (job $READOUT)"
+          databricks jobs run-now "$READOUT" --timeout 3h
+
           # **The assertion, and it is the reason this workflow exists.**
           #
           # `PLAN.md` closes phase 3 on *at least one experiment producing a number and at least

@@ -212,6 +212,101 @@ def _latest_product(product_master: DataFrame) -> DataFrame:
     return latest.join(first_seen, on="sku_id", how="inner")
 
 
+#: The `store_master` columns the store dimension carries: the key, the three the balance
+#: contract names, and the two coordinates the interference exclusions need. `town`, `size_band` and
+#: `opened_on` are dropped for `PRODUCT_COLUMNS`' reason: nothing on the decision path reads
+#: them, and bronze keeps them in the source's shape.
+STORE_COLUMNS: tuple[str, ...] = (
+    "store_id",
+    "store_format",
+    "size_index",
+    "pricing_zone",
+    # **The coordinates, and they are here for one reason.** `inference.yaml` declares
+    # `neighbour_radius_m`, and the automatic exclusions moment 1 applies are pairs of
+    # stores close enough that treating one contaminates the other. Without a position
+    # there are no pairs, and an experiment with no interference exclusions is one that
+    # assumed the estate has none.
+    "x_m",
+    "y_m",
+)
+
+#: **The column that must not be here, named so its arrival is a refusal rather than a surprise.**
+#: `corpus/world/` declares `arm` on `store_master` and `pipelines/ingest/erp.py` withholds it —
+#: *an ERP does not know which stores are in an experiment's control group.* If it ever arrives,
+#: the layer that assigns arms would be reading the answer out of its own input, and every
+#: balance figure computed downstream would be describing a lottery that had already been run.
+WITHHELD_FROM_STORES: tuple[str, ...] = ("arm",)
+
+
+class WithheldColumnError(ValueError):
+    """A column the source is supposed to withhold arrived. Refused rather than dropped.
+
+    Dropping it would be the polite thing and the wrong one: the column's presence means the
+    export changed, and a silver build that quietly removed it would leave the export wrong and
+    every run after it green.
+    """
+
+
+def stores(store_master: DataFrame) -> tuple[DataFrame, DataFrame]:
+    """The store dimension: one row per store, carrying the three declared balance covariates.
+
+    **This table exists because something finally asked for it.** `reference`'s docstring has
+    said since the branch that wrote it that *`store_master` is still unread … it enters when
+    something asks for it*, and `contracts/design/balance_covariates.yaml` is what asks:
+    `store_format`, `size_index` and `pricing_zone` are three of the five covariates an
+    assignment is balanced on, and no event stream carries any of them.
+
+    **The latest drop wins, with the same retroactive rewrite `_latest_product` records.**
+    `store_master` has no time axis either — `pipelines/ingest/erp.py` says so of both masters —
+    so a store that changed pricing zone mid-history changed it for all of history, and the
+    evidence that it moved is kept rather than the change being dated.
+    """
+    if any(column in store_master.columns for column in WITHHELD_FROM_STORES):
+        present = [c for c in WITHHELD_FROM_STORES if c in store_master.columns]
+        raise WithheldColumnError(
+            f"bronze.store_master carries {present}, which `pipelines/ingest/erp.py` withholds "
+            "on purpose: an ERP does not know which stores are in an experiment's control "
+            "group. A store dimension carrying the arm would hand the assignment engine the "
+            "answer, and every balance figure downstream would describe a lottery already run."
+        )
+
+    newest = Window.partitionBy("store_id").orderBy(sf.col("_exported_at").desc())
+    first_seen = store_master.groupBy("store_id").agg(
+        sf.min("_exported_at").alias("store_known_from"),
+        sf.countDistinct("_source_file").alias("store_drops_carrying_it"),
+    )
+    latest = (
+        store_master.withColumn("_rank", sf.row_number().over(newest))
+        .filter(sf.col("_rank") == 1)
+        .select(*STORE_COLUMNS)
+    )
+    return apply(
+        latest.join(first_seen, on="store_id", how="inner"),
+        [
+            Expectation(
+                "size_index_positive",
+                sf.col("size_index") > 0,
+                "a store with no size has no `store_sqm` covariate, and a covariate measured "
+                "as zero is not a missing one — it balances the draw on a number nobody meant",
+            ),
+            Expectation(
+                "pricing_zone_present",
+                sf.col("pricing_zone").isNotNull() & (sf.length(sf.col("pricing_zone")) > 0),
+                "pricing zone is a stratum as well as a covariate; a store with none would be "
+                "drawn into a stratum that does not exist",
+            ),
+            Expectation(
+                "store_format_present",
+                sf.col("store_format").isNotNull() & (sf.length(sf.col("store_format")) > 0),
+                "store format is a declared categorical covariate and an empty one is a "
+                "category of its own that nobody declared",
+            ),
+        ],
+        table="stores",
+        business_key=("store_id",),
+    )
+
+
 def reference(cost_ledger: DataFrame, product_master: DataFrame) -> tuple[DataFrame, DataFrame]:
     """The ERP dimension: the cost on **both** of its time axes, and the product on neither.
 

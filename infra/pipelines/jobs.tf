@@ -40,6 +40,12 @@ locals {
   # Silver and gold as catalog schemas rather than paths. The zone names are the schema names:
   # `infra/lakehouse/catalog.tf` creates one schema per zone.
   silver_schema = "silver"
+  gold_schema   = "gold"
+
+  # The experiment whose committed arms the comparison window is generated under. One id, named
+  # here because two layers use it: the window's ingest reads the assignment by it, and the
+  # readout writes its row under it. `pipelines/gold/experiments.py` declares it.
+  experiment_id = "fresh-ladder"
 }
 
 # ------------------------------------------------- landing, then bronze, from files on S3
@@ -49,9 +55,35 @@ locals {
 # is *incremental load of successive drops, not change capture against a live source* — the
 # smaller claim, taken deliberately, because the connector that would have made the larger one
 # runs a continuous classic-compute gateway.
-resource "databricks_job" "bulk_load" {
-  name        = "holdout — history into landing, landing into bronze"
-  description = "Eight months of history into landing, then into bronze once each. Nothing is transformed here."
+# **Two slices of history, and the split is what makes an experiment possible.**
+#
+# `corpus/world/__init__.py` says of the default assignment that it is *a convenience and not a
+# lottery*. A history generated in one pass therefore carries arms nobody drew, and an uplift
+# read out over those is exactly the failure this repository exists to make impossible. So the
+# estate loads the baseline first, under `all_control`; `experiment_design` draws the lottery
+# against the baseline's covariates and seals it; and only then is the comparison window
+# generated, under the arms that were committed.
+#
+# One resource with two instances rather than two resources: the runtime, the git source and the
+# load step are identical, and two copies of them are two things to keep equal.
+locals {
+  slices = {
+    baseline = {
+      arms  = "all-control"
+      after = null
+    }
+    window = {
+      arms  = "table"
+      after = local.experiment_id
+    }
+  }
+}
+
+resource "databricks_job" "history" {
+  for_each = local.slices
+
+  name        = "holdout — ${each.key} history into landing, landing into bronze"
+  description = "The ${each.key} slice, generated under ${each.value.arms} arms, then loaded once each."
 
   environment {
     environment_key = local.environment_key
@@ -77,22 +109,34 @@ resource "databricks_job" "bulk_load" {
     # It ran `pipelines/ingest/__main__.py` — which *generates a corpus and writes JSONL*. The
     # bulk load is `pipelines/ingest/bulk.py`, whose own docstring says so: *the S3 bulk load:
     # files that landed become bronze, once each.* It takes subcommands, and the two `backfill`
-    # needs are `history` — eight months into landing — and `load` — landing into bronze.
+    # needs are `history` — the slice into landing — and `load` — landing into bronze.
     #
     # **Every argument is passed and none left to a default.** The package's defaults are `smoke`
     # and `W6`; a task given only some of them runs green over the wrong corpus, and a crash is a
-    # red run where this is eight months of history that is not eight months of anything.
+    # red run where this is months of history that is not months of anything.
     spark_python_task {
       python_file = "pipelines/entrypoint.py"
       source      = "GIT"
-      parameters = [
-        "pipelines.ingest.bulk",
-        "history",
-        "--world", var.corpus_world,
-        "--scale", var.corpus_scale,
-        "--seed", var.corpus_seed,
-        "--landing", local.zone_path["landing"],
-      ]
+      parameters = concat(
+        [
+          "pipelines.ingest.bulk",
+          "history",
+          "--world", var.corpus_world,
+          "--scale", var.corpus_scale,
+          "--seed", var.corpus_seed,
+          "--landing", local.zone_path["landing"],
+          # The days this slice writes, named rather than dated: `pipelines/window.py` owns
+          # where one ends and the other begins, because three steps have to agree about it.
+          "--slice", each.key,
+          "--into", each.key,
+          "--arms", each.value.arms,
+        ],
+        each.value.after == null ? [] : [
+          "--assignment-schema", local.gold_schema,
+          "--experiment-id", each.value.after,
+          "--catalog", local.catalog,
+        ],
+      )
     }
   }
 
@@ -118,9 +162,9 @@ resource "databricks_job" "bulk_load" {
     }
   }
 
-  # **No schedule.** `backfill` dispatches this once over eight months of history, and `run`
-  # drives the live day through Zerobus instead. A cron here would be a fourth thing that can
-  # start an apply's worth of compute, and `CLAUDE.md` names exactly three.
+  # **No schedule.** `backfill` dispatches these once, and `run` drives the live day through
+  # Zerobus instead. A cron here would be a fourth thing that can start an apply's worth of
+  # compute, and `CLAUDE.md` names exactly three.
 }
 
 # ---------------------------------------------------------------- silver, one table per question
@@ -239,4 +283,57 @@ resource "databricks_job" "gold" {
     }
   }
 
+}
+
+# ---------------------------------------------------------------- the experiment, in two moments
+#
+# **Two jobs because they run at two different times and one of them must run before data
+# exists.** `design` assesses both declared experiments against the baseline's covariates and
+# writes the lottery for every one that may exist; the comparison window is then generated under
+# those arms. `readout` runs after the window has been loaded and built, verifies the table
+# against the seal it re-derives, and writes `gold.readout` — the table `ops/run_assertions.py`
+# accepts phase 3 on, and which until this branch was written by nothing at all.
+#
+# A single job with two tasks would put the window's generation in the middle of it, which is
+# not something a job can wait for.
+resource "databricks_job" "experiment" {
+  for_each = toset(["design", "readout"])
+
+  name        = "holdout — experiment ${each.key}"
+  description = each.key == "design" ? "Moment 1: assess both designs and seal the lottery, before the window exists." : "Moment 3: verify the seal, close, and write one row per experiment into gold.readout."
+
+  environment {
+    environment_key = local.environment_key
+    spec {
+      client = "2"
+    }
+  }
+
+  git_source {
+    url      = var.repository_url
+    provider = "gitHub"
+    # Exactly one of the two, never both: `variables.tf` explains which and why.
+    branch = var.git_commit == "" ? var.git_ref : null
+    commit = var.git_commit == "" ? null : var.git_commit
+  }
+
+  task {
+    task_key        = each.key
+    environment_key = local.environment_key
+
+    spark_python_task {
+      python_file = "pipelines/entrypoint.py"
+      source      = "GIT"
+      parameters = [
+        "pipelines.gold.experiments",
+        each.key,
+        # The scale, because `pipelines/window.py` derives the window from it rather than from
+        # three dates threaded through a workflow.
+        "--scale", var.corpus_scale,
+        "--catalog", local.catalog,
+        "--gold-schema", local.gold_schema,
+        "--silver-schema", local.silver_schema,
+      ]
+    }
+  }
 }

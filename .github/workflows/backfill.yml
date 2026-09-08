@@ -218,9 +218,21 @@ jobs:
             databricks jobs run-now "$id" --timeout 3h
           }
 
-          run_job job_bulk_load "eight months of history into bronze"
-          run_job job_silver    "bronze into silver"
-          run_job job_gold      "silver into gold"
+          # **The order is the experiment, and half of it runs before the other half's data
+          # exists.** `corpus/world/__init__.py` calls the default assignment *a convenience and
+          # not a lottery*, so a history generated in one pass carries arms nobody drew and any
+          # uplift read out over it is stated without a valid holdout. The baseline is generated
+          # under all-control; the lottery is drawn against its covariates and sealed; and only
+          # then is the comparison window generated, under the arms that were committed.
+          run_job job_history_baseline  "the baseline, under all-control arms, into bronze"
+          run_job job_silver            "bronze into silver"
+          run_job job_gold              "silver into gold"
+
+          run_job job_experiment_design "assess both designs and seal the lottery"
+
+          run_job job_history_window    "the comparison window, under the committed arms"
+          run_job job_silver            "bronze into silver, the window included"
+          run_job job_gold              "silver into gold, the window included"
 
           TRAIN=$(aws ssm get-parameter --name /holdout/ml/job_train --query Parameter.Value --output text)
           echo "── train, gate, register (job $TRAIN)"

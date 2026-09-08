@@ -32,11 +32,21 @@ BRONZE_TABLES: tuple[str, ...] = (
     "shelf_days",
     "cost_ledger",
     "product_master",
+    # **Sixth of seven, and it enters because something asked.** `tables.stores` carries the
+    # argument: three of the five covariates an assignment is balanced on are store attributes
+    # and no event stream has any of them.
+    "store_master",
 )
 
 #: What silver writes. `quarantine` is one table for every source, because its size is a health
 #: metric and a metric split five ways is five metrics nobody adds up.
-SILVER_TABLES: tuple[str, ...] = ("sales", "price_displayed", "shelf_state", "reference")
+SILVER_TABLES: tuple[str, ...] = (
+    "sales",
+    "price_displayed",
+    "shelf_state",
+    "reference",
+    "stores",
+)
 
 
 class BronzeMissingError(FileNotFoundError):
@@ -129,6 +139,7 @@ def build(
     displayed, displayed_bad = tables.price_displayed(frames["esl_acks"])
     shelf, shelf_bad = tables.shelf_state(frames["shelf_days"], sales)
     costs, costs_bad = tables.reference(frames["cost_ledger"], frames["product_master"])
+    store_rows, store_bad = tables.stores(frames["store_master"])
 
     written: dict[str, int] = {}
     for name, frame in (
@@ -136,11 +147,12 @@ def build(
         ("price_displayed", displayed),
         ("shelf_state", shelf),
         ("reference", costs),
+        ("stores", store_rows),
     ):
         put(name, frame)
         written[name] = frame.count()
 
-    quarantine = sales_bad.union(displayed_bad).union(shelf_bad).union(costs_bad)
+    quarantine = sales_bad.union(displayed_bad).union(shelf_bad).union(costs_bad).union(store_bad)
     put("quarantine", quarantine)
     written["quarantine"] = quarantine.count()
     return written
