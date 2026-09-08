@@ -53,9 +53,15 @@ def register_silver(spark: SparkSession, silver: Path, *, schema: str) -> tuple[
     `create table … using delta location …` rather than a temporary view, because a view is
     session-scoped and dbt resolves its sources through the catalog.
     """
+    from pipelines.silver.build import SILVER_TABLES
+
     spark.sql(f"create schema if not exists {schema}")
     mounted: list[str] = []
-    for table in facts.SILVER_TABLES:
+    # **Every table silver wrote, not only the three gold's facts read.** `pipelines/gold/
+    # experiments.py` reads `stores` for the balance covariates and `price_displayed` for
+    # exposure, and a mount list that named facts' three would have left both invisible — on a
+    # machine with no catalog, which is every machine except the estate.
+    for table in SILVER_TABLES:
         directory = silver / table
         if not (directory / "_delta_log").is_dir():
             raise facts.SilverMissingError(

@@ -60,15 +60,18 @@ import json
 from csv import DictReader
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from corpus.world.parquet import Column, Kind, ParquetWriter
 
 from pipelines.ingest.erp import MANIFEST, declared_types, drop_directories
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Iterator, Mapping, Sequence
     from pathlib import Path
+
+    from corpus.world import Run
+    from corpus.world.assignment import Arm
 
 #: What the loader has already taken, so that it does not take it twice.
 CHECKPOINT = "_checkpoint.json"
@@ -451,6 +454,83 @@ def _summary(result: LoadResult) -> Iterator[str]:
         yield f"    {table:<20}{rows:>8}  {mode:<14} {source}"
 
 
+def _slice(args: Any) -> tuple[date | None, date | None]:
+    """The half-open range of days this call writes, from the slice it was asked for."""
+    from pipelines import window as window_module
+
+    if args.since or args.until:
+        return (
+            date.fromisoformat(args.since) if args.since else None,
+            date.fromisoformat(args.until) if args.until else None,
+        )
+    if args.slice == "baseline":
+        return window_module.baseline(args.scale)
+    if args.slice == "window":
+        return window_module.window(args.scale)
+    return None, None
+
+
+def _arms(args: Any, run: Run) -> Mapping[str, Arm] | None:
+    """The assignment the history is generated under, or `None` for the package's default.
+
+    Three answers and they are three different claims:
+
+    * **`alternating`** — `None` here, so `prepare` applies its own convenience. It is not a
+      lottery and the package says so; it is the right answer for a demonstration that is not
+      going to be read out.
+    * **`all-control`** — the baseline. Nothing is applied to anybody, which is what makes the
+      pre-period covariates a measurement of the estate rather than of the treatment.
+    * **`table`** — the arms `gold.experiment_assignment` holds, written by
+      `pipelines/gold/experiments.py` from a lottery drawn against the baseline's covariates and
+      sealed before this window opens. Read back through the table rather than passed along, so
+      the window is generated under the arms that were **committed**, not under a mapping that
+      travelled beside them.
+    """
+    from corpus.world.assignment import Arm, all_control
+
+    choice = getattr(args, "arms", "alternating")
+    if choice == "alternating":
+        return None
+
+    built = run.chain
+    if choice == "all-control":
+        return all_control(built)
+
+    if not args.assignment_schema or not args.experiment_id:
+        raise SystemExit(
+            "--arms table needs --assignment-schema and --experiment-id: the window is "
+            "generated under the arms that were committed, and this is how it finds them."
+        )
+    from pipelines import session as runtime_module
+    from pipelines.gold import assignment as assignment_table
+    from pipelines.gold import session as gold_session
+
+    spark = gold_session.build()
+    try:
+        runtime_module.use_catalog(spark, getattr(args, "catalog", None))
+        rows = assignment_table.read_rows(
+            spark, schema=args.assignment_schema, experiment_id=args.experiment_id
+        )
+    finally:
+        runtime_module.release(spark)
+    if not rows:
+        raise SystemExit(
+            f"{args.assignment_schema}.experiment_assignment holds no rows for "
+            f"{args.experiment_id}. The window may not be generated before the lottery it is "
+            "supposed to run under has been drawn and written."
+        )
+    committed = {store: Arm(arm) for store, arm in rows}
+    # **A store outside the roster is simulated under control, and that is a decision.**
+    # `assess` excludes stores automatically where a neighbour is treated — 80 of 320 on the
+    # harness world — and those stores are not in the experiment. The world still has to
+    # simulate them, and the only honest arm for a shop nobody randomised is the one where
+    # nothing was applied. Treating them would put the intervention on shelves the readout does
+    # not look at, and the estate would be running a bigger experiment than it declared.
+    outside = [s.store_id for s in built.stores if s.store_id not in committed]
+    print(f"arms     {len(committed)} committed, {len(outside)} outside the roster -> control")
+    return {**dict.fromkeys(outside, Arm.CONTROL), **committed}
+
+
 def main(argv: list[str] | None = None) -> int:
     """`python -m pipelines.ingest.bulk` — export the drops, then load what landed.
 
@@ -477,6 +557,33 @@ def main(argv: list[str] | None = None) -> int:
         job.add_argument("--seed", default="holdout-w-0001")
         job.add_argument("--scale", default="smoke")
         job.add_argument("--landing", type=_Path, required=True)
+        if name == "history":
+            # **The arms, and the default is the one that is not a lottery.**
+            # `corpus/world/__init__.py` says so of `alternating` in as many words. A history
+            # generated under it carries an assignment nobody drew, and a readout over that is
+            # an uplift stated without a valid holdout — the failure this repository is about.
+            # The estate passes `all-control` for the baseline and `table` for the window.
+            job.add_argument(
+                "--arms",
+                choices=("alternating", "all-control", "table"),
+                default="alternating",
+            )
+            job.add_argument("--assignment-schema", help="where gold.experiment_assignment is")
+            job.add_argument("--experiment-id", help="whose arms to generate the window under")
+            job.add_argument("--catalog", help="the catalog the assignment table lives in")
+            # **A named slice rather than two dates.** `pipelines/window.py` owns where the
+            # baseline ends and the window begins, and it owns it because three steps have to
+            # agree about it: this one, the design, and the readout. Two dates on a command line
+            # are the same definition with a longer path between them and a workflow in the
+            # middle that can typo one of them.
+            job.add_argument("--slice", choices=("all", "baseline", "window"), default="all")
+            job.add_argument("--since", help="override: the first business date to write")
+            job.add_argument("--until", help="override: the first business date NOT to write")
+            job.add_argument(
+                "--into",
+                default=erp.HISTORY,
+                help="the subdirectory of --landing this slice lands in; one source per slice",
+            )
         if name == "export":
             job.add_argument("--day", required=True, help="an ISO date inside the corpus")
             job.add_argument(
@@ -504,14 +611,28 @@ def main(argv: list[str] | None = None) -> int:
             print(line)
         return 0
 
-    run = prepare(args.world, seed=args.seed, scale=args.scale)
     if args.command == "history":
-        counts = erp.history(run, args.landing)
-        print(f"history  {args.world} at {args.scale}, seed {args.seed} -> {args.landing}")
+        # Prepared twice, and the first one is only for its chain: `all_control` and the
+        # committed-arms check both need the roster, and the roster is a function of
+        # `(seed, scale)` alone. Building it is the cheap half of a run.
+        base = prepare(args.world, seed=args.seed, scale=args.scale)
+        run = prepare(
+            args.world,
+            seed=args.seed,
+            scale=args.scale,
+            assignment=_arms(args, base),
+        )
+        since, until = _slice(args)
+        counts = erp.history(run, args.landing, since=since, until=until, into=args.into)
+        print(
+            f"history  {args.world} at {args.scale}, seed {args.seed}, arms {args.arms} "
+            f"[{since or 'start'}, {until or 'end'}) -> {args.landing / args.into}"
+        )
         for stream, number in sorted(counts.items()):
             print(f"  {stream:<18} {number:>10,}")
         return 0
 
+    run = prepare(args.world, seed=args.seed, scale=args.scale)
     day = date.fromisoformat(args.day)
     schedule = erp.Schedule(tuple(int(hour) for hour in args.hours.split(",")))
     steps = erp.cost_steps_on(run, day)

@@ -356,7 +356,15 @@ def _write_manifest(run: Run, drop: Drop) -> None:
 HISTORY = "history"
 
 
-def history(run: Run, landing: Path, *, only_stores: Sequence[str] | None = None) -> dict[str, int]:
+def history(
+    run: Run,
+    landing: Path,
+    *,
+    only_stores: Sequence[str] | None = None,
+    since: date | None = None,
+    until: date | None = None,
+    into: str = HISTORY,
+) -> dict[str, int]:
     """The eight months, written where the bulk load will find them, in Parquet.
 
     `CLAUDE.md`: *"eight months of transaction history | bulk load from files on S3 |
@@ -370,8 +378,24 @@ def history(run: Run, landing: Path, *, only_stores: Sequence[str] | None = None
     not be tipped into one landing area where a loader globbing for files would take whichever
     it found. `bulk.load` reads `run.json` rather than globbing, which is the guarantee; this
     directory is the legibility.
+
+    **`since`, `until` and `into` are what make an experiment on this estate possible at all.**
+    `corpus/world/__init__.py` says of the default assignment that it is *a convenience and not
+    a lottery*, so a history generated in one pass carries arms nobody drew — and a readout over
+    it would be an uplift stated without a valid holdout, which is the failure this repository
+    exists to make impossible. The estate's history is therefore two slices of two runs: the
+    baseline under `all_control`, and the comparison window under the assignment the engine drew
+    once it had the baseline's covariates to draw on. Each goes to its own directory because
+    `bulk.load` reads a `run.json` per source, and two slices are two sources.
     """
-    return write(run, landing / HISTORY, fmt=Format.PARQUET, only_stores=only_stores)
+    return write(
+        run,
+        landing / into,
+        fmt=Format.PARQUET,
+        only_stores=only_stores,
+        since=since,
+        until=until,
+    )
 
 
 def declared_types() -> dict[str, Kind]:

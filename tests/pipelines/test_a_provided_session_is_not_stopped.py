@@ -20,11 +20,14 @@ set, because ownership tracked anywhere else is a second thing to keep in step.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
 from pipelines import session as runtime
+
+if TYPE_CHECKING:
+    from pyspark.sql import SparkSession
 
 
 class _Stub:
@@ -49,7 +52,7 @@ class _Stub:
 
 def test_release_stops_a_session_this_repository_built() -> None:
     spark = _Stub("true")
-    runtime.release(spark)
+    runtime.release(cast("SparkSession", spark))
     assert spark.stopped, (
         "a locally built session was not stopped. Every local session holds a JVM and a Derby "
         "metastore; a suite that leaks one per test runs out of both."
@@ -58,7 +61,7 @@ def test_release_stops_a_session_this_repository_built() -> None:
 
 def test_release_leaves_a_session_it_did_not_build_alone() -> None:
     spark = _Stub(None)
-    runtime.release(spark)
+    runtime.release(cast("SparkSession", spark))
     assert not spark.stopped, (
         f"a session with no `{runtime.LOCAL}` marker was stopped. On the estate that is the "
         "runtime's own session: stopping it ends the compute under the tasks that follow, and "
@@ -69,7 +72,7 @@ def test_release_leaves_a_session_it_did_not_build_alone() -> None:
 @pytest.mark.parametrize("marker", ["false", "0", ""])
 def test_release_leaves_a_session_that_says_it_is_not_ours(marker: str) -> None:
     spark = _Stub(marker)
-    runtime.release(spark)
+    runtime.release(cast("SparkSession", spark))
     assert not spark.stopped, f"`{runtime.LOCAL}={marker!r}` was read as ownership."
 
 

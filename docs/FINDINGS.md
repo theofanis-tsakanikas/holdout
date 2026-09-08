@@ -5286,6 +5286,66 @@ is the thing that runs an experiment: assigns arms, opens a period, computes an 
 refusal, and writes one row per experiment into `gold.readout`.
 
 *Site:* `ops/run_assertions.py` :: `READOUT = "{catalog}.gold.readout"`
-*Disposition:* open — named here rather than closed quietly, because closing it is writing the
-experiment layer and that is a decision about scope rather than a fix
+*Disposition:* branch `gold/an-experiment-writes-a-readout`
+*Closed:* 2026-09-08 — `pipelines/gold/experiments.py` declares two experiments, assesses both,
+seals the lottery for the one that may exist, verifies the table against the seal it re-derives,
+closes, and writes one row each into `gold.readout`. Measured end to end on the `harness` world:
+`fresh-ladder` produced `uplift +9626.63 cents [+8137, +11155] p=0.0010` and
+`fresh-ladder-peeking` was refused `STOPPING_RULE_PERMITS_PEEKING`
+*Now:* `ops/run_assertions.py` :: `READOUT = "{catalog}.gold.readout"`
+*Now:* `pipelines/gold/experiments.py` :: `#: The two, and the second is refused by construction. See the module docstring.`
+*Status:* open
+
+---
+**The estate's history was generated with arms nobody drew** ·
+found 2026-09-08 · by the experiment layer above refusing on its first end-to-end run
+
+Writing the readout produced the finding the readout was written to make possible. The first run
+of `pipelines/gold/experiments.py` over a built estate got as far as moment 3 and stopped:
+
+    ExposureError: 48 control unit(s) carry a treatment acknowledgement:
+    ['ST0006', 'ST0011', 'ST0023', 'ST0044', ...]
+
+**The lottery this repository drew disagreed with what the world delivered, and the world was
+right.** `backfill` loads a corpus prepared by `corpus.world.prepare(...)` with no assignment
+argument, and that function's own docstring says what it then applies:
+
+> `assignment` defaults to `alternating`, which is **a convenience and not a lottery** — an eval
+> passes the assignment its own engine drew, because that engine is the thing under test.
+
+So the estate's eight months were generated under arms that alternate down the store list. Any
+assignment drawn afterwards describes a different experiment from the one the data records, and
+**a seal cannot be made to describe the delivered one**: `SealedAssignment.__init__` raises
+`SealForgeryError` — *a SealedAssignment is not constructed; it is drawn.* That refusal is the
+type doing exactly its job, one layer above where the mistake was.
+
+**Every step of the old arrangement succeeded.** History loaded, silver built, gold built, the
+model trained. Nothing in the estate could have said that the arms were a convenience, because
+nothing in the estate ever asked what an arm was — the readout that would have asked did not
+exist, which is the finding above and why this one was invisible behind it.
+
+> **This is `CLAUDE.md`'s thesis, occurring inside the repository that states it.** *An uplift
+> number produced without a valid holdout is a build failure.* The estate was one step away from
+> producing exactly that number, and the step it was missing was the one that would have refused.
+
+**What closes it is an order, not a component.** The history is now two slices of two runs: the
+baseline under `all_control`, then `experiment_design` drawing the lottery against the baseline's
+covariates and sealing it, then the comparison window generated under the arms that were
+committed. `corpus/world/__init__.py::write` gained a half-open day range so the two slices come
+from one simulation rather than two — the generator's per-store state carries across days, so
+days 57 to 112 are only themselves if days 1 to 56 were simulated.
+
+**And the ordering is the thing a gate has to hold.** Run the design step after the window, or
+not at all, and every job still succeeds and a number still comes out.
+`tests/infra/test_the_lottery_is_drawn_before_the_window.py` is planted against exactly that:
+swapping the two lines in `backfill.yml` turns it red by name.
+
+*Site:* `.github/workflows/backfill.yml` :: `          run_job job_experiment_design "assess both designs and seal the lottery"`
+*Site:* `pipelines/ingest/bulk.py` :: `    if choice == "alternating":`
+*Disposition:* branch `gold/an-experiment-writes-a-readout`
+*Closed:* 2026-09-08 — two slices, two assignments, and the design step between them. Measured
+end to end on the `harness` world: 320 stores, 192 treated and 48 control with 80 excluded for
+interference, and a readout that produced a number
+*Now:* `.github/workflows/backfill.yml` :: `          run_job job_experiment_design "assess both designs and seal the lottery"`
+*Now:* `pipelines/ingest/bulk.py` :: `    if choice == "alternating":`
 *Status:* open

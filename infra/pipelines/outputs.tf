@@ -2,9 +2,12 @@
 # `infra/foundation/outputs.tf` argues for.
 locals {
   published = {
-    "job_bulk_load" = tostring(databricks_job.bulk_load.id)
-    "job_silver"    = tostring(databricks_job.silver.id)
-    "job_gold"      = tostring(databricks_job.gold.id)
+    "job_history_baseline"   = tostring(databricks_job.history["baseline"].id)
+    "job_history_window"     = tostring(databricks_job.history["window"].id)
+    "job_experiment_design"  = tostring(databricks_job.experiment["design"].id)
+    "job_experiment_readout" = tostring(databricks_job.experiment["readout"].id)
+    "job_silver"             = tostring(databricks_job.silver.id)
+    "job_gold"               = tostring(databricks_job.gold.id)
 
     # **The corpus arguments, published so `run` drives the same world it was built from.**
     # A day driven under a different world from the history that trained the model is not a held

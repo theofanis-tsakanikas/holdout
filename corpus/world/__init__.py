@@ -66,7 +66,14 @@ from corpus.world import policy as policy_module
 from corpus.world import seal as seal_module
 from corpus.world.assignment import Arm, Assignment, all_control, alternating
 from corpus.world.chain import Chain
-from corpus.world.events import STREAM_TYPES, STREAMS, Event, field_names, stream_of
+from corpus.world.events import (
+    STREAM_TYPES,
+    STREAMS,
+    Event,
+    ShelfDay,
+    field_names,
+    stream_of,
+)
 from corpus.world.generate import StoreExposure
 from corpus.world.parquet import Column, Kind, ParquetWriter, columns_for
 from corpus.world.policy import MarkdownPolicy
@@ -289,12 +296,27 @@ def count(run: Run, *, only_stores: Sequence[str] | None = None) -> dict[str, in
     return {stream: tally.get(stream, 0) for stream in STREAMS}
 
 
+def business_date_of(event: Event) -> date:
+    """The day an event belongs to, whichever column its stream carries it in.
+
+    Three streams carry `event_ts` and one carries `business_date` as a string. A slice of a
+    world has to be taken on one axis, and this is the function that says which — written once
+    here rather than in each caller, because a slice taken on two different definitions of
+    "day" would overlap or leave a gap, and both look like data.
+    """
+    if isinstance(event, ShelfDay):
+        return date.fromisoformat(event.business_date)
+    return event.event_ts.date()
+
+
 def write(
     run: Run,
     directory: Path,
     *,
     fmt: Format | str = Format.CSV,
     only_stores: Sequence[str] | None = None,
+    since: date | None = None,
+    until: date | None = None,
 ) -> dict[str, int]:
     """Materialise a world: four event streams, three reference tables, and the seal.
 
@@ -321,6 +343,17 @@ def write(
     streams = _parquet_streams if target is Format.PARQUET else _csv_streams
     with streams(directory) as deliver:
         for event in events(run, seal_into=directory, only_stores=only_stores):
+            # **Filtered here and not in `events`.** A slice is a property of materialising a
+            # world, not of simulating one: the generator's per-store state — inventory, shelf
+            # life, the ladder's position — carries across days, so days 57 to 112 are only
+            # themselves if days 1 to 56 were simulated. Skipping them at write keeps the
+            # simulation whole and takes the slice out of it.
+            if since is not None or until is not None:
+                day = business_date_of(event)
+                if since is not None and day < since:
+                    continue
+                if until is not None and day >= until:
+                    continue
             stream = stream_of(event)
             deliver(stream, event)
             tally[stream] += 1
@@ -339,6 +372,8 @@ def write(
                 "control_policy": run.control.policy_id,
                 "treatment_policy": run.treatment.policy_id,
                 "restricted_to_stores": list(only_stores) if only_stores else None,
+                "since": since.isoformat() if since else None,
+                "until": until.isoformat() if until else None,
                 "counts": {stream: tally.get(stream, 0) for stream in STREAMS},
             },
             indent=2,
