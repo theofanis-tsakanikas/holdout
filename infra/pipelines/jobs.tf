@@ -73,9 +73,10 @@ resource "databricks_job" "bulk_load" {
     # and `W6`; a task given only some of them runs green over the wrong corpus, and a crash is a
     # red run where this is eight months of history that is not eight months of anything.
     spark_python_task {
-      python_file = "pipelines/ingest/bulk.py"
+      python_file = "pipelines/entrypoint.py"
       source      = "GIT"
       parameters = [
+        "pipelines.ingest.bulk",
         "history",
         "--world", var.corpus_world,
         "--scale", var.corpus_scale,
@@ -96,9 +97,10 @@ resource "databricks_job" "bulk_load" {
     }
 
     spark_python_task {
-      python_file = "pipelines/ingest/bulk.py"
+      python_file = "pipelines/entrypoint.py"
       source      = "GIT"
       parameters = [
+        "pipelines.ingest.bulk",
         "load",
         "--landing", local.zone_path["landing"],
         "--bronze", local.zone_path["bronze"],
@@ -136,9 +138,10 @@ resource "databricks_job" "silver" {
     environment_key = local.environment_key
 
     spark_python_task {
-      python_file = "pipelines/silver/__main__.py"
+      python_file = "pipelines/entrypoint.py"
       source      = "GIT"
       parameters = [
+        "pipelines.silver",
         "--bronze", local.zone_path["bronze"],
         "--silver", local.zone_path["silver"],
       ]
@@ -204,9 +207,10 @@ resource "databricks_job" "gold" {
     }
 
     spark_python_task {
-      python_file = "pipelines/gold/__main__.py"
+      python_file = "pipelines/entrypoint.py"
       source      = "GIT"
       parameters = [
+        "pipelines.gold",
         "--silver", local.zone_path["silver"],
         "--root", local.zone_path["gold"],
       ]
