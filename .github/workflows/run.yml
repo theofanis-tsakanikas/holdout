@@ -126,7 +126,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      # **The Databricks CLI and `uv`, for the reason `setup-terraform` exists in the other
+      # workflows.** Neither
+      # is on a GitHub runner by default. `destroy.yml` learned this at exit 127, after deriving
+      # its layer order correctly and printing it, and `tests/ops/test_cli_is_installed.py` is
+      # what stops the next workflow inheriting it a third time.
+      #
+      # **No `setup-terraform` here, deliberately**: this workflow runs no Terraform. `backfill`
+      # applies `serving` and needs it; `run` drives the estate that is already standing.
+      - uses: databricks/setup-cli@main
+      - uses: astral-sh/setup-uv@v5
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -157,8 +166,18 @@ jobs:
           # live day through Zerobus, with lateness and duplicates* — because deduplication on a
           # business key and an as-of join are only proved by data that arrives wrong.
           echo "── driving one day"
-          uv run python -m pipelines.ingest --world w6 --scale scenario --seed 1 \
-            --out "s3://$(aws ssm get-parameter --name /holdout/foundation/zone_landing --query Parameter.Value --output text)"
+          # **The same world, scale and seed the jobs were applied with, read from the layer
+          # rather than typed here.** `infra/pipelines` publishes them for exactly this: a day
+          # driven under a different world from the history that trained the model is not a held
+          # out day, it is a different experiment — and the first version of this line carried
+          # `w6`, `scenario` and `1` as literals, one of which was already wrong in case.
+          WORLD=$(aws ssm get-parameter --name /holdout/pipelines/corpus_world --query Parameter.Value --output text)
+          SCALE=$(aws ssm get-parameter --name /holdout/pipelines/corpus_scale --query Parameter.Value --output text)
+          SEED=$(aws ssm get-parameter --name /holdout/pipelines/corpus_seed --query Parameter.Value --output text)
+          LANDING=$(aws ssm get-parameter --name /holdout/foundation/zone_landing --query Parameter.Value --output text)
+
+          uv run python -m pipelines.ingest --world "$WORLD" --scale "$SCALE" --seed "$SEED" \
+            --out "s3://${LANDING}"
 
       - name: Two experiments — one produces a number, one refuses
         env:
@@ -173,7 +192,9 @@ jobs:
           export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
 
           GOLD=$(aws ssm get-parameter --name /holdout/pipelines/job_gold --query Parameter.Value --output text)
-          databricks jobs run-now "$GOLD" --timeout 0
+          # `3h` rather than `0`: see `backfill.yml`. The flag defaults to twenty minutes and
+          # `0` parses as zero seconds, not as "no limit".
+          databricks jobs run-now "$GOLD" --timeout 3h
 
           # **The assertion, and it is the reason this workflow exists.**
           #
@@ -185,7 +206,17 @@ jobs:
           # `ops/run_assertions.py` is where the queries live, so the figures and the commands
           # that produce them are in the repository rather than in a workflow's shell — the `[M]`
           # rule: *a number is not published without the command that produces it.*
-          uv run python -m ops.run_assertions --require-number --require-refusal
+          # **The warehouse and the catalog are read here rather than defaulted.**
+          #
+          # `ops/run_assertions.py` refuses without a warehouse — *`--warehouse-id` is required to
+          # query the readout* — and it was called without one. That would have failed **after**
+          # the day had been driven and the gold job had run: two hours in, on a missing argument
+          # a `--help` would have shown. Found by reading the two files against each other, which
+          # is the only way to find it, because each is correct alone.
+          WAREHOUSE=$(aws ssm get-parameter --name /holdout/lakehouse/warehouse_id             --query Parameter.Value --output text)
+          CATALOG=$(aws ssm get-parameter --name /holdout/lakehouse/catalog             --query Parameter.Value --output text)
+
+          uv run python -m ops.run_assertions             --warehouse-id "$WAREHOUSE" --catalog "$CATALOG"             --require-number --require-refusal
 
       - name: Ask the endpoint a live question
         env:

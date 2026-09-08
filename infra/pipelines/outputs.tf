@@ -5,6 +5,14 @@ locals {
     "job_bulk_load" = tostring(databricks_job.bulk_load.id)
     "job_silver"    = tostring(databricks_job.silver.id)
     "job_gold"      = tostring(databricks_job.gold.id)
+
+    # **The corpus arguments, published so `run` drives the same world it was built from.**
+    # A day driven under a different world from the history that trained the model is not a held
+    # out day; it is a different experiment. `run.yml` carried these as literals and one of them
+    # differed in case from the value here.
+    "corpus_world" = var.corpus_world
+    "corpus_scale" = var.corpus_scale
+    "corpus_seed"  = var.corpus_seed
   }
 }
 

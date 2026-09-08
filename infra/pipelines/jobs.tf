@@ -58,7 +58,14 @@ resource "databricks_job" "bulk_load" {
     spark_python_task {
       python_file = "pipelines/ingest/__main__.py"
       source      = "GIT"
+      # **Every argument is passed, and none is left to a default.** See `variables.tf`: the
+      # package's defaults are `smoke` and `W1`, so a job given only `--out` runs green over the
+      # wrong corpus. That is worse than a crash, because a crash is a red run and this is eight
+      # months of history that is not eight months of anything.
       parameters = [
+        "--world", var.corpus_world,
+        "--scale", var.corpus_scale,
+        "--seed", var.corpus_seed,
         "--out", local.zone_url["bronze"],
       ]
     }
