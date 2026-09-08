@@ -602,7 +602,22 @@ CLAIM_5_COST := 750
 CLAIM_7_COST := 98
 GATE_PROOF_COST := 30
 SILVER_COST := 165
-GOLD_COST := 225
+# **854, measured on run 34237046536, and it is 225 plus one test.** `tests/pipelines/
+# test_experiments.py` builds the estate the way `backfill` does — a baseline generated under
+# all-control, the design assessed and the lottery sealed, then the comparison window generated
+# under the committed arms — and reads both experiments out. Two world generations at the
+# `harness` scale, two silver builds, two gold builds and the permutation reference set the
+# contract declares.
+#
+# **It is over the budget, so `gold` now gets a bin of its own**, which the packer treats as a
+# signal rather than an error. That does not lengthen the run: the critical chain is claim 2's
+# combine, and 854s is well inside it.
+#
+# **What it buys is the only place the whole experiment is exercised.** Every part of it passed
+# its own test before this existed and none of them had ever been joined up — which is the
+# finding `docs/FINDINGS.md` records against `gold.readout`, and the reason this gate is worth
+# fourteen minutes of one machine.
+GOLD_COST := 854
 
 claim-2-shard:  ## one slice of claim 2's draws — SHARD=i/N, written to $(SHARD_DIR)
 	@test -n "$(SHARD)" || { echo "claim-2-shard needs SHARD=i/N, e.g. SHARD=3/8"; exit 2; }
