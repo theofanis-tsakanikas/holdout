@@ -30,26 +30,44 @@ fi
 
 echo "── ${label} FAILED; fetching what the job said"
 
+# **Nothing below may abort the report.** `set -e` is right for the run itself and wrong for the
+# explanation of why it failed: a `jq` that cannot read one field would take the whole diagnosis
+# with it, which is what happened the first time this script ran and the reason it ran twice.
+# The step still fails — the `exit 1` at the bottom is unconditional.
+set +e
+
 # The most recent run of this job. `run-now --timeout` does not hand back an id on the failing
 # path, and the job is started once per step, so the latest run is this one.
-run_id=$(databricks jobs list-runs --job-id "$id" --limit 1 --output json | jq -r '.runs[0].run_id // empty')
+#
+# **`(.runs // .)` because the CLI returns a bare array here and an object elsewhere.** The first
+# version of this script assumed `{ "runs": [...] }` — the shape the REST API documents — and the
+# installed CLI printed a list. `jq` then failed with *Cannot index array with string "runs"*, and
+# the diagnostic written to explain a failure failed instead of explaining it. So this reads
+# either shape, and prints what it got when it can read neither.
+runs=$(databricks jobs list-runs --job-id "$id" --limit 1 --output json)
+run_id=$(printf '%s' "$runs" | jq -r 'if type == "array" then .[0] else (.runs // [])[0] end | .run_id // empty')
 if [ -z "$run_id" ]; then
-  echo "::error::no run found for job ${id}. It may not have started at all."
+  echo "::error::no run id found for job ${id}. What list-runs returned:"
+  printf '%s\n' "$runs" | head -c 4000
   exit 1
 fi
 
 run=$(databricks jobs get-run "$run_id" --output json)
-echo "   run page: $(echo "$run" | jq -r '.run_page_url // "-"')"
-echo "$run" | jq -r '
-  .tasks[]
-  | "   " + .task_key
+echo "   run page: $(printf '%s' "$run" | jq -r '.run_page_url // "-"')"
+if [ "$(printf '%s' "$run" | jq -r '(.tasks // []) | length')" = "0" ]; then
+  echo "   the run carries no tasks; what get-run returned:"
+  printf '%s\n' "$run" | head -c 4000
+fi
+printf '%s' "$run" | jq -r '
+  (.tasks // [])[]
+  | "   " + (.task_key // "?")
     + "  " + (.state.result_state // .state.life_cycle_state // "?")
     + "  " + ((.state.state_message // "") | .[0:300])'
 
 # **Every task that did not succeed, not just the first.** A job whose second task failed because
 # its first did is two facts, and reporting one of them sends whoever reads this to the wrong
 # file. `pipelines/ml/promotion.py` reports every gate that refused for the same reason.
-for task in $(echo "$run" | jq -r '.tasks[] | select((.state.result_state // "") != "SUCCESS") | .run_id'); do
+for task in $(printf '%s' "$run" | jq -r '(.tasks // [])[] | select((.state.result_state // "") != "SUCCESS") | .run_id'); do
   echo "── output of task run ${task}"
   databricks jobs get-run-output "$task" --output json \
     | jq -r '[(.error // empty), (.error_trace // empty), (.logs // empty)] | join("\n")' \
