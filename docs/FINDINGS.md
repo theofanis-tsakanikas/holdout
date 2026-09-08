@@ -5508,3 +5508,56 @@ and a second gate over the script's own parsing after the first version could no
 client it calls
 *Now:* `ops/run_job.sh` :: `echo "── ${label} FAILED; fetching what the job said"`
 *Status:* open
+
+---
+**Every destroy left a NAT gateway running, and the survivor check could not see it** ·
+found 2026-09-08 · by the author asking whether anything except bootstrap was still up
+
+`destroy all` exited zero and its survivor check reported what it was built to report:
+
+    OK  only the survivor list is standing: state bucket and its logs, the state key,
+        the deploy role, and the parameters bootstrap published.
+
+That was true. It was also blind to the only thing in the account still costing money.
+
+    nat-0a19bf2f20ba206cc  vpc-0db96aa5821010c32  available  2026-09-08T01:48:54Z
+    nat-01f93245c34f674d2  vpc-06fb02786e6185a19  available  2026-09-07T09:09:04Z
+
+**Two Databricks-managed VPCs, one per destroy cycle**, each with a NAT gateway and a public
+IPv4 — about **35 USD a month** for the gateway and 4 for the address. `infra/foundation/
+workspace.tf` declares no `network_id`, which is Databricks-managed networking: Databricks
+creates the VPC in *this* account, names it `databricks-WorkerEnvId(workerenv-<workspace id>-…)`,
+and **deleting the workspace did not remove it.** The older of the two had been running for
+twenty-four hours across a full destroy.
+
+**The survivor check enumerates by `holdout:project` and that is the right population for what it
+was built to answer.** The tag is what the budget filters on and what the reaper reads, so
+everything this project *creates* carries it. What Databricks creates on this project's behalf
+does not — and a population defined by a property is blind to whatever lacks it.
+
+> **This register already holds three findings of that shape** — three hand-kept lists of
+> packages, two declarations of one window, two defaults for one flag. This is the same sentence
+> with a cloud tag instead of a list, and it is the most expensive instance: the others cost a
+> red run, and this one cost about 78 USD a month, silently, with a green check above it.
+
+**And nothing else would have found it.** The reaper enumerates by the same tag. `make figures`
+measures coverage of this repository, not of the account. The budget would have shown it as a
+number with no name attached, months later, under a project that was supposed to be destroyed.
+The only thing that found it was a person asking.
+
+**Deleted 2026-09-08**, in the order the resources depend on each other: NAT gateways, then the
+addresses, the S3 gateway endpoints, the internet gateways, the subnets, the security groups, the
+route tables, and the VPCs. The account then held one VPC, the default, and no NAT gateway or
+elastic IP at all.
+
+`destroy.yml` now reads the workspace id **before** the layer publishing it is destroyed, and
+afterwards refuses to call the destroy complete while that workspace's VPC still exists. It
+reports rather than deletes: an orphan is by definition outside Terraform's state, and a workflow
+removing infrastructure nobody's plan mentions is a different authority from the one this has.
+
+*Site:* `.github/workflows/destroy.yml` :: `            echo "::error::the workspace is destroyed and the VPC Databricks made for it is not:"`
+*Disposition:* branch `ops/the-destroy-looks-past-its-own-tag`
+*Closed:* 2026-09-08 — both orphans deleted, and a second population checked at the end of every
+destroy, named by the workspace rather than by this project's tag
+*Now:* `.github/workflows/destroy.yml` :: `            echo "::error::the workspace is destroyed and the VPC Databricks made for it is not:"`
+*Status:* open
