@@ -10,7 +10,7 @@
 # ---------------------------------------------------------------- the branch that creates
 resource "databricks_metastore" "this" {
   provider = databricks.account
-  count    = var.create_metastore ? 1 : 0
+  count    = var.owns_metastore ? 1 : 0
 
   name   = "holdout-${var.region}"
   region = var.region
@@ -29,7 +29,7 @@ resource "databricks_metastore" "this" {
 # ---------------------------------------------------------------- the branch that reads
 #
 # **Both branches are written, because a switch with one branch is a switch that has never been
-# off.** With `create_metastore = false` the account is expected to hold a metastore already —
+# off.** With `owns_metastore = false` the account is expected to hold a metastore already —
 # created by another project, or by an earlier apply of this one — and this layer attaches to it
 # without claiming it.
 #
@@ -41,7 +41,7 @@ resource "databricks_metastore" "this" {
 # the code and false of the system.
 data "databricks_metastore" "existing" {
   provider = databricks.account
-  count    = var.create_metastore ? 0 : 1
+  count    = var.owns_metastore ? 0 : 1
 
   region = var.region
 
@@ -63,7 +63,7 @@ data "databricks_metastore" "existing" {
 locals {
   # The one id everything below uses, whichever branch produced it. **Written once**, because two
   # consumers each choosing a branch is doctrine rule 3's *interpreted by hand in two places*.
-  metastore_id = var.create_metastore ? databricks_metastore.this[0].id : data.databricks_metastore.existing[0].id
+  metastore_id = var.owns_metastore ? databricks_metastore.this[0].id : data.databricks_metastore.existing[0].id
 }
 
 # ---------------------------------------------------------------- the attachment
@@ -76,7 +76,7 @@ resource "databricks_metastore_assignment" "this" {
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # **The trap in this switch, written here because nothing else would catch it.**
 #
-# `create_metastore` is not a preference and it is not idempotent to change. It records **whether
+# `owns_metastore` is not a preference and it is not idempotent to change. It records **whether
 # this project owns the metastore**, and it is set once.
 #
 # **Flipping it from `true` to `false` destroys the metastore.** The resource above goes to

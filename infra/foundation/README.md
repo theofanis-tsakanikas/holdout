@@ -10,7 +10,7 @@ everything else is CI. A layer that can be applied from a laptop drifts.*
 | the data KMS key | encrypts the four zones; **not** the state key, and the difference is lifetime |
 | four S3 zones | `landing · bronze · silver · gold` |
 | the workspace | on a **Databricks-managed** network, plus its cross-account role and root bucket |
-| the metastore | created **or** read, behind `create_metastore`, then attached to the workspace |
+| the metastore | created **or** read, behind `owns_metastore`, then attached to the workspace |
 | the TTL reaper | a Lambda on an hourly schedule — level 1 of the three teardown guarantees |
 
 **There is no VPC and that is a decision with a date.** `CLAUDE.md`'s row for this layer said
@@ -26,7 +26,7 @@ by the hour in a project whose cost posture opens by refusing always-on anything
 and it did not exist until `T018`. **Skip this and the failure is `AccessDenied` mid-apply**,
 after some resources exist and some do not.
 
-**2 · `create_metastore` is `true` for the first apply and never again.** Measured on 2026-09-05,
+**2 · `owns_metastore` is `true` for the first apply and never again.** Measured on 2026-09-05,
 this account holds no metastore in any region. Flipping it back to `false` afterwards **plans a
 destroy of the metastore and everything in it** — `metastore.tf` says so at length, and
 `infra/bootstrap/README.md`'s instruction applies: read the plan for `destroy` lines.

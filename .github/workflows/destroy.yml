@@ -170,12 +170,12 @@ jobs:
           TF_VAR_databricks_account_id: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
           TF_VAR_databricks_client_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
           TF_VAR_databricks_client_secret: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-          # **`create_metastore` is `true` here and it is not a copy-paste from `deploy`.**
+          # **`owns_metastore` is `true` here and it is not a copy-paste from `deploy`.**
           # The variable records whether this project *owns* the metastore, and a destroy has to
           # agree with the apply that created it: dispatched with `false`, Terraform would read a
           # metastore it does not manage, leave it standing, and report success — an estate
           # reported as gone with its most account-level object still there.
-          TF_VAR_create_metastore: true
+          TF_VAR_owns_metastore: true
         run: |
           set -euo pipefail
 

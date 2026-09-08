@@ -41,9 +41,41 @@ variable "ttl_hours" {
   description = "Hours after which the reaper destroys tagged estate, whatever else happened."
 }
 
-variable "create_metastore" {
+variable "owns_metastore" {
   type    = bool
-  default = false
+  default = true
+  # **It was called `create_metastore`, and the name is what made it dangerous.**
+  #
+  # *Create* describes the first apply. The variable does not: it records **whether this project
+  # owns the metastore**, which is a relationship that holds on every apply after the first as
+  # well. A reader reaching for `false` on the second dispatch — *the metastore already exists, so
+  # do not create it* — is reading the name correctly and getting the opposite of what they want,
+  # because `count = 0` plans a **destroy** of what the first apply created, and `force_destroy`
+  # means nothing refuses.
+  #
+  # **That is not hypothetical: it happened on 2026-09-08**, by the session that had written the
+  # warning three times. The dispatch was cancelled before Terraform reached the resource and
+  # nothing was lost, and the lesson is not *read the comment more carefully* — the comment was
+  # there and was read. **The name is the thing a person acts on under time pressure**, and a
+  # name describing an event cannot express a state.
+  #
+  # **The default moved from `false` to `true` in the same change, and that is the larger half.**
+  #
+  # `false` was argued as the safe direction: *the dangerous direction is creating a second
+  # metastore, not failing to create the first.* **That was wrong about which failure is worse.**
+  # A second metastore is impossible — the account refuses it, loudly, at the first apply that
+  # tries. Destroying the one that exists is not impossible, is silent until the plan is read, and
+  # takes every catalog, schema, grant and external location with it.
+  #
+  # So the two failure modes are:
+  #
+  #     default true,  forgotten  ->  a create that the account refuses. A red run.
+  #     default false, forgotten  ->  a destroy of the metastore and everything in it.
+  #
+  # `watermark`'s rule, which this repository has already borrowed once for the reaper's dry run:
+  # **forgetting the variable should under-delete, which costs money, rather than over-delete,
+  # which costs data.** Under that rule the safe default is `true`, and the first argument had the
+  # asymmetry backwards.
   # **A Unity Catalog metastore is one per region per account, so it is not this project's to
   # own by default.** That is the `oidc.tf` lesson in a more expensive resource: the GitHub OIDC
   # provider is unique per issuer per account, another project had created it first, and
