@@ -5410,3 +5410,80 @@ task behind it. The workflow starts a job by id like every other step that touch
 *Now:* `.github/workflows/run.yml` :: `          LIVE=$(aws ssm get-parameter --name /holdout/pipelines/job_live_day \`
 *Now:* `infra/pipelines/jobs.tf` :: `resource "databricks_job" "live_day" {`
 *Status:* open
+
+---
+**The default was corrected where it is written and left standing where it is chosen** ·
+found 2026-09-08 · by reading `deploy.yml` before dispatching it, hours after fixing the variable
+
+`infra/foundation/variables.tf` renamed `create_metastore` to `owns_metastore` and moved its
+default from `false` to `true`, with the reasoning at length — *a name describing an event cannot
+express a state* — because `false` on a project that owns the region's metastore plans a
+**destroy** of it and everything in it. That change was made the same day the destroy was planned
+for real and cancelled with seconds to spare.
+
+`deploy.yml` passes the flag like this:
+
+    TF_VAR_owns_metastore: ${{ inputs.owns_metastore }}
+
+**Unconditionally, so the variable's default never applies to a dispatch.** And the input's
+default stayed `false` — still carrying, in its own comment three lines above, the argument the
+variable had just abandoned:
+
+> *`owns_metastore` is a dispatch input with a default of `false`, and the default is the safe
+> direction rather than the common one.*
+
+So the fix reached the file that explains the decision and not the file that makes it. **What a
+person gets by opening *Run workflow* and pressing the button was unchanged.**
+
+> **This is the same shape as the finding it followed, one layer up.** That one was about a
+> *name* a person acts on under time pressure. This one is about a *default* they act on the same
+> way — and the correction to the first was written by the session that then left the second in
+> place for six hours, and found it only because it had to read the dispatch inputs in order to
+> pass one explicitly.
+
+`tests/ops/test_a_dispatch_default_is_its_variables.py` compares the two rather than trusting that
+a change reached both: for every `TF_VAR_x: ${{ inputs.x }}`, the input's default and the
+variable's must agree. It does not check that the default is *right* — that argument belongs
+beside the variable, where it already is — only that there is one of it.
+
+*Site:* `.github/workflows/deploy.yml` :: `        description: "This project owns the region's UC metastore. Leave true unless another project does."`
+*Disposition:* branch `ops/the-dispatch-default-is-the-one-a-person-gets`
+*Closed:* 2026-09-08 — the input's default is `true`, matching the variable, and a gate compares
+every overridden default against the variable it overrides
+*Now:* `.github/workflows/deploy.yml` :: `        description: "This project owns the region's UC metastore. Leave true unless another project does."`
+*Status:* open
+
+---
+**A workflow that starts an hour of compute reported that something went wrong somewhere** ·
+found 2026-09-08 · by `backfill`'s first real dispatch failing in five minutes
+
+The estate applied cleanly, the six jobs existed, and `backfill` was dispatched. It ended:
+
+    ── the baseline, under all-control arms, into bronze (job 668866780447103)
+    Error: failed to reach TERMINATED or SKIPPED, got INTERNAL_ERROR: Task history failed
+    with message: Workload failed, see run output for details.
+
+**That is the whole of what the log said.** *See run output for details* is an instruction to
+open a console, and the run output is the only place the error exists — so the diagnosis of a
+step that had already asserted a green suite, taken an environment approval, assumed a role and
+started compute was *go and look at a page*.
+
+> **`CLAUDE.md`'s rule is about changing things — *IaC only, no console actions, ever* — and the
+> reading that matters here is one step further.** A failure whose cause lives only in a console
+> is a failure this repository cannot reason about: not in a log, not in a review, and not by
+> anything that runs. The rule was about writes and the same argument applies to reads.
+
+**And it could not be worked around.** The credential that can query the workspace is a GitHub
+secret, correctly; neither local profile reaches it. So the cost of learning why one job failed
+was another dispatch — which is exactly the cost the workflow existed to avoid paying twice.
+
+`ops/run_job.sh` starts every job now: on failure it fetches the run, prints the run page, prints
+each task's state and message, and prints the output of **every** task that did not succeed —
+plural for `promotion.py`'s reason, since a job whose second task failed because its first did is
+two facts and reporting one sends the reader to the wrong file.
+
+*Site:* `ops/run_job.sh` :: `echo "── ${label} FAILED; fetching what the job said"`
+*Disposition:* branch `ops/a-failed-job-says-what-failed`
+*Closed:* 2026-09-08 — one script, both workflows, and a gate that refuses a job started around it
+*Now:* `ops/run_job.sh` :: `echo "── ${label} FAILED; fetching what the job said"`
+*Status:* open

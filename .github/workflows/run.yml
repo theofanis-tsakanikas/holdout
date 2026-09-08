@@ -185,13 +185,11 @@ jobs:
           # experiment.
           LIVE=$(aws ssm get-parameter --name /holdout/pipelines/job_live_day \
             --query Parameter.Value --output text)
-          echo "── driving the day after the window closes, into bronze (job $LIVE)"
-          databricks jobs run-now "$LIVE" --timeout 3h
+          ops/run_job.sh "$LIVE" "the day after the window closes, into bronze"
 
           SILVER=$(aws ssm get-parameter --name /holdout/pipelines/job_silver \
             --query Parameter.Value --output text)
-          echo "── bronze into silver, the live day included (job $SILVER)"
-          databricks jobs run-now "$SILVER" --timeout 3h
+          ops/run_job.sh "$SILVER" "bronze into silver, the live day included"
 
       - name: Two experiments — one produces a number, one refuses
         env:
@@ -206,9 +204,7 @@ jobs:
           export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
 
           GOLD=$(aws ssm get-parameter --name /holdout/pipelines/job_gold --query Parameter.Value --output text)
-          # `3h` rather than `0`: see `backfill.yml`. The flag defaults to twenty minutes and
-          # `0` parses as zero seconds, not as "no limit".
-          databricks jobs run-now "$GOLD" --timeout 3h
+          ops/run_job.sh "$GOLD" "silver into gold, the live day included"
 
           # **The readout, and it is a step rather than a side effect of the gold job.**
           #
@@ -220,8 +216,7 @@ jobs:
           # than trusting it, and writes one row per declared experiment.
           READOUT=$(aws ssm get-parameter --name /holdout/pipelines/job_experiment_readout \
             --query Parameter.Value --output text)
-          echo "── reading out both experiments (job $READOUT)"
-          databricks jobs run-now "$READOUT" --timeout 3h
+          ops/run_job.sh "$READOUT" "reading out both experiments"
 
           # **The assertion, and it is the reason this workflow exists.**
           #

@@ -51,9 +51,9 @@ on:
         type: boolean
         default: true
       owns_metastore:
-        description: "Create the account's UC metastore. TRUE ONLY ON THE FIRST APPLY OF A REGION."
+        description: "This project owns the region's UC metastore. Leave true unless another project does."
         type: boolean
-        default: false
+        default: true
       layer:
         description: "Which layer to apply. `all` applies them bottom-up in dependency order."
         type: choice
@@ -249,11 +249,21 @@ jobs:
           TF_VAR_databricks_client_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
           TF_VAR_databricks_client_secret: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
 
-          # **`owns_metastore` is a dispatch input with a default of `false`, and the default is
-          # the safe direction rather than the common one.** A Unity Catalog metastore is one per
-          # region per account; creating a second is impossible and destroying somebody else's is
-          # not. `infra/foundation/metastore.tf` carries the trap in full: flipping this from
-          # `true` back to `false` plans a destroy of the metastore and everything in it.
+          # **This input overrides the variable, so the variable's default never applies here.**
+          #
+          # `infra/foundation/variables.tf` was renamed from `create_metastore` and its default
+          # was moved from `false` to `true`, with three paragraphs saying why: *a name
+          # describing an event cannot express a state*, and `false` on a project that owns the
+          # metastore plans a **destroy** of it and every catalog, schema, grant and external
+          # location in it. That change was made after the destroy was planned for real, on
+          # 2026-09-08, and cancelled with seconds to spare.
+          #
+          # **The fix landed in one of the two places.** This line passes the dispatch input
+          # unconditionally, so what a person actually gets is the input's default — and that
+          # stayed `false`, still carrying the argument the variable had just abandoned. A
+          # default corrected where it is written and left standing where it is chosen is not a
+          # corrected default; `tests/ops/test_a_dispatch_default_is_its_variable_s.py` compares
+          # the two rather than trusting that a change reached both.
           TF_VAR_owns_metastore: ${{ inputs.owns_metastore }}
 
           # **Defaults to reporting, and the dispatch has to opt out.** `variables.tf` carries the
