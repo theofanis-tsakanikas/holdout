@@ -5482,8 +5482,29 @@ each task's state and message, and prints the output of **every** task that did 
 plural for `promotion.py`'s reason, since a job whose second task failed because its first did is
 two facts and reporting one sends the reader to the wrong file.
 
+> **And its first dispatch failed the same way it was written to prevent.** The script printed
+>
+>     ── the baseline, under all-control arms, into bronze FAILED; fetching what the job said
+>     jq: error (at <stdin>:35): Cannot index array with string "runs"
+>
+> `databricks jobs list-runs --output json` returns a **bare array**. The REST API documents
+> `{"runs": [...]}` and the script was written against the documentation rather than against the
+> installed client — the same mistake, in the same shape, as every *two copies of one thing* this
+> register already holds: here the two copies were a vendor's document and a vendor's binary.
+>
+> **So the diagnosis of one failed job cost two dispatches, which is exactly what the script
+> existed to stop paying.** It now reads either shape and prints what it got when it can read
+> neither; `set +e` covers the report, so a filter that cannot read one field can no longer take
+> the whole explanation with it. The step still fails: the `exit 1` is unconditional.
+>
+> `tests/ops/test_the_runner_reads_what_the_cli_returns.py` runs the script's **own** filter —
+> read out of the file, not copied into the test — against both shapes and against empty ones.
+> Reverting the filter to `.runs[0].run_id` turns it red on the bare array by name.
+
 *Site:* `ops/run_job.sh` :: `echo "── ${label} FAILED; fetching what the job said"`
-*Disposition:* branch `ops/a-failed-job-says-what-failed`
-*Closed:* 2026-09-08 — one script, both workflows, and a gate that refuses a job started around it
+*Disposition:* branch `ops/a-failed-job-says-what-failed`, then `ops/the-runner-reads-both-shapes`
+*Closed:* 2026-09-08 — one script, both workflows, a gate that refuses a job started around it,
+and a second gate over the script's own parsing after the first version could not parse the
+client it calls
 *Now:* `ops/run_job.sh` :: `echo "── ${label} FAILED; fetching what the job said"`
 *Status:* open
