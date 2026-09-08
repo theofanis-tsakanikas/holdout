@@ -337,3 +337,83 @@ resource "databricks_job" "experiment" {
     }
   }
 }
+
+# ---------------------------------------------------------------- the live day
+#
+# **A job rather than a step on the runner, and the reason is where the files have to land.**
+#
+# `run.yml` drove this from the workflow with `--out s3://<bucket>`. `--out` is a `pathlib.Path`:
+# the driver wrote its stream into a local directory literally named `s3:` on the runner, printed
+# its line counts, exited zero, and the runner went away. It is the same trap `local.zone_path`
+# above was written to close, one layer up — and the format could not have been loaded anyway,
+# since `bulk.load` reads `.csv.gz` and `.parquet` and the driver wrote JSONL.
+#
+# Here it writes Parquet into the landing volume, under its own subdirectory, and the load task
+# after it takes the rows once each — duplicates included, because a receipt line delivered twice
+# is one event and proving that is what a live day is for.
+resource "databricks_job" "live_day" {
+  name        = "holdout — one live day, arriving wrong"
+  description = "The day after the comparison window closes, with lateness and duplicates, into bronze."
+
+  environment {
+    environment_key = local.environment_key
+    spec {
+      client = "2"
+    }
+  }
+
+  git_source {
+    url      = var.repository_url
+    provider = "gitHub"
+    # Exactly one of the two, never both: `variables.tf` explains which and why.
+    branch = var.git_commit == "" ? var.git_ref : null
+    commit = var.git_commit == "" ? null : var.git_commit
+  }
+
+  task {
+    task_key        = "drive"
+    environment_key = local.environment_key
+
+    spark_python_task {
+      python_file = "pipelines/entrypoint.py"
+      source      = "GIT"
+      parameters = [
+        "pipelines.ingest",
+        "--world", var.corpus_world,
+        "--scale", var.corpus_scale,
+        "--seed", var.corpus_seed,
+        # **`after-window`, not a date.** `pipelines/window.py` owns where the window closes and
+        # therefore which day is held out by construction; a date written here would be a second
+        # definition of the split, and the one that is wrong is the one nobody re-reads.
+        "--day", "after-window",
+        "--landing", local.zone_path["landing"],
+        "--into", "live",
+        # The committed arms: the estate is still running the policy each store was assigned.
+        "--arms", "table",
+        "--assignment-schema", local.gold_schema,
+        "--experiment-id", local.experiment_id,
+        "--catalog", local.catalog,
+      ]
+    }
+  }
+
+  task {
+    task_key        = "load"
+    environment_key = local.environment_key
+
+    depends_on {
+      task_key = "drive"
+    }
+
+    spark_python_task {
+      python_file = "pipelines/entrypoint.py"
+      source      = "GIT"
+      parameters = [
+        "pipelines.ingest.bulk",
+        "load",
+        "--landing", local.zone_path["landing"],
+        "--bronze", local.zone_path["bronze"],
+      ]
+    }
+  }
+}

@@ -100,10 +100,22 @@ def built(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> Path
     return root
 
 
-def test_the_run_produces_a_number_and_a_refusal(spark: SparkSession, built: Path) -> None:
+@pytest.fixture(scope="module")
+def rows(spark: SparkSession, built: Path) -> list[dict[str, object]]:
+    """Both readouts, computed once.
+
+    Each `readout` runs the permutation reference set the contract declares — B = 1000 draws over
+    the roster — and three tests asking the same question three times is three times the cost for
+    one answer. Measured on this laptop: the readout is the expensive half of this file.
+    """
     from pipelines.gold import experiments
 
-    rows = experiments.readout(spark, scale=SCALE)
+    return experiments.readout(spark, scale=SCALE)
+
+
+def test_the_run_produces_a_number_and_a_refusal(rows: list[dict[str, object]]) -> None:
+    from pipelines.gold import experiments
+
     assert len(rows) == len(experiments.DECLARED), (
         f"{len(experiments.DECLARED)} experiments were declared and {len(rows)} rows came back. "
         "Nothing is retried and no experiment is dropped: a run that quietly lost one would be "
@@ -127,12 +139,9 @@ def test_the_run_produces_a_number_and_a_refusal(spark: SparkSession, built: Pat
         )
 
 
-def test_the_peeking_design_is_refused_by_name(spark: SparkSession, built: Path) -> None:
+def test_the_peeking_design_is_refused_by_name(rows: list[dict[str, object]]) -> None:
     """The refusal is structural, so it is asserted by code rather than by count."""
-    from pipelines.gold import experiments
-
-    rows = {row["experiment_id"]: row for row in experiments.readout(spark, scale=SCALE)}
-    peeking = rows["fresh-ladder-peeking"]
+    peeking = {row["experiment_id"]: row for row in rows}["fresh-ladder-peeking"]
     assert peeking["reason_code"] == "STOPPING_RULE_PERMITS_PEEKING", (
         f"the peeking design was answered with {peeking['reason_code']!r}. It declares a "
         "group-sequential rule with no spending function, which `feasibility.py` refuses over "
@@ -146,17 +155,17 @@ def test_the_peeking_design_is_refused_by_name(spark: SparkSession, built: Path)
 
 
 def test_the_readout_table_is_written_in_the_shape_the_acceptance_reads(
-    spark: SparkSession, built: Path
+    spark: SparkSession, rows: list[dict[str, object]]
 ) -> None:
     from pipelines.gold import experiments
 
-    written = experiments.write(spark, experiments.readout(spark, scale=SCALE), schema="gold")
+    written = experiments.write(spark, rows, schema="gold")
     assert written == len(experiments.DECLARED)
 
-    rows = spark.sql("select experiment_id, uplift, reason_code from gold.readout").collect()
-    assert len(rows) == written, "gold.readout holds a different number of rows than were written"
-    assert any(row["uplift"] is not None for row in rows)
-    assert any(row["reason_code"] is not None for row in rows)
+    stored = spark.sql("select experiment_id, uplift, reason_code from gold.readout").collect()
+    assert len(stored) == written, "gold.readout holds a different number of rows than were written"
+    assert any(row["uplift"] is not None for row in stored)
+    assert any(row["reason_code"] is not None for row in stored)
 
 
 def test_the_window_agrees_with_the_harness() -> None:

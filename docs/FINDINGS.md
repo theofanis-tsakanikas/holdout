@@ -5340,12 +5340,73 @@ not at all, and every job still succeeds and a number still comes out.
 `tests/infra/test_the_lottery_is_drawn_before_the_window.py` is planted against exactly that:
 swapping the two lines in `backfill.yml` turns it red by name.
 
+> **Restated 2026-09-08, same day, and `make findings` reported `REVERTED` before anything else
+> did.** The resolution of which arms a slice is generated under moved from
+> `pipelines/ingest/bulk.py` to `pipelines/ingest/arms.py` when the live day became a third
+> caller of it — the baseline, the comparison window and the day after it all have to run under
+> the arms that were **committed**, or they are three experiments wearing one estate's name. The
+> anchor followed the code. Nothing about the finding changed.
+
 *Site:* `.github/workflows/backfill.yml` :: `          run_job job_experiment_design "assess both designs and seal the lottery"`
-*Site:* `pipelines/ingest/bulk.py` :: `    if choice == "alternating":`
+*Site:* `pipelines/ingest/arms.py` :: `    if choice == "alternating":`
 *Disposition:* branch `gold/an-experiment-writes-a-readout`
 *Closed:* 2026-09-08 — two slices, two assignments, and the design step between them. Measured
 end to end on the `harness` world: 320 stores, 192 treated and 48 control with 80 excluded for
 interference, and a readout that produced a number
 *Now:* `.github/workflows/backfill.yml` :: `          run_job job_experiment_design "assess both designs and seal the lottery"`
-*Now:* `pipelines/ingest/bulk.py` :: `    if choice == "alternating":`
+*Now:* `pipelines/ingest/arms.py` :: `    if choice == "alternating":`
+*Status:* open
+
+---
+**The live day was written to a directory named `s3:` on a runner that then went away** ·
+found 2026-09-08 · by reading `run.yml` against the module it calls, before dispatching it
+
+`CLAUDE.md` closes phase 3 on *one live day through Zerobus, with lateness and duplicates* —
+because deduplication on a business key and an as-of join are only proved by data that arrives
+wrong. `run.yml`'s step was:
+
+    uv run python -m pipelines.ingest --world "$WORLD" --scale "$SCALE" --seed "$SEED" \
+      --out "s3://${LANDING}"
+
+**Four defects, and every one of them exits zero.**
+
+**One.** `--out` is declared `type=Path`. `Path("s3://bucket")` is a relative directory named
+`s3:`, so the driver wrote its whole stream beside the checkout, printed a line count per stream,
+and the runner was deleted. `infra/pipelines/jobs.tf` had closed this exact trap one layer down
+three days earlier — *an `s3://` string handed to one does not fail — it becomes a local
+directory named `s3:` on the worker* — and the workflow above it went on doing it.
+
+**Two.** Nothing could have loaded it anyway. `bulk.load` takes `.csv.gz` and `.parquet`; the
+driver writes JSONL. Two independent reasons the live day reached nothing.
+
+**Three.** It was not one day. `world_events(prepare(...))` yields every event the world has —
+at the estate's `scenario` scale, eight months of them, a second time.
+
+**Four.** `prepare(...)` with no assignment, which is the finding above arriving in the live path:
+arms nobody drew.
+
+> **The step's name was the only true thing about it.** *Driving one day* is what it said, and a
+> reader checking the workflow would find a driver, a world, a landing bucket and a count. The
+> way to see it was to read the argument's declared type in the module it calls, which no amount
+> of reading the workflow can substitute for.
+
+**What closes it** is a job rather than a step: `databricks_job.live_day` writes Parquet into the
+landing volume under its own subdirectory, one day, under the committed arms, with the lateness
+and the duplicates kept — and the load task after it takes the rows once each. Measured on a
+smoke world: 1,801 events produced, 1,819 delivered, 18 delivered twice, 74 arriving after their
+event; `bulk load` took 4 files and 1,819 rows.
+
+`tests/ops/test_a_workflow_runs_no_pipeline_itself.py` refuses the shape rather than the URI: a
+pipeline entry point takes filesystem paths, and the only filesystem where the estate's paths
+exist is a Databricks task. **Its first version went red against the paragraph that explains it**
+— a gate that cannot be documented beside the thing it forbids is one nobody can keep — so
+comments are removed before it reads anything.
+
+*Site:* `.github/workflows/run.yml` :: `          LIVE=$(aws ssm get-parameter --name /holdout/pipelines/job_live_day \`
+*Site:* `infra/pipelines/jobs.tf` :: `resource "databricks_job" "live_day" {`
+*Disposition:* branch `ingest/one-day-arrives-wrong-and-lands`
+*Closed:* 2026-09-08 — one day, the committed arms, Parquet into the landing volume, and a load
+task behind it. The workflow starts a job by id like every other step that touches the estate
+*Now:* `.github/workflows/run.yml` :: `          LIVE=$(aws ssm get-parameter --name /holdout/pipelines/job_live_day \`
+*Now:* `infra/pipelines/jobs.tf` :: `resource "databricks_job" "live_day" {`
 *Status:* open
