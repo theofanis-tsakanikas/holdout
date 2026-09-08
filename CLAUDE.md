@@ -779,12 +779,13 @@ docs/
                        and settings.json
 .github/               **`ci.yml`, and it is the only one.** The four that dispatch are phase 3
                        and are listed below as declared rather than built
-infra/                 Terraform. **Three layers exist**: `bootstrap/` — state backend, OIDC,
+infra/                 Terraform. **Four layers exist**: `bootstrap/` — state backend, OIDC,
                        the deploy role, the published parameters and the budget, applied from a
                        laptop once — `foundation/` — the data key, the four S3 zones, the
                        workspace, the metastore switch and the TTL reaper — and `lakehouse/` —
-                       the catalog, the schemas and the two compiled AI/BI dashboards. The other
-                       three (`pipelines · ml · serving`) are phase 3, and `make terraform`
+                       the catalog, the schemas and the two compiled AI/BI dashboards — and
+                       `pipelines/` — the three jobs that move bronze to silver to gold. The
+                       other two (`ml · serving`) are phase 3, and `make terraform`
                        validates every layer the glob finds rather than a list
 ```
 
