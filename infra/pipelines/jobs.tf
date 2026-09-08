@@ -21,13 +21,18 @@ locals {
   # task — two copies of a runtime are two things to keep equal.
   environment_key = "holdout"
 
-  # The zone buckets, as arguments. A job takes paths rather than reading SSM itself: the layer
-  # that knows the estate's shape is this one, and a pipeline that discovered its own inputs
-  # would be a second place the estate is described.
-  zone_url = { for z in local.zones : z => "s3://${data.aws_ssm_parameter.zone[z].value}" }
+  # **The volume path, not the bucket URI.** A job takes paths rather than reading SSM itself:
+  # the layer that knows the estate's shape is this one, and a pipeline that discovered its own
+  # inputs would be a second place the estate is described.
+  #
+  # These were `s3://…`, and every entry point under `pipelines/` declares `pathlib.Path`. An
+  # `s3://` string handed to one does not fail — it becomes a **local directory named `s3:`** on
+  # the worker. The job exits zero, the bucket stays empty, and the failure surfaces three jobs
+  # later as an empty readout. `infra/lakehouse/volumes.tf` is what makes a real path available.
+  zone_path = { for z in local.zones : z => data.aws_ssm_parameter.volume[z].value }
 }
 
-# ---------------------------------------------------------------- bronze, from files on S3
+# ------------------------------------------------- landing, then bronze, from files on S3
 #
 # **The ERP path, and it is a bulk load rather than a connector.** `CLAUDE.md` records the ruling:
 # the master data arrives as files dropped several times during a run, and what that demonstrates
@@ -35,8 +40,8 @@ locals {
 # smaller claim, taken deliberately, because the connector that would have made the larger one
 # runs a continuous classic-compute gateway.
 resource "databricks_job" "bulk_load" {
-  name        = "holdout — bulk load into bronze"
-  description = "Files on S3 into bronze, in the source's shape. Nothing is transformed here."
+  name        = "holdout — history into landing, landing into bronze"
+  description = "Eight months of history into landing, then into bronze once each. Nothing is transformed here."
 
   environment {
     environment_key = local.environment_key
@@ -48,25 +53,55 @@ resource "databricks_job" "bulk_load" {
   git_source {
     url      = var.repository_url
     provider = "gitHub"
-    branch   = var.git_ref
+    # Exactly one of the two, never both: `variables.tf` explains which and why.
+    branch = var.git_commit == "" ? var.git_ref : null
+    commit = var.git_commit == "" ? null : var.git_commit
   }
 
   task {
-    task_key        = "bulk_load"
+    task_key        = "history"
     environment_key = local.environment_key
 
+    # **The module this job is named after, which is not the one it was running.**
+    #
+    # It ran `pipelines/ingest/__main__.py` — which *generates a corpus and writes JSONL*. The
+    # bulk load is `pipelines/ingest/bulk.py`, whose own docstring says so: *the S3 bulk load:
+    # files that landed become bronze, once each.* It takes subcommands, and the two `backfill`
+    # needs are `history` — eight months into landing — and `load` — landing into bronze.
+    #
+    # **Every argument is passed and none left to a default.** The package's defaults are `smoke`
+    # and `W6`; a task given only some of them runs green over the wrong corpus, and a crash is a
+    # red run where this is eight months of history that is not eight months of anything.
     spark_python_task {
-      python_file = "pipelines/ingest/__main__.py"
+      python_file = "pipelines/ingest/bulk.py"
       source      = "GIT"
-      # **Every argument is passed, and none is left to a default.** See `variables.tf`: the
-      # package's defaults are `smoke` and `W1`, so a job given only `--out` runs green over the
-      # wrong corpus. That is worse than a crash, because a crash is a red run and this is eight
-      # months of history that is not eight months of anything.
       parameters = [
+        "history",
         "--world", var.corpus_world,
         "--scale", var.corpus_scale,
         "--seed", var.corpus_seed,
-        "--out", local.zone_url["bronze"],
+        "--landing", local.zone_path["landing"],
+      ]
+    }
+  }
+
+  # **Landing into bronze, once each.** The checkpoint that makes *once each* true lives in
+  # `bulk.py`; this task's job is only to run it after the files exist.
+  task {
+    task_key        = "load"
+    environment_key = local.environment_key
+
+    depends_on {
+      task_key = "history"
+    }
+
+    spark_python_task {
+      python_file = "pipelines/ingest/bulk.py"
+      source      = "GIT"
+      parameters = [
+        "load",
+        "--landing", local.zone_path["landing"],
+        "--bronze", local.zone_path["bronze"],
       ]
     }
   }
@@ -91,7 +126,9 @@ resource "databricks_job" "silver" {
   git_source {
     url      = var.repository_url
     provider = "gitHub"
-    branch   = var.git_ref
+    # Exactly one of the two, never both: `variables.tf` explains which and why.
+    branch = var.git_commit == "" ? var.git_ref : null
+    commit = var.git_commit == "" ? null : var.git_commit
   }
 
   task {
@@ -102,8 +139,8 @@ resource "databricks_job" "silver" {
       python_file = "pipelines/silver/__main__.py"
       source      = "GIT"
       parameters = [
-        "--bronze", local.zone_url["bronze"],
-        "--silver", local.zone_url["silver"],
+        "--bronze", local.zone_path["bronze"],
+        "--silver", local.zone_path["silver"],
       ]
     }
   }
@@ -129,7 +166,9 @@ resource "databricks_job" "gold" {
   git_source {
     url      = var.repository_url
     provider = "gitHub"
-    branch   = var.git_ref
+    # Exactly one of the two, never both: `variables.tf` explains which and why.
+    branch = var.git_commit == "" ? var.git_ref : null
+    commit = var.git_commit == "" ? null : var.git_commit
   }
 
   task {
@@ -168,8 +207,8 @@ resource "databricks_job" "gold" {
       python_file = "pipelines/gold/__main__.py"
       source      = "GIT"
       parameters = [
-        "--silver", local.zone_url["silver"],
-        "--root", local.zone_url["gold"],
+        "--silver", local.zone_path["silver"],
+        "--root", local.zone_path["gold"],
       ]
     }
   }

@@ -14,6 +14,14 @@ data "aws_ssm_parameter" "zone" {
   name     = "/holdout/foundation/zone_${each.key}"
 }
 
+# **The volume paths, which is what the jobs are actually given.** `infra/lakehouse/volumes.tf`
+# explains why: every entry point under `pipelines/` declares `pathlib.Path`, and an `s3://`
+# string becomes a local directory named `s3:` rather than an error.
+data "aws_ssm_parameter" "volume" {
+  for_each = toset(local.zones)
+  name     = "/holdout/lakehouse/volume_${each.key}"
+}
+
 data "aws_ssm_parameter" "region" {
   name = "/holdout/bootstrap/region"
 

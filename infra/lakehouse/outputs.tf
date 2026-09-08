@@ -8,6 +8,10 @@ locals {
       "lakebase_name" = databricks_database_instance.lakebase.name
     },
     { for z in local.zones : "location_${z}" => databricks_external_location.zone[z].name },
+    # **The POSIX path each pipeline is given.** `volumes.tf` explains why a path rather than a
+    # URI: every entry point declares `pathlib.Path`, and an `s3://` string becomes a local
+    # directory named `s3:` rather than an error.
+    { for z in local.zones : "volume_${z}" => "/Volumes/${databricks_catalog.holdout.name}/${z}/files" },
   )
 }
 

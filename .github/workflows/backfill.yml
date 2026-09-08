@@ -191,7 +191,10 @@ jobs:
                 -backend-config="key=$layer/terraform.tfstate" \
                 -backend-config="region=$AWS_REGION" \
                 -backend-config="kms_key_id=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn --query Parameter.Value --output text)"
-              terraform -chdir="infra/$layer" apply -input=false -auto-approve -var="git_ref=${SHA}"
+              # **`git_commit`, not `git_ref`.** They are different `git_source` fields, and the
+              # first dispatch put a sha in the branch one: Databricks looked for
+              # `refs/heads/<sha>` and refused with GIT_UNKNOWN_REF.
+              terraform -chdir="infra/$layer" apply -input=false -auto-approve -var="git_commit=${SHA}"
             done
           fi
 
