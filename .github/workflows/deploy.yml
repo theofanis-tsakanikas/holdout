@@ -314,10 +314,24 @@ jobs:
             for l in $order; do
               echo "$ready" | tr ' ' '\n' | grep -qx "$l" && layers="$layers $l"
             done
-            # **A layer that is ready and in no declared order would be applied by nothing.**
-            # Checked against `ready` rather than `declared`: a layer that is not applyable is not
-            # under-covered by being absent from an apply order, it is absent from applying.
+            # **`serving` is applied by `backfill`, not here, and that is the one exception.**
+            #
+            # `CLAUDE.md`: *an endpoint cannot point at a model version that does not exist yet,
+            # and a version exists only after `backfill` has trained one.* Its `model_version`
+            # variable has no default for exactly that reason, so a `deploy` that tried would stop
+            # on a missing input — which is the right failure and the wrong moment to have it.
+            #
+            # It is named here rather than derived because there is nothing to derive it from
+            # until `backfill.yml` exists to be read, and a second workflow reading this one's
+            # order would be the coupling the layers exist to avoid.
+            elsewhere="serving"
+
+            # **A layer that is ready, applied by nobody, and in no declared order would be
+            # applied by nothing.** Checked against `ready` rather than `declared`: a layer that
+            # is not applyable is not under-covered by being absent from an apply order, it is
+            # absent from applying.
             for l in $ready; do
+              echo "$elsewhere" | tr ' ' '\n' | grep -qx "$l" && continue
               echo "$order" | tr ' ' '\n' | grep -qx "$l" || {
                 echo "::error::infra/$l declares a backend and this workflow's dependency order"
                 echo "does not name it. A layer applied by nothing is under-coverage, which is the"
