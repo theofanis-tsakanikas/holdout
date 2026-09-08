@@ -263,17 +263,61 @@ jobs:
           echo "── tagged and still standing:"
           echo "$left" | sed 's/^/    /'
 
-          # `CLAUDE.md`'s survivor list, as a predicate rather than as prose. These carry the
-          # project tag because the budget's cost filter needs them to, and they are precisely
-          # what must outlive every teardown.
-          unexpected=$(echo "$left" | grep -vE 'holdout-tfstate-|:role/holdout-deploy$|:parameter/holdout/bootstrap/' || true)
+          # **The survivor list, derived rather than matched.**
+          #
+          # `CLAUDE.md` names four things: *the state bucket and its access-log bucket, the state
+          # KMS key, the SSM parameters and the deploy role.* The first version of this step was a
+          # hand-written `grep -vE` with **three** of the four in it — the state key was missing,
+          # and the first successful teardown was reported as a failure because the key that must
+          # survive had survived.
+          #
+          # So the two that have opaque names are read from where `infra/bootstrap` published
+          # them. A survivor list derived from the parameters is the same list the layer that
+          # creates them declares; a pattern is a second copy of it, and this one was already
+          # wrong the first time it ran.
+          STATE_KEY=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn \
+            --query Parameter.Value --output text)
+          DEPLOY_ROLE=$(aws ssm get-parameter --name /holdout/bootstrap/deploy_role_arn \
+            --query Parameter.Value --output text)
 
-          if [ -n "$unexpected" ]; then
-            echo "::error::these carry this project's tag and are not on the survivor list:"
-            echo "$unexpected" | sed 's/^/  /'
+          unexpected=""
+          for arn in $left; do
+            case "$arn" in
+              *holdout-tfstate-*)                        continue ;;
+              *:parameter/holdout/bootstrap/*)           continue ;;
+              "$STATE_KEY"|"$DEPLOY_ROLE")               continue ;;
+            esac
+
+            # **A key scheduled for deletion is standing down, not standing.**
+            #
+            # `kms:ScheduleKeyDeletion` does not delete: it starts a window — seven days for the
+            # estate's data key, by `infra/foundation/keys.tf`'s own choice — and the key keeps
+            # its tags for the whole of it. To the tagging API a key awaiting deletion and a live
+            # key are the same row, which is why this asks KMS instead of reading the ARN.
+            #
+            # **This is the one place where the account's answer needs a second question.** Every
+            # other resource here either exists or does not.
+            case "$arn" in
+              *:kms:*:key/*)
+                state=$(aws kms describe-key --key-id "$arn" --query 'KeyMetadata.KeyState' --output text 2>/dev/null || echo UNKNOWN)
+                if [ "$state" = "PendingDeletion" ]; then
+                  echo "    (pending deletion, counted as gone) $arn"
+                  continue
+                fi
+                ;;
+            esac
+
+            unexpected="$unexpected $arn"
+          done
+
+          if [ -n "$(echo "$unexpected" | tr -d ' ')" ]; then
+            echo "::error::these carry this project's tag, are not on the survivor list, and are"
+            echo "not awaiting deletion:"
+            for a in $unexpected; do echo "  $a"; done
             echo "A destroy that exits 0 has removed what its state knew about. This is the"
             echo "account's answer, and it disagrees."
             exit 1
           fi
 
-          echo "OK  only the survivor list is standing: state bucket, deploy role, published parameters."
+          echo "OK  only the survivor list is standing: state bucket and its logs, the state key,"
+          echo "    the deploy role, and the parameters bootstrap published."
