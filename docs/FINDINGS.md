@@ -4473,7 +4473,7 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 *Disposition:* branch `ops/a-published-figure-is-read-off-its-measurement` — was *the author's*, and he delegated all five on 2026-09-05 in the words *do the most professional thing*
 *Closed:* 2026-09-05 — all five restated, and the first of them registered so it cannot recur. **The `infra/` restatement moved again on 2026-09-05, when `infra/bootstrap/` landed and made *`lakehouse/` is the only layer that exists* false in the other direction — `make findings` reported `REVERTED` on the closing text rather than letting the correction go stale, which is the whole argument for closure restating a site instead of releasing it. The `*Now:*` below is the second restatement, not the first.** The figure was **not one line**: `18,069` was wrong in `CLAUDE.md`, the `Makefile`, `evals/oversight/README.md` four times and `corpus/real/MANIFEST.yaml`, which was a whole epoch behind. The fifth row had no site of its own and is restated at `CLAUDE.md` :: `that matter most — ``8/200 = 4.0%``` — the number the eval prints, kept illustrative but no longer a figure nobody measured. `SPEC-T003.md`'s `9/200` is **not** touched: a spec written before the measurement is a record of what was asked for, and editing it would rewrite the question
 *Now:* `CLAUDE.md` :: `the closed field set refuses 18,069 of 18,069.`
-*Now:* `CLAUDE.md` :: `infra/                 Terraform. **Three layers exist**: `bootstrap/` — state backend, OIDC,`
+*Now:* `CLAUDE.md` :: `infra/                 Terraform. **Four layers exist**: `bootstrap/` — state backend, OIDC,`
 
 > **This `*Now:*` was restated 2026-09-06 by `T018`, and it is the third time in two days that
 > this closure has been asked for one.** The anchor read `Two layers exist`; `T018` built
@@ -4486,6 +4486,13 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 > **The anchor is on the half that moves**, which is a worse anchor than one on the half that
 > does not — and the better one is not available here, because the whole content of this site is
 > the count. Recorded rather than fixed, per doctrine rule 4.
+>
+> **Restated a third time 2026-09-08 by `T021`, `Three` → `Four`, and three restatements of one
+> anchor in three days is the argument rather than the annoyance.** Every layer that lands moves
+> it, so this entry will keep costing a restatement for as long as layers land — six were planned
+> and four exist. **That is the anchor working**: the line it watches is the one sentence in the
+> file that goes stale every time the estate grows, and an anchor that never needed restating
+> would be one watching a line nothing changes.
 *Now:* `CLAUDE.md` :: `  then **append-only**. `delta.appendOnly` refuses an update, a delete and an insert overwrite,`
 *Now:* `CLAUDE.md` :: `6 rest on. Five families, none of which is a vendor feature.`
 *Status:* open
