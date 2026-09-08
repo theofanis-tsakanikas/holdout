@@ -66,8 +66,9 @@ resource "databricks_job" "train" {
     environment_key = "holdout"
 
     spark_python_task {
-      python_file = "pipelines/ml/__main__.py"
+      python_file = "pipelines/entrypoint.py"
       source      = "GIT"
+      parameters  = ["pipelines.ml"]
     }
   }
 
