@@ -200,30 +200,19 @@ jobs:
 
           # **Started by id, not by name.** `infra/pipelines/outputs.tf` publishes the ids, and a
           # name is a label somebody can change without changing anything else.
+          #
+          # **And started through `ops/run_job.sh`, which is what says why one failed.** The
+          # first real dispatch of this workflow ended on *Workload failed, see run output for
+          # details* — advice to open a console, from a step that had already spent an
+          # environment approval and started an hour of compute. The script fetches the run and
+          # prints every unsuccessful task's output; `tests/ops/test_a_job_is_started_by_the_
+          # runner.py` is what stops the next job being started around it.
           run_job () {
-            local param="$1" label="$2"
-            local id
+            local param="$1" label="$2" id
             id=$(aws ssm get-parameter --name "/holdout/pipelines/$param" --query Parameter.Value --output text)
-            echo "── $label (job $id)"
-            # **`--timeout 3h`, and `0` was the first answer and the wrong one.**
-            #
-            # The flag takes a Go duration and defaults to `20m0s` — shorter than any of these
-            # jobs. `0` reads as *no limit* and parses as **zero seconds**, which is the opposite:
-            # the CLI would stop waiting immediately and the step would report a job it never saw
-            # finish. Measured against the installed CLI's own help rather than assumed.
-            #
-            # Three hours is above this job's slowest modelled leg and below the workflow's own
-            # 180-minute timeout, so the job's timeout stays the authority and this is only the
-            # client agreeing to wait for it.
-            databricks jobs run-now "$id" --timeout 3h
+            ops/run_job.sh "$id" "$label"
           }
 
-          # **The order is the experiment, and half of it runs before the other half's data
-          # exists.** `corpus/world/__init__.py` calls the default assignment *a convenience and
-          # not a lottery*, so a history generated in one pass carries arms nobody drew and any
-          # uplift read out over it is stated without a valid holdout. The baseline is generated
-          # under all-control; the lottery is drawn against its covariates and sealed; and only
-          # then is the comparison window generated, under the arms that were committed.
           run_job job_history_baseline  "the baseline, under all-control arms, into bronze"
           run_job job_silver            "bronze into silver"
           run_job job_gold              "silver into gold"
@@ -235,8 +224,7 @@ jobs:
           run_job job_gold              "silver into gold, the window included"
 
           TRAIN=$(aws ssm get-parameter --name /holdout/ml/job_train --query Parameter.Value --output text)
-          echo "── train, gate, register (job $TRAIN)"
-          databricks jobs run-now "$TRAIN" --timeout 3h
+          ops/run_job.sh "$TRAIN" "train, gate, register"
 
       - name: Apply serving, at the version that now exists
         env:
