@@ -16,6 +16,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from pipelines import session as runtime
 from pipelines.silver import session
 from pipelines.silver.build import build
 
@@ -23,17 +24,29 @@ from pipelines.silver.build import build
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pipelines.silver", description=__doc__)
     parser.add_argument("--bronze", type=Path, required=True)
-    parser.add_argument("--silver", type=Path, required=True)
+    parser.add_argument(
+        "--silver", type=Path, help="Where silver goes on a machine with no catalog."
+    )
+    parser.add_argument(
+        "--silver-schema",
+        help="Where silver goes where there is a catalog. Exactly one of this and --silver.",
+    )
+    # **The catalog is named or it is the workspace's default.** `pipelines/session.py` carries
+    # what that costs: a two-part table name resolves against whatever catalog is current, and
+    # a run that wrote its tables into the wrong one reports success.
+    parser.add_argument("--catalog")
     parser.add_argument("--cores", type=int, default=session.LOCAL_CORES)
     args = parser.parse_args(argv)
 
     spark = session.build(cores=args.cores)
     try:
-        counts = build(spark, args.bronze, args.silver)
+        runtime.use_catalog(spark, args.catalog)
+        counts = build(spark, args.bronze, args.silver, schema=args.silver_schema)
     finally:
-        spark.stop()
+        runtime.release(spark)
 
-    print(f"silver  {args.bronze} -> {args.silver}")
+    destination = args.silver_schema or args.silver
+    print(f"silver  {args.bronze} -> {destination}")
     print("        counts over this bronze directory, not properties of the rules\n")
     for name, rows in counts.items():
         marker = "  <- kept, not dropped" if name == "quarantine" else ""

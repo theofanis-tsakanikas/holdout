@@ -20,25 +20,48 @@ import argparse
 import sys
 from pathlib import Path
 
+from pipelines import session as runtime
 from pipelines.gold import session
-from pipelines.gold.build import build
+from pipelines.gold.build import build, priced
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pipelines.gold", description=__doc__)
-    parser.add_argument("--silver", type=Path, required=True)
-    parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--cores", type=int, default=session.LOCAL_CORES)
+    parser.add_argument(
+        "--silver", type=Path, help="Silver as directories, where there is no catalog."
+    )
+    parser.add_argument(
+        "--silver-schema", help="Silver as a catalog schema. Exactly one of the two."
+    )
+    parser.add_argument("--catalog")
+    parser.add_argument("--root", type=Path, help="Where a local session puts its warehouse.")
+    # **`priced` and `all` are two callers, not two moods.** On the estate the analytical models
+    # are built by the job's `dbt` task against a warehouse, so the Python step must write the
+    # priced tables and stop; running dbt a second time in this process would build the same
+    # models twice, from a session that on serverless cannot exist. Locally there is no dbt task
+    # and `all` is the whole build.
+    parser.add_argument("--only", choices=("all", "priced"), default="all")
     args = parser.parse_args(argv)
 
-    args.root.mkdir(parents=True, exist_ok=True)
-    spark = session.build(args.root, cores=args.cores)
-    try:
-        built = build(spark, args.silver, root=args.root)
-    finally:
-        spark.stop()
+    if args.only == "all" and args.root is None:
+        parser.error("--root is required for --only all: dbt writes its warehouse there.")
+    if args.root is not None:
+        args.root.mkdir(parents=True, exist_ok=True)
 
-    print(f"gold    {args.silver} -> {args.root}/warehouse")
+    spark = session.build(args.root)
+    try:
+        runtime.use_catalog(spark, args.catalog)
+        if args.only == "priced":
+            counts, unpriced = priced(spark, args.silver, silver_schema=args.silver_schema)
+            _report_priced(counts, unpriced)
+            return 0
+        if args.silver is None:
+            parser.error("--only all reads silver from directories: pass --silver.")
+        built = build(spark, args.silver, root=args.root, silver_schema=args.silver_schema)
+    finally:
+        runtime.release(spark)
+
+    print(f"gold    {args.silver or args.silver_schema} -> {args.root}/warehouse")
     print("        counts over this silver directory, not properties of the models\n")
     for name, rows in built.priced.items():
         print(f"  {name:<34} {rows:>10,}")
@@ -51,6 +74,17 @@ def main(argv: list[str] | None = None) -> int:
         "  <- no margin row: revenue with a null cost would enter the metric as pure margin"
     )
     return 0
+
+
+def _report_priced(counts: dict[str, int], unpriced: int) -> None:
+    """What the estate's first gold task produced, in the shape the full build prints it."""
+    print("gold    priced tables only; the models are dbt's task\n")
+    for name, rows in counts.items():
+        print(f"  {name:<34} {rows:>10,}")
+    print(
+        f"\n  {'sales with no published cost':<34} {unpriced:>10,}"
+        "  <- no margin row: revenue with a null cost would enter the metric as pure margin"
+    )
 
 
 if __name__ == "__main__":

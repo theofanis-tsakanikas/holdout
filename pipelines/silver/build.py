@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from pipelines.silver import tables
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from pyspark.sql import DataFrame, SparkSession
@@ -61,13 +62,68 @@ def read_bronze(spark: SparkSession, bronze: Path) -> dict[str, DataFrame]:
     return frames
 
 
-def build(spark: SparkSession, bronze: Path, silver: Path) -> dict[str, int]:
+def _into_schema(schema: str) -> Callable[[str, DataFrame], None]:
+    """Write one table into a Unity Catalog schema."""
+
+    def put(name: str, frame: DataFrame) -> None:
+        frame.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(
+            f"{schema}.{name}"
+        )
+
+    return put
+
+
+def _into_directory(silver: Path) -> Callable[[str, DataFrame], None]:
+    """Write one table into a directory under `silver`, as Delta."""
+
+    def put(name: str, frame: DataFrame) -> None:
+        frame.write.format("delta").mode("overwrite").save(str(silver / name))
+
+    return put
+
+
+def build(
+    spark: SparkSession,
+    bronze: Path,
+    silver: Path | None = None,
+    *,
+    schema: str | None = None,
+) -> dict[str, int]:
     """Write every silver table as Delta and return the row counts, quarantine included.
 
     **Spark reads the Parquet this repository's own stdlib writer produced**, which is a third
     independent reader of that format after pyarrow and this project's tests — and the one that
     matters on the estate, since it is the engine the lakehouse runs.
+
+    **A directory or a schema, never both and never neither.** Locally there is no catalog, so
+    silver is five Delta directories under `silver`. On the estate there is one, and silver is
+    five Unity Catalog tables — which is what `pipelines/ml/__main__.py` already says in a
+    comment (*on the estate silver is a Unity Catalog schema*) and what nothing had made true.
+    The alternative, registering the directories as external tables, is refused by Unity Catalog
+    itself: the zone paths are inside a volume, and a table may not be created inside one.
+
+    The two are mutually exclusive for the reason `infra/pipelines/variables.tf` gives about
+    `branch` and `commit`: a pair where both are accepted is a pair where one is silently
+    ignored, and the run stays green while the rows land somewhere nobody named.
     """
+    if silver is not None and schema is not None:
+        raise ValueError(
+            "`silver` (a directory) and `schema` (a Unity Catalog schema) are two places, and "
+            "a build writes to one of them. Pass one."
+        )
+    # **Where the rows go is decided before they are read.** A refusal after `read_bronze` would
+    # arrive minutes into a build, having done all of the work and none of the writing.
+    if schema is not None:
+        spark.sql(f"create schema if not exists {schema}")
+        put = _into_schema(schema)
+    elif silver is not None:
+        put = _into_directory(silver)
+    else:
+        raise ValueError(
+            "Neither `silver` (a directory) nor `schema` (a Unity Catalog schema) was given, "
+            "so there is nowhere for silver to go."
+        )
+
     frames = read_bronze(spark, bronze)
     sales, sales_bad = tables.sales(frames["pos_lines"])
     displayed, displayed_bad = tables.price_displayed(frames["esl_acks"])
@@ -81,10 +137,10 @@ def build(spark: SparkSession, bronze: Path, silver: Path) -> dict[str, int]:
         ("shelf_state", shelf),
         ("reference", costs),
     ):
-        frame.write.format("delta").mode("overwrite").save(str(silver / name))
+        put(name, frame)
         written[name] = frame.count()
 
     quarantine = sales_bad.union(displayed_bad).union(shelf_bad).union(costs_bad)
-    quarantine.write.format("delta").mode("overwrite").save(str(silver / "quarantine"))
+    put("quarantine", quarantine)
     written["quarantine"] = quarantine.count()
     return written

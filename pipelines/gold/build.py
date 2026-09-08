@@ -68,17 +68,35 @@ def register_silver(spark: SparkSession, silver: Path, *, schema: str) -> tuple[
     return tuple(mounted)
 
 
-def build(spark: SparkSession, silver: Path, *, root: Path) -> Built:
-    """Everything, in the one order it can happen in, and the counts it produced."""
-    register_silver(spark, silver, schema=session.SILVER_SCHEMA)
-    priced = facts.write(spark, silver, schema=session.SCHEMA)
+def priced(
+    spark: SparkSession, silver: Path | None = None, *, silver_schema: str | None = None
+) -> tuple[dict[str, int], int]:
+    """The two priced tables, and the count of receipt lines that could not be priced.
+
+    **Separated from `build` because on the estate it is a task of its own.** The gold job runs
+    `dbt` against `gold.priced_sales` and `gold.priced_waste`, which are written here — so this
+    has to have finished before dbt starts. The first version of `infra/pipelines/jobs.tf` had
+    the dependency the other way round, which would have run dbt against sources that did not
+    exist yet.
+    """
+    written = facts.write(spark, silver, schema=session.SCHEMA, silver_schema=silver_schema)
     unpriced = spark.sql(
         f"select count(*) as n from {session.SCHEMA}.priced_sales where unit_cost_as_of is null"
     ).collect()[0]["n"]
+    return written, int(unpriced)
+
+
+def build(
+    spark: SparkSession, silver: Path, *, root: Path, silver_schema: str | None = None
+) -> Built:
+    """Everything, in the one order it can happen in, and the counts it produced."""
+    if silver_schema is None:
+        register_silver(spark, silver, schema=session.SILVER_SCHEMA)
+    priced_counts, unpriced = priced(spark, silver, silver_schema=silver_schema)
     built = models.run(spark, target_root=root)
     counts = {
         name: spark.table(f"{session.SCHEMA}.{name}").count()
         for name in built
         if name not in facts.PRICED_TABLES
     }
-    return Built(priced=priced, tables=counts, unpriced_sales=int(unpriced))
+    return Built(priced=priced_counts, tables=counts, unpriced_sales=unpriced)

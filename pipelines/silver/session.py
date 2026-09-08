@@ -24,8 +24,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
+
+from pipelines import session as runtime
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -37,12 +38,32 @@ LOCAL_CORES = 2
 
 
 def build(name: str = "holdout-silver", *, cores: int = LOCAL_CORES) -> SparkSession:
+    """The runtime's session where there is one, and a local Delta session where there is not.
+
+    `pipelines/session.py` carries the argument: on serverless the session already exists and the
+    configuration below is unsupported there, so building would fail on the import rather than on
+    anything this module could explain.
+    """
+    existing = runtime.provided()
+    if existing is not None:
+        return existing
+    return _local(name, cores=cores)
+
+
+def _local(name: str, *, cores: int) -> SparkSession:
     """A session with Delta's catalog and extensions, and nothing else configured.
 
     `configure_spark_with_delta_pip` is Delta's own helper: it names the jar coordinates that
     match the installed `delta-spark`, so the pairing is the package's statement rather than a
     version this repository would have to keep in step by hand.
+
+    **The import is inside the function.** `delta` is the local engine's package and the
+    serverless environment does not carry it; at module scope, importing this module at all
+    would fail on the estate — including from `pipelines/silver/build.py`, which needs nothing
+    from it.
     """
+    from delta import configure_spark_with_delta_pip
+
     builder = (
         SparkSession.builder.appName(name)
         .master(f"local[{cores}]")
@@ -57,14 +78,16 @@ def build(name: str = "holdout-silver", *, cores: int = LOCAL_CORES) -> SparkSes
         # A local build writes small tables; the default 200 shuffle partitions turn a
         # three-row join into 200 empty files.
         .config("spark.sql.shuffle.partitions", str(cores))
+        # What `pipelines/session.py::release` reads back. Set here and nowhere else.
+        .config(runtime.LOCAL, "true")
     )
     return configure_spark_with_delta_pip(builder).getOrCreate()
 
 
 def sessions(name: str = "holdout-silver") -> Iterator[SparkSession]:
-    """A session that stops when the caller is done with it. For a fixture or a `with`."""
+    """A session that stops when the caller is done with it — unless it was never ours."""
     spark = build(name)
     try:
         yield spark
     finally:
-        spark.stop()
+        runtime.release(spark)
