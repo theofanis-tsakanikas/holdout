@@ -67,11 +67,9 @@ from corpus.world.parquet import Column, Kind, ParquetWriter
 from pipelines.ingest.erp import MANIFEST, declared_types, drop_directories
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping, Sequence
+    from collections.abc import Iterator, Sequence
     from pathlib import Path
 
-    from corpus.world import Run
-    from corpus.world.assignment import Arm
 
 #: What the loader has already taken, so that it does not take it twice.
 CHECKPOINT = "_checkpoint.json"
@@ -470,67 +468,6 @@ def _slice(args: Any) -> tuple[date | None, date | None]:
     return None, None
 
 
-def _arms(args: Any, run: Run) -> Mapping[str, Arm] | None:
-    """The assignment the history is generated under, or `None` for the package's default.
-
-    Three answers and they are three different claims:
-
-    * **`alternating`** — `None` here, so `prepare` applies its own convenience. It is not a
-      lottery and the package says so; it is the right answer for a demonstration that is not
-      going to be read out.
-    * **`all-control`** — the baseline. Nothing is applied to anybody, which is what makes the
-      pre-period covariates a measurement of the estate rather than of the treatment.
-    * **`table`** — the arms `gold.experiment_assignment` holds, written by
-      `pipelines/gold/experiments.py` from a lottery drawn against the baseline's covariates and
-      sealed before this window opens. Read back through the table rather than passed along, so
-      the window is generated under the arms that were **committed**, not under a mapping that
-      travelled beside them.
-    """
-    from corpus.world.assignment import Arm, all_control
-
-    choice = getattr(args, "arms", "alternating")
-    if choice == "alternating":
-        return None
-
-    built = run.chain
-    if choice == "all-control":
-        return all_control(built)
-
-    if not args.assignment_schema or not args.experiment_id:
-        raise SystemExit(
-            "--arms table needs --assignment-schema and --experiment-id: the window is "
-            "generated under the arms that were committed, and this is how it finds them."
-        )
-    from pipelines import session as runtime_module
-    from pipelines.gold import assignment as assignment_table
-    from pipelines.gold import session as gold_session
-
-    spark = gold_session.build()
-    try:
-        runtime_module.use_catalog(spark, getattr(args, "catalog", None))
-        rows = assignment_table.read_rows(
-            spark, schema=args.assignment_schema, experiment_id=args.experiment_id
-        )
-    finally:
-        runtime_module.release(spark)
-    if not rows:
-        raise SystemExit(
-            f"{args.assignment_schema}.experiment_assignment holds no rows for "
-            f"{args.experiment_id}. The window may not be generated before the lottery it is "
-            "supposed to run under has been drawn and written."
-        )
-    committed = {store: Arm(arm) for store, arm in rows}
-    # **A store outside the roster is simulated under control, and that is a decision.**
-    # `assess` excludes stores automatically where a neighbour is treated — 80 of 320 on the
-    # harness world — and those stores are not in the experiment. The world still has to
-    # simulate them, and the only honest arm for a shop nobody randomised is the one where
-    # nothing was applied. Treating them would put the intervention on shelves the readout does
-    # not look at, and the estate would be running a bigger experiment than it declared.
-    outside = [s.store_id for s in built.stores if s.store_id not in committed]
-    print(f"arms     {len(committed)} committed, {len(outside)} outside the roster -> control")
-    return {**dict.fromkeys(outside, Arm.CONTROL), **committed}
-
-
 def main(argv: list[str] | None = None) -> int:
     """`python -m pipelines.ingest.bulk` — export the drops, then load what landed.
 
@@ -547,6 +484,7 @@ def main(argv: list[str] | None = None) -> int:
     from corpus.world import prepare
 
     from pipelines.ingest import erp
+    from pipelines.ingest.arms import arms_for
 
     parser = argparse.ArgumentParser(prog="pipelines.ingest.bulk", description=main.__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -620,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
             args.world,
             seed=args.seed,
             scale=args.scale,
-            assignment=_arms(args, base),
+            assignment=arms_for(args, base),
         )
         since, until = _slice(args)
         counts = erp.history(run, args.landing, since=since, until=until, into=args.into)

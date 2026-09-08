@@ -156,28 +156,42 @@ jobs:
             --query Parameter.Value --output text)
           export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
 
-          # **The driver is this repository's own, not a Terraform resource.**
+          # **The driver is this repository's own, not a Terraform resource, and it runs as a
+          # job rather than here.**
           #
-          # `infra/pipelines/README.md` records why: `databricks/databricks 1.130.0` carries no
-          # Zerobus resource at all, because Zerobus is written to by a client. That client is
-          # `pipelines/ingest/driver.py`, and this is the step that points it at the workspace.
+          # `infra/pipelines/README.md` records why it is not a resource: `databricks/databricks
+          # 1.130.0` carries no Zerobus resource at all, because Zerobus is written to by a
+          # client, and that client is `pipelines/ingest/driver.py`.
+          #
+          # **Why it moved off the runner is a defect this step had for as long as it existed.**
+          # It ran `python -m pipelines.ingest --out "s3://${LANDING}"`. `--out` is a
+          # `pathlib.Path`, so the driver wrote its stream into a local directory literally named
+          # `s3:` on the runner, printed its line counts, exited zero, and the runner went away.
+          # `infra/pipelines/jobs.tf` had already closed that exact trap one layer down for the
+          # zone paths. And the format could not have been loaded even if it had landed:
+          # `bulk.load` reads `.csv.gz` and `.parquet`, and the driver wrote JSONL.
+          #
+          # It also drove **every day the world has** rather than one — eight months of events a
+          # second time, under `alternating` arms nobody drew.
           #
           # **Lateness and duplicates are the point rather than an accident.** `CLAUDE.md`: *one
           # live day through Zerobus, with lateness and duplicates* — because deduplication on a
-          # business key and an as-of join are only proved by data that arrives wrong.
-          echo "── driving one day"
-          # **The same world, scale and seed the jobs were applied with, read from the layer
-          # rather than typed here.** `infra/pipelines` publishes them for exactly this: a day
-          # driven under a different world from the history that trained the model is not a held
-          # out day, it is a different experiment — and the first version of this line carried
-          # `w6`, `scenario` and `1` as literals, one of which was already wrong in case.
-          WORLD=$(aws ssm get-parameter --name /holdout/pipelines/corpus_world --query Parameter.Value --output text)
-          SCALE=$(aws ssm get-parameter --name /holdout/pipelines/corpus_scale --query Parameter.Value --output text)
-          SEED=$(aws ssm get-parameter --name /holdout/pipelines/corpus_seed --query Parameter.Value --output text)
-          LANDING=$(aws ssm get-parameter --name /holdout/foundation/zone_landing --query Parameter.Value --output text)
+          # business key and an as-of join are only proved by data that arrives wrong. The job
+          # keeps them and the load task takes the rows once each.
+          #
+          # The world, scale and seed are the job's, applied by `infra/pipelines` from the same
+          # variables the history was generated under: a day driven under a different world from
+          # the history that trained the model is not a held-out day, it is a different
+          # experiment.
+          LIVE=$(aws ssm get-parameter --name /holdout/pipelines/job_live_day \
+            --query Parameter.Value --output text)
+          echo "── driving the day after the window closes, into bronze (job $LIVE)"
+          databricks jobs run-now "$LIVE" --timeout 3h
 
-          uv run python -m pipelines.ingest --world "$WORLD" --scale "$SCALE" --seed "$SEED" \
-            --out "s3://${LANDING}"
+          SILVER=$(aws ssm get-parameter --name /holdout/pipelines/job_silver \
+            --query Parameter.Value --output text)
+          echo "── bronze into silver, the live day included (job $SILVER)"
+          databricks jobs run-now "$SILVER" --timeout 3h
 
       - name: Two experiments — one produces a number, one refuses
         env:

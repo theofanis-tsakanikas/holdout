@@ -53,7 +53,7 @@ import csv
 import gzip
 import json
 from collections import Counter
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
@@ -317,6 +317,7 @@ def write(
     only_stores: Sequence[str] | None = None,
     since: date | None = None,
     until: date | None = None,
+    records: Iterable[Event] | None = None,
 ) -> dict[str, int]:
     """Materialise a world: four event streams, three reference tables, and the seal.
 
@@ -334,6 +335,14 @@ def write(
     declaration in `REFERENCE_TABLES` below.
 
     The seal, the manifest and the counts do not move with the format.
+
+    **`records` materialises a stream somebody else already holds, and then there is no seal.**
+    `pipelines/ingest/driver.py` takes this world's events and delivers them late, twice and out
+    of order — which is the whole of what a live day demonstrates — so what reaches disk is its
+    stream and not this one. A seal written here would be the truth of a stream that was never
+    written, and the one structural half of the seal is that a consumer cannot be handed a
+    number it did not earn: a caller holding the delivered records has already consumed
+    `events(...)` and may seal that itself.
     """
     target = as_format(fmt)
     directory.mkdir(parents=True, exist_ok=True)
@@ -341,8 +350,11 @@ def write(
     # All four files open at once, because the generator emits one interleaved stream and
     # writing them one at a time would mean generating the world four times.
     streams = _parquet_streams if target is Format.PARQUET else _csv_streams
+    source = (
+        events(run, seal_into=directory, only_stores=only_stores) if records is None else records
+    )
     with streams(directory) as deliver:
-        for event in events(run, seal_into=directory, only_stores=only_stores):
+        for event in source:
             # **Filtered here and not in `events`.** A slice is a property of materialising a
             # world, not of simulating one: the generator's per-store state — inventory, shelf
             # life, the ladder's position — carries across days, so days 57 to 112 are only

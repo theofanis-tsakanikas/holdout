@@ -78,3 +78,19 @@ def iso_weeks(opens: date, closes: date) -> tuple[str, ...]:
             weeks.append(label)
         day += timedelta(days=1)
     return tuple(weeks)
+
+
+#: What `--day` accepts in place of a date, so the live day has one definition rather than a
+#: date computed in a workflow and hoped to match the window's end.
+AFTER_WINDOW = "after-window"
+
+
+def live_day(scale: Scale | str) -> date:
+    """The first day after the comparison window closes. The day `run` drives.
+
+    **Held out by construction rather than by declaration.** `backfill.yml` says the time split
+    *falls out of the sequence rather than being imposed*: training ends where the loaded history
+    ends, the window ends there too, and this is the day after. Nothing that produced the model
+    or the readout has seen it.
+    """
+    return window(scale)[1]

@@ -6,6 +6,7 @@ locals {
     "job_history_window"     = tostring(databricks_job.history["window"].id)
     "job_experiment_design"  = tostring(databricks_job.experiment["design"].id)
     "job_experiment_readout" = tostring(databricks_job.experiment["readout"].id)
+    "job_live_day"           = tostring(databricks_job.live_day.id)
     "job_silver"             = tostring(databricks_job.silver.id)
     "job_gold"               = tostring(databricks_job.gold.id)
 
