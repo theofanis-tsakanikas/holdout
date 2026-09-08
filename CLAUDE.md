@@ -1000,8 +1000,8 @@ reading a workflow's exit code.
 |---|---|---|---|
 | `ci` | every push | **yes** | the suite, every eval, `gate-proof`, `make contracts`, `make expiry`, `make preview-audit`, `terraform validate` |
 | `deploy` | dispatch | **yes** | **asserts the suite was green on the dispatched sha**, then applies a layer or all of them, bottom-up |
-| `backfill` | dispatch | **no** | load history, build silver and gold, train, gate, register, apply `serving` |
-| `run` | dispatch | **no** | drive the day, run both experiments, answer a live question, assert against the account |
+| `backfill` | dispatch | **yes** | load history, build silver and gold, train, gate, register, apply `serving` |
+| `run` | dispatch | **yes** | drive the day, run both experiments, answer a live question, assert against the account |
 | `destroy` | dispatch | **yes** | takes a target: `serving` (the expensive layer, ~2 min) or `all` (reverse order), then asks the account |
 
 **The suite runs upstream of every apply.** Nothing reaches AWS until all of it is green.

@@ -1,0 +1,233 @@
+# `backfill` — eight months of history, then a trained model, then the endpoint.
+#
+# **The order is the whole workflow and it is not a preference.** `CLAUDE.md`:
+#
+#     backfill   eight months of history:
+#                  ERP master data  → files on S3, dropped again during run
+#                  transaction history → files on S3, bulk-loaded into bronze
+#                → silver → gold
+#                → train on the estate → gates → register a version
+#                → apply serving          <- only now can an endpoint exist
+#
+# **`serving` is applied here rather than by `deploy` because its input does not exist at deploy
+# time.** `infra/serving/variables.tf` declares `model_version` with no default for that reason:
+# an endpoint cannot point at a version nothing has trained.
+#
+# **And the day this drives is held out by construction.** Training ends where the history ends;
+# `run` drives the day after. The time split falls out of the sequence rather than being imposed,
+# which is why this workflow's order is a claim about the experiment rather than about
+# convenience.
+name: backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref_pin:
+        description: "Pin the jobs to the dispatched sha rather than to `main`."
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+concurrency:
+  group: estate
+  cancel-in-progress: false
+
+jobs:
+  verified:
+    name: the suite was green on this sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The dispatched sha has a successful ci run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # **`conclusion == "success"`, not `!= "failure"`.** `ci.yml` runs with
+          # `cancel-in-progress: true` on `main`, so two merges in quick succession cancel the
+          # first run — and a cancelled run is not a successful one. The tree may well have been
+          # green as a pull request; what this asserts is the record for *this sha*, and the
+          # record says `cancelled`. Re-run `ci` on the sha and dispatch again.
+          #
+          # This is `claims-complete`'s own rule one layer up: it refuses `failure`,
+          # `cancelled` **and** `skipped`, because a check that did not run is not a check
+          # that passed.
+          # `per_page=100` is a cap and is stated as one: two runs exist per sha today, `push`
+          # and `pull_request`, so the page holds the whole population — but the population is
+          # capped rather than enumerated and nothing here would notice a 101st.
+          runs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&per_page=100" \
+                   --jq '[.workflow_runs[] | {status, conclusion, event, url}]')
+
+          echo "$runs" | jq -r '.[] | "  \(.event)  \(.status)  \(.conclusion // "-")  \(.url)"'
+
+          green=$(echo "$runs" | jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length')
+
+          if [ "$green" -eq 0 ]; then
+            # **Four states, and telling them apart is the difference between good advice and
+            # advice that is wrong in the commonest case.** `status` is already in the projection
+            # above, so this branches on data the query has rather than on a guess.
+            #
+            # **A squash-merge produces a new commit and no required check has ever run on it** —
+            # the required contexts were evaluated on the pull request's head, which is a
+            # different sha. What this sha gets is its own `push` run, and that run takes 23 to
+            # 27 minutes. So *still going* is what an operator hits right after a merge, and
+            # telling them to re-run something would be wrong.
+            running=$(echo "$runs" | jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length')
+            cancelled=$(echo "$runs" | jq '[.[] | select(.conclusion == "cancelled")] | length')
+            failed=$(echo "$runs" | jq '[.[] | select(.conclusion == "failure")] | length')
+
+            if [ "$running" -gt 0 ]; then
+              echo "::error::ci is still running for ${SHA}. It takes 23-27 minutes and this sha"
+              echo "needs its own run: the required checks ran on the pull request's head, which"
+              echo "is a different commit. Wait for it to finish and dispatch again. Do not re-run."
+            elif [ "$cancelled" -gt 0 ]; then
+              echo "::error::ci was cancelled for ${SHA}. A later merge to main cancelled it —"
+              echo "ci runs with cancel-in-progress. Re-run ci on this sha, then dispatch."
+            elif [ "$failed" -gt 0 ]; then
+              echo "::error::ci failed for ${SHA}. Nothing reaches AWS on a red suite."
+            else
+              echo "::error::No ci run at all for ${SHA}. Was this commit pushed to main?"
+            fi
+            exit 1
+          fi
+          echo "OK  ${green} successful ci run(s) for ${SHA}"
+
+          # **And the sha must be on `main`, asserted here rather than assumed of the branch
+          # policy.** `CLAUDE.md` says the money workflows *dispatch from `main` only*, and what
+          # enforces that is the environment's `deployment_branch_policy` — **which nobody has
+          # verified**, because `main` is protected by a ruleset and classic branch protection
+          # reads `enabled: false`.
+          #
+          # The check above does not narrow it: measured against `#68`'s head sha, a branch tip
+          # that was never on `main`, the runs query returns a `pull_request` success. So without
+          # this line the two gates are not independent — one is unverified and the other covers
+          # a different property.
+          #
+          # Same reason `oidc.tf` carries a postcondition on a provider another project owns: a
+          # guarantee that rests entirely on a mechanism this repository cannot check is not a
+          # guarantee this repository holds.
+          if ! gh api "repos/${GITHUB_REPOSITORY}/compare/main...${SHA}" --jq '.status' \
+               | grep -qE '^(identical|behind)$'; then
+            echo "::error::${SHA} is not on main. The money workflows dispatch from main only."
+            exit 1
+          fi
+          echo "OK  ${SHA} is on main"
+
+  backfill:
+    name: load, build, train, serve
+    needs: verified
+    runs-on: ubuntu-latest
+    environment: deploy
+
+    # **Three hours against a modelled ~1.5, and the credential below outlives it.** The margin is
+    # deliberate and the number is a projection: `CLAUDE.md` says so of every figure in its cost
+    # model, and nothing has run yet. The first real dispatch replaces it.
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: holdout-backfill-${{ github.run_id }}
+          # Above the job's own timeout, which is what
+          # `tests/ops/test_credential_outlives_job.py` asserts.
+          role-duration-seconds: 12000
+
+      - name: Load, build, train
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          SHA: ${{ github.sha }}
+          PIN: ${{ inputs.git_ref_pin }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          DATABRICKS_HOST=$(aws ssm get-parameter --name /holdout/foundation/workspace_url \
+            --query Parameter.Value --output text)
+          export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
+
+          # **The jobs are pinned to this sha before they are started.**
+          #
+          # `infra/pipelines/variables.tf` declares the weakness this closes: a job on `main` runs
+          # whatever `main` says at the moment it starts, so two runs a day apart can execute
+          # different code while reporting the same configuration. **That is tolerable where code
+          # is stored and intolerable where a number is produced**, and this is where a number is
+          # produced — the model version this trains is the one `serving` will answer from.
+          if [ "$PIN" = "true" ]; then
+            echo "── pinning the jobs to ${SHA}"
+            for layer in pipelines ml; do
+              terraform -chdir="infra/$layer" init -input=false \
+                -backend-config="bucket=$(aws ssm get-parameter --name /holdout/bootstrap/state_bucket --query Parameter.Value --output text)" \
+                -backend-config="key=$layer/terraform.tfstate" \
+                -backend-config="region=$AWS_REGION" \
+                -backend-config="kms_key_id=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn --query Parameter.Value --output text)"
+              terraform -chdir="infra/$layer" apply -input=false -auto-approve -var="git_ref=${SHA}"
+            done
+          fi
+
+          # **Started by id, not by name.** `infra/pipelines/outputs.tf` publishes the ids, and a
+          # name is a label somebody can change without changing anything else.
+          run_job () {
+            local param="$1" label="$2"
+            local id
+            id=$(aws ssm get-parameter --name "/holdout/pipelines/$param" --query Parameter.Value --output text)
+            echo "── $label (job $id)"
+            # `--timeout 0` waits without a client-side limit: the job's own timeout is the
+            # authority, and a second limit here would be a number that can disagree with it.
+            databricks jobs run-now "$id" --timeout 0
+          }
+
+          run_job job_bulk_load "eight months of history into bronze"
+          run_job job_silver    "bronze into silver"
+          run_job job_gold      "silver into gold"
+
+          TRAIN=$(aws ssm get-parameter --name /holdout/ml/job_train --query Parameter.Value --output text)
+          echo "── train, gate, register (job $TRAIN)"
+          databricks jobs run-now "$TRAIN" --timeout 0
+
+      - name: Apply serving, at the version that now exists
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_VAR_databricks_client_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          TF_VAR_databricks_client_secret: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          DATABRICKS_HOST=$(aws ssm get-parameter --name /holdout/foundation/workspace_url \
+            --query Parameter.Value --output text)
+          export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
+
+          MODEL=$(aws ssm get-parameter --name /holdout/ml/registered_model --query Parameter.Value --output text)
+
+          # **The version is read from the registry, not assumed to be 1.**
+          #
+          # A second `backfill` produces a second version, and an endpoint pinned to `1` would go
+          # on serving the first one while every log said the estate had been rebuilt. Reading the
+          # latest is the only answer that stays true across cycles — and it is read *after* the
+          # training job has finished, so "latest" means "the one this run produced".
+          VERSION=$(databricks model-versions list "$MODEL" --output json \
+                    | python3 -c 'import json,sys; vs=json.load(sys.stdin); print(max(int(v["version"]) for v in vs))')
+
+          echo "── serving ${MODEL} version ${VERSION}"
+
+          terraform -chdir=infra/serving init -input=false \
+            -backend-config="bucket=$(aws ssm get-parameter --name /holdout/bootstrap/state_bucket --query Parameter.Value --output text)" \
+            -backend-config="key=serving/terraform.tfstate" \
+            -backend-config="region=$AWS_REGION" \
+            -backend-config="kms_key_id=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn --query Parameter.Value --output text)"
+
+          terraform -chdir=infra/serving apply -input=false -auto-approve \
+            -var="model_version=${VERSION}"

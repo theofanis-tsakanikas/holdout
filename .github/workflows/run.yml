@@ -1,0 +1,231 @@
+# `run` — one live day, two experiments, and the account asked whether it behaved.
+#
+# **This is the workflow that closes phase 3**, and `PLAN.md` says what closing means in one
+# sentence: *a `run` whose every figure is asserted by a step that fails when it is not true —
+# including at least one experiment that produces a number and at least one that **refuses** for
+# the right reason — with the account confirming afterwards that nothing is left standing.*
+#
+# **So every figure below is asserted rather than printed.** A step that echoes a number and exits
+# zero is a screenshot; a step that fails when the number is wrong is evidence. `CLAUDE.md`'s own
+# rule about numbers applies to this file more than to any other: *an assertion about what the
+# system does, wearing a number instead of a verb.*
+#
+# **The day this drives is after the history that trained the model**, so it is held out by
+# construction rather than by a flag somebody set.
+name: run
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref_pin:
+        description: "Pin the jobs to the dispatched sha rather than to `main`."
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+concurrency:
+  group: estate
+  cancel-in-progress: false
+
+jobs:
+  verified:
+    name: the suite was green on this sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The dispatched sha has a successful ci run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # **`conclusion == "success"`, not `!= "failure"`.** `ci.yml` runs with
+          # `cancel-in-progress: true` on `main`, so two merges in quick succession cancel the
+          # first run — and a cancelled run is not a successful one. The tree may well have been
+          # green as a pull request; what this asserts is the record for *this sha*, and the
+          # record says `cancelled`. Re-run `ci` on the sha and dispatch again.
+          #
+          # This is `claims-complete`'s own rule one layer up: it refuses `failure`,
+          # `cancelled` **and** `skipped`, because a check that did not run is not a check
+          # that passed.
+          # `per_page=100` is a cap and is stated as one: two runs exist per sha today, `push`
+          # and `pull_request`, so the page holds the whole population — but the population is
+          # capped rather than enumerated and nothing here would notice a 101st.
+          runs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&per_page=100" \
+                   --jq '[.workflow_runs[] | {status, conclusion, event, url}]')
+
+          echo "$runs" | jq -r '.[] | "  \(.event)  \(.status)  \(.conclusion // "-")  \(.url)"'
+
+          green=$(echo "$runs" | jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length')
+
+          if [ "$green" -eq 0 ]; then
+            # **Four states, and telling them apart is the difference between good advice and
+            # advice that is wrong in the commonest case.** `status` is already in the projection
+            # above, so this branches on data the query has rather than on a guess.
+            #
+            # **A squash-merge produces a new commit and no required check has ever run on it** —
+            # the required contexts were evaluated on the pull request's head, which is a
+            # different sha. What this sha gets is its own `push` run, and that run takes 23 to
+            # 27 minutes. So *still going* is what an operator hits right after a merge, and
+            # telling them to re-run something would be wrong.
+            running=$(echo "$runs" | jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length')
+            cancelled=$(echo "$runs" | jq '[.[] | select(.conclusion == "cancelled")] | length')
+            failed=$(echo "$runs" | jq '[.[] | select(.conclusion == "failure")] | length')
+
+            if [ "$running" -gt 0 ]; then
+              echo "::error::ci is still running for ${SHA}. It takes 23-27 minutes and this sha"
+              echo "needs its own run: the required checks ran on the pull request's head, which"
+              echo "is a different commit. Wait for it to finish and dispatch again. Do not re-run."
+            elif [ "$cancelled" -gt 0 ]; then
+              echo "::error::ci was cancelled for ${SHA}. A later merge to main cancelled it —"
+              echo "ci runs with cancel-in-progress. Re-run ci on this sha, then dispatch."
+            elif [ "$failed" -gt 0 ]; then
+              echo "::error::ci failed for ${SHA}. Nothing reaches AWS on a red suite."
+            else
+              echo "::error::No ci run at all for ${SHA}. Was this commit pushed to main?"
+            fi
+            exit 1
+          fi
+          echo "OK  ${green} successful ci run(s) for ${SHA}"
+
+          # **And the sha must be on `main`, asserted here rather than assumed of the branch
+          # policy.** `CLAUDE.md` says the money workflows *dispatch from `main` only*, and what
+          # enforces that is the environment's `deployment_branch_policy` — **which nobody has
+          # verified**, because `main` is protected by a ruleset and classic branch protection
+          # reads `enabled: false`.
+          #
+          # The check above does not narrow it: measured against `#68`'s head sha, a branch tip
+          # that was never on `main`, the runs query returns a `pull_request` success. So without
+          # this line the two gates are not independent — one is unverified and the other covers
+          # a different property.
+          #
+          # Same reason `oidc.tf` carries a postcondition on a provider another project owns: a
+          # guarantee that rests entirely on a mechanism this repository cannot check is not a
+          # guarantee this repository holds.
+          if ! gh api "repos/${GITHUB_REPOSITORY}/compare/main...${SHA}" --jq '.status' \
+               | grep -qE '^(identical|behind)$'; then
+            echo "::error::${SHA} is not on main. The money workflows dispatch from main only."
+            exit 1
+          fi
+          echo "OK  ${SHA} is on main"
+
+  run:
+    name: drive the day
+    needs: verified
+    runs-on: ubuntu-latest
+    environment: deploy
+
+    # Four hours against a modelled ~2, and the credential outlives it. A projection, and the
+    # first real dispatch replaces it.
+    timeout-minutes: 240
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: holdout-run-${{ github.run_id }}
+          role-duration-seconds: 15600
+
+      - name: Drive the day through Zerobus
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          DATABRICKS_HOST=$(aws ssm get-parameter --name /holdout/foundation/workspace_url \
+            --query Parameter.Value --output text)
+          export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
+
+          # **The driver is this repository's own, not a Terraform resource.**
+          #
+          # `infra/pipelines/README.md` records why: `databricks/databricks 1.130.0` carries no
+          # Zerobus resource at all, because Zerobus is written to by a client. That client is
+          # `pipelines/ingest/driver.py`, and this is the step that points it at the workspace.
+          #
+          # **Lateness and duplicates are the point rather than an accident.** `CLAUDE.md`: *one
+          # live day through Zerobus, with lateness and duplicates* — because deduplication on a
+          # business key and an as-of join are only proved by data that arrives wrong.
+          echo "── driving one day"
+          uv run python -m pipelines.ingest --world w6 --scale scenario --seed 1 \
+            --out "s3://$(aws ssm get-parameter --name /holdout/foundation/zone_landing --query Parameter.Value --output text)"
+
+      - name: Two experiments — one produces a number, one refuses
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          DATABRICKS_HOST=$(aws ssm get-parameter --name /holdout/foundation/workspace_url \
+            --query Parameter.Value --output text)
+          export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
+
+          GOLD=$(aws ssm get-parameter --name /holdout/pipelines/job_gold --query Parameter.Value --output text)
+          databricks jobs run-now "$GOLD" --timeout 0
+
+          # **The assertion, and it is the reason this workflow exists.**
+          #
+          # `PLAN.md` closes phase 3 on *at least one experiment producing a number and at least
+          # one refusing for the right reason.* Both halves are asserted here: a run in which
+          # everything succeeded is **not** a passing run, because a system that never refuses has
+          # not demonstrated the thing this project is about.
+          #
+          # `ops/run_assertions.py` is where the queries live, so the figures and the commands
+          # that produce them are in the repository rather than in a workflow's shell — the `[M]`
+          # rule: *a number is not published without the command that produces it.*
+          uv run python -m ops.run_assertions --require-number --require-refusal
+
+      - name: Ask the endpoint a live question
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          DATABRICKS_HOST=$(aws ssm get-parameter --name /holdout/foundation/workspace_url \
+            --query Parameter.Value --output text)
+          export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
+
+          ENDPOINT=$(aws ssm get-parameter --name /holdout/serving/endpoint_name --query Parameter.Value --output text)
+          VERSION=$(aws ssm get-parameter --name /holdout/serving/model_version --query Parameter.Value --output text)
+
+          # **The version answering is asserted, not assumed.** `infra/serving/outputs.tf`
+          # publishes it for this: *what answered a question is part of the answer*, and an
+          # endpoint that had silently rolled to another version would make every number in this
+          # run belong to a model nobody named.
+          echo "── asking ${ENDPOINT}, expecting version ${VERSION} to answer"
+          uv run python -m ops.run_assertions --endpoint "$ENDPOINT" --expect-version "$VERSION"
+
+      - name: Print what is standing and when the reaper will collect it
+        if: ${{ always() }}
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          set -euo pipefail
+
+          # `CLAUDE.md`: *`run` ends by printing what is standing, when the reaper will collect it,
+          # and what to dispatch.* On `always()`, because a failed run leaves an estate whose shape
+          # somebody has to know before deciding whether to debug it or take it down.
+          echo "── standing:"
+          aws resourcegroupstaggingapi get-resources \
+            --tag-filters "Key=holdout:project,Values=holdout" \
+            --query 'ResourceTagMappingList[].ResourceARN' --output text | tr '\t' '\n' | sed 's/^/    /'
+
+          echo
+          echo "  The TTL reaper collects the Databricks compute 48 hours after the landing"
+          echo "  bucket was created. To take it down deliberately:"
+          echo "    destroy  target=serving   the expensive layer, about two minutes"
+          echo "    destroy  target=all       everything above bootstrap, in reverse order"
