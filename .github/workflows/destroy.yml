@@ -199,6 +199,22 @@ jobs:
         run: |
           set -euo pipefail
 
+          # **The workspace id, read before the layer that publishes it is destroyed.**
+          #
+          # `infra/foundation/workspace.tf` declares no `network_id`, which means Databricks
+          # manages the workspace's networking: it creates a VPC in *this* account named
+          # `databricks-WorkerEnvId(workerenv-<workspace id>-…)`, with a NAT gateway and a public
+          # IPv4 in it. **Deleting the workspace did not remove it**, twice — measured 2026-09-08,
+          # one VPC per destroy cycle, the older of them 24 hours old and still running.
+          #
+          # None of it carries `holdout:project`, so the survivor check below — which enumerates
+          # by that tag, deliberately, because the budget and the reaper do — cannot see it. The
+          # step at the end is what looks, and this is the only moment the id is available.
+          WORKSPACE_ID=$(aws ssm get-parameter --name /holdout/foundation/workspace_id \
+            --query Parameter.Value --output text 2>/dev/null || echo "")
+          echo "workspace_id=${WORKSPACE_ID}" >> "$GITHUB_ENV"
+          echo "── workspace ${WORKSPACE_ID:-<none published>}; its managed VPC is checked at the end"
+
           declared="$(ls -d infra/*/ 2>/dev/null | sed 's|infra/||;s|/||' | grep -v '^bootstrap$' | sort)"
 
           # Ready means the same thing it means in `deploy`: a layer that declares a backend.
@@ -352,6 +368,38 @@ jobs:
             echo "A destroy that exits 0 has removed what its state knew about. This is the"
             echo "account's answer, and it disagrees."
             exit 1
+          fi
+
+          # **A second population, because the first one cannot see this.**
+          #
+          # The survivor list above enumerates by `holdout:project`. Databricks creates the
+          # workspace's VPC in this account and tags it with neither that key nor any other of
+          # ours — so a NAT gateway costing about 35 USD a month, plus a public IPv4 at about 4,
+          # sat inside a check that reported OK. Two of them did, one per destroy cycle, and the
+          # only reason it was found was a person asking whether anything was still up.
+          #
+          # **Reported rather than deleted.** This workflow's authority is what Terraform's state
+          # describes, and an orphan is by definition outside it; deleting one from here would be
+          # a workflow removing infrastructure nobody's plan mentions. What it can do honestly is
+          # refuse to call the destroy complete.
+          if [ -n "${workspace_id:-}" ]; then
+            orphans=$(aws ec2 describe-vpcs \
+              --filters "Name=tag:Name,Values=databricks-WorkerEnvId(workerenv-${workspace_id}-*)" \
+              --query 'Vpcs[].VpcId' --output text | tr '\t' '\n' | sed '/^$/d')
+            if [ -n "$orphans" ]; then
+              echo "::error::the workspace is destroyed and the VPC Databricks made for it is not:"
+              for v in $orphans; do
+                nat=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$v" \
+                        --query 'NatGateways[?State==`available`].NatGatewayId' --output text)
+                echo "  $v  nat: ${nat:-none}"
+              done
+              echo "It carries none of this project's tags, so neither the reaper nor the survivor"
+              echo "list above can see it. A NAT gateway is about 35 USD a month and a public IPv4"
+              echo "about 4. Delete the NAT gateway, release its address, then the endpoints, the"
+              echo "internet gateway, the subnets, the security groups, the route tables and the VPC."
+              exit 1
+            fi
+            echo "OK  no Databricks-managed VPC left for workspace ${workspace_id}"
           fi
 
           echo "OK  only the survivor list is standing: state bucket and its logs, the state key,"
