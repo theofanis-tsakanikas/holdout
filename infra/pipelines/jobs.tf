@@ -128,6 +128,16 @@ resource "databricks_job" "gold" {
   task {
     task_key = "dbt"
 
+    # **A serverless `dbt_task` needs an environment as well as a warehouse, and the first apply
+    # said so:** *an environment is required for serverless task dbt.*
+    #
+    # The two are not alternatives, which is what the omission assumed. The **warehouse** is where
+    # dbt's SQL runs — the object `lakehouse` created for exactly this. The **environment** is
+    # where dbt itself runs: the Python process that resolves `dbt deps` and issues the
+    # statements. Giving one and not the other reads as complete, because each is sufficient for
+    # the half a reader happens to be thinking about.
+    environment_key = local.environment_key
+
     dbt_task {
       project_directory = "pipelines/gold/dbt"
       commands          = ["dbt deps", "dbt build"]
