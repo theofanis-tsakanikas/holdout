@@ -152,7 +152,11 @@ no_implicit_reexport = false
 # occur. `test_every_engine_is_ignorable_by_mypy` now compares this list against `ENGINES` so
 # the two cannot fall out of step again silently.
 [[tool.mypy.overrides]]
-module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*"]
+# `mlflow.*` and `pandas.*` are here for a different reason from the engines above: they are
+# not in any extra at all. They are the *estate's* packages, present in the Databricks
+# serverless environment and installed on no machine this repository controls — so
+# `pipelines/ml/registry.py` imports them inside the one function that runs there.
+module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*", "mlflow.*", "pandas.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

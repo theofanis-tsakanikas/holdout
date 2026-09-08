@@ -50,8 +50,22 @@ class SilverMissingError(FileNotFoundError):
     """A silver table gold needs is not there. Raised rather than treated as empty."""
 
 
-def read_silver(spark: SparkSession, silver: Path) -> dict[str, DataFrame]:
-    """Every silver table gold reads, or a refusal naming the one that is absent."""
+def read_silver(
+    spark: SparkSession, silver: Path | None = None, *, schema: str | None = None
+) -> dict[str, DataFrame]:
+    """Every silver table gold reads, or a refusal naming the one that is absent.
+
+    **A directory or a schema, for the reason `pipelines/silver/build.py` writes to one of
+    them.** The refusal is the same either way and it is the point: an absent table is not an
+    empty one, and a gold build over nothing reports a clean run.
+    """
+    if silver is not None and schema is not None:
+        raise ValueError("Silver is a directory or a schema, not both. Pass one.")
+    if schema is not None:
+        return _from_schema(spark, schema)
+    if silver is None:
+        raise ValueError("Silver is a directory or a schema, and neither was given.")
+
     frames: dict[str, DataFrame] = {}
     for table in SILVER_TABLES:
         directory = silver / table
@@ -61,6 +75,20 @@ def read_silver(spark: SparkSession, silver: Path) -> dict[str, DataFrame]:
                 "report a clean run. Build silver first: python -m pipelines.silver"
             )
         frames[table] = spark.read.format("delta").load(str(directory))
+    return frames
+
+
+def _from_schema(spark: SparkSession, schema: str) -> dict[str, DataFrame]:
+    """Every silver table read through the catalog, or a refusal naming the one that is absent."""
+    frames: dict[str, DataFrame] = {}
+    for table in SILVER_TABLES:
+        qualified = f"{schema}.{table}"
+        if not spark.catalog.tableExists(qualified):
+            raise SilverMissingError(
+                f"{qualified} does not exist, so gold would build an empty {table} and report a "
+                "clean run. Build silver first: python -m pipelines.silver"
+            )
+        frames[table] = spark.table(qualified)
     return frames
 
 
@@ -107,9 +135,20 @@ def priced_waste(shelf_state: DataFrame, reference: DataFrame) -> DataFrame:
     return tables.cost_as_of(reference, disposals, "disposed_at")
 
 
-def write(spark: SparkSession, silver: Path, *, schema: str) -> dict[str, int]:
-    """Write both priced tables into `schema` as Delta, and return their row counts."""
-    frames = read_silver(spark, silver)
+def write(
+    spark: SparkSession,
+    silver: Path | None = None,
+    *,
+    schema: str,
+    silver_schema: str | None = None,
+) -> dict[str, int]:
+    """Write both priced tables into `schema` as Delta, and return their row counts.
+
+    `schema` is where gold's priced tables go; `silver_schema` is where silver was read from
+    when silver is a catalog schema rather than a directory. Two arguments because they are two
+    schemas, and the first version of this had one name doing both jobs.
+    """
+    frames = read_silver(spark, silver, schema=silver_schema)
     spark.sql(f"create schema if not exists {schema}")
     written: dict[str, int] = {}
     for name, frame in (

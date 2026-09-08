@@ -30,6 +30,16 @@ locals {
   # the worker. The job exits zero, the bucket stays empty, and the failure surfaces three jobs
   # later as an empty readout. `infra/lakehouse/volumes.tf` is what makes a real path available.
   zone_path = { for z in local.zones : z => data.aws_ssm_parameter.volume[z].value }
+
+  # **The catalog is named on every task that writes a table.** A two-part name resolves against
+  # whatever catalog the workspace defaults to: the tables would be created, the run would report
+  # success, and every grant, dashboard and readout would point at an empty schema.
+  # `tests/infra/test_tasks_name_the_catalog.py` is what keeps a new task from omitting it.
+  catalog = data.aws_ssm_parameter.catalog.value
+
+  # Silver and gold as catalog schemas rather than paths. The zone names are the schema names:
+  # `infra/lakehouse/catalog.tf` creates one schema per zone.
+  silver_schema = "silver"
 }
 
 # ------------------------------------------------- landing, then bronze, from files on S3
@@ -143,7 +153,12 @@ resource "databricks_job" "silver" {
       parameters = [
         "pipelines.silver",
         "--bronze", local.zone_path["bronze"],
-        "--silver", local.zone_path["silver"],
+        # **A schema, not the volume path.** `pipelines/silver/build.py` carries the argument:
+        # gold's dbt models and the training job both read silver through the catalog, and Unity
+        # Catalog refuses a table created inside a volume — so silver as five directories under
+        # `/Volumes/.../silver/files` is a place nothing downstream can name.
+        "--silver-schema", local.silver_schema,
+        "--catalog", local.catalog,
       ]
     }
   }
@@ -151,13 +166,15 @@ resource "databricks_job" "silver" {
 
 # ---------------------------------------------------------------- gold, four families
 #
-# **Two tasks in one job, and the dependency is the point.** `dbt` builds the analytical models
-# and the Python step builds what dbt does not — the assignment table written before the period
-# opens, and the readout that pins a Delta version. Splitting them into two jobs would let the
-# second run against a silver the first had not finished with.
+# **Two tasks in one job, and the dependency runs the other way from the first version.** The
+# Python step writes `gold.priced_sales` and `gold.priced_waste`; `pipelines/gold/dbt/models/
+# sources.yml` declares exactly those two as dbt's sources. So dbt cannot go first, and it did:
+# `depends_on` named `dbt` from the Python task, which would have started dbt against sources
+# nothing had written. `tests/infra/test_dbt_sources_are_written_first.py` reads the two files
+# against each other, which is the only way to see it — each is correct alone.
 resource "databricks_job" "gold" {
   name        = "holdout — silver into gold"
-  description = "dbt for the analytical models, then the experiment tables dbt does not build."
+  description = "The priced tables, then dbt over them for the analytical models."
 
   environment {
     environment_key = local.environment_key
@@ -174,8 +191,32 @@ resource "databricks_job" "gold" {
     commit = var.git_commit == "" ? null : var.git_commit
   }
 
+  # **The sources, before the thing that reads them.**
+  task {
+    task_key        = "priced"
+    environment_key = local.environment_key
+
+    spark_python_task {
+      python_file = "pipelines/entrypoint.py"
+      source      = "GIT"
+      parameters = [
+        "pipelines.gold",
+        # `priced` rather than the whole build: the analytical models are the `dbt` task's work,
+        # and running them here as well would build the same four families twice — in a process
+        # that on serverless cannot start a session of its own to do it in.
+        "--only", "priced",
+        "--silver-schema", local.silver_schema,
+        "--catalog", local.catalog,
+      ]
+    }
+  }
+
   task {
     task_key = "dbt"
+
+    depends_on {
+      task_key = "priced"
+    }
 
     # **A serverless `dbt_task` needs an environment as well as a warehouse, and the first apply
     # said so:** *an environment is required for serverless task dbt.*
@@ -198,22 +239,4 @@ resource "databricks_job" "gold" {
     }
   }
 
-  task {
-    task_key        = "experiment_tables"
-    environment_key = local.environment_key
-
-    depends_on {
-      task_key = "dbt"
-    }
-
-    spark_python_task {
-      python_file = "pipelines/entrypoint.py"
-      source      = "GIT"
-      parameters = [
-        "pipelines.gold",
-        "--silver", local.zone_path["silver"],
-        "--root", local.zone_path["gold"],
-      ]
-    }
-  }
 }

@@ -68,7 +68,21 @@ resource "databricks_job" "train" {
     spark_python_task {
       python_file = "pipelines/entrypoint.py"
       source      = "GIT"
-      parameters  = ["pipelines.ml"]
+      parameters = [
+        "pipelines.ml",
+        # **`--silver-schema` is what makes the description above true.** Without it
+        # `pipelines/ml/__main__.py` builds a rehearsal corpus in a temporary directory and
+        # trains on that: the eight months `backfill` loaded would never be opened, and the
+        # version this job registered would belong to data the estate has never seen. The job
+        # was green. `tests/infra/test_training_reads_the_estate.py` is what stops it returning.
+        "--silver-schema", "silver",
+        "--catalog", data.aws_ssm_parameter.catalog.value,
+        # **And the version is created here or nowhere.** `backfill` reads the registry for the
+        # version it will serve; before this argument existed nothing in the repository imported
+        # mlflow at all, so the list it read was empty.
+        "--model", databricks_registered_model.demand.id,
+        "--experiment", databricks_mlflow_experiment.training.name,
+      ]
     }
   }
 

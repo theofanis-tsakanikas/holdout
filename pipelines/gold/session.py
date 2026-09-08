@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pipelines import session as runtime
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
@@ -45,7 +47,28 @@ SCHEMA = "gold"
 SILVER_SCHEMA = "silver"
 
 
-def build(root: Path, *, name: str = "holdout-gold", cores: int = LOCAL_CORES) -> SparkSession:
+def build(
+    root: Path | None = None, *, name: str = "holdout-gold", cores: int = LOCAL_CORES
+) -> SparkSession:
+    """The runtime's session where there is one, and a local Delta session where there is not.
+
+    `root` is what the local session needs and what the estate's has no use for: on serverless
+    there is no warehouse directory and no Derby metastore to place, so it is optional here and
+    refused only on the machine that cannot do without it. `pipelines/session.py` carries why the
+    local builder cannot run on the estate at all.
+    """
+    existing = runtime.provided()
+    if existing is not None:
+        return existing
+    if root is None:
+        raise ValueError(
+            "A local session needs a root to put its warehouse and metastore in, and no "
+            "runtime supplied one. Pass --root, or run where a session already exists."
+        )
+    return _local(root, name=name, cores=cores)
+
+
+def _local(root: Path, *, name: str, cores: int) -> SparkSession:
     """A session whose warehouse and metastore live under `root`, and nowhere else.
 
     The engine imports are inside the function on purpose. `pipelines/gold/` is imported by tests
@@ -71,6 +94,8 @@ def build(root: Path, *, name: str = "holdout-gold", cores: int = LOCAL_CORES) -
         .config("spark.ui.enabled", "false")
         .config("spark.sql.shuffle.partitions", str(cores))
         .config("spark.sql.warehouse.dir", str(warehouse))
+        # What `pipelines/session.py::release` reads back. Set here and nowhere else.
+        .config(runtime.LOCAL, "true")
         # **`spark.hadoop.` prefixed, and the prefix is the whole of it.** Spark passes
         # `spark.hadoop.*` through to the Hadoop configuration the Hive metastore reads and
         # warns on anything else: written bare, this prints `Ignoring non-Spark config
@@ -85,9 +110,9 @@ def build(root: Path, *, name: str = "holdout-gold", cores: int = LOCAL_CORES) -
 
 
 def sessions(root: Path, *, name: str = "holdout-gold") -> Iterator[SparkSession]:
-    """A session that stops when the caller is done with it. For a fixture or a `with`."""
+    """A session that stops when the caller is done with it — unless it was never ours."""
     spark = build(root, name=name)
     try:
         yield spark
     finally:
-        spark.stop()
+        runtime.release(spark)

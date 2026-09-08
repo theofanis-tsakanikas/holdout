@@ -3191,12 +3191,21 @@ pretend to be one. What it changes is that *did you run `make check-locked`* has
 >     lint         250       261      *.py under the directories PYTHON_DIRS names
 >     typecheck    250       249  <<  1 of 250 never looked at
 >
+> **Restated a second time 2026-09-08**, and `make findings` reported `MOVED` again — which is
+> the anchor working twice on the same site. `mlflow.*` and `pandas.*` were added when
+> `pipelines/ml/registry.py` began logging a model version, and they widen this list for a
+> **different reason from every name already in it**: they are in no extra at all. The seven
+> above may be withheld by an extra this repository declares; these two are the *estate's*
+> packages, present only in the Databricks serverless environment, installed on no machine this
+> repository controls and named in no dependency group. So `ENGINES` does not gain them —
+> nothing here may import them at module scope, and there is no CI job where a skip could hide.
+>
 > A file existed in the population and mypy never read it. That is the same shape as *three lists
 > name the packages this tree may not have* — hand-kept enumerations of one population, drifting —
 > and the difference is that this one has a gate over it and went red in seconds rather than on a
 > runner four days later. The prior wording stays per doctrine rule 4.
 
-*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*"]`
+*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*", "mlflow.*", "pandas.*"]`
 *Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def test_every_engine_is_ignorable_by_mypy() -> None:`
 *Site:* `Makefile` :: `check-locked:  ## make check in the environment CI's`
 *Disposition:* `pipelines/gold`, which is this branch, for the two lists that can be compared and
@@ -5178,3 +5187,105 @@ the file says which thing and when it stops being so
 *Now:* `infra/bootstrap/budget.tf` :: `# **And there is deliberately no `depends_on` from the budget to this, which is a correction the`
 *Status:* open
 
+
+---
+**Six things the estate needed, each written down somewhere and implemented nowhere** ·
+found 2026-09-08 · by reading the code the jobs would run, before dispatching `backfill`
+
+`deploy` had applied cleanly, five jobs existed, and the next step was a ninety-minute `backfill`.
+Reading each task's entry point against the runtime it would run in found six defects, of which
+**two would have failed in the first seconds, one would have failed an hour in, and three would
+have succeeded.**
+
+    1  training built a rehearsal corpus in a temp directory and trained on that
+    2  nothing in the repository imported mlflow, so no version was ever registered
+    3  the gold job ran dbt before the task that writes dbt's two sources
+    4  silver and gold built a local[2] session with Delta's classic configuration
+    5  no Python task named a catalog, so two-part table names resolved to the default
+    6  the gold Python task ran dbt a second time, in-process
+
+**The first is the one that matters and it is this repository's own thesis, inverted.**
+`infra/ml/training.tf` describes its job as *Trains on the estate, runs the five promotion gates,
+registers a version only if they pass.* `pipelines/ml/__main__.py` had one path: `prepare(W1,
+seed="training", scale="rehearsal")` into a `TemporaryDirectory`, silver built from it, train,
+print, exit zero. The eight months `backfill` loads were never opened. So `backfill` would have
+loaded the history, trained on something else, and `run` would have published an uplift from a
+model fitted on data the estate has never held — **green at every step**, because a model fitted
+on a generated world is still a model and a job that trains one still succeeds.
+
+**The second closes the loop that made the first invisible.** `grep -rn mlflow pipelines src ops`
+returned nothing. `backfill.yml` reads `databricks model-versions list "$MODEL"` and takes
+`max(version)`; `infra/serving` applies at it. Both were written against a version that nothing
+created — so the first real dispatch would have died on an empty list, *after* the training that
+was wrong anyway.
+
+**Four is Spark Classic in a Spark Connect runtime.** Databricks' serverless limitations page says
+only Spark Connect APIs are supported; `.master("local[2]")`, `spark.sql.extensions`,
+`spark.sql.catalog.spark_catalog`, a Derby metastore and `from delta import
+configure_spark_with_delta_pip` are none of them. The task would have died on the import. **And
+the other half is worse than the failure**: every entry point then called `spark.stop()` in a
+`finally`, which on the estate ends the compute the runtime provided, under whatever runs next.
+
+**Five is the only one with no signal at all.** `saveAsTable("gold.priced_sales")` resolves against
+the current catalog, which on a workspace is its default and not this estate's. The tables would
+exist, the job would report success, and the grants, the dbt task, the dashboards and
+`ops/run_assertions.py` would all read an empty schema. The reading that presents itself is *the
+pipeline produced nothing*, which is false and sends whoever is looking to the wrong layer.
+
+**What they have in common is the shape, not the subject.** Every one is a place where a file
+states something true about the estate and no code makes it so. `pipelines/ml/__main__.py` even
+carried the comment *on the estate silver is a Unity Catalog schema and there is nothing to
+mount* — beside a `pipelines/silver/build.py` that wrote silver as Delta directories into a
+volume, which Unity Catalog will not let a table be created inside. **Two contradictory beliefs
+about the same object, in one tree, each stated confidently.**
+
+> **A layer that has never run is a set of claims, and applying it proves only that the claims
+> parse.** `deploy` going green means Terraform created the objects; it says nothing about whether
+> the code those objects invoke can run where they put it. The five jobs existed for two days,
+> `deploy` was clean, and every defect above was already in `main`.
+
+*Site:* `pipelines/session.py` :: `LOCAL = "spark.holdout.session.local"`
+*Site:* `infra/pipelines/jobs.tf` :: `task_key        = "priced"`
+*Site:* `infra/ml/training.tf` :: `"--silver-schema", "silver",`
+*Disposition:* branch `pipelines/the-layer-meets-the-estate`
+*Closed:* 2026-09-08 — the runtime's session is used and not stopped; silver writes a catalog
+schema and gold and training read one; every table-writing task names its catalog; dbt waits for
+the task that writes its sources; a passing model is logged to Unity Catalog and a refused one
+raises rather than registering. Four gates were planted and each was measured biting:
+`test_a_task_names_its_catalog`, `test_dbt_reads_what_a_task_wrote`, `test_training_reads_the_estate`
+and `test_a_refused_model_is_not_registered`
+*Now:* `pipelines/session.py` :: `LOCAL = "spark.holdout.session.local"`
+*Now:* `infra/pipelines/jobs.tf` :: `task_key        = "priced"`
+*Now:* `infra/ml/training.tf` :: `"--silver-schema", "silver",`
+*Status:* open
+
+---
+**The table the whole of phase 3 is accepted on is written by nothing** ·
+found 2026-09-08 · by reading `ops/run_assertions.py` against the repository that feeds it
+
+`PLAN.md` closes phase 3 on *at least one experiment producing a number and at least one refusing
+for the right reason*, and `ops/run_assertions.py` is where that is asserted:
+
+    READOUT = "{catalog}.gold.readout"
+    SELECT experiment_id, uplift, reason_code FROM {table}
+
+**`gold.readout` is created by no code in this repository.** `grep` finds the constant above and
+nothing else — no `saveAsTable`, no dbt model, no SQL. The same is true of the experiment itself:
+`pipelines/gold/assignment.py` can create and write `gold.experiment_assignment`, refuse an
+update and verify a seal, and **nothing calls it** — not a job, not a workflow, not `run.yml`.
+
+So the `run` workflow drives a live day through Zerobus, starts the gold job, and then queries a
+table that has never existed. It fails on the assertion that is the point of the workflow, and it
+fails **after** the day has been driven.
+
+**This is the same shape as the finding above and it is not closed by the same branch**, because
+it is not a defect in how a layer meets the estate — it is a layer that was never written. What
+exists is the vocabulary (`contracts/vocabularies/reason_codes.yaml`), the assignment table's
+append-only refusals, the readout's Delta version pinning, and the assertions. What does not exist
+is the thing that runs an experiment: assigns arms, opens a period, computes an uplift or a
+refusal, and writes one row per experiment into `gold.readout`.
+
+*Site:* `ops/run_assertions.py` :: `READOUT = "{catalog}.gold.readout"`
+*Disposition:* open — named here rather than closed quietly, because closing it is writing the
+experiment layer and that is a decision about scope rather than a fix
+*Status:* open

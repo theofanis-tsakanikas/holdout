@@ -75,7 +75,7 @@ calls load-bearing owns no mutation.** Both were found by planting one.
 when it reaches it. `compare()` then publishes `len(broken)` as the check's figure:
 
 ```python
-figure=f"{len(set(left) | set(right))} cell(s), {len(broken)} disagreeing"
+figure = f"{len(set(left) | set(right))} cell(s), {len(broken)} disagreeing"
 ```
 
 Measured directly, with no pipeline involved — twenty cells, every one of them different:
@@ -98,7 +98,7 @@ from the SQL, published as `481 cell(s), 5 disagreeing`.
 **And the same numbers block hard-codes the constructed cell**:
 
 ```python
-("cells", f"{len(sql):,} — {len(sql) - 1:,} from the corpus, 1 constructed"),
+(("cells", f"{len(sql):,} — {len(sql) - 1:,} from the corpus, 1 constructed"),)
 ```
 
 On the mutated run the SQL had dropped the constructed cell, and the line read *"132 — 131 from
@@ -665,8 +665,8 @@ touches whether a claim is true.
 `ops/isolation.py` declares both spellings and says why:
 
 ```python
-FORBIDDEN_ROOTS = (FORBIDDEN, f"src.{FORBIDDEN}")   # "A barrier that misses the spelling its
-                                                    #  own task description used is not a barrier."
+FORBIDDEN_ROOTS = (FORBIDDEN, f"src.{FORBIDDEN}")  # "A barrier that misses the spelling its
+#  own task description used is not a barrier."
 ```
 
 The runtime half — `test_every_corpus_module_imports_with_the_system_absent`, the test written to
