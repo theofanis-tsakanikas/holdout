@@ -176,6 +176,26 @@ jobs:
           # metastore it does not manage, leave it standing, and report success — an estate
           # reported as gone with its most account-level object still there.
           TF_VAR_owns_metastore: true
+
+          # **`serving` declares `model_version` with no default, and a destroy needs it too.**
+          #
+          # The variable exists so that an endpoint cannot be applied before a version exists —
+          # `infra/serving/variables.tf` argues it at length. **What that argument missed is that
+          # `terraform destroy` reads the same configuration**, so a teardown without this value
+          # stops on *the root module input variable "model_version" is not set*.
+          #
+          # And it stops **last**, because `serving` is first in the reverse order: everything
+          # else would already be gone, leaving standing exactly the one layer that bills while
+          # idle. A teardown that fails on the expensive half is worse than one that fails at the
+          # start.
+          #
+          # The value is read from what `backfill` published rather than invented, and falls back
+          # to `0` when nothing is published — which happens when `serving` was never applied, and
+          # is then a value Terraform accepts for a resource it is about to remove from a state
+          # that does not contain it.
+          # `"0"` is a placeholder and never a version that exists. The step below replaces it
+          # with what `backfill` published, when there is anything to replace it with.
+          TF_VAR_model_version: "0"
         run: |
           set -euo pipefail
 
@@ -229,6 +249,16 @@ jobs:
             --query Parameter.Value --output text)
           STATE_KMS_KEY_ARN=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn \
             --query Parameter.Value --output text)
+
+          # The published version, if `serving` was ever applied. `|| true` because its absence
+          # is the ordinary case on an estate that never reached `backfill`, and the fallback
+          # above is what makes that case destroyable rather than blocked.
+          PUBLISHED_VERSION=$(aws ssm get-parameter --name /holdout/serving/model_version \
+            --query Parameter.Value --output text 2>/dev/null || true)
+          if [ -n "$PUBLISHED_VERSION" ]; then
+            export TF_VAR_model_version="$PUBLISHED_VERSION"
+            echo "── serving was applied at model version $PUBLISHED_VERSION"
+          fi
 
           for layer in $layers; do
             echo "── infra/$layer"
