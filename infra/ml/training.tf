@@ -56,7 +56,9 @@ resource "databricks_job" "train" {
   git_source {
     url      = var.repository_url
     provider = "gitHub"
-    branch   = var.git_ref
+    # Exactly one of the two, never both: `variables.tf` explains which and why.
+    branch = var.git_commit == "" ? var.git_ref : null
+    commit = var.git_commit == "" ? null : var.git_commit
   }
 
   task {

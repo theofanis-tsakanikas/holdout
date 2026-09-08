@@ -78,3 +78,23 @@ variable "corpus_seed" {
   # committed seed and *which* seed is part of what a readout has to be able to state.
   description = "The committed seed. Which seed drew the assignment is part of the readout."
 }
+
+variable "git_commit" {
+  type    = string
+  default = ""
+  # **A branch and a commit are different fields, and the first apply proved it.**
+  #
+  # `git_source` accepts `branch`, `tag` **or** `commit`, and `backfill` was passing the
+  # dispatched sha as `git_ref` — which lands in `branch`. Databricks then looked for
+  # `refs/heads/<sha>` and refused:
+  #
+  #     GIT_UNKNOWN_REF: Commit ref refs/heads/3bd3c423… not found
+  #
+  # **The field name was right and the value was the wrong kind for it**, which is a shape no
+  # amount of reading the two files against each other would have caught: both were internally
+  # consistent, and only the API knew that a forty-character hex string is not a branch.
+  #
+  # Empty means *use the branch*. `backfill` and `run` set it to the sha they dispatched, so the
+  # pin lands where a number is produced — which is the whole argument `git_ref` makes above.
+  description = "Pin the jobs to a commit. Empty: use git_ref as a branch instead."
+}
