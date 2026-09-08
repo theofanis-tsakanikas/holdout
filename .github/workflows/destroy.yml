@@ -198,7 +198,12 @@ jobs:
             # population, which is the defect this repository catalogues most; a layer added to
             # one and forgotten in the other is an estate that cannot be taken down in the order
             # it was built.
-            order="foundation lakehouse pipelines ml"
+            # **`serving` is in this order although `deploy` never applies it.** A destroy that
+            # skipped it would leave the one layer that bills while idle standing — which is the
+            # exact failure `CLAUDE.md` ranks the whole teardown guarantee against. What applies a
+            # layer and what removes it are different questions, and only the second one has to
+            # cover everything.
+            order="foundation lakehouse pipelines ml serving"
             layers=""
             for l in $order; do
               echo "$ready" | tr ' ' '\n' | grep -qx "$l" && layers="$l $layers"
