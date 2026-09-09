@@ -5773,3 +5773,38 @@ spellings of a parameter list
 *Now:* `infra/pipelines/jobs.tf` :: `    task_key        = "export"`
 *Now:* `tests/infra/tasks.py` :: `_PARAMETERS = re.compile(r"parameters\s*=\s*(\[|concat\s*\()")`
 *Status:* open
+
+---
+**The environment where dbt itself runs could not run dbt** ·
+found 2026-09-09 · by the gold job, after the baseline, silver and the priced tables had succeeded
+
+    + dbt deps
+    /bin/bash: line 4: dbt: command not found
+
+`infra/pipelines/jobs.tf` already carried a paragraph about this task, written when the first
+apply refused it — *a serverless `dbt_task` needs an environment as well as a warehouse*, the
+warehouse being where dbt's SQL runs and the environment being **where dbt itself runs**. The
+environment it named was the one every other task shares: `client = "2"`, no dependencies, which
+is right for the Python tasks and wrong for the only task that needs a package.
+
+> **The paragraph was right about the shape and silent about the contents.** *An environment is
+> required* was read as a slot to fill, and the slot was filled with the environment that already
+> existed. What it is *for* — the process that resolves `dbt deps` — is in the same sentence.
+
+The dbt task now names its own environment, declaring `dbt-databricks`. Separate from the shared
+one because every other task would otherwise pay the install, and because a runtime is a claim
+about what a task needs rather than a bag everything reaches into. **`dbt-databricks`, not the
+`dbt-spark[session]` the local extra installs**: they are two adapters for two engines — locally
+dbt drives the SparkSession this repository started, on the estate it issues SQL to the warehouse.
+
+**This was the third dispatch of the day and the fourth defect between a green suite and a
+working estate.** Every one of them was a property of the runtime rather than of the code:
+`__file__` unbound under `exec`, `src/` off `sys.path`, `SystemExit(0)` read as failure, a config
+read the platform refuses, an ERP export nobody dispatched, and now a package that is not there.
+
+*Site:* `infra/pipelines/jobs.tf` :: `  dbt_environment_key = "holdout-dbt"`
+*Disposition:* branch `infra/the-dbt-task-has-dbt`
+*Closed:* 2026-09-09 — its own environment, with the adapter declared, and a gate that refuses a
+dbt task whose environment declares no dependency at all
+*Now:* `infra/pipelines/jobs.tf` :: `  dbt_environment_key = "holdout-dbt"`
+*Status:* open
