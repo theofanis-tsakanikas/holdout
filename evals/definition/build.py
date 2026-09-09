@@ -66,17 +66,19 @@ def engine_noise_on_stderr() -> Iterator[None]:
         os.close(duplicate)
 
 
-def gold_tables(root: Path) -> tuple[str, Any]:
-    """Bronze, silver and gold from one world, and the session they live in.
+def gold_tables(root: Path, spark: Any) -> str:
+    """Bronze, silver and gold from one world, into the session the caller opened.
 
-    Returns the gold schema and the live Spark session — the caller stops it. Everything here is
-    `pipelines/`'s own code: this eval builds nothing of its own, so a defect in the pipeline
-    shows up as a claim-5 failure rather than being hidden by a private path.
+    Returns the gold schema. **The session is an argument rather than a return value**, because
+    the code that opens one is the code that closes it — `pipelines/session.py::owned` carries
+    why, and an earlier version of that decision was read back off the session itself and refused
+    by the platform. Everything here is `pipelines/`'s own code: this eval builds nothing of its
+    own, so a defect in the pipeline shows up as a claim-5 failure rather than being hidden by a
+    private path.
     """
     from datetime import date, datetime
 
     from corpus.world import prepare
-    from pipelines.gold import session as gold_session
     from pipelines.gold.build import build as build_gold
     from pipelines.ingest import bulk, erp
     from pipelines.silver.build import build as build_silver
@@ -95,12 +97,13 @@ def gold_tables(root: Path) -> tuple[str, Any]:
             "and would agree for the wrong reason"
         )
 
-    spark = gold_session.build(root)
     silver_counts = build_silver(spark, root / "bronze", root / "silver")
     if not silver_counts["sales"]:
         raise RuntimeError("silver built no sales, so gold would be empty and claim 5 vacuous")
     build_gold(spark, root / "silver", root=root)
-    return gold_session.SCHEMA, spark
+    from pipelines.gold import session as gold_session
+
+    return gold_session.SCHEMA
 
 
 def rows(spark: Any, table: str) -> list[dict[str, Any]]:

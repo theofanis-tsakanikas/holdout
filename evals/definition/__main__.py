@@ -13,6 +13,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from pipelines.gold import session as gold_session
+
 from evals.definition import build, checks
 from evals.report import Report, main
 
@@ -34,18 +36,19 @@ def run() -> Report:
         root = Path(scratch)
         # Everything the engine says goes to stderr: `make gate-proof` reads this process's
         # stdout as JSON, and a progress bar on it is an eval that reported nothing.
-        with build.engine_noise_on_stderr():
-            schema, spark = build.gold_tables(root)
-            try:
-                # The one cell this eval writes itself. See `build.CONSTRUCTED_CELL`: the corpus
-                # cannot exercise the contract's rounding at all, and this is the value where
-                # the two rounding rules part company.
-                build.append_constructed_cell(spark, schema, root)
-                economics, waste = build.economics_and_waste(spark, schema)
-                answer = build.sql_answer(spark, schema, metric)
-                unpriced, priced = build.drop_counts(spark, schema)
-            finally:
-                spark.stop()
+        # **The session is opened here and closed here.** `pipelines/session.py::owned` is the
+        # `with` behind it: the code that decides whether to build one is the code that knows
+        # whether it did, which an earlier version tried to read back off the session and had
+        # refused by the platform.
+        with build.engine_noise_on_stderr(), gold_session.sessions(root) as spark:
+            schema = build.gold_tables(root, spark)
+            # The one cell this eval writes itself. See `build.CONSTRUCTED_CELL`: the corpus
+            # cannot exercise the contract's rounding at all, and this is the value where
+            # the two rounding rules part company.
+            build.append_constructed_cell(spark, schema, root)
+            economics, waste = build.economics_and_waste(spark, schema)
+            answer = build.sql_answer(spark, schema, metric)
+            unpriced, priced = build.drop_counts(spark, schema)
 
     return checks.report(answer, economics, waste, metric, tool, unpriced, priced)
 

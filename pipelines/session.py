@@ -24,14 +24,13 @@ local builder sets, because ownership recorded anywhere else is a second place t
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyspark.sql import SparkSession
+    from collections.abc import Callable, Iterator
 
-#: Set by the local builders and by nothing else. `release` reads it back off the session, so a
-#: session this repository did not build cannot claim to have been built by it.
-LOCAL = "spark.holdout.session.local"
+    from pyspark.sql import SparkSession
 
 #: Databricks sets this on every compute it runs code on, serverless included. It is the second
 #: signal rather than the first: `getActiveSession` is what actually answers the question, and
@@ -53,9 +52,38 @@ def provided() -> SparkSession | None:
     return None
 
 
-def release(spark: SparkSession) -> None:
-    """Stop the session if this repository built it, and otherwise leave it alone."""
-    if spark.conf.get(LOCAL, "false") == "true":
+@contextmanager
+def owned(build: Callable[[], SparkSession]) -> Iterator[SparkSession]:
+    """The runtime's session where there is one, and one built here where there is not.
+
+    **Only the second is stopped, and the caller does not have to know which it got.** A task that
+    stops the session the runtime handed it does not fail — it ends the compute out from under
+    whatever runs next.
+
+    **Ownership is lexical, and the first version asked the session instead.** The local builders
+    set a config, `spark.holdout.session.local`, and `release` read it back with a default; the
+    argument was that ownership recorded anywhere else is a second thing to keep in step. On
+    serverless that read is refused outright:
+
+        AnalysisException: [CONFIG_NOT_AVAILABLE.WITHOUT_SUGGESTION]
+        Configuration spark.holdout.session.local is not available.  SQLSTATE: 42K0I
+
+    A default argument is not a default there — `spark.conf.get` raises for a key the platform
+    does not know rather than returning what it was given. So the module written so that the
+    estate's session would not be stopped failed on being asked whether to stop it, in the silver
+    job, after the baseline had loaded.
+
+    **The knowledge was never the session's to hold.** The code that decides whether to build one
+    is the code that knows whether it did; a `with` block carries that without asking anybody.
+    """
+    existing = provided()
+    if existing is not None:
+        yield existing
+        return
+    spark = build()
+    try:
+        yield spark
+    finally:
         spark.stop()
 
 

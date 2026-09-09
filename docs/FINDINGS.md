@@ -5244,7 +5244,13 @@ about the same object, in one tree, each stated confidently.**
 > the code those objects invoke can run where they put it. The five jobs existed for two days,
 > `deploy` was clean, and every defect above was already in `main`.
 
-*Site:* `pipelines/session.py` :: `LOCAL = "spark.holdout.session.local"`
+> **Restated 2026-09-09.** The anchor was `LOCAL = "spark.holdout.session.local"`, the config the
+> local builders set so that `release` could read ownership back off the session. The estate
+> refused that read — `CONFIG_NOT_AVAILABLE.WITHOUT_SUGGESTION` — and the mechanism was deleted
+> rather than patched: ownership is now lexical, in `owned`, which is a `with` block and asks
+> nobody. The finding is untouched and the site is the function that replaced the config.
+
+*Site:* `pipelines/session.py` :: `def owned(build: Callable[[], SparkSession]) -> Iterator[SparkSession]:`
 *Site:* `infra/pipelines/jobs.tf` :: `task_key        = "priced"`
 *Site:* `infra/ml/training.tf` :: `"--silver-schema", "silver",`
 *Disposition:* branch `pipelines/the-layer-meets-the-estate`
@@ -5254,7 +5260,7 @@ the task that writes its sources; a passing model is logged to Unity Catalog and
 raises rather than registering. Four gates were planted and each was measured biting:
 `test_a_task_names_its_catalog`, `test_dbt_reads_what_a_task_wrote`, `test_training_reads_the_estate`
 and `test_a_refused_model_is_not_registered`
-*Now:* `pipelines/session.py` :: `LOCAL = "spark.holdout.session.local"`
+*Now:* `pipelines/session.py` :: `def owned(build: Callable[[], SparkSession]) -> Iterator[SparkSession]:`
 *Now:* `infra/pipelines/jobs.tf` :: `task_key        = "priced"`
 *Now:* `infra/ml/training.tf` :: `"--silver-schema", "silver",`
 *Status:* open
@@ -5680,4 +5686,47 @@ executed the estate's way. Restoring the bare `runpy.run_module` call turns the 
 *Disposition:* branch `infra/success-is-not-an-exception`
 *Closed:* 2026-09-09 — success returns and failure raises, in both places the entrypoint can exit
 *Now:* `pipelines/entrypoint.py` :: `    except SystemExit as finished:`
+*Status:* open
+
+---
+**A default argument is not a default, and the session was asked a question it may not answer** ·
+found 2026-09-09 · by the silver job, after the baseline had loaded thirty-three million rows
+
+    AnalysisException: [CONFIG_NOT_AVAILABLE.WITHOUT_SUGGESTION]
+    Configuration spark.holdout.session.local is not available.  SQLSTATE: 42K0I
+
+`pipelines/session.py` decided whether to stop a session by reading a config off it:
+
+    def release(spark):
+        if spark.conf.get(LOCAL, "false") == "true":
+            spark.stop()
+
+The local builders set that key and nothing else did, and the argument written beside it was that
+**ownership recorded anywhere else is a second thing to keep in step**. That argument is right
+about state and wrong about where this state lives.
+
+**`spark.conf.get(key, default)` does not return the default on serverless.** It raises for a key
+the platform does not know. So the module written so that the estate's session would *not* be
+stopped failed on being asked whether to stop it — in the silver job, three tasks in, with the
+baseline already on disk.
+
+> **The knowledge was never the session's to hold.** The code that decides whether to build one is
+> the code that knows whether it did, and a `with` block carries that without asking anybody.
+> `release` is gone; `owned(build)` is a context manager, and the decision is lexical.
+
+**And this is the fourth defect in one file's journey to the estate**, each invisible on a laptop
+and each costing a dispatch: `__file__` unbound under `exec`, `src/` missing from `sys.path`,
+`SystemExit(0)` read as a failure, and now a config read the platform refuses. **None of them are
+about Spark, Delta or the data.** They are all the same sentence — *the runtime is not the one
+this code was written on* — and the repository's own answer to it was a file called
+`entrypoint.py` whose docstring says *an assumption costs a dispatch to test.*
+
+`tests/pipelines/test_the_builder_knows_what_it_built.py` reproduces the refusal: its stub's
+`conf.get` raises exactly what the estate raised, and the block still closes the session it built.
+
+*Site:* `pipelines/session.py` :: `    existing = provided()`
+*Disposition:* branch `infra/the-builder-knows-what-it-built`
+*Closed:* 2026-09-09 — ownership is lexical, the config is deleted, and every caller opens its
+session in a `with`
+*Now:* `pipelines/session.py` :: `    existing = provided()`
 *Status:* open

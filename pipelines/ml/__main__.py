@@ -55,8 +55,7 @@ def _from_corpus(window: TradingWindow) -> list[ShelfDay]:
             root / "bronze",
             arrived_at=datetime(2026, 9, 4, 9, 0),  # noqa: DTZ001 — the corpus is naive
         )
-        spark = gold_session.build(root)
-        try:
+        with gold_session.sessions(root) as spark:
             build_silver(spark, root / "bronze", root / "silver")
             # **Reused rather than rewritten.** Mounting a silver Delta directory as a table is a
             # local-only step -- on the estate silver is a Unity Catalog schema and there is
@@ -64,8 +63,6 @@ def _from_corpus(window: TradingWindow) -> list[ShelfDay]:
             # implementation here would be two definitions of where silver lives.
             register_silver(spark, root / "silver", schema=gold_session.SCHEMA)
             return list(from_silver(spark, gold_session.SCHEMA, window=window))
-        finally:
-            runtime.release(spark)
 
 
 def _from_estate(schema: str, catalog: str | None, window: TradingWindow) -> list[ShelfDay]:
@@ -81,12 +78,9 @@ def _from_estate(schema: str, catalog: str | None, window: TradingWindow) -> lis
     from pipelines.gold import session as gold_session
     from pipelines.ml.build import from_silver
 
-    spark = gold_session.build()
-    try:
+    with gold_session.sessions() as spark:
         runtime.use_catalog(spark, catalog)
         return list(from_silver(spark, schema, window=window))
-    finally:
-        runtime.release(spark)
 
 
 def main(argv: list[str] | None = None) -> int:
