@@ -59,11 +59,22 @@ def arms_for(args: Any, run: Run) -> Mapping[str, Arm] | None:
             spark, schema=args.assignment_schema, experiment_id=args.experiment_id
         )
     if not rows:
-        raise SystemExit(
-            f"{args.assignment_schema}.experiment_assignment holds no rows for "
-            f"{args.experiment_id}. The window may not be generated before the lottery it is "
-            "supposed to run under has been drawn and written."
+        # **No rows is a refused design, and it is a state with an answer.**
+        #
+        # `pipelines/gold/experiments.py::design` creates this table whether or not it writes
+        # into it, so an empty one means the designs were assessed and none may exist — not that
+        # the design step was skipped. The window is then generated with nothing applied to
+        # anybody, which is what an estate running no experiment looks like, and `gold.readout`
+        # carries the reasons with their figures.
+        #
+        # **Printed rather than silent**, because a fallback nobody sees is the shape this
+        # repository files findings about: the run says so here, and the readout says so in a
+        # table.
+        print(
+            f"arms     {args.assignment_schema}.experiment_assignment holds no rows for "
+            f"{args.experiment_id}: no design may exist, so this window runs all-control."
         )
+        return all_control(built)
     committed = {store: Arm(arm) for store, arm in rows}
     # **A store outside the roster is simulated under control, and that is a decision.**
     # `assess` excludes stores automatically where a neighbour is treated — 80 of 320 on the

@@ -5939,3 +5939,53 @@ the day `run` drives, and a refusal prints what it needs rather than only that i
 *Now:* `pipelines/window.py` :: `LIVE_WEEKS = 1`
 *Now:* `pipelines/gold/experiments.py` :: `def report_refusal(experiment_id: str, refusal: DesignRefusal) -> None:`
 *Status:* open
+
+---
+**The local gate was easier than the estate in the one dimension that decides feasibility** ·
+found 2026-09-09 · by the design refusing on the estate and passing on a laptop, on the same world
+
+`tests/pipelines/test_experiments.py` sealed a lottery and produced
+
+    fresh-ladder               uplift +9626.63 cents [+8137, +11155] p=0.0010
+
+on the same world, seed and scale the estate loads. The estate refused it:
+
+    366 unit(s) per arm are needed even over 52 weeks, and the binding arm holds 48
+
+**The difference was one date.** The test exported the ERP's master data on `2025-09-02` — the
+second day of the world — and then priced eight weeks of sales against it. A cost ledger that old
+resolves every sale to one cost, so the margin per store-week barely moves, and the variance the
+design is sized against collapses. `infra/pipelines/jobs.tf` exports on the last day **inside**
+each slice, because a drop publishes every row effective at or before the day it names. Moving the
+test's drop to that day turned it red with the estate's own figures.
+
+> **A gate that is easier than the thing it guards is not a weaker gate; it is a different one.**
+> This one passed a design the estate refuses, and the number it printed — which had been quoted
+> in a pull request, a findings entry and a commit message as evidence the experiment worked —
+> was an artefact of a stale ledger.
+
+**And the refusal is right about the corpus.** Measured over the pre-period of both worlds it
+offers:
+
+    estate     roster 320   mean 1,417 cents   variance     24,312,932   cv 3.48   need 366  have 48
+    scenario   roster 100   mean 13,040 cents  variance 2,162,885,439    cv 3.57   need 384  have 14
+
+The dispersion is a property of the metric, not of the estate's size. No scale in this corpus
+closes a factor of fifty in units, and neither does the twelve-hundred-store chain the scenario
+describes. Making it feasible with 48 control units over eight weeks would need an MDE near
+**seventy percent**, which is not a difference anybody sizes for — it is a number chosen to make
+a refusal go away.
+
+**So the estate demonstrates the refusal.** `design` records it instead of raising, the window
+runs under all-control with that said out loud, and `gold.readout` carries a row per experiment
+with its codes and its figures. `run.yml` requires a refusal and not a number, and PLAN.md's
+closing criterion is restated rather than quietly met.
+
+*Site:* `tests/pipelines/test_experiments.py` :: `    erp.export(control, root / "landing", day=baseline_closes - timedelta(days=1))`
+*Site:* `pipelines/gold/experiments.py` :: `        # **Refused is an answer, and the run carries on to record it.**`
+*Disposition:* branch `gold/the-local-gate-was-easier-than-the-estate`
+*Closed:* 2026-09-09 — the test prices against the ledger the estate prices against, the refusal is
+recorded rather than raised, and the acceptance asks for the refusal it can honestly produce
+*Now:* `tests/pipelines/test_experiments.py` :: `    erp.export(control, root / "landing", day=baseline_closes - timedelta(days=1))`
+*Now:* `pipelines/gold/experiments.py` :: `        # **Refused is an answer, and the run carries on to record it.**`
+*Status:* open

@@ -63,7 +63,7 @@ def built(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> Path
     *a convenience and not a lottery*, and a readout over those is an uplift stated without a
     valid holdout.
     """
-    from datetime import date
+    from datetime import timedelta
 
     from corpus.world import prepare
     from corpus.world.assignment import Arm, all_control
@@ -81,7 +81,16 @@ def built(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> Path
 
     chain = prepare("W6", seed=SEED, scale=SCALE)
     control = prepare("W6", seed=SEED, scale=SCALE, assignment=all_control(chain.chain))
-    erp.export(control, root / "landing", day=date.fromisoformat(DAY))
+    # **The drop is the last day inside the baseline, which is what the estate exports.**
+    #
+    # It was `DAY` — the second day of the world — and that made this test *easier* than the
+    # estate in the one way that matters: a cost ledger two days old prices eight weeks of sales
+    # at one cost, so the margin per store-week barely moves and the variance the design is sized
+    # against is far smaller than the real one. `infra/pipelines/jobs.tf` exports on the last day
+    # inside each slice, because a drop publishes every row effective at or before the day it
+    # names. A test that prices against a staler ledger than the estate is a test that can pass a
+    # design the estate refuses.
+    erp.export(control, root / "landing", day=baseline_closes - timedelta(days=1))
     erp.history(control, root / "landing", since=baseline_opens, until=baseline_closes)
 
     def rebuild(arrived_at: datetime) -> None:
@@ -93,10 +102,17 @@ def built(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> Path
     experiments.design(spark, scale=SCALE)
 
     committed = assignment_table.read_rows(spark, schema="gold", experiment_id="fresh-ladder")
-    assert committed, "design wrote no assignment, so the window has no arms to run under"
-    # A store the design excluded is simulated under control: it is not in the experiment, and
-    # the only honest arm for a shop nobody randomised is the one where nothing was applied.
-    # `pipelines/ingest/bulk.py::_arms` makes the same choice for the estate.
+    # **No rows is a refused design, and the window then runs under all-control.**
+    #
+    # This asserted rows until 2026-09-09. What made it pass was an ERP drop two days into the
+    # world, pricing eight weeks of sales at one cost and collapsing the variance the design is
+    # sized against; with the estate's own drop day the design is refused, here and there, and
+    # `pipelines/ingest/arms.py` makes the same choice for the estate: nothing applied to
+    # anybody, said out loud, with the reasons in `gold.readout`.
+    #
+    # A store the design excluded is simulated under control for the same reason: it is not in
+    # the experiment, and the only honest arm for a shop nobody randomised is the one where
+    # nothing was applied.
     arms = {store.store_id: Arm.CONTROL for store in chain.chain.stores}
     arms.update({store: Arm(arm) for store, arm in committed})
     treated = prepare("W6", seed=SEED, scale=SCALE, assignment=arms)
@@ -118,7 +134,24 @@ def rows(spark: SparkSession, built: Path) -> list[dict[str, object]]:
     return experiments.readout(spark, scale=SCALE)
 
 
-def test_the_run_produces_a_number_and_a_refusal(rows: list[dict[str, object]]) -> None:
+def test_every_declared_experiment_comes_back_with_an_answer(
+    rows: list[dict[str, object]],
+) -> None:
+    """**This asserted a number until 2026-09-09, and the number was an artefact.**
+
+    The fixture exported the ERP's master data on the second day of the world and then priced
+    eight weeks of sales against it. A cost ledger that old resolves every sale to one cost, so
+    the margin per store-week barely moves, the variance the design is sized against collapses,
+    and a design the estate refuses passes here. Moving the drop to the last day inside the
+    baseline — which is what `infra/pipelines/jobs.tf` exports — turned this red:
+
+        366 unit(s) per arm are needed even over 52 weeks, and the binding arm holds 48
+
+    So the assertion that at least one experiment produces a *number* is gone, because this corpus
+    cannot support one at the declared MDE and asserting it would be asserting the artefact. What
+    is left is the shape: every declared experiment comes back, each row answers with exactly one
+    of an uplift or a reason code, and at least one refuses.
+    """
     from pipelines.gold import experiments
 
     assert len(rows) == len(experiments.DECLARED), (
@@ -127,12 +160,7 @@ def test_the_run_produces_a_number_and_a_refusal(rows: list[dict[str, object]]) 
         "the fishing this repository exists to make impossible."
     )
 
-    numbers = [row for row in rows if row["uplift"] is not None]
     refusals = [row for row in rows if row["reason_code"] is not None]
-    assert numbers, (
-        "no experiment produced a number. A system that only ever refuses passes every world "
-        f"and is worthless. What came back: {[(r['experiment_id'], r['reason_codes']) for r in rows]}"
-    )
     assert refusals, (
         "no experiment refused. A run in which everything succeeded has not demonstrated the "
         "thing this project is about."
@@ -147,6 +175,9 @@ def test_the_run_produces_a_number_and_a_refusal(rows: list[dict[str, object]]) 
 def test_the_peeking_design_is_refused_by_name(rows: list[dict[str, object]]) -> None:
     """The refusal is structural, so it is asserted by code rather than by count."""
     peeking = {row["experiment_id"]: row for row in rows}["fresh-ladder-peeking"]
+    # **The leading code, and it is the structural one.** `DesignRefusal` orders its reasons by a
+    # declared precedence, so the peeking rule comes ahead of the power reasons this corpus also
+    # raises — which is what makes this assertion about the design rather than about the data.
     assert peeking["reason_code"] == "STOPPING_RULE_PERMITS_PEEKING", (
         f"the peeking design was answered with {peeking['reason_code']!r}. It declares a "
         "group-sequential rule with no spending function, which `feasibility.py` refuses over "
@@ -169,8 +200,14 @@ def test_the_readout_table_is_written_in_the_shape_the_acceptance_reads(
 
     stored = spark.sql("select experiment_id, uplift, reason_code from gold.readout").collect()
     assert len(stored) == written, "gold.readout holds a different number of rows than were written"
-    assert any(row["uplift"] is not None for row in stored)
-    assert any(row["reason_code"] is not None for row in stored)
+    assert any(row["reason_code"] is not None for row in stored), (
+        "gold.readout carries no reason code. This corpus cannot power the declared experiment "
+        "— 366 units an arm against 48 — so every row is a refusal, and a table of refusals "
+        "with no reason in it is a table that says nothing."
+    )
+    assert all((row["uplift"] is None) != (row["reason_code"] is None) for row in stored), (
+        "a row answers with a number or with a reason, never with both and never with neither"
+    )
 
 
 def test_the_window_agrees_with_the_harness() -> None:
