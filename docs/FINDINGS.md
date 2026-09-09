@@ -5839,10 +5839,50 @@ register holds five findings of exactly that shape already, each found by someth
 mechanism that was supposed to hold it.
 
 *Site:* `infra/pipelines/jobs.tf` :: `  contracts_environment_key = "holdout-contracts"`
-*Site:* `infra/ml/training.tf` :: `      dependencies = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]`
+*Site:* `infra/ml/training.tf` :: `      dependencies        = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]`
 *Disposition:* branch `infra/the-contract-layer-brings-its-two-imports`
 *Closed:* 2026-09-09 — declared where the tasks that read a contract run, and compared against the
 extra that declares them for every other machine
 *Now:* `infra/pipelines/jobs.tf` :: `  contracts_environment_key = "holdout-contracts"`
-*Now:* `infra/ml/training.tf` :: `      dependencies = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]`
+*Now:* `infra/ml/training.tf` :: `      dependencies        = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]`
+*Status:* open
+
+---
+**The estate was running this repository on an interpreter that cannot parse it** ·
+found 2026-09-09 · by the experiment's design step, on the sixth dispatch of the day
+
+    SyntaxError: expected '(' (windows.py, line 43)
+
+`src/holdout/contracts/windows.py` line 43 is
+
+    def in_order[T: Effective](items: tuple[T, ...] | list[T]) -> tuple[T, ...]:
+
+a PEP 695 generic, which is Python 3.12 syntax and which `pyproject.toml` licenses in one line:
+`requires-python = ">=3.12"`. **Serverless environment version 2 is Python 3.11.**
+
+So the failure was not in what the file does. It was in whether the file could be read at all,
+three imports below the module the task named — and it arrived only after the baseline, the ERP
+drops, bronze, silver, gold and all five dbt models had succeeded.
+
+**The field was `client`, which the provider deprecates**, and it carried `"2"` — a number chosen
+when the environment block was first written and whose Python nobody had ever asked about. The
+provider's own schema offers `environment_version` beside it. Version 4 is **Python 3.12.3**,
+which is the floor this repository states.
+
+> **`requires-python` is a declaration the estate was never asked to satisfy.** Every other
+> machine honours it — `uv` refuses to build an environment below it — and the one place it
+> mattered most had no mechanism to notice, because the version was written as a client number
+> rather than as a Python.
+
+`tests/infra/test_the_estate_runs_the_python_this_repo_requires.py` refuses `client`, requires
+`environment_version`, and requires every environment to name the **same** one: two versions is
+two interpreters running one repository. It deliberately does **not** hold a copy of the
+version-to-Python table — that mapping lives at Databricks, and a hand-kept copy of it here would
+be the sixth instance of the shape this register already holds five findings about.
+
+*Site:* `infra/pipelines/jobs.tf` :: `      # **Version 4, and the number is a Python version.** `pyproject.toml` declares`
+*Disposition:* branch `infra/the-estate-runs-the-python-this-repo-requires`
+*Closed:* 2026-09-09 — every environment on version 4, named as a version rather than a client,
+and a gate that refuses the deprecated field and a split fleet
+*Now:* `infra/pipelines/jobs.tf` :: `      # **Version 4, and the number is a Python version.** `pyproject.toml` declares`
 *Status:* open

@@ -121,7 +121,16 @@ resource "databricks_job" "history" {
   environment {
     environment_key = local.environment_key
     spec {
-      client = "2"
+      # **Version 4, and the number is a Python version.** `pyproject.toml` declares
+      # `requires-python = ">=3.12"` and `src/holdout/contracts/windows.py` uses PEP 695 generics
+      # — `def in_order[T: Effective](...)`. Environment version 2 is Python 3.11, and the design
+      # step failed on the *syntax* before it could fail on anything else:
+      #
+      #     SyntaxError: expected '(' (windows.py, line 43)
+      #
+      # Version 4 is Python 3.12.3, which is the floor this repository declares. `client` is the
+      # deprecated spelling of this field and named a version whose Python nobody had checked.
+      environment_version = "4"
     }
   }
 
@@ -248,7 +257,7 @@ resource "databricks_job" "silver" {
   environment {
     environment_key = local.environment_key
     spec {
-      client = "2"
+      environment_version = "4"
     }
   }
 
@@ -296,15 +305,17 @@ resource "databricks_job" "gold" {
   environment {
     environment_key = local.environment_key
     spec {
-      client = "2"
+      environment_version = "4"
     }
   }
 
   environment {
     environment_key = local.dbt_environment_key
     spec {
-      client       = "2"
-      dependencies = ["dbt-databricks>=1.11.0"]
+      # Python 3.12.3, which is the floor `pyproject.toml` declares. See the first environment
+      # in this file for what version 2 did to `src/holdout/contracts/windows.py`.
+      environment_version = "4"
+      dependencies        = ["dbt-databricks>=1.11.0"]
     }
   }
 
@@ -389,8 +400,10 @@ resource "databricks_job" "experiment" {
   environment {
     environment_key = local.contracts_environment_key
     spec {
-      client       = "2"
-      dependencies = local.contracts_dependencies
+      # Python 3.12.3, which is the floor `pyproject.toml` declares. See the first environment
+      # in this file for what version 2 did to `src/holdout/contracts/windows.py`.
+      environment_version = "4"
+      dependencies        = local.contracts_dependencies
     }
   }
 
@@ -443,7 +456,7 @@ resource "databricks_job" "live_day" {
   environment {
     environment_key = local.environment_key
     spec {
-      client = "2"
+      environment_version = "4"
     }
   }
 

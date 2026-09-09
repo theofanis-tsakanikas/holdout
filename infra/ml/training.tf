@@ -54,8 +54,17 @@ resource "databricks_job" "train" {
   environment {
     environment_key = "holdout"
     spec {
-      client       = "2"
-      dependencies = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]
+      # **Version 4, and the number is a Python version.** `pyproject.toml` declares
+      # `requires-python = ">=3.12"` and `src/holdout/contracts/windows.py` uses PEP 695 generics
+      # — `def in_order[T: Effective](...)`. Environment version 2 is Python 3.11, and the design
+      # step failed on the *syntax* before it could fail on anything else:
+      #
+      #     SyntaxError: expected '(' (windows.py, line 43)
+      #
+      # Version 4 is Python 3.12.3, which is the floor this repository declares. `client` is the
+      # deprecated spelling of this field and named a version whose Python nobody had checked.
+      environment_version = "4"
+      dependencies        = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]
     }
   }
 
