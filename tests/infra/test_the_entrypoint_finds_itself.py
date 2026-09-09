@@ -38,8 +38,15 @@ Executes the real file the way the estate does — compiled, with a namespace ca
 
 from __future__ import annotations
 
+import sys
+import textwrap
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENTRYPOINT = REPO_ROOT / "pipelines" / "entrypoint.py"
@@ -102,4 +109,71 @@ def test_it_finds_the_repository_root_without_a_bound_file() -> None:
         "It puts that path on `sys.path` so `pipelines.…` imports resolve. A wrong root is "
         "`ModuleNotFoundError` inside a job, after the approval has been spent — and a missing "
         "one is `NameError: name '__file__' is not defined`, which is what the estate produced."
+    )
+
+
+#: Two modules, written by the test, that end the way every entry point under `pipelines/` ends.
+#: Real ones cost a Spark session; what is under test is the exit, not the work.
+_EXITS = {
+    "holdout_probe_zero": "import sys\n\ndef main() -> int:\n    return 0\n\n"
+    'if __name__ == "__main__":\n    sys.exit(main())\n',
+    "holdout_probe_two": "import sys\n\ndef main() -> int:\n    return 2\n\n"
+    'if __name__ == "__main__":\n    sys.exit(main())\n',
+}
+
+
+@pytest.fixture
+def probes(tmp_path: Path) -> Iterator[Path]:
+    """A directory on `sys.path` holding the two probe modules."""
+    for name, source in _EXITS.items():
+        (tmp_path / f"{name}.py").write_text(textwrap.dedent(source), encoding="utf-8")
+    sys.path.insert(0, str(tmp_path))
+    try:
+        yield tmp_path
+    finally:
+        sys.path.remove(str(tmp_path))
+        for name in _EXITS:
+            sys.modules.pop(name, None)
+
+
+def test_a_module_that_succeeded_does_not_raise(probes: Path) -> None:
+    """**Twenty-five minutes of finished work were thrown away by this.**
+
+    Every entry point under `pipelines/` ends `sys.exit(main())`, and `runpy.run_module` with
+    `run_name="__main__"` is what makes those blocks run — so their `SystemExit` comes out, even
+    on zero. On a laptop that is invisible: the interpreter is exiting anyway. Databricks'
+    serverless runner `exec`s this file inside an IPython kernel, which catches `SystemExit`,
+    reports *An exception has occurred*, and marks the task failed.
+
+    Measured on the estate: the baseline wrote 33,526,699 receipt lines into the landing volume,
+    printed its counts, and the task came back `INTERNAL_ERROR` with `SystemExit: 0` as the only
+    output.
+    """
+    namespace = _executed_as_the_estate_does()
+    argv = list(sys.argv)
+    try:
+        result = namespace["main"](["holdout_probe_zero"])
+    except SystemExit as raised:  # pragma: no cover - the defect this gate exists for
+        pytest.fail(
+            f"the entrypoint raised SystemExit({raised.code}) for a module that succeeded. "
+            "In an IPython kernel that is a failed task, whatever the code says — and the work "
+            "the module did is complete and discarded."
+        )
+    finally:
+        sys.argv = argv
+    assert result == 0
+
+
+def test_a_module_that_failed_still_fails(probes: Path) -> None:
+    """The other half, and it is what stops the fix above from swallowing real failures."""
+    namespace = _executed_as_the_estate_does()
+    argv = list(sys.argv)
+    try:
+        with pytest.raises(SystemExit) as raised:
+            namespace["main"](["holdout_probe_two"])
+    finally:
+        sys.argv = argv
+    assert raised.value.code == 2, (
+        f"a module exiting 2 produced SystemExit({raised.value.code}). A non-zero exit is the "
+        "only signal a task has that the work did not happen."
     )

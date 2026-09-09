@@ -5628,3 +5628,56 @@ object where it does not, and a gate runs the file under the estate's own execut
 *Now:* `pipelines/entrypoint.py` :: `def here() -> Path:`
 *Now:* `pipelines/entrypoint.py` :: `    return [root, root / "src"]`
 *Status:* open
+
+---
+**Twenty-five minutes of finished work was thrown away because success was raised** ·
+found 2026-09-09 · by the failure reporter, on the dispatch after the entrypoint could find itself
+
+The task did everything it was asked to do:
+
+    history  W6 at scenario, seed estate, arms all-control [2025-09-01, 2026-03-02)
+             -> /Volumes/holdout/landing/files/baseline
+      esl_acks            1,193,244
+      pos_lines          33,526,699
+      price_decisions     1,193,244
+      shelf_days          2,184,000
+
+Thirty-three and a half million receipt lines, written to the landing volume, counted and
+printed. The task was then marked `INTERNAL_ERROR`, and the whole of its output was:
+
+    SystemExit: 0
+    An exception has occurred, use %tb to see the full traceback.
+    UserWarning: To exit: use 'exit', 'quit', or Ctrl-D.
+
+**Every entry point under `pipelines/` ends `sys.exit(main())`**, which is the ordinary spelling
+and the correct one for a script. `runpy.run_module(..., run_name="__main__")` is what makes those
+blocks execute — that is why the entrypoint uses it — and it lets their `SystemExit` out. On a
+laptop nothing notices: the interpreter is exiting anyway and the code is what the shell reports.
+
+**Databricks' serverless task runner `exec`s the file inside an IPython kernel**, and IPython
+catches `SystemExit`, prints *An exception has occurred*, and advises using `exit` instead. The
+task is failed. The advice in that warning is the whole finding, printed by the platform, under
+the exception it caused.
+
+> **Three hypotheses were wrong before this one was read.** The first dispatch said only
+> `INTERNAL_ERROR: Workload failed, see run output for details`; the guess was a memory ceiling.
+> The second pointed at Unity Catalog volumes not supporting direct-append writes — plausible,
+> documented, and **wrong**: the volume took thirty-eight million rows without complaint. What
+> settled it was the task's own output, which took two dispatches and two fixes to make visible.
+> **A workflow that cannot print why a job failed does not cost one run; it costs every wrong
+> theory the run would have refuted.**
+
+A zero from `runpy` is now a return and anything else is re-raised, so a module that failed still
+fails the task and one that succeeded no longer does. The same at the file's own bottom:
+`raise SystemExit(main())` raises on zero, and only a non-zero code raises now.
+
+`tests/infra/test_the_entrypoint_finds_itself.py` writes two modules that end the way every entry
+point ends — one returning 0, one returning 2 — and runs both through the real entrypoint,
+executed the estate's way. Restoring the bare `runpy.run_module` call turns the first red with
+`SystemExit(0)` by name.
+
+*Site:* `pipelines/entrypoint.py` :: `    except SystemExit as finished:`
+*Disposition:* branch `infra/success-is-not-an-exception`
+*Closed:* 2026-09-09 — success returns and failure raises, in both places the entrypoint can exit
+*Now:* `pipelines/entrypoint.py` :: `    except SystemExit as finished:`
+*Status:* open
