@@ -46,10 +46,16 @@ resource "databricks_job" "train" {
   name        = "holdout — train, gate, register"
   description = "Trains on the estate, runs the five promotion gates, registers a version only if they pass."
 
+  # **The contract layer's two imports, for the same reason `infra/pipelines/jobs.tf` declares
+  # them.** `pipelines/ml/__main__.py` reads `contracts/ml/training.yaml` through
+  # `holdout.contracts.loader`, which validates with jsonschema and parses with PyYAML — neither
+  # of which the serverless base image carries. The versions are `pyproject.toml`'s `contracts`
+  # extra, and a gate compares the declarations.
   environment {
     environment_key = "holdout"
     spec {
-      client = "2"
+      client       = "2"
+      dependencies = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]
     }
   }
 
