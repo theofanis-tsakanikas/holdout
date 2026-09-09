@@ -5730,3 +5730,46 @@ this code was written on* — and the repository's own answer to it was a file c
 session in a `with`
 *Now:* `pipelines/session.py` :: `    existing = provided()`
 *Status:* open
+
+---
+**Nothing ever dropped the ERP's master data, and the guard that noticed was three tasks in** ·
+found 2026-09-09 · by `silver` refusing on the estate, after the baseline had loaded
+
+    BronzeMissingError: /Volumes/holdout/bronze/files/cost_ledger holds no Parquet, so silver
+    would build an empty cost_ledger and report a clean run.
+
+**That refusal is the guard working and what it refused was a step nobody had written.**
+`CLAUDE.md` describes the ERP path as *master data → files on S3, dropped again during a run*, and
+no job dropped anything: `backfill` ran `history` and then `load`.
+
+**The reference tables are on disk and the loader will not read them, on purpose.**
+`corpus/world/write` puts `store_master`, `product_master` and `cost_ledger` beside the four event
+streams, and `bulk._sources` reads each `run.json`'s stream counts rather than globbing — with the
+reason written above it: that `store_master` carries the **`arm`** column, which is the
+experiment's answer. *An ingestion path cannot carry the injected truth into bronze even by
+accident.* So the only route for master data is an ERP drop, and there was no exporter.
+
+Each slice now exports one, into its own directory, on the last day **inside** it — a drop
+publishes every reference row effective at or before the day it names, so the baseline's carries
+the ledger as the ERP knew it when the window opened and the window's carries what became
+effective during it. Measured at the `harness` scale: 355 rows in the baseline's drop and 372 in
+the window's. `erp.drop_directories` now looks one directory down, the way
+`bulk._history_manifests` already did, because two exports into one directory would both write
+`drop=000` and the second would be refused as a path already loaded whose bytes had changed.
+
+> **And the gate that would have caught it could not see the task.** `tests/infra/tasks.py`
+> matched `parameters = [` and the two history slices are built with `parameters = concat(...)`,
+> because the window instance appends four arguments the baseline does not take. So those tasks
+> were in no gate's population at all — silently, while every gate over that population reported
+> OK. **That is this register's most-repeated shape, arriving in the readers themselves**: a
+> population defined by a property is blind to whatever lacks it, and here the property was a
+> bracket.
+
+*Site:* `infra/pipelines/jobs.tf` :: `    task_key        = "export"`
+*Site:* `tests/infra/tasks.py` :: `_PARAMETERS = re.compile(r"parameters\s*=\s*(\[|concat\s*\()")`
+*Disposition:* branch `ingest/the-erp-drops-its-master-data`
+*Closed:* 2026-09-09 — one export per slice before its history, and the shared reader sees both
+spellings of a parameter list
+*Now:* `infra/pipelines/jobs.tf` :: `    task_key        = "export"`
+*Now:* `tests/infra/tasks.py` :: `_PARAMETERS = re.compile(r"parameters\s*=\s*(\[|concat\s*\()")`
+*Status:* open
