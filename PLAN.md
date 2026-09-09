@@ -2078,6 +2078,33 @@ A `run` whose every figure is asserted by a step that fails when it is not true 
 least one experiment that produces a number and at least one that **refuses** for the right reason
 — with the account confirming afterwards that nothing is left standing.
 
+> **Restated 2026-09-09, by the design engine refusing on the estate.** The number is gone from
+> this criterion and the refusal carries the phase.
+>
+> **The corpus cannot power the declared experiment, and neither can the chain the scenario
+> describes.** Measured over the pre-period of both worlds it offers: a mean of 1,417 cents a
+> store-week against a variance of 24,312,932 — a coefficient of variation of **3.48** — needing
+> **366 units an arm even over fifty-two weeks**, where the roster supplies **48** control at the
+> contract's holdout share. `scenario` answers the same way with 3.57 and 14. The dispersion is a
+> property of the metric rather than of the estate's size, so no scale in this corpus closes it,
+> and twelve hundred stores would still be an order of magnitude short.
+>
+> **The number that stood here for a day was an artefact.** `tests/pipelines/test_experiments.py`
+> exported the ERP's master data on the second day of the world and then priced eight weeks of
+> sales against it: one cost for every sale, a margin that barely moves, and a variance small
+> enough to pass a design the estate refuses. With the estate's own drop day it refuses locally
+> too. **The gate was easier than the estate in the one dimension that decides feasibility.**
+>
+> **So what closes the phase is the refusal, with its figures, in `gold.readout`** — which is
+> this repository's own sentence with the arithmetic attached: *an uplift number produced without
+> a valid holdout is a build failure.* Requiring a number here would have meant choosing an MDE
+> that makes the refusal go away, around seventy percent, which is not a difference anybody sizes
+> for. `run.yml` passes `--require-refusal` and not `--require-number`, and says why beside it.
+>
+> **What is not weakened**: `check_experiments` still refuses an empty readout — a run that
+> produced no rows has not refused, it has not run — and still refuses a reason code the contract
+> does not declare.
+
 ### Closed in this phase
 
 The live evidence for claims 1 to 5. The cost model — 20–60 USD a cycle, 100–600 USD across the

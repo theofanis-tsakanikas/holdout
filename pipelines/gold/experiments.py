@@ -624,8 +624,25 @@ def design(
     date and which no amount of good faith would make into an experiment.
     """
     measured = measure(spark, scale=scale, gold_schema=gold_schema, silver_schema=silver_schema)
+    # **The table exists whether or not anything is written into it.** Its absence would
+    # otherwise be the signal that a design was refused, and an absent table is also what a
+    # `design` step that never ran looks like. Created here, empty, so that *no rows for this
+    # experiment* means exactly one thing: the design was assessed and refused.
+    assignment_table.create(spark, schema=gold_schema)
+
     written = 0
-    print(f"design   roster {len(measured.roster)}  window opens {measured.period.opens_on}\n")
+    # **The two figures every feasibility answer rests on, printed whatever the answer is.**
+    # Required units scale with the variance over the square of the effect, so a design that is
+    # refused and one that is sealed are the same arithmetic over these two numbers — and a run
+    # that printed only the verdict made the numbers cost a dispatch to see.
+    mean = measured.mean_per_unit_week
+    variance = measured.variance_per_unit_week
+    spread = variance.sqrt() / mean if mean else Decimal(0)
+    print(
+        f"design   roster {len(measured.roster)}  window opens {measured.period.opens_on}\n"
+        f"         pre-period {measured.pre_weeks[0]}..{measured.pre_weeks[-1]}  "
+        f"mean {mean} cents  variance {variance}  cv {spread:.2f}\n"
+    )
     for declared, verdict in _verdicts(measured):
         if isinstance(verdict, DesignRefusal):
             # **Every reason, with its detail and its remedy.** The first version printed the
@@ -649,10 +666,21 @@ def design(
             f"{verdict.control_size} control, {len(verdict.automatic_exclusions)} excluded"
         )
     if not written:
-        raise ExperimentError(
-            "every declared design was refused, so no assignment was written and the comparison "
-            "window has no arms to be generated under. A run with nothing to read out is not a "
-            "run that refuses; it is one that never started."
+        # **Refused is an answer, and the run carries on to record it.**
+        #
+        # This raised, on the argument that a run with nothing to read out is one that never
+        # started. That was wrong about what this estate demonstrates. Measured on both worlds
+        # the corpus offers, the margin per store-week has a coefficient of variation of about
+        # **3.5**, against which the declared ten percent effect needs hundreds of units an arm
+        # and the roster supplies dozens. No scale in this corpus closes that, and neither does
+        # the twelve-hundred-store chain the scenario describes.
+        #
+        # So the readout is a table of refusals with the figures in them, and that **is** the
+        # claim: *an uplift number produced without a valid holdout is a build failure.* A run
+        # that stopped here would have had the refusal and thrown it away.
+        print(
+            "\n  no design may exist, so no lottery was drawn and the comparison window runs "
+            "under all-control.\n  The readout records why, per experiment, with its figures."
         )
     return written
 

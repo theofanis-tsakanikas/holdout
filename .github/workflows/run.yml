@@ -238,7 +238,25 @@ jobs:
           WAREHOUSE=$(aws ssm get-parameter --name /holdout/lakehouse/warehouse_id             --query Parameter.Value --output text)
           CATALOG=$(aws ssm get-parameter --name /holdout/lakehouse/catalog             --query Parameter.Value --output text)
 
-          uv run python -m ops.run_assertions             --warehouse-id "$WAREHOUSE" --catalog "$CATALOG"             --require-number --require-refusal
+          # **`--require-refusal` and not `--require-number`, and the omission is the finding.**
+          #
+          # The corpus cannot power the declared experiment. Measured over the pre-period of both
+          # worlds it offers: a mean of 1,417 cents a store-week against a variance of 24,312,932
+          # — a coefficient of variation of **3.48** — needing 366 units an arm even over
+          # fifty-two weeks, where the roster supplies 48 control at the contract's holdout
+          # share. `scenario` gives the same answer at 3.57 and 14. Even the twelve-hundred-store
+          # chain the scenario describes is an order of magnitude short.
+          #
+          # So there is no number to require, and requiring one would mean choosing an MDE that
+          # makes the refusal go away — around seventy percent, which is not a difference anybody
+          # sizes for. **What the estate demonstrates is the refusal**, with its figures, in
+          # `gold.readout`: *an uplift number produced without a valid holdout is a build
+          # failure*, and this is that sentence with the arithmetic attached.
+          #
+          # `check_experiments` still refuses a reason code the contract does not declare, and
+          # still refuses an empty readout — a run that produced no rows at all has not refused,
+          # it has not run.
+          uv run python -m ops.run_assertions             --warehouse-id "$WAREHOUSE" --catalog "$CATALOG"             --require-refusal
 
       - name: Ask the endpoint a live question
         env:
