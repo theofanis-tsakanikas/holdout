@@ -66,6 +66,24 @@ def here() -> Path:
     return Path(frame.f_code.co_filename).resolve()
 
 
+def roots() -> list[Path]:
+    """Every directory this repository is importable from, in the order they must be searched.
+
+    **Two, and the second is not optional.** `pipelines`, `corpus`, `ops` and `evals` are packages
+    in the tree; `holdout` is not — `pyproject.toml` declares a `src/` layout, so `import holdout`
+    resolves only with `src/` on the path. Seven modules under `pipelines/` import it, including
+    `pipelines/gold/assignment.py` and every file in `pipelines/ml/`, which is the training job.
+
+    **On a laptop and in CI this is invisible**, because `uv sync` installs the project and
+    `holdout` is importable from site-packages. On the estate nothing is installed: the task runs
+    a git checkout, and what is importable is exactly what this function returns. So the failure
+    would have been `ModuleNotFoundError: No module named 'holdout'`, inside a job, in the layer
+    that trains the model — three jobs and about an hour after the run began.
+    """
+    root = here().parents[1]
+    return [root, root / "src"]
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args:
@@ -75,12 +93,13 @@ def main(argv: list[str] | None = None) -> int:
 
     module, rest = args[0], args[1:]
 
-    # `parents[1]` is the repository root: this file is `pipelines/entrypoint.py`. Inserted at the
-    # front rather than appended, so a same-named package installed in the runtime cannot shadow
-    # the checkout the task was pinned to.
-    root = str(here().parents[1])
-    if root not in sys.path:
-        sys.path.insert(0, root)
+    # Inserted at the front rather than appended, so a same-named package installed in the
+    # runtime cannot shadow the checkout the task was pinned to. Reversed, so that after both
+    # insertions the list reads in the order `roots()` declares.
+    for path in reversed(roots()):
+        entry = str(path)
+        if entry not in sys.path:
+            sys.path.insert(0, entry)
 
     # **`sys.argv[0]` becomes the module**, because every one of these parsers is built with
     # `prog=` set from its own name and a usage line naming `entrypoint.py` would send a reader to

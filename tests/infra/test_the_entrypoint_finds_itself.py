@@ -70,6 +70,30 @@ def test_it_is_executable_without_a_bound_file() -> None:
     assert "here" in namespace, "the entrypoint no longer exposes `here()`; this gate reads it."
 
 
+def test_every_package_the_pipelines_import_is_reachable_from_those_roots() -> None:
+    """The tree's packages and `holdout`, which lives under `src/` and is not installed there.
+
+    **On a laptop and in CI this cannot fail**, because `uv sync` installs the project and
+    `holdout` resolves from site-packages. On the estate nothing is installed: a task runs a git
+    checkout, and what is importable is exactly what `roots()` returns. Seven modules under
+    `pipelines/` import `holdout` — `pipelines/gold/assignment.py` and every file in
+    `pipelines/ml/` among them — so a missing `src/` is `ModuleNotFoundError` in the layer that
+    trains the model, three jobs and about an hour into a run.
+
+    Asserted as **directories that contain the packages**, rather than by importing them: an
+    import here would resolve from the installed project and prove nothing about the checkout.
+    """
+    namespace = _executed_as_the_estate_does()
+    roots = [Path(p) for p in namespace["roots"]()]
+    for package in ("pipelines", "corpus", "ops", "evals", "holdout"):
+        assert any((root / package / "__init__.py").is_file() for root in roots), (
+            f"`{package}` is importable from none of {[str(r) for r in roots]}.\n\n"
+            "Every entry point a Databricks task runs imports from the checkout and nothing is "
+            "installed there. A package missing from this list is ModuleNotFoundError inside a "
+            "job, after the approval has been spent."
+        )
+
+
 def test_it_finds_the_repository_root_without_a_bound_file() -> None:
     namespace = _executed_as_the_estate_does()
     found = namespace["here"]().parents[1]

@@ -5601,9 +5601,30 @@ language binds it and falls back to the frame where it does not.
 compiled, in a namespace with no `__file__` — and asserts the root comes back. Restoring
 `Path(__file__)` reproduces the estate's `NameError` by name.
 
+> **And it was putting one root on the path where two are needed.** Found while the fix above
+> was in CI, by asking what else the estate has that a laptop does not. `pyproject.toml` declares
+> a `src/` layout: `pipelines`, `corpus`, `ops` and `evals` are packages in the tree, and
+> `holdout` is not — `import holdout` resolves only with `src/` on the path. **Seven modules
+> under `pipelines/` import it**, `pipelines/gold/assignment.py` and every file in `pipelines/ml/`
+> among them.
+>
+> **On a laptop and in CI this cannot fail**, because `uv sync` installs the project and
+> `holdout` comes from site-packages. On the estate nothing is installed: the task runs a git
+> checkout, and what is importable is exactly what the entrypoint puts on the path. So the
+> failure would have been `ModuleNotFoundError: No module named 'holdout'` in the layer that
+> trains the model — three jobs and about an hour into the run, and a fourth dispatch for one
+> file.
+>
+> **The machine that builds the thing is the machine least able to see what its absence does.**
+> That sentence is already in this register, about mypy overrides and an extra nobody had
+> uninstalled; here the absent thing is an editable install and the blind machine is every
+> machine except the estate.
+
 *Site:* `pipelines/entrypoint.py` :: `def here() -> Path:`
+*Site:* `pipelines/entrypoint.py` :: `    return [root, root / "src"]`
 *Disposition:* branch `infra/the-entrypoint-finds-itself`
 *Closed:* 2026-09-09 — the path comes from `__file__` where it exists and from the frame's code
 object where it does not, and a gate runs the file under the estate's own execution shape
 *Now:* `pipelines/entrypoint.py` :: `def here() -> Path:`
+*Now:* `pipelines/entrypoint.py` :: `    return [root, root / "src"]`
 *Status:* open
