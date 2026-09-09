@@ -5808,3 +5808,41 @@ read the platform refuses, an ERP export nobody dispatched, and now a package th
 dbt task whose environment declares no dependency at all
 *Now:* `infra/pipelines/jobs.tf` :: `  dbt_environment_key = "holdout-dbt"`
 *Status:* open
+
+---
+**The contract layer's two imports were declared for the laptop and not for the estate** ·
+found 2026-09-09 · by the experiment's design step, after the baseline, silver and gold succeeded
+
+    ModuleNotFoundError: No module named 'jsonschema'
+
+`src/holdout/contracts/` is allowed exactly two third-party imports and `pyproject.toml` names
+them in the `contracts` extra: PyYAML reads the files, jsonschema validates them.
+`src/holdout/core/` is allowed neither — which is why the ingest, silver and gold tasks needed
+none of this, and why the two that failed are the two that ask a contract a question: the
+experiment, which resolves the metric and the inference settings, and training, which reads its
+own.
+
+**The serverless base image carries neither**, and the estate declared nothing at all: one
+environment, `client = "2"`, shared by every task. Nothing said which packages any of them needed
+because on a laptop `uv sync` installs the project and the question never arises.
+
+> **That is the fifth time today the same sentence was the finding**: the runtime is not the one
+> this code was written on. `__file__` unbound under `exec`; `src/` off `sys.path`; `SystemExit(0)`
+> read as a failure; a config read the platform refuses; dbt absent from the environment named
+> *where dbt itself runs*; and now the contract layer's own two imports. **Every one of them was
+> invisible to a green suite, and every one cost a dispatch.**
+
+The experiment jobs and the training job now declare the extra. The versions are
+`pyproject.toml`'s and `tests/infra/test_the_contract_layer_brings_its_imports.py` compares the
+declarations — because two declarations of one dependency set is one of them being wrong, and this
+register holds five findings of exactly that shape already, each found by something other than the
+mechanism that was supposed to hold it.
+
+*Site:* `infra/pipelines/jobs.tf` :: `  contracts_environment_key = "holdout-contracts"`
+*Site:* `infra/ml/training.tf` :: `      dependencies = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]`
+*Disposition:* branch `infra/the-contract-layer-brings-its-two-imports`
+*Closed:* 2026-09-09 — declared where the tasks that read a contract run, and compared against the
+extra that declares them for every other machine
+*Now:* `infra/pipelines/jobs.tf` :: `  contracts_environment_key = "holdout-contracts"`
+*Now:* `infra/ml/training.tf` :: `      dependencies = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]`
+*Status:* open

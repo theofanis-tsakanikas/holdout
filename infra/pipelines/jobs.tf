@@ -38,6 +38,22 @@ locals {
   # the extra uses.
   dbt_environment_key = "holdout-dbt"
 
+  # **A third environment, for the tasks that read a contract.**
+  #
+  #     ModuleNotFoundError: No module named 'jsonschema'
+  #
+  # `src/holdout/contracts/` is allowed exactly two third-party imports and `pyproject.toml`
+  # names them in the `contracts` extra: PyYAML reads the files and jsonschema validates them.
+  # `src/holdout/core/` is allowed neither, which is why the ingest and silver tasks need none of
+  # this — and why the two that do are the ones that ask a contract a question: the experiment,
+  # which resolves the metric and the inference settings, and training, which reads its own.
+  #
+  # **The versions are `pyproject.toml`'s, and a gate compares the two lists.** Two declarations
+  # of one dependency set is one of them being wrong, and this register already holds four
+  # findings of that shape.
+  contracts_environment_key = "holdout-contracts"
+  contracts_dependencies    = ["PyYAML>=6.0.2", "jsonschema>=4.23.0"]
+
   # **The volume path, not the bucket URI.** A job takes paths rather than reading SSM itself:
   # the layer that knows the estate's shape is this one, and a pipeline that discovered its own
   # inputs would be a second place the estate is described.
@@ -371,9 +387,10 @@ resource "databricks_job" "experiment" {
   description = each.key == "design" ? "Moment 1: assess both designs and seal the lottery, before the window exists." : "Moment 3: verify the seal, close, and write one row per experiment into gold.readout."
 
   environment {
-    environment_key = local.environment_key
+    environment_key = local.contracts_environment_key
     spec {
-      client = "2"
+      client       = "2"
+      dependencies = local.contracts_dependencies
     }
   }
 
@@ -387,7 +404,7 @@ resource "databricks_job" "experiment" {
 
   task {
     task_key        = each.key
-    environment_key = local.environment_key
+    environment_key = local.contracts_environment_key
 
     spark_python_task {
       python_file = "pipelines/entrypoint.py"
