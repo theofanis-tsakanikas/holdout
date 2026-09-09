@@ -760,8 +760,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, help="where a local session puts its warehouse")
     args = parser.parse_args(argv)
 
-    spark = gold_session.build(args.root)
-    try:
+    with gold_session.sessions(args.root) as spark:
         runtime.use_catalog(spark, args.catalog)
         if args.moment == "design":
             design(
@@ -778,8 +777,6 @@ def main(argv: list[str] | None = None) -> int:
             silver_schema=args.silver_schema,
         )
         write(spark, rows, schema=args.gold_schema)
-    finally:
-        runtime.release(spark)
     return 0
 
 

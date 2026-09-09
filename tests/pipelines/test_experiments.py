@@ -43,7 +43,8 @@ def spark(tmp_path_factory: pytest.TempPathFactory) -> Iterator[SparkSession]:
     """One session for the file, for `tests/pipelines/test_gold.py`'s reason."""
     from pipelines.gold import session
 
-    yield from session.sessions(tmp_path_factory.mktemp("warehouse"))
+    with session.sessions(tmp_path_factory.mktemp("warehouse")) as spark:
+        yield spark
 
 
 @pytest.fixture(scope="module")

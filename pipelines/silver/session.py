@@ -22,6 +22,7 @@ and a laptop without one gets an error from Spark rather than a skip from pytest
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from pyspark.sql import SparkSession
@@ -37,17 +38,16 @@ if TYPE_CHECKING:
 LOCAL_CORES = 2
 
 
-def build(name: str = "holdout-silver", *, cores: int = LOCAL_CORES) -> SparkSession:
+@contextmanager
+def sessions(name: str = "holdout-silver", *, cores: int = LOCAL_CORES) -> Iterator[SparkSession]:
     """The runtime's session where there is one, and a local Delta session where there is not.
 
-    `pipelines/session.py` carries the argument: on serverless the session already exists and the
-    configuration below is unsupported there, so building would fail on the import rather than on
-    anything this module could explain.
+    `pipelines/session.py::owned` carries both halves: on serverless the session already exists
+    and the configuration below is unsupported there, and a session this repository did not build
+    is not one it may stop.
     """
-    existing = runtime.provided()
-    if existing is not None:
-        return existing
-    return _local(name, cores=cores)
+    with runtime.owned(lambda: _local(name, cores=cores)) as spark:
+        yield spark
 
 
 def _local(name: str, *, cores: int) -> SparkSession:
@@ -78,16 +78,5 @@ def _local(name: str, *, cores: int) -> SparkSession:
         # A local build writes small tables; the default 200 shuffle partitions turn a
         # three-row join into 200 empty files.
         .config("spark.sql.shuffle.partitions", str(cores))
-        # What `pipelines/session.py::release` reads back. Set here and nowhere else.
-        .config(runtime.LOCAL, "true")
     )
     return configure_spark_with_delta_pip(builder).getOrCreate()
-
-
-def sessions(name: str = "holdout-silver") -> Iterator[SparkSession]:
-    """A session that stops when the caller is done with it — unless it was never ours."""
-    spark = build(name)
-    try:
-        yield spark
-    finally:
-        runtime.release(spark)

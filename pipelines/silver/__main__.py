@@ -38,12 +38,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cores", type=int, default=session.LOCAL_CORES)
     args = parser.parse_args(argv)
 
-    spark = session.build(cores=args.cores)
-    try:
+    with session.sessions(cores=args.cores) as spark:
         runtime.use_catalog(spark, args.catalog)
         counts = build(spark, args.bronze, args.silver, schema=args.silver_schema)
-    finally:
-        runtime.release(spark)
 
     destination = args.silver_schema or args.silver
     print(f"silver  {args.bronze} -> {destination}")

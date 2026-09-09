@@ -48,8 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.root is not None:
         args.root.mkdir(parents=True, exist_ok=True)
 
-    spark = session.build(args.root)
-    try:
+    with session.sessions(args.root) as spark:
         runtime.use_catalog(spark, args.catalog)
         if args.only == "priced":
             counts, unpriced = priced(spark, args.silver, silver_schema=args.silver_schema)
@@ -58,8 +57,6 @@ def main(argv: list[str] | None = None) -> int:
         if args.silver is None:
             parser.error("--only all reads silver from directories: pass --silver.")
         built = build(spark, args.silver, root=args.root, silver_schema=args.silver_schema)
-    finally:
-        runtime.release(spark)
 
     print(f"gold    {args.silver or args.silver_schema} -> {args.root}/warehouse")
     print("        counts over this silver directory, not properties of the models\n")

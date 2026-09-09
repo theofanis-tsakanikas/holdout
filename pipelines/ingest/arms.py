@@ -53,14 +53,11 @@ def arms_for(args: Any, run: Run) -> Mapping[str, Arm] | None:
     from pipelines.gold import assignment as assignment_table
     from pipelines.gold import session as gold_session
 
-    spark = gold_session.build()
-    try:
+    with gold_session.sessions() as spark:
         runtime_module.use_catalog(spark, getattr(args, "catalog", None))
         rows = assignment_table.read_rows(
             spark, schema=args.assignment_schema, experiment_id=args.experiment_id
         )
-    finally:
-        runtime_module.release(spark)
     if not rows:
         raise SystemExit(
             f"{args.assignment_schema}.experiment_assignment holds no rows for "

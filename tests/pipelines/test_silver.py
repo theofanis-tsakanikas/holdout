@@ -66,7 +66,8 @@ DAY = "2025-09-02"
 def spark() -> Iterator[SparkSession]:
     from pipelines.silver import session
 
-    yield from session.sessions("holdout-silver-tests")
+    with session.sessions("holdout-silver-tests") as spark:
+        yield spark
 
 
 @pytest.fixture(scope="module")
