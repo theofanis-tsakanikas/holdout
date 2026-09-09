@@ -27,9 +27,43 @@ rewritten so that a module printing its own usage names itself rather than this 
 
 from __future__ import annotations
 
+import inspect
 import runpy
 import sys
 from pathlib import Path
+
+
+def here() -> Path:
+    """This file's own path, however the runtime chose to execute it.
+
+    **`__file__` is not always bound, and the first version of this file assumed it was.**
+    Databricks' serverless task runner does not import the file and does not run it as a script:
+    it reads the bytes and `exec`s the compiled object inside a kernel —
+
+        with open(filename, "rb") as f:
+          exec(compile(f.read(), filename, 'exec'))
+
+    — and `exec` binds no `__file__`. So the file added to remove an assumption about the runtime
+    failed on an assumption about the runtime, with `NameError: name '__file__' is not defined`,
+    in the first seconds of a `backfill` that had already spent an environment approval.
+
+    **`compile(..., filename, ...)` records the path even so**, on the code object, and a frame
+    carries its code object. That is the same path `__file__` would have held — measured on the
+    estate: `/Workspace/Repos/.internal/<sha>/pipelines/entrypoint.py`.
+
+    `__file__` is still preferred where it exists, because it is the answer the language
+    guarantees; the frame is the fallback for the runtimes that do not bind it.
+    """
+    named = globals().get("__file__")
+    if named:
+        return Path(named).resolve()
+    frame = inspect.currentframe()
+    if frame is None:  # pragma: no cover - every CPython this runs on has frames
+        raise RuntimeError(
+            "this interpreter exposes neither __file__ nor a call frame, so the entrypoint "
+            "cannot find the repository root it exists to put on sys.path."
+        )
+    return Path(frame.f_code.co_filename).resolve()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -44,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     # `parents[1]` is the repository root: this file is `pipelines/entrypoint.py`. Inserted at the
     # front rather than appended, so a same-named package installed in the runtime cannot shadow
     # the checkout the task was pinned to.
-    root = str(Path(__file__).resolve().parents[1])
+    root = str(here().parents[1])
     if root not in sys.path:
         sys.path.insert(0, root)
 
