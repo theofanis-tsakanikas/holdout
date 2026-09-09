@@ -21,6 +21,23 @@ locals {
   # task — two copies of a runtime are two things to keep equal.
   environment_key = "holdout"
 
+  # **A second environment, for the one task that needs a package.**
+  #
+  #     + dbt deps
+  #     /bin/bash: line 4: dbt: command not found
+  #
+  # A serverless `dbt_task` runs dbt in the environment it names, and the base image has no dbt
+  # in it. The dependency is declared here rather than added to `environment_key` above because
+  # every other task would then pay the install — eight tasks resolving an adapter that only one
+  # of them runs — and because a runtime is a claim about what a task needs, not a shared bag.
+  #
+  # **`dbt-databricks`, not the `dbt-spark[session]` the local extra installs.** They are two
+  # adapters for two engines: locally dbt drives the SparkSession this repository started, and
+  # on the estate it issues SQL to the warehouse `lakehouse` created. `pyproject.toml` carries
+  # the local half and says why; this is the other half, and the lower bound is the same shape
+  # the extra uses.
+  dbt_environment_key = "holdout-dbt"
+
   # **The volume path, not the bucket URI.** A job takes paths rather than reading SSM itself:
   # the layer that knows the estate's shape is this one, and a pipeline that discovered its own
   # inputs would be a second place the estate is described.
@@ -267,6 +284,14 @@ resource "databricks_job" "gold" {
     }
   }
 
+  environment {
+    environment_key = local.dbt_environment_key
+    spec {
+      client       = "2"
+      dependencies = ["dbt-databricks>=1.11.0"]
+    }
+  }
+
   git_source {
     url      = var.repository_url
     provider = "gitHub"
@@ -310,7 +335,10 @@ resource "databricks_job" "gold" {
     # where dbt itself runs: the Python process that resolves `dbt deps` and issues the
     # statements. Giving one and not the other reads as complete, because each is sufficient for
     # the half a reader happens to be thinking about.
-    environment_key = local.environment_key
+    #
+    # **And the environment has to contain dbt**, which the first two applies took for granted:
+    # `dbt deps` came back `command not found`. See `local.dbt_environment_key`.
+    environment_key = local.dbt_environment_key
 
     dbt_task {
       project_directory = "pipelines/gold/dbt"
