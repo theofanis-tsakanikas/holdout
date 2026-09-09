@@ -592,6 +592,26 @@ def _verdicts(measured: Measured) -> list[tuple[Declared, Feasible | DesignRefus
     ]
 
 
+def report_refusal(experiment_id: str, refusal: DesignRefusal) -> None:
+    """Every reason a design was refused, with its detail and its remedy.
+
+    **The first version printed the codes alone.** On the estate that produced
+    `UNDERPOWERED_FOR_CAPACITY, UNDERPOWERED_FOR_DURATION` and nothing to act on: not how many
+    units the design needs, not how many it has, not what would change either. Then the run
+    stopped, so the next thing anyone could do was dispatch again to find out.
+
+    `DesignRefusalReason` refuses to exist without both halves — *a refusal with no remedy is an
+    obstacle*, says its own `__post_init__` — and printing only the code throws away the half
+    that says what to do. `evals/report.py` prints every check for the same reason, and
+    `promotion.Assessment.refusals` is plural for it too.
+    """
+    print(f"  {experiment_id:<26} REFUSED")
+    for reason in refusal.reasons:
+        print(f"      {reason.code.value}")
+        print(f"        {reason.detail}")
+        print(f"        fix: {reason.what_would_fix_it}")
+
+
 def design(
     spark: SparkSession, *, scale: str, gold_schema: str = "gold", silver_schema: str = "silver"
 ) -> int:
@@ -608,8 +628,13 @@ def design(
     print(f"design   roster {len(measured.roster)}  window opens {measured.period.opens_on}\n")
     for declared, verdict in _verdicts(measured):
         if isinstance(verdict, DesignRefusal):
-            codes = ", ".join(reason.code.value for reason in verdict.reasons)
-            print(f"  {declared.experiment_id:<26} REFUSED  {codes}")
+            # **Every reason, with its detail and its remedy.** The first version printed the
+            # codes alone, and on the estate that produced `UNDERPOWERED_FOR_CAPACITY,
+            # UNDERPOWERED_FOR_DURATION` and nothing to act on: not how many units the design
+            # needs, not how many it has. `DesignRefusalReason` refuses to exist without both —
+            # *a refusal with no remedy is an obstacle* — and printing only the code throws away
+            # the half that says what to do.
+            report_refusal(declared.experiment_id, verdict)
             continue
         rows = assignment_table.write(
             spark,

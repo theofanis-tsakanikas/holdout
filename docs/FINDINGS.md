@@ -5886,3 +5886,56 @@ be the sixth instance of the shape this register already holds five findings abo
 and a gate that refuses the deprecated field and a split fleet
 *Now:* `infra/pipelines/jobs.tf` :: `      # **Version 4, and the number is a Python version.** `pyproject.toml` declares`
 *Status:* open
+
+---
+**The world the estate loads cannot carry the experiment the estate runs** ·
+found 2026-09-09 · by the design engine refusing, and then by making the refusal say its figures
+
+    fresh-ladder               REFUSED  UNDERPOWERED_FOR_CAPACITY, UNDERPOWERED_FOR_DURATION
+
+Two codes and nothing to act on. `design` printed the codes and stopped, so the first thing this
+cost was a measurement to find out what it meant — run locally against the estate's own world:
+
+    roster 100, available 74, control arm 14 at the contract's 20% holdout share
+    mean per store-week            13,040 cents
+    variance per store-week 2,162,885,439        →  CV 3.57
+    needed                    384 per arm, even over 52 weeks
+
+**No MDE closes a gap between 14 and 384.** It would have to exceed 130%, which is not a
+difference anybody sizes for — it is a number chosen to make a refusal go away, which is the
+thing this repository exists to refuse.
+
+**Two worlds, chosen for two different reasons, and only one of them was ever asked this
+question.** `CLAUDE.md` picks `scenario` — 100 stores, 40 SKUs a category, 244 days — because it
+asks for eight months of history. `corpus/world/scale.py` picks `HARNESS` — 320 stores, 4 SKUs a
+category — and its own comment says why: *the roster is the one dimension that cannot be traded
+away*, and *a thinner assortment raises per-store variance relative to the mean, so it makes this
+world harder to detect an effect in rather than easier*. The harness was sized for a design. The
+estate's world never was.
+
+> **The paragraph that chose the corpus said the size was a cost decision and nothing else.** It
+> was right about claim 2, which runs local over 200 seeds and does not care. It was silent about
+> claim 3, which runs on the estate and cares about nothing else — and the bill arrived two weeks
+> later, as a refusal with a number in it.
+
+`ESTATE` is the harness world plus the one week `run` drives: `harness` is exactly sixteen weeks —
+eight of pre-period, eight of window — and has no day left for a live one, which `erp.export`
+would refuse rather than fudge. `pipelines/window.py` reserves that week and
+`tests/pipelines/test_the_estate_scale_leaves_a_live_day.py` checks all three claims fit inside
+whatever scale `infra/pipelines/variables.tf` names.
+
+**And the first fix was to the reporting, not to the world.** `design` now prints every reason's
+detail and remedy, because the codes alone sent a reader back for another forty-minute dispatch to
+learn a number the engine had already computed. `DesignRefusalReason` will not exist without a
+remedy — *a refusal with no remedy is an obstacle* — and printing only the code discarded it.
+
+*Site:* `corpus/world/scale.py` :: `ESTATE = Scale(`
+*Site:* `pipelines/window.py` :: `LIVE_WEEKS = 1`
+*Site:* `pipelines/gold/experiments.py` :: `def report_refusal(experiment_id: str, refusal: DesignRefusal) -> None:`
+*Disposition:* branch `gold/a-refusal-names-its-figure`
+*Closed:* 2026-09-09 — the estate loads a world the design can be sized against, the window leaves
+the day `run` drives, and a refusal prints what it needs rather than only that it refused
+*Now:* `corpus/world/scale.py` :: `ESTATE = Scale(`
+*Now:* `pipelines/window.py` :: `LIVE_WEEKS = 1`
+*Now:* `pipelines/gold/experiments.py` :: `def report_refusal(experiment_id: str, refusal: DesignRefusal) -> None:`
+*Status:* open

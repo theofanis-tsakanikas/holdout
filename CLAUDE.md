@@ -46,6 +46,26 @@ a cost decision and nothing else: **claim 2 does not get stronger with a larger 
 stronger with 200 seeds and six adversarial worlds, which run local and cost nothing. Where a
 figure depends on corpus size it is reported as such, never extrapolated to the full estate.
 
+> **And the eight months are gone. Restated 2026-09-09, by the design engine refusing.** The
+> estate loaded `scenario` — 100 stores, 40 SKUs a category, 244 days — because this paragraph
+> asks for eight months. **That world cannot carry an experiment**, and the refusal came with the
+> figures: over its own pre-period the mean is 13,040 cents a store-week against a variance of
+> 2,162,885,439 — a coefficient of variation of **3.57** — so a ten percent effect needs **384
+> units per arm even over fifty-two weeks**, and the control arm holds **fourteen** (74 available
+> after interference exclusions, at the contract's 20% holdout share). No MDE closes that: it
+> would have to exceed 130%, which is not a difference anybody sizes for.
+>
+> The estate now loads `corpus/world/scale.py`'s `ESTATE`: the world claim 2's harness is sized
+> on — 320 stores, 4 SKUs a category — plus the one week `run` drives. **Seventeen weeks, not
+> eight months**, and the trade is stated rather than hidden: the experiment is what phase 3 is
+> accepted on, and a world that cannot carry one cannot demonstrate it. Every other line in this
+> file that says *eight months* is describing the corpus this paragraph chose, and is superseded
+> by this block rather than edited — rule 4.
+>
+> **What did not change is why the size is a cost decision.** Claim 2 still does not get stronger
+> with a larger estate; what the estate needs is a roster the design can be sized against, which
+> is the sentence immediately below this one, arriving two weeks later as a bill.
+
 > **The size that decides whether anything is provable is the surviving roster, not the store
 > count. Restated 2026-08-28.** This paragraph read *"claim 2 does not get stronger with 1,200
 > stores"*, and treated the scale as purely a cost decision. It is not. **Two units of scale exist

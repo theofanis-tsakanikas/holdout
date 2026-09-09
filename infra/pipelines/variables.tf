@@ -46,7 +46,7 @@ variable "git_ref" {
 
 variable "corpus_scale" {
   type    = string
-  default = "scenario"
+  default = "estate"
   # **The defaults in `pipelines/ingest/__main__.py` are `smoke` and `W1`, and relying on them is
   # worse than a crash.**
   #
@@ -56,9 +56,16 @@ variable "corpus_scale" {
   # a missing argument that is quietly filled in is eight months of history that is not eight
   # months of anything.
   #
-  # `scenario` is `CLAUDE.md`'s corpus: about 100 stores across three fresh categories over eight
-  # months. `harness` is 320 and belongs to claim 2, which runs local and costs nothing.
-  description = "The corpus scale backfill loads. `scenario` is the estate's; `harness` is claim 2's."
+  # **It was `scenario` — a hundred stores over eight months — and that world cannot carry an
+  # experiment.** Measured over its own pre-period: 13,040 cents a store-week against a variance
+  # of 2,162,885,439, a coefficient of variation of 3.57, needing **384 units per arm even over
+  # fifty-two weeks** where the control arm holds **fourteen**. `corpus/world/scale.py`'s `ESTATE`
+  # carries the whole argument and the number that closes it: no MDE fixes fourteen units.
+  #
+  # `estate` is `harness` — the world the design was sized on — plus the one week `run` drives.
+  # The eight months are gone and `CLAUDE.md` says so rather than narrowing quietly: seventeen
+  # weeks, because the experiment is what phase 3 is accepted on.
+  description = "The corpus scale backfill loads. `estate` carries the experiment; `harness` is claim 2's."
 }
 
 variable "corpus_world" {

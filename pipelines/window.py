@@ -49,9 +49,18 @@ def last_monday(scale: Scale | str) -> date:
     return end - timedelta(days=end.isoweekday() - 1)
 
 
+#: Weeks kept back at the end of the world, after the comparison window closes. **One, and it is
+#: the day `run` drives.** `pipelines/ingest/__main__.py` takes `--day after-window`, and a window
+#: that ran to the last day of the corpus would leave that day outside it — `erp.export` refuses a
+#: day the world does not have, which is correct and which would have made the live day
+#: impossible rather than late. `corpus/world/scale.py`'s `ESTATE` is `HARNESS` plus exactly this
+#: week, for exactly this reason.
+LIVE_WEEKS = 1
+
+
 def window(scale: Scale | str) -> tuple[date, date]:
     """`[opens, closes)` — the comparison window, as a half-open range of days."""
-    closes = last_monday(scale)
+    closes = last_monday(scale) - timedelta(weeks=LIVE_WEEKS)
     opens = closes - timedelta(weeks=PERIOD_WEEKS)
     if opens < _scale(scale).start_date + timedelta(weeks=PRE_PERIOD_WEEKS):
         raise WindowError(

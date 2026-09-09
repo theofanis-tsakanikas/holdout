@@ -30,12 +30,16 @@ pytestmark = pytest.mark.gold
 
 SEED = "experiments"
 DAY = "2025-09-02"
-#: **`harness`, and the scale is the assertion.** `corpus/world/scale.py` declares its 112
-#: days *load-bearing twice*: eight pre-period weeks, which is the balance covariates'
-#: declared lookback, plus eight period weeks, which is the design form's `max_duration`.
-#: `rehearsal` is 56 days and this file refused it by name — the refusal working, on the
-#: first run, against a scale chosen by copying the neighbouring test file.
-SCALE = "harness"
+#: **`estate`, and the scale is the assertion.** `corpus/world/scale.py` declares it as the world
+#: claim 2's harness is sized on plus the one week `run` drives, and this file builds the estate
+#: the way `backfill` does — so running it on anything else would be testing a different world
+#: from the one the workflow loads.
+#:
+#: **It was `harness`, and `pipelines/window.py` refused it the day the live week was reserved**:
+#: *a world of 112 days cannot carry 8 weeks of pre-period and 8 weeks of comparison window.*
+#: That is the guard working, on the test, before the estate paid for it — which is the whole
+#: reason the window's arithmetic lives in one module instead of in each caller.
+SCALE = "estate"
 
 
 @pytest.fixture(scope="module")
