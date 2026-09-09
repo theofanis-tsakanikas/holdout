@@ -5561,3 +5561,70 @@ removing infrastructure nobody's plan mentions is a different authority from the
 destroy, named by the workspace rather than by this project's tag
 *Now:* `.github/workflows/destroy.yml` :: `            echo "::error::the workspace is destroyed and the VPC Databricks made for it is not:"`
 *Status:* open
+
+---
+**The file that removes an assumption about the runtime failed on an assumption about the runtime** ·
+found 2026-09-09 · by the failure reporter written the day before, on its first useful dispatch
+
+`pipelines/entrypoint.py` exists because a `spark_python_task` runs a **file** and every entry
+point under `pipelines/` imports `pipelines.…`, which needs the repository root on `sys.path`.
+Its own docstring states the reason: *that is an assumption, and an assumption costs a dispatch
+to test.* It found the root with `Path(__file__)`.
+
+    NameError: name '__file__' is not defined
+      pipelines/entrypoint.py:47  root = str(Path(__file__).resolve().parents[1])
+
+**Databricks' serverless task runner neither imports the file nor runs it as a script.** It reads
+the bytes and executes the compiled object inside a kernel —
+
+    with open(filename, "rb") as f:
+      exec(compile(f.read(), filename, 'exec'))
+
+— and `exec` binds no `__file__`. The traceback above is the estate's own, printed by the wrapper
+frame `~/.ipykernel/5176/command--1-3565885085`.
+
+> **The file written to stop guessing about the runtime guessed about the runtime.** Both guesses
+> are the same shape — *the obvious property will be there* — and the second one was made while
+> writing the paragraph warning about the first.
+
+**And it is the third dispatch this defect cost.** The first said `INTERNAL_ERROR: Workload
+failed, see run output for details` and nothing else. The second was spent on `ops/run_job.sh`,
+which then failed on the CLI's JSON shape. This one printed the traceback in the workflow log,
+which is what that script was for.
+
+`compile(..., filename, ...)` records the path on the code object regardless, and a frame carries
+its code object: measured on the estate as
+`/Workspace/Repos/.internal/<sha>/pipelines/entrypoint.py`. `here()` prefers `__file__` where the
+language binds it and falls back to the frame where it does not.
+
+`tests/infra/test_the_entrypoint_finds_itself.py` executes the real file the way the estate does —
+compiled, in a namespace with no `__file__` — and asserts the root comes back. Restoring
+`Path(__file__)` reproduces the estate's `NameError` by name.
+
+> **And it was putting one root on the path where two are needed.** Found while the fix above
+> was in CI, by asking what else the estate has that a laptop does not. `pyproject.toml` declares
+> a `src/` layout: `pipelines`, `corpus`, `ops` and `evals` are packages in the tree, and
+> `holdout` is not — `import holdout` resolves only with `src/` on the path. **Seven modules
+> under `pipelines/` import it**, `pipelines/gold/assignment.py` and every file in `pipelines/ml/`
+> among them.
+>
+> **On a laptop and in CI this cannot fail**, because `uv sync` installs the project and
+> `holdout` comes from site-packages. On the estate nothing is installed: the task runs a git
+> checkout, and what is importable is exactly what the entrypoint puts on the path. So the
+> failure would have been `ModuleNotFoundError: No module named 'holdout'` in the layer that
+> trains the model — three jobs and about an hour into the run, and a fourth dispatch for one
+> file.
+>
+> **The machine that builds the thing is the machine least able to see what its absence does.**
+> That sentence is already in this register, about mypy overrides and an extra nobody had
+> uninstalled; here the absent thing is an editable install and the blind machine is every
+> machine except the estate.
+
+*Site:* `pipelines/entrypoint.py` :: `def here() -> Path:`
+*Site:* `pipelines/entrypoint.py` :: `    return [root, root / "src"]`
+*Disposition:* branch `infra/the-entrypoint-finds-itself`
+*Closed:* 2026-09-09 — the path comes from `__file__` where it exists and from the frame's code
+object where it does not, and a gate runs the file under the estate's own execution shape
+*Now:* `pipelines/entrypoint.py` :: `def here() -> Path:`
+*Now:* `pipelines/entrypoint.py` :: `    return [root, root / "src"]`
+*Status:* open

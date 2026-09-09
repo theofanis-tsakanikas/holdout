@@ -27,9 +27,61 @@ rewritten so that a module printing its own usage names itself rather than this 
 
 from __future__ import annotations
 
+import inspect
 import runpy
 import sys
 from pathlib import Path
+
+
+def here() -> Path:
+    """This file's own path, however the runtime chose to execute it.
+
+    **`__file__` is not always bound, and the first version of this file assumed it was.**
+    Databricks' serverless task runner does not import the file and does not run it as a script:
+    it reads the bytes and `exec`s the compiled object inside a kernel —
+
+        with open(filename, "rb") as f:
+          exec(compile(f.read(), filename, 'exec'))
+
+    — and `exec` binds no `__file__`. So the file added to remove an assumption about the runtime
+    failed on an assumption about the runtime, with `NameError: name '__file__' is not defined`,
+    in the first seconds of a `backfill` that had already spent an environment approval.
+
+    **`compile(..., filename, ...)` records the path even so**, on the code object, and a frame
+    carries its code object. That is the same path `__file__` would have held — measured on the
+    estate: `/Workspace/Repos/.internal/<sha>/pipelines/entrypoint.py`.
+
+    `__file__` is still preferred where it exists, because it is the answer the language
+    guarantees; the frame is the fallback for the runtimes that do not bind it.
+    """
+    named = globals().get("__file__")
+    if named:
+        return Path(named).resolve()
+    frame = inspect.currentframe()
+    if frame is None:  # pragma: no cover - every CPython this runs on has frames
+        raise RuntimeError(
+            "this interpreter exposes neither __file__ nor a call frame, so the entrypoint "
+            "cannot find the repository root it exists to put on sys.path."
+        )
+    return Path(frame.f_code.co_filename).resolve()
+
+
+def roots() -> list[Path]:
+    """Every directory this repository is importable from, in the order they must be searched.
+
+    **Two, and the second is not optional.** `pipelines`, `corpus`, `ops` and `evals` are packages
+    in the tree; `holdout` is not — `pyproject.toml` declares a `src/` layout, so `import holdout`
+    resolves only with `src/` on the path. Seven modules under `pipelines/` import it, including
+    `pipelines/gold/assignment.py` and every file in `pipelines/ml/`, which is the training job.
+
+    **On a laptop and in CI this is invisible**, because `uv sync` installs the project and
+    `holdout` is importable from site-packages. On the estate nothing is installed: the task runs
+    a git checkout, and what is importable is exactly what this function returns. So the failure
+    would have been `ModuleNotFoundError: No module named 'holdout'`, inside a job, in the layer
+    that trains the model — three jobs and about an hour after the run began.
+    """
+    root = here().parents[1]
+    return [root, root / "src"]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,12 +93,13 @@ def main(argv: list[str] | None = None) -> int:
 
     module, rest = args[0], args[1:]
 
-    # `parents[1]` is the repository root: this file is `pipelines/entrypoint.py`. Inserted at the
-    # front rather than appended, so a same-named package installed in the runtime cannot shadow
-    # the checkout the task was pinned to.
-    root = str(Path(__file__).resolve().parents[1])
-    if root not in sys.path:
-        sys.path.insert(0, root)
+    # Inserted at the front rather than appended, so a same-named package installed in the
+    # runtime cannot shadow the checkout the task was pinned to. Reversed, so that after both
+    # insertions the list reads in the order `roots()` declares.
+    for path in reversed(roots()):
+        entry = str(path)
+        if entry not in sys.path:
+            sys.path.insert(0, entry)
 
     # **`sys.argv[0]` becomes the module**, because every one of these parsers is built with
     # `prog=` set from its own name and a usage line naming `entrypoint.py` would send a reader to
