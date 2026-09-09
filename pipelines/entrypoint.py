@@ -105,9 +105,39 @@ def main(argv: list[str] | None = None) -> int:
     # `prog=` set from its own name and a usage line naming `entrypoint.py` would send a reader to
     # the wrong file.
     sys.argv = [module, *rest]
-    runpy.run_module(module, run_name="__main__", alter_sys=True)
+
+    # **A module run as `__main__` ends with `sys.exit(main())`, and that raises even on zero.**
+    #
+    # `runpy.run_module(..., run_name="__main__")` is what makes those blocks execute, which is
+    # the point — but it also lets their `SystemExit` out. On a laptop that is invisible: the
+    # interpreter is exiting anyway and the code is what the shell reports. Databricks' serverless
+    # task runner `exec`s this file **inside an IPython kernel**, where a raised `SystemExit` is
+    # caught, reported as *An exception has occurred*, and the task is marked failed — with the
+    # kernel's own advice printed underneath it:
+    #
+    #     SystemExit: 0
+    #     UserWarning: To exit: use 'exit', 'quit', or Ctrl-D.
+    #
+    # **Measured on the estate**: the baseline generated 33,526,699 receipt lines into the landing
+    # volume, printed its counts, and the task was marked `INTERNAL_ERROR`. Twenty-five minutes of
+    # work, complete and on disk, thrown away because success was signalled in a way this runtime
+    # reads as a failure.
+    #
+    # So a zero becomes a return and anything else is re-raised: a module that failed still fails
+    # the task, and one that succeeded no longer does.
+    try:
+        runpy.run_module(module, run_name="__main__", alter_sys=True)
+    except SystemExit as finished:
+        code = finished.code
+        if code not in (0, None):
+            raise
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # **Raised only on failure**, for the same reason. `raise SystemExit(main())` is the ordinary
+    # spelling and it raises `SystemExit(0)` on success, which is exactly what the kernel above
+    # turns into a failed task.
+    _code = main()
+    if _code:
+        raise SystemExit(_code)
