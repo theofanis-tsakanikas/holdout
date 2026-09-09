@@ -404,5 +404,15 @@ def declared_types() -> dict[str, Kind]:
 
 
 def drop_directories(landing: Path) -> Iterator[Path]:
-    """Every drop in a landing area, in export order, by the name the exporter gave it."""
-    yield from sorted(path for path in landing.glob("drop=*") if (path / MANIFEST).is_file())
+    """Every drop in a landing area **or one directory down**, in export order.
+
+    One directory down for the reason `bulk._history_manifests` already searches there: the
+    estate's history arrives in slices — a baseline and a comparison window, generated under
+    different arms — and each slice's drops carry the reference tables as the ERP knew them at
+    the end of it. Two exports into one directory would both write `drop=000`, and the second
+    would be refused as a path already loaded whose bytes had changed. That refusal is correct
+    and is not the arrangement wanted: they are two drops, not one drop twice.
+    """
+    found = [path for path in landing.glob("drop=*") if (path / MANIFEST).is_file()]
+    found += [path for path in landing.glob("*/drop=*") if (path / MANIFEST).is_file()]
+    yield from sorted(found)

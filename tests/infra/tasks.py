@@ -19,7 +19,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 INFRA = REPO_ROOT / "infra"
 
 _COMMENT = re.compile(r"^\s*#.*$", re.MULTILINE)
-_PARAMETERS = re.compile(r"parameters\s*=\s*\[")
+#: `parameters = [` and `parameters = concat(`. **The second was invisible and that is the kind
+#: of hole this repository keeps finding.** A task whose list is built by `concat` — the two
+#: history slices, whose window instance appends four arguments the baseline does not take —
+#: matched nothing, so it silently left every gate's population that reads this. A gate over a
+#: population that quietly excludes the interesting member is a gate that reports OK.
+_PARAMETERS = re.compile(r"parameters\s*=\s*(\[|concat\s*\()")
 _STRING = re.compile(r'"([^"]*)"')
 _TASK_KEY = re.compile(r'task_key\s*=\s*"([^"]+)"')
 
@@ -45,11 +50,42 @@ def parameter_lists() -> list[tuple[str, list[str]]]:
         text = _COMMENT.sub("", path.read_text(encoding="utf-8"))
         for match in _PARAMETERS.finditer(text):
             where = str(path.relative_to(REPO_ROOT))
-            found.append((where, _tokens(_bracketed(text, match.end()))))
+            found.append((where, _tokens(_region(text, match))))
     return found
 
 
-def _bracketed(text: str, start: int) -> str:
+def _region(text: str, match: re.Match[str]) -> str:
+    """Everything the parameters expression contains, whichever way it was written.
+
+    A `concat(...)` is read whole and its brackets left in: `_tokens` splits on the commas that
+    separate elements at depth zero, so the inner lists' commas are inside a bracket and the
+    lists themselves come back as `<expr>` — which would lose the flags. So for `concat` the
+    brackets are stripped first and the pieces joined, giving one flat list, which is what
+    Terraform will hand the task.
+    """
+    if match.group(1) == "[":
+        return _bracketed(text, match.end(), closing="]")
+    inside = _bracketed(text, match.end(), closing=")")
+    pieces: list[str] = []
+    depth = 0
+    current = ""
+    for character in inside:
+        if character == "[":
+            depth += 1
+            if depth == 1:
+                current = ""
+                continue
+        if character == "]":
+            depth -= 1
+            if depth == 0:
+                pieces.append(current)
+                continue
+        if depth:
+            current += character
+    return ",".join(piece for piece in pieces if piece.strip())
+
+
+def _bracketed(text: str, start: int, *, closing: str = "]") -> str:
     r"""The text up to the `]` that closes the list, and not the first `]` in it.
 
     `local.zone_path["bronze"]` carries a bracket of its own. A non-greedy `\[(.*?)\]` stops
@@ -57,6 +93,7 @@ def _bracketed(text: str, start: int) -> str:
     nothing else, on the very gate whose job is to notice a missing flag. Measured: the silver
     task's `--catalog` disappeared from the enumeration while the file still had it.
     """
+    opening = {"]": "[", ")": "("}[closing]
     depth = 1
     quoted = False
     for offset, character in enumerate(text[start:]):
@@ -64,9 +101,9 @@ def _bracketed(text: str, start: int) -> str:
             quoted = not quoted
         if quoted:
             continue
-        if character == "[":
+        if character == opening:
             depth += 1
-        elif character == "]":
+        elif character == closing:
             depth -= 1
             if depth == 0:
                 return text[start : start + offset]

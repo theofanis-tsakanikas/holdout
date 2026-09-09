@@ -59,7 +59,7 @@ import hashlib
 import json
 from csv import DictReader
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from corpus.world.parquet import Column, Kind, ParquetWriter
@@ -523,7 +523,23 @@ def main(argv: list[str] | None = None) -> int:
                 help="the subdirectory of --landing this slice lands in; one source per slice",
             )
         if name == "export":
-            job.add_argument("--day", required=True, help="an ISO date inside the corpus")
+            job.add_argument(
+                "--day",
+                help=(
+                    "an ISO date inside the corpus. Exactly one of this and --slice: the drop "
+                    "publishes every reference row effective at or before the day it names."
+                ),
+            )
+            job.add_argument(
+                "--slice",
+                choices=("baseline", "window"),
+                help="export on the last day of this slice, so it carries that slice's ledger",
+            )
+            job.add_argument(
+                "--into",
+                default=".",
+                help="the subdirectory of --landing the drops land in; one export per slice",
+            )
             job.add_argument(
                 "--hours",
                 default=",".join(str(hour) for hour in erp.DECLARED.hours),
@@ -571,7 +587,26 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     run = prepare(args.world, seed=args.seed, scale=args.scale)
-    day = date.fromisoformat(args.day)
+    if bool(args.day) == bool(args.slice):
+        raise SystemExit(
+            "export takes exactly one of --day and --slice. A day is a date somebody chose; a "
+            "slice is the last day of a range `pipelines/window.py` owns, and the two disagreeing "
+            "would publish a ledger that does not match the events beside it."
+        )
+    if args.slice:
+        from pipelines import window as window_module
+
+        # The last day **inside** the slice: the ranges are half-open, so `until` is the first
+        # day that is not in it. A drop names the moment the ERP knew these rows, and that
+        # moment is the end of what this slice generated.
+        since, until = (
+            window_module.baseline(args.scale)
+            if args.slice == "baseline"
+            else window_module.window(args.scale)
+        )
+        day = until - timedelta(days=1)
+    else:
+        day = date.fromisoformat(args.day)
     schedule = erp.Schedule(tuple(int(hour) for hour in args.hours.split(",")))
     steps = erp.cost_steps_on(run, day)
     print(f"erp drops  {args.world} at {args.scale}, seed {args.seed}, {day}")
@@ -579,7 +614,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  cost steps effective on this day   {len(steps)}")
     for moment in steps:
         print(f"    {moment.isoformat()}")
-    drops = erp.export(run, args.landing, day=day, schedule=schedule)
+    drops = erp.export(run, args.landing / args.into, day=day, schedule=schedule)
     print("")
     for drop in drops:
         print(

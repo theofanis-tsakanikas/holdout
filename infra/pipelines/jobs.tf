@@ -100,9 +100,49 @@ resource "databricks_job" "history" {
     commit = var.git_commit == "" ? null : var.git_commit
   }
 
+  # **The ERP's own drop, and without it silver refuses.**
+  #
+  # A history slice's Parquet carries the three reference tables beside the four event streams —
+  # and `bulk.load` deliberately does not read them: `corpus/world/`'s `store_master` carries the
+  # `arm` column, which is the experiment's answer, and the loader reads each `run.json`'s stream
+  # counts rather than globbing so that it cannot enter bronze by that route.
+  #
+  # So the master data has to arrive the way `CLAUDE.md` says it does — *ERP master data → files
+  # on S3, dropped again during a run* — and nothing dispatched it. Measured: `silver` refused
+  # with *`/Volumes/holdout/bronze/files/cost_ledger` holds no Parquet, so silver would build an
+  # empty cost_ledger and report a clean run*, which is that guard doing exactly its job.
+  #
+  # One export per slice, into its own directory, on the last day **inside** it: a drop publishes
+  # every reference row effective at or before the day it names, so the baseline's drop carries
+  # the ledger as the ERP knew it when the window opened and the window's carries what became
+  # effective during it.
+  task {
+    task_key        = "export"
+    environment_key = local.environment_key
+
+    spark_python_task {
+      python_file = "pipelines/entrypoint.py"
+      source      = "GIT"
+      parameters = [
+        "pipelines.ingest.bulk",
+        "export",
+        "--world", var.corpus_world,
+        "--scale", var.corpus_scale,
+        "--seed", var.corpus_seed,
+        "--landing", local.zone_path["landing"],
+        "--slice", each.key,
+        "--into", "${each.key}-drops",
+      ]
+    }
+  }
+
   task {
     task_key        = "history"
     environment_key = local.environment_key
+
+    depends_on {
+      task_key = "export"
+    }
 
     # **The module this job is named after, which is not the one it was running.**
     #
