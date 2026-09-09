@@ -124,6 +124,34 @@ HARNESS = Scale(
     start_date=date(2025, 9, 1),
 )
 
+#: **The estate's world: the harness, plus the week `run` drives.**
+#:
+#: The estate ran `scenario` — a hundred stores and forty SKUs a category over eight months —
+#: because `CLAUDE.md` asks for eight months of history. It could not carry an experiment, and
+#: the engine said so with the figures: over that world's pre-period the mean is 13,040 cents a
+#: store-week and the variance 2,162,885,439, a **coefficient of variation of 3.57**, against
+#: which a ten percent effect needs **384 units per arm even over fifty-two weeks** and the
+#: control arm holds **fourteen** — 74 available after interference exclusions, at the contract's
+#: 20% holdout share. No MDE closes that gap: fourteen units would need one above 130%, which is
+#: not a difference anybody sizes for.
+#:
+#: `HARNESS` above is the world the design was sized on and it is exactly sixteen weeks — eight
+#: of pre-period and eight of window — so it has no day left for `run` to drive. **This is that
+#: world with one more week on the end**, and nothing else: the same roster, the same assortment,
+#: the same start. `pipelines/window.py` reserves that last week, so the day `run` drives is
+#: inside the corpus and after everything training and the readout saw.
+#:
+#: **The eight months are gone and that is the trade.** `CLAUDE.md`'s history claim is restated
+#: rather than quietly narrowed: seventeen weeks, because the experiment is the thing phase 3 is
+#: accepted on and a world that cannot carry one is a world that cannot demonstrate it.
+ESTATE = Scale(
+    name="estate",
+    stores=320,
+    skus_per_category=4,
+    days=119,
+    start_date=date(2025, 9, 1),
+)
+
 SMOKE = Scale(
     name="smoke",
     stores=12,
@@ -132,7 +160,7 @@ SMOKE = Scale(
     start_date=date(2025, 9, 1),
 )
 
-SCALES: dict[str, Scale] = {s.name: s for s in (SMOKE, REHEARSAL, HARNESS, SCENARIO)}
+SCALES: dict[str, Scale] = {s.name: s for s in (SMOKE, REHEARSAL, HARNESS, SCENARIO, ESTATE)}
 
 
 def scale_by_name(name: str) -> Scale:
