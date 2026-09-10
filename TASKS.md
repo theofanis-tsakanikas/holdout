@@ -3287,6 +3287,43 @@ status        HALF MET 2026-09-10 — the first half is measured; the second is 
               that morning; every destroy before it ran against a model with no versions, and an
               empty container deletes cleanly. *Has this ever run against a full one* is a
               property of the history rather than of the tree, and no gate reads it.
+              --
+              **Second dispatch, run 34471563253: every layer came down.** serving 0 (already
+              gone), ml 1 -- `holdout.gold.demand holds no versions` -- pipelines 17, lakehouse
+              54, foundation 56. Asked of the account afterwards, what stands is exactly
+              `CLAUDE.md`'s survivor list: the two tfstate buckets, the state KMS key, the four
+              bootstrap parameters and the deploy role. The five data keys are `PendingDeletion`.
+              No Lambda, no zone bucket, no parameter outside `/holdout/bootstrap/`.
+              --
+              **And it failed on the orphan network, for the shape this registry keeps
+              recording.** `ec2:DeleteNatGateway` denied. `oidc.tf` conditions the delete grant on
+              `aws:ResourceTag/Name` matching the workspace's VPC, and measured afterwards **the
+              VPC is the only member of the set that carries it** -- the NAT gateway, the elastic
+              IP, the internet gateway and the endpoint carry no tags at all. The grant authorised
+              exactly the one resource that cannot go until the others have. Its own comment
+              predicted incompleteness and named the wrong scale of it: *whether every subnet,
+              security group, route table and gateway inside it does was never recorded.*
+              --
+              **The repair, and why it is the one available.** Read out of AWS's service
+              reference rather than reasoned about: `ec2:Vpc` is a condition key for
+              `DeleteSubnet`, `DeleteSecurityGroup` and `DeleteRouteTable`, and for none of
+              `DeleteNatGateway`, `ReleaseAddress`, `DeleteVpcEndpoints`,
+              `DeleteInternetGateway`, `DetachInternetGateway`. For those five the only
+              resource-level key is a tag. So the choice was a region-wide delete grant, no
+              automation, or giving the resources the property the condition reads -- **the
+              author chose the third**, and what the role gains is `ec2:CreateTags` bounded to
+              the key `Name` and to values beginning `databricks-WorkerEnvId(workerenv-`.
+              --
+              **A second defect in the same block, found while fixing the first.** The elastic-IP
+              step enumerated `describe-addresses` with no VPC filter -- every unassociated
+              address **in the region**, in an account holding four other projects -- inside a
+              loop whose whole scope is one VPC. It had never fired because the account has held
+              exactly one spare address every time it ran.
+              --
+              **Blocked on an apply this session cannot make.** `infra/bootstrap` is applied from
+              a laptop, by T017's rule, so the destroy that closes this task waits on the author
+              applying the new statement. The NAT gateway and the address from this cycle were
+              deleted by hand on 2026-09-10 and the account confirms neither stands.
 ```
 
 ```

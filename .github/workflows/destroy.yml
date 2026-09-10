@@ -503,8 +503,70 @@ jobs:
               # the same tag, so a bug in this loop cannot reach another project's network.
               echo "── removing the network Databricks left for workspace ${workspace_id}: $v"
 
-              for n in $(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$v" \
-                           --query 'NatGateways[?State==`available`].NatGatewayId' --output text); do
+              # **Enumerated once, then tagged and deleted from the same lists**, so the set that
+              # was given the property the IAM condition reads is exactly the set this loop then
+              # asks to delete. Re-querying between the two would be two enumerations of one
+              # population, and the gap between them is where a resource created in the meantime
+              # gets deleted untagged — or, worse, where one that was tagged is not.
+              parent=$(aws ec2 describe-vpcs --vpc-ids "$v" \
+                         --query 'Vpcs[0].Tags[?Key==`Name`]|[0].Value' --output text)
+
+              nats=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$v" \
+                       --query 'NatGateways[?State==`available`].NatGatewayId' --output text)
+
+              # **Scoped to the gateways of this VPC, and it was not.** This read
+              # `describe-addresses --query 'Addresses[?AssociationId==null]'` — every unassociated
+              # elastic IP **in the region**, in an account that holds four other projects. It
+              # would have released an address somebody else had allocated and not yet attached,
+              # silently, inside a loop whose whole scope is one VPC. Nothing had caught it
+              # because the account has held exactly one spare address every time this ran.
+              addresses=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$v" \
+                            --query 'NatGateways[?State==`available`].NatGatewayAddresses[].AllocationId' \
+                            --output text)
+
+              endpoints=$(aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=$v" \
+                            --query 'VpcEndpoints[].VpcEndpointId' --output text)
+
+              gateways=$(aws ec2 describe-internet-gateways \
+                           --filters "Name=attachment.vpc-id,Values=$v" \
+                           --query 'InternetGateways[].InternetGatewayId' --output text)
+
+              subnets=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$v" \
+                          --query 'Subnets[].SubnetId' --output text)
+
+              # The default security group and the main route table are deleted **with** the VPC
+              # and refuse to be deleted before it, so they are outside both lists rather than
+              # attempted and forgiven.
+              groups=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$v" \
+                         --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text)
+
+              tables=$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$v" \
+                         --query 'RouteTables[?length(Associations[?Main==`true`])==`0`].RouteTableId' \
+                         --output text)
+
+              # ─────────────────────────────────────────────────────────────────
+              # **Give them the property the policy reads.**
+              #
+              # `infra/bootstrap/oidc.tf` conditions the delete grant on
+              # `aws:ResourceTag/Name` matching the workspace's network, and measured on
+              # 2026-09-10 **the VPC is the only member of the set that carries it** — the
+              # gateway, the address, the endpoint and most of the subnets, security groups and
+              # route tables carry no tags at all. So the grant authorised exactly the one
+              # resource that has to go last, and the destroy died on the first one that had to
+              # go first.
+              #
+              # AWS offers no other way to scope it: `ec2:Vpc` exists as a condition key for
+              # subnets, security groups and route tables and **not** for NAT gateways, addresses,
+              # endpoints or internet gateways — read out of the service reference rather than
+              # assumed. The alternative to this line is a region-wide delete grant.
+              # ─────────────────────────────────────────────────────────────────
+              children="$nats $addresses $endpoints $gateways $subnets $groups $tables"
+              if [ -n "$(echo $children | tr -d '[:space:]')" ]; then
+                echo "   naming $(echo $children | wc -w | tr -d ' ') children after their parent"
+                aws ec2 create-tags --resources $children --tags "Key=Name,Value=$parent"
+              fi
+
+              for n in $nats; do
                 echo "   nat $n"
                 aws ec2 delete-nat-gateway --nat-gateway-id "$n" >/dev/null
                 # A NAT gateway holds its network interface until it is fully deleted, and the
@@ -513,36 +575,29 @@ jobs:
                 aws ec2 wait nat-gateway-deleted --nat-gateway-ids "$n" || true
               done
 
-              for a in $(aws ec2 describe-addresses \
-                           --query 'Addresses[?AssociationId==null].AllocationId' --output text); do
+              # After the gateways, because an address in use cannot be released.
+              for a in $addresses; do
                 aws ec2 release-address --allocation-id "$a" && echo "   address $a"
               done
 
-              for e in $(aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=$v" \
-                           --query 'VpcEndpoints[].VpcEndpointId' --output text); do
+              for e in $endpoints; do
                 aws ec2 delete-vpc-endpoints --vpc-endpoint-ids "$e" >/dev/null && echo "   endpoint $e"
               done
 
-              for g in $(aws ec2 describe-internet-gateways \
-                           --filters "Name=attachment.vpc-id,Values=$v" \
-                           --query 'InternetGateways[].InternetGatewayId' --output text); do
+              for g in $gateways; do
                 aws ec2 detach-internet-gateway --internet-gateway-id "$g" --vpc-id "$v"
                 aws ec2 delete-internet-gateway --internet-gateway-id "$g" && echo "   gateway $g"
               done
 
-              for s in $(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$v" \
-                           --query 'Subnets[].SubnetId' --output text); do
+              for s in $subnets; do
                 aws ec2 delete-subnet --subnet-id "$s" && echo "   subnet $s"
               done
 
-              for g in $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$v" \
-                           --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text); do
+              for g in $groups; do
                 aws ec2 delete-security-group --group-id "$g" && echo "   security group $g"
               done
 
-              for r in $(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$v" \
-                           --query 'RouteTables[?length(Associations[?Main==`true`])==`0`].RouteTableId' \
-                           --output text); do
+              for r in $tables; do
                 aws ec2 delete-route-table --route-table-id "$r" && echo "   route table $r"
               done
 

@@ -806,6 +806,42 @@ data "aws_iam_policy_document" "deploy_estate" {
   # recorded before they were deleted by hand, so the next destroy is the measurement: a child
   # that does not carry it will deny by name, which is a fact arriving the way this repository
   # prefers rather than a guess written into a policy.
+  #
+  # **It was incomplete, and the measurement came back on 2026-09-10, run 34471563253:**
+  #
+  #     UnauthorizedOperation: not authorized to perform: ec2:DeleteNatGateway
+  #     on resource: arn:aws:ec2:eu-west-1:...:natgateway/nat-0a8ac68f3cb74fdae
+  #
+  # Asked of the account afterwards, the answer is worse than partial coverage. **The VPC is the
+  # only member of the set that carries the tag** — the NAT gateway, the elastic IP, the internet
+  # gateway and the VPC endpoint carry no tags at all; three of four subnets, three of three
+  # security groups and one of two route tables carry none either, and the two that do say
+  # `nat-gateway-subnet` and `nat-gateway-route-table`. So this statement authorised **exactly the
+  # one resource that cannot be deleted until every other one is gone.**
+  #
+  # It is this repository's most-catalogued shape — *a population defined by a property is blind
+  # to whatever lacks it* — arriving inside the fix written for the previous instance of it, in a
+  # policy whose own comment predicted the incompleteness and named the wrong scale of it.
+  #
+  # **Why the obvious repair is not available, measured against AWS's own service reference**
+  # (`servicereference.us-east-1.amazonaws.com/v1/ec2/ec2.json`), rather than reasoned about:
+  #
+  #     DeleteSubnet · DeleteSecurityGroup · DeleteRouteTable    ec2:Vpc  available
+  #     DeleteNatGateway · ReleaseAddress · DeleteVpcEndpoints
+  #     DeleteInternetGateway · DetachInternetGateway            ec2:Vpc  ABSENT
+  #
+  # For those five the only resource-level condition key is a tag, and the resources carry none.
+  # **A scoped grant is therefore not expressible against the estate as it stands** — the choice
+  # is a region-wide delete grant, no automation, or giving the resources the property the
+  # condition reads.
+  #
+  # **The third was chosen, and the grant it costs is a tagging grant rather than a deleting
+  # one.** `destroy` enumerates the children of the one VPC whose name carries the workspace id,
+  # copies that name onto each of them, and then this statement matches. What the role gains is
+  # the statement below: it may set `Name`, and only `Name`, and only to a value that begins
+  # `databricks-WorkerEnvId(workerenv-`. The worst it can do to another project in this account is
+  # rename something; it cannot delete anything that was not already inside a Databricks worker
+  # environment or made to claim it was.
   statement {
     sid    = "RemoveTheNetworkDatabricksMade"
     effect = "Allow"
@@ -826,6 +862,45 @@ data "aws_iam_policy_document" "deploy_estate" {
       test     = "StringLike"
       variable = "aws:ResourceTag/Name"
       values   = ["databricks-WorkerEnvId(workerenv-*"]
+    }
+  }
+
+  # ---------------------------------------------------------------- giving them the property
+  #
+  # **The narrowest grant that makes the statement above true**, and the argument for it is
+  # directly above this line.
+  #
+  # Two conditions, and both are load-bearing. `aws:RequestTag/Name` bounds the **value**: a tag
+  # this role writes always begins with the prefix the delete statement reads, so tagging cannot
+  # be used to hide a resource behind a name of somebody's choosing. `aws:TagKeys` bounds the
+  # **key set**: the request may carry `Name` and nothing else, so this cannot become a way to
+  # write `holdout:project` onto another project's resources and pull them into the reaper's
+  # population or the budget's filter.
+  #
+  # `ForAllValues:StringEquals` rather than `StringEquals`, because `aws:TagKeys` is multi-valued
+  # and the single-valued test would pass a request carrying `Name` **and** anything else.
+  #
+  # **Both keys were checked against the service reference before being written** — they are
+  # available on `CreateTags` for `natgateway`, `elastic-ip`, `internet-gateway`, `vpc-endpoint`
+  # and `vpc`, which is the whole set the delete statement could not reach. A condition key that
+  # the action does not populate is not a narrow policy; it is an inert one, which is precisely
+  # what the tag condition above turned out to be.
+  statement {
+    sid       = "NameTheNetworkDatabricksLeft"
+    effect    = "Allow"
+    actions   = ["ec2:CreateTags"]
+    resources = ["arn:${data.aws_partition.current.partition}:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:*/*"]
+
+    condition {
+      test     = "StringLike"
+      variable = "aws:RequestTag/Name"
+      values   = ["databricks-WorkerEnvId(workerenv-*"]
+    }
+
+    condition {
+      test     = "ForAllValues:StringEquals"
+      variable = "aws:TagKeys"
+      values   = ["Name"]
     }
   }
 }
