@@ -6085,3 +6085,37 @@ at load, which is what makes a registered version a thing rather than a promise.
 endpoint's own state when the apply cannot reach one
 *Now:* `pipelines/ml/registry.py` :: `            code_paths=[str(_ROOT / "pipelines"), str(_ROOT / "src" / "holdout")],`
 *Status:* open
+
+---
+**Two projections about the same credential, each honest, never compared** ·
+found 2026-09-10 · by `run`'s first dispatch failing before its first step
+
+    Could not assume role with OIDC: The requested DurationSeconds exceeds the
+    MaxSessionDuration set for this role.
+
+`run.yml` asked for **15600** seconds. `infra/bootstrap/oidc.tf` caps the role at **14400**.
+
+**Both numbers said, in their own comments, that they were guesses.** `run.yml`: *four hours
+against a modelled ~2, and the credential outlives it. A projection, and the first real dispatch
+replaces it.* `oidc.tf`: *four hours is twice the longest modelled workflow, which is a margin
+rather than a measurement. The first real `run` replaces it, **downward***.
+
+So the two were written to be replaced by the same event — and one of them exceeded the other from
+the day it was typed. Nothing compared them, and the workflow failed **before its first step**,
+after the environment approval had been spent.
+
+> **`tests/ops/test_credential_outlives_job.py` already held the other end**: the credential must
+> outlive the job it is issued for. It looks down from the timeout. Nothing looked up at the role.
+> **A number bounded on one side is bounded on one side**, and this sat in the gap.
+
+The measurement both comments were waiting for now exists: `backfill` — the longest thing this
+estate does, two world generations, four pipeline passes, training, the promotion gates, a
+registered version and a serving endpoint — takes **27 minutes** end to end. `run` does strictly
+less and now asks for what `backfill` asks for, which is still a margin rather than a measurement
+and says so.
+
+*Site:* `tests/ops/test_a_credential_fits_the_role.py` :: `def test_a_workflow_asks_for_no_more_than_the_role_allows(workflow: str, seconds: int) -> None:`
+*Disposition:* branch `ops/two-projections-that-were-never-compared`
+*Closed:* 2026-09-10 — the request fits the ceiling, and a gate compares every request against it
+*Now:* `tests/ops/test_a_credential_fits_the_role.py` :: `def test_a_workflow_asks_for_no_more_than_the_role_allows(workflow: str, seconds: int) -> None:`
+*Status:* open

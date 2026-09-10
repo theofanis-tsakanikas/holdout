@@ -120,9 +120,24 @@ jobs:
     runs-on: ubuntu-latest
     environment: deploy
 
-    # Four hours against a modelled ~2, and the credential outlives it. A projection, and the
-    # first real dispatch replaces it.
-    timeout-minutes: 240
+    # **Three hours, and the number that was here could not be granted.**
+    #
+    #     Could not assume role with OIDC: The requested DurationSeconds exceeds the
+    #     MaxSessionDuration set for this role.
+    #
+    # It read four hours against a modelled ~2, with `role-duration-seconds: 15600` beside it so
+    # the credential outlived the job. `infra/bootstrap/oidc.tf` caps the role at **14400**, and
+    # says of that number that it is *twice the longest modelled workflow* and that *the first
+    # real run replaces it, downward*. **Two projections, each honest about being one, and
+    # nothing compared them** — so the first dispatch of this workflow failed before its first
+    # step, on arithmetic that had been wrong since both numbers were written.
+    #
+    # `backfill` is the longest thing this estate does and it now has a measurement: **27 minutes**
+    # end to end, on 2026-09-10, for two world generations, four pipeline passes, training, the
+    # promotion gates, a registered version and a serving endpoint. It asks for 180 minutes and a
+    # credential of 12000s. This does strictly less and asks for the same, which is a margin
+    # rather than a measurement and says so — the first `run` to finish replaces it.
+    timeout-minutes: 180
 
     steps:
       - uses: actions/checkout@v4
@@ -142,7 +157,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: holdout-run-${{ github.run_id }}
-          role-duration-seconds: 15600
+          role-duration-seconds: 12000
 
       - name: Drive the day through Zerobus
         env:
