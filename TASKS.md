@@ -3267,6 +3267,26 @@ status        HALF MET 2026-09-10 — the first half is measured; the second is 
               NAT gateway were deleted by hand on those cycles. **So the destroy that closes this
               task is also the first measurement of that automation**, and the thing to read in
               its output is whether every child of the VPC came away without a hand touching it.
+              --
+              **Dispatched 2026-09-10, run 34466329417, and it stopped on `ml`.** `serving` came
+              down -- 3 destroyed, the expensive layer gone -- and then Unity Catalog refused:
+              *cannot delete registered model: Function 'holdout.gold.demand' is not empty. The
+              function has 3 model versions(s)*. `pipelines`, `lakehouse` and `foundation` are
+              still standing, and the survivor check reported them correctly, which is the gate
+              working rather than a second failure.
+              --
+              **A container Terraform owns, holding contents Terraform never made.** Every other
+              Unity Catalog container this repository declares takes `force_destroy` and every one
+              of them sets it; `databricks_registered_model` has no such argument. The versions
+              are written by the training job, so the layer can create the model and cannot remove
+              it once the estate has filled it. Second instance of the shape this workflow already
+              knew from the leaked VPC, and louder: the VPC survives a destroy that exits zero,
+              this one stops the destroy.
+              --
+              **It could not have fired earlier.** `backfill` first succeeded end to end at 06:32
+              that morning; every destroy before it ran against a model with no versions, and an
+              empty container deletes cleanly. *Has this ever run against a full one* is a
+              property of the history rather than of the tree, and no gate reads it.
 ```
 
 ```

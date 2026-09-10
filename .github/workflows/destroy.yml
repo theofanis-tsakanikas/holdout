@@ -156,6 +156,12 @@ jobs:
       # same gap: `backfill.yml` and `run.yml` will be written the same way this one was.
       - uses: hashicorp/setup-terraform@v3
 
+      # **Two tools now, and the second is here for the same reason the first is.** The step below
+      # empties a registered model through the Databricks CLI, which is not on a GitHub runner by
+      # default either. `tests/ops/test_cli_is_installed.py` sees the invocation and requires this
+      # line; it is the gate that was written after `terraform` was missing from this very file.
+      - uses: databricks/setup-cli@main
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
@@ -170,6 +176,13 @@ jobs:
           TF_VAR_databricks_account_id: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
           TF_VAR_databricks_client_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
           TF_VAR_databricks_client_secret: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+          # **The same secret under a second pair of names, because two clients read it.**
+          # Terraform reads `TF_VAR_*`; the Databricks CLI reads these. `run.yml` sets the same
+          # pair for the same reason, and `tests/ops/test_a_credential_fits_the_role.py` is what
+          # keeps one credential from being described twice in ways that could drift apart.
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
           # **`owns_metastore` is `true` here and it is not a copy-paste from `deploy`.**
           # The variable records whether this project *owns* the metastore, and a destroy has to
           # agree with the apply that created it: dispatched with `false`, Terraform would read a
@@ -214,6 +227,14 @@ jobs:
             --query Parameter.Value --output text 2>/dev/null || echo "")
           echo "workspace_id=${WORKSPACE_ID}" >> "$GITHUB_ENV"
           echo "── workspace ${WORKSPACE_ID:-<none published>}; its managed VPC is checked at the end"
+
+          # Read here for the same reason and at the same moment: `foundation` publishes it and
+          # `foundation` is the last layer to go. Its absence is not an error on its own — an
+          # estate that never applied `foundation` has no workspace to empty anything in — so the
+          # step that needs it is what refuses, with the model it could not reach in the message.
+          DATABRICKS_HOST=$(aws ssm get-parameter --name /holdout/foundation/workspace_url \
+            --query Parameter.Value --output text 2>/dev/null || echo "")
+          export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
 
           declared="$(ls -d infra/*/ 2>/dev/null | sed 's|infra/||;s|/||' | grep -v '^bootstrap$' | sort)"
 
@@ -276,6 +297,83 @@ jobs:
             echo "── serving was applied at model version $PUBLISHED_VERSION"
           fi
 
+          # ─────────────────────────────────────────────────────────────────────────
+          # **A container Terraform owns, holding contents Terraform never made.**
+          #
+          # `terraform destroy` on `infra/ml` failed on 2026-09-10, run 34466329417, after
+          # removing the job, the experiment and three parameters:
+          #
+          #     Error: cannot delete registered model: Function 'holdout.gold.demand' is not
+          #     empty. The function has 3 model versions(s)
+          #
+          # **Unity Catalog refuses, and the provider offers nothing to override it.**
+          # `databricks_catalog`, `databricks_schema` and `databricks_metastore` all take
+          # `force_destroy` and this repository sets it on every one of them;
+          # `databricks_registered_model` has no such argument — measured against the provider's
+          # own documentation, whose optional arguments are `owner`, `comment` and
+          # `storage_location`. So the layer can create the model and cannot remove it once the
+          # estate has put anything in it.
+          #
+          # **Which is the shape this workflow already knows.** The VPC that Databricks-managed
+          # networking leaves behind is the first instance: a thing created by something Terraform
+          # owns, invisible to the state that owns it, and left standing by a destroy that exits
+          # zero. This is the second, and it differs only in being loud — the model versions block
+          # the destroy instead of surviving it. **A layer that owns a container does not own what
+          # the estate put inside it, and `destroy` is where that gap is closed.**
+          #
+          # **Why it never fired before.** `backfill` first succeeded end to end on 2026-09-10 at
+          # 06:32. Every destroy before that ran against a registered model with no versions in
+          # it, and an empty container deletes cleanly. The gate that would have caught this is
+          # the one nobody can write: *has this ever run against a full one.*
+          #
+          # **The population is the state's, not a name typed here.** Terraform is asked what it
+          # is about to destroy, so a second model — or a renamed one — is emptied without this
+          # block being edited. And the deletion is a fixed point rather than one pass: the API's
+          # own documentation warns that a page of results may be empty while more remain, so the
+          # loop re-lists until the model reports none, with a bound so a server that always
+          # answers cannot spin here for an hour.
+          # ─────────────────────────────────────────────────────────────────────────
+          empty_the_registered_models() {
+            local layer="$1" models model versions version round
+
+            models=$(terraform -chdir="infra/$layer" show -json 2>/dev/null \
+              | jq -r '[.. | objects
+                        | select(.type? == "databricks_registered_model" and has("values"))
+                        | .values.id] | unique | .[]')
+
+            [ -z "$models" ] && return 0
+
+            if [ -z "${DATABRICKS_HOST:-}" ]; then
+              echo "::error::infra/$layer holds a registered model and no workspace url is"
+              echo "published, so nothing can empty it. /holdout/foundation/workspace_url is gone"
+              echo "or was never written: $models"
+              exit 1
+            fi
+
+            for model in $models; do
+              round=0
+              while :; do
+                versions=$(databricks model-versions list "$model" --output json 2>/dev/null \
+                  | jq -r '.[]?.version // empty')
+                [ -z "$versions" ] && break
+
+                round=$((round + 1))
+                if [ "$round" -gt 20 ]; then
+                  echo "::error::$model still reports versions after 20 passes of deleting them."
+                  echo "Something is writing versions faster than this removes them, or the list"
+                  echo "is answering with rows the delete does not accept."
+                  exit 1
+                fi
+
+                for version in $versions; do
+                  echo "   $model version $version"
+                  databricks model-versions delete "$model" "$version"
+                done
+              done
+              echo "── $model holds no versions; Terraform can remove it"
+            done
+          }
+
           for layer in $layers; do
             echo "── infra/$layer"
             terraform -chdir="infra/$layer" init -input=false \
@@ -283,6 +381,10 @@ jobs:
               -backend-config="key=$layer/terraform.tfstate" \
               -backend-config="region=$AWS_REGION" \
               -backend-config="kms_key_id=$STATE_KMS_KEY_ARN"
+
+            # After `init`, because the state is what says which models exist, and before
+            # `destroy`, because after it there is nothing left to ask.
+            empty_the_registered_models "$layer"
 
             terraform -chdir="infra/$layer" destroy -input=false -auto-approve
           done
