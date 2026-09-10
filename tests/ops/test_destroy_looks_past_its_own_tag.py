@@ -24,9 +24,15 @@ and the check is only meaningful after.
 
 ## What it does not check
 
-- **It does not check that the VPC is deleted.** The workflow reports; deleting infrastructure
-  outside Terraform's state is not a workflow's authority, and the error says what to remove.
+- **It does not check that the deletion succeeds.** The workflow asks the account afterwards and
+  fails if anything is left, which is where that is caught — *verified by asking the account,
+  never by reading a workflow's exit code.*
 - **It reads the workflow, not a run.** The same limit every gate over a file here has.
+
+> **This gate said the workflow reports rather than deletes, and that was right for one day.**
+> Three destroys later, reporting had cost three manual cleanups; the authority question answers
+> itself, because this project's deploy created the workspace whose network this is. What the
+> gate holds now is the *scope*: the workspace id this run destroyed, and nothing wider.
 """
 
 from __future__ import annotations
@@ -83,3 +89,29 @@ def test_the_workflow_looks_for_the_managed_vpc() -> None:
         "month. Two of them accumulated that way, one per destroy cycle, and every destroy "
         "exited zero."
     )
+
+
+def test_the_cleanup_is_scoped_to_the_workspace_this_run_destroyed() -> None:
+    """Every VPC the workflow deletes came from the id it read before the destroy.
+
+    **The blast radius is the whole of this.** This account holds four other projects, and a
+    cleanup that searched for `databricks-WorkerEnvId(workerenv-*` would match any workspace's
+    network, including one this project never created. `infra/bootstrap/oidc.tf` narrows the same
+    thing again in IAM — a condition on the tag — so the two have to be wrong together for a
+    stranger's VPC to be reachable.
+    """
+    script = _script()
+    assert "delete-vpc" in script, (
+        "destroy.yml no longer deletes the network Databricks left. Three cycles of reporting "
+        "cost three manual cleanups at about 39 USD a month each; if this went back to "
+        "reporting, the reason belongs beside it."
+    )
+    for line in script.splitlines():
+        if VPC_NAME not in line:
+            continue
+        assert "${workspace_id}" in line, (
+            f"this line searches for a Databricks workspace network without naming the workspace "
+            f"this run destroyed:\n    {line.strip()}\n\n"
+            "Unscoped, it matches any workspace's VPC in an account that holds four other "
+            "projects — and the deletion below it is not a report."
+        )

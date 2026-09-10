@@ -5561,11 +5561,38 @@ afterwards refuses to call the destroy complete while that workspace's VPC still
 reports rather than deletes: an orphan is by definition outside Terraform's state, and a workflow
 removing infrastructure nobody's plan mentions is a different authority from the one this has.
 
-*Site:* `.github/workflows/destroy.yml` :: `            echo "::error::the workspace is destroyed and the VPC Databricks made for it is not:"`
-*Disposition:* branch `ops/the-destroy-looks-past-its-own-tag`
+> **Restated 2026-09-10, after the third leak and the first time the check ran at all.** Two
+> things were wrong with the close above.
+>
+> **The check could not execute.** `destroy` came back red with
+> `UnauthorizedOperation ... holdout-deploy is not authorized to perform: ec2:DescribeVpcs`, on an
+> estate it had in fact destroyed completely — 133 resources across five layers, and a survivor
+> list that was exactly bootstrap. A check written without asking whether the role it runs as may
+> make the call is not a weaker check; it is no check, and its failure said *destroy failed* about
+> a destroy that had worked. The eight EC2 describes now sit in `AskTheAccountWhatExists`, which
+> is where the calls that take a filter rather than a resource already live.
+>
+> **And reporting was the wrong half.** *An orphan is outside Terraform's state and a workflow
+> removing infrastructure nobody's plan mentions is a different authority* — that argument cost
+> three manual cleanups in three cycles, and it answers itself: this project's deploy created the
+> workspace that made this VPC. The destroy removes it now, scoped twice — by the workspace id
+> the run read before destroying anything, and again in IAM by a condition on the tag Databricks
+> writes, because this account holds four other projects and a region-scoped grant would have
+> been the widest write in that policy.
+>
+> **What is still unmeasured is deliberate.** The VPC carries that `Name` tag; whether every
+> subnet, security group, route table and gateway inside it does was never recorded before they
+> were removed by hand. The next destroy is the measurement, and a child that does not carry it
+> will deny by name.
+
+*Site:* `.github/workflows/destroy.yml` :: `              echo "── removing the network Databricks left for workspace ${workspace_id}: $v"`
+*Site:* `infra/bootstrap/oidc.tf` :: `    sid    = "RemoveTheNetworkDatabricksMade"`
+*Disposition:* branch `ops/the-destroy-looks-past-its-own-tag`, then
+`infra/the-destroy-can-see-and-remove-what-databricks-left`
 *Closed:* 2026-09-08 — both orphans deleted, and a second population checked at the end of every
 destroy, named by the workspace rather than by this project's tag
-*Now:* `.github/workflows/destroy.yml` :: `            echo "::error::the workspace is destroyed and the VPC Databricks made for it is not:"`
+*Now:* `.github/workflows/destroy.yml` :: `              echo "── removing the network Databricks left for workspace ${workspace_id}: $v"`
+*Now:* `infra/bootstrap/oidc.tf` :: `    sid    = "RemoveTheNetworkDatabricksMade"`
 *Status:* open
 
 ---
