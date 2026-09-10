@@ -775,6 +775,11 @@ src/holdout/core/      pure functions — no SDK, no engine
   demand/              the censoring correction — claim 4's reader and its curve
 src/holdout/contracts/ the loader and the compilers: `contracts/` read into typed objects,
   compilers/           and compiled out to every consumer. `make contracts` is its entry point
+src/holdout/agent/     the other AI system — what context it reads, the tool registry it is
+                       confined to, and `ProposedDesign`, which is seven fields and has
+                       nowhere to put the two the agent may never fill. Nothing here opens a
+                       connection: the runtime is an adapter so the same agent runs from a
+                       laptop and through the estate's gateway
 src/holdout/adapters/  thin cloud callers
 contracts/             the source of truth (above)
 generated/             what the compilers emit, byte-compared on every run — never hand-edited
