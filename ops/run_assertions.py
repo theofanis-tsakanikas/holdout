@@ -103,8 +103,19 @@ def _sql(statement: str, warehouse_id: str) -> list[list[Any]]:
     return list(result.get("result", {}).get("data_array") or [])
 
 
-def check_experiments(catalog: str, warehouse_id: str) -> int:
-    """At least one experiment produced a number, and at least one refused."""
+def check_experiments(
+    catalog: str, warehouse_id: str, *, require_number: bool, require_refusal: bool
+) -> int:
+    """What the readout has to show, and each half is asked for rather than assumed.
+
+    **Both halves fired unconditionally, and the flags that name them were read nowhere.**
+    `main` parsed `--require-number` and `--require-refusal` and used them only to decide whether
+    to call this function at all; inside it, a run with no number failed whatever had been asked
+    for. That was invisible while `gold.readout` was written by nothing — the function had never
+    executed against a row — and it surfaced the first time it did, on a run whose readout is two
+    refusals **by design**: `PLAN.md` records why the number is gone from this phase's criterion,
+    and `run.yml` passes `--require-refusal` alone.
+    """
     table = READOUT.format(catalog=catalog)
     rows = _sql(
         f"SELECT experiment_id, uplift, reason_code FROM {table}",
@@ -122,11 +133,11 @@ def check_experiments(catalog: str, warehouse_id: str) -> int:
     print(f"  refused        {len(refusals)}  {[(r[0], r[2]) for r in refusals]}")
 
     failed = 0
-    if not numbers:
+    if require_number and not numbers:
         print("FAIL  no experiment produced a number. A system that only ever refuses passes")
         print("      every world and is worthless — CLAUDE.md's W6 is the reason W1 is not enough.")
         failed = 1
-    if not refusals:
+    if require_refusal and not refusals:
         print("FAIL  no experiment refused. A run in which everything succeeded has not")
         print("      demonstrated the thing this project is about: an uplift number produced")
         print("      without a valid holdout is a build failure, and the refusal is where that")
@@ -153,10 +164,29 @@ def _declared_reason_codes() -> set[str]:
 
     path = Path(__file__).resolve().parents[1] / "contracts" / "vocabularies" / "reason_codes.yaml"
     document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    # **Every section is a list of entries and every entry names its code in a `code` key.**
+    #
+    # This read `str(c) for c in section`, which over a list of dictionaries yields the *whole
+    # dictionary* rendered as text — `{'code': 'COST_STALE', 'guardrail': …}` — so the set held
+    # twenty-odd stringified mappings and no code at all. **Every refusal would have been
+    # reported as outside the closed vocabulary**, and both were, the first time a readout
+    # existed to check: `UNDERPOWERED_FOR_CAPACITY` and `STOPPING_RULE_PERMITS_PEEKING`, which
+    # `contracts/vocabularies/reason_codes.yaml` declares four lines apart.
+    #
+    # The check that reads a contract to close a vocabulary had itself never been read.
     codes: set[str] = set()
     for section in document.values():
-        if isinstance(section, list | dict):
-            codes.update(str(c) for c in section)
+        if not isinstance(section, list):
+            continue
+        for entry in section:
+            if isinstance(entry, dict) and "code" in entry:
+                codes.add(str(entry["code"]))
+    if not codes:
+        raise SystemExit(
+            f"{path} declares no reason codes in the shape this reads — a list per moment, each "
+            "entry with a `code`. An empty vocabulary would call every refusal undeclared, "
+            "which is what the first version of this function did."
+        )
     return codes
 
 
@@ -193,7 +223,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.require_number or args.require_refusal:
             if not args.warehouse_id:
                 raise SystemExit("--warehouse-id is required to query the readout.")
-            failed |= check_experiments(args.catalog, args.warehouse_id)
+            failed |= check_experiments(
+                args.catalog,
+                args.warehouse_id,
+                require_number=args.require_number,
+                require_refusal=args.require_refusal,
+            )
         if args.endpoint:
             if not args.expect_version:
                 raise SystemExit("--expect-version is required with --endpoint.")

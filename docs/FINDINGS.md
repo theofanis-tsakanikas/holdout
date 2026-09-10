@@ -6119,3 +6119,50 @@ and says so.
 *Closed:* 2026-09-10 — the request fits the ceiling, and a gate compares every request against it
 *Now:* `tests/ops/test_a_credential_fits_the_role.py` :: `def test_a_workflow_asks_for_no_more_than_the_role_allows(workflow: str, seconds: int) -> None:`
 *Status:* open
+
+---
+**The acceptance had never been run, and failed the estate for its own two defects** ·
+found 2026-09-10 · by the first `run` to reach a readout
+
+`ops/run_assertions.py` is what closes phase 3. `gold.readout` was written by nothing until three
+days ago — this register holds that as its own finding — so **no part of this file had ever
+executed against a row.** The first run that produced one failed three times, and two of the three
+were the assertion rather than the estate:
+
+    readouts       2
+    with a number  0   []
+    refused        2  [('fresh-ladder', 'UNDERPOWERED_FOR_CAPACITY'),
+                       ('fresh-ladder-peeking', 'STOPPING_RULE_PERMITS_PEEKING')]
+
+    FAIL  no experiment produced a number ...
+    FAIL  fresh-ladder refused with `UNDERPOWERED_FOR_CAPACITY`, which is not in the closed
+          vocabulary. Adding a code is a code change with a test.
+    FAIL  fresh-ladder-peeking refused with `STOPPING_RULE_PERMITS_PEEKING`, which is not in
+          the closed vocabulary.
+
+**Both codes are in `contracts/vocabularies/reason_codes.yaml`, declared four lines apart.**
+
+**One.** The vocabulary was read as if each section were a list of strings —
+`codes.update(str(c) for c in section)`. Each section is a list of *entries*, and `str()` over a
+dictionary yields the whole mapping as text, so the set held twenty-odd stringified dictionaries
+and no code at all. **Every refusal would have been reported as undeclared.** The check that reads
+a contract in order to close a vocabulary had itself never been read.
+
+**Two.** `--require-number` and `--require-refusal` were parsed, and used only to decide whether
+to call `check_experiments`. Inside it both halves fired regardless, so a readout with no number
+failed whatever had been asked for — three days after `PLAN.md`'s criterion was restated to stop
+asking for one, and `run.yml` was changed to pass `--require-refusal` alone.
+
+> **A flag that names a half and does not gate it reads as a choice and is not one.** The change
+> that removed the requirement changed the caller and left the callee, which is the same shape as
+> the default corrected where it is written and left standing where it is chosen — the third
+> entry of that kind in this register.
+
+*Site:* `ops/run_assertions.py` :: `    if require_number and not numbers:`
+*Site:* `ops/run_assertions.py` :: `            if isinstance(entry, dict) and "code" in entry:`
+*Disposition:* branch `ops/the-assertions-had-never-been-run`
+*Closed:* 2026-09-10 — the vocabulary is read as codes, each half is asked for, and a gate holds
+both: one over the reader, one over the four combinations of the two flags
+*Now:* `ops/run_assertions.py` :: `    if require_number and not numbers:`
+*Now:* `ops/run_assertions.py` :: `            if isinstance(entry, dict) and "code" in entry:`
+*Status:* open
