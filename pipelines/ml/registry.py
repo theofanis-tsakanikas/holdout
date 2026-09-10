@@ -21,10 +21,19 @@ it only on the branch that was given a model name.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pipelines.ml.build import TrainingRun
+
+#: The repository root, from this file's own location: `pipelines/ml/registry.py`.
+#:
+#: **Not from the entrypoint's `here()`**, which exists because a `spark_python_task` `exec`s a
+#: file and binds no `__file__`. This module is *imported*, and an imported module always has
+#: one — the two are different questions and conflating them would put a fallback here that
+#: nothing can ever exercise.
+_ROOT = Path(__file__).resolve().parents[2]
 
 #: The four columns `model.DemandModel.predict` takes, in the order the signature declares them.
 #: Written once here because the wrapper, the example and the signature must agree, and three
@@ -128,6 +137,24 @@ def register(run: TrainingRun, *, model_name: str, experiment: str | None = None
             signature=signature,
             input_example=example,
             registered_model_name=model_name,
+            # **The model carries the code that defines it, or it cannot be loaded anywhere
+            # else.**
+            #
+            # `Demand` above is defined inside this function, so cloudpickle stores it *by
+            # value* — the serving container needs nothing to reconstruct the wrapper. What it
+            # holds is a `DemandModel`, and that class lives in `pipelines.ml.model`, which is
+            # importable here and therefore stored **by reference**. A serving endpoint has this
+            # repository nowhere on its path, so loading it raises `ModuleNotFoundError` inside
+            # the container and the endpoint reports `UPDATE_FAILED` with the reason on a page.
+            #
+            # Measured: the first endpoint spent eight minutes reaching that state, at the end of
+            # a backfill that had loaded a baseline, a window, trained and registered a version.
+            #
+            # `code_paths` copies these into the model's artifact and puts them on `sys.path` at
+            # load, so the version in the registry carries the code that produced it rather than
+            # a reference to a checkout that exists on one machine. Absolute, because the task's
+            # working directory is the runtime's business and this file's location is not.
+            code_paths=[str(_ROOT / "pipelines"), str(_ROOT / "src" / "holdout")],
         )
 
     version = getattr(info, "registered_model_version", None)
