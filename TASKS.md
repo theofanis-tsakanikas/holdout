@@ -3324,6 +3324,25 @@ status        HALF MET 2026-09-10 — the first half is measured; the second is 
               a laptop, by T017's rule, so the destroy that closes this task waits on the author
               applying the new statement. The NAT gateway and the address from this cycle were
               deleted by hand on 2026-09-10 and the account confirms neither stands.
+              --
+              **Applied the same day**, targeted at `aws_iam_role_policy.deploy_estate`:
+              `Plan: 0 to add, 1 to change, 0 to destroy`, and IAM confirms
+              `NameTheNetworkDatabricksLeft` is live. Targeted rather than whole for T017's
+              standing reason -- `github.tf` still declares the `deploy` environment's required
+              reviewer that the author removed in the account for the bring-up.
+              --
+              **And the proof moves to phase 4, by the author's decision on 2026-09-10.** The
+              cleanup needs `/holdout/foundation/workspace_id` to find the VPC, and `foundation`
+              published it and `foundation` is gone -- so **no dispatch against the current
+              account can exercise the path that failed**, because the estate it would clean up
+              does not exist. Two ways to get one: a `deploy target=foundation` cycle costing
+              fifteen minutes, or the next full deploy, which phase 4 needs anyway for the shot
+              list. The author chose the second. **So this task's second half closes on the
+              phase-4 cycle**, and phase 4's local work -- T025, T026, T027 -- proceeds against a
+              destroyed estate, which is what all three were written to need.
+              --
+              The orphan from this cycle costs nothing now and is invisible to the automation for
+              the same reason: it will need one manual deletion whenever somebody gets to it.
 ```
 
 ```
