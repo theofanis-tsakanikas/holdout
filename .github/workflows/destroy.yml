@@ -386,17 +386,79 @@ jobs:
             orphans=$(aws ec2 describe-vpcs \
               --filters "Name=tag:Name,Values=databricks-WorkerEnvId(workerenv-${workspace_id}-*)" \
               --query 'Vpcs[].VpcId' --output text | tr '\t' '\n' | sed '/^$/d')
-            if [ -n "$orphans" ]; then
-              echo "::error::the workspace is destroyed and the VPC Databricks made for it is not:"
-              for v in $orphans; do
-                nat=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$v" \
-                        --query 'NatGateways[?State==`available`].NatGatewayId' --output text)
-                echo "  $v  nat: ${nat:-none}"
+            for v in $orphans; do
+              # **Removed rather than reported, after three cycles of reporting.**
+              #
+              # The first version printed this and exited 1, on the argument that an orphan is
+              # outside Terraform's state and a workflow removing infrastructure nobody's plan
+              # mentions is a different authority. Three destroys later that argument had cost
+              # three manual cleanups and about 39 USD a month each time it was missed — and the
+              # authority question answers itself: **this project's deploy created the workspace
+              # that made this VPC**, so this project's destroy is exactly who should remove it.
+              #
+              # The scope is the workspace id this run destroyed, matched against the name
+              # Databricks gives the VPC. `infra/bootstrap/oidc.tf` narrows it again in IAM, on
+              # the same tag, so a bug in this loop cannot reach another project's network.
+              echo "── removing the network Databricks left for workspace ${workspace_id}: $v"
+
+              for n in $(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$v" \
+                           --query 'NatGateways[?State==`available`].NatGatewayId' --output text); do
+                echo "   nat $n"
+                aws ec2 delete-nat-gateway --nat-gateway-id "$n" >/dev/null
+                # A NAT gateway holds its network interface until it is fully deleted, and the
+                # subnet under it cannot go while that interface exists. Waited for rather than
+                # retried, because the failure otherwise is a half-removed VPC.
+                aws ec2 wait nat-gateway-deleted --nat-gateway-ids "$n" || true
               done
-              echo "It carries none of this project's tags, so neither the reaper nor the survivor"
-              echo "list above can see it. A NAT gateway is about 35 USD a month and a public IPv4"
-              echo "about 4. Delete the NAT gateway, release its address, then the endpoints, the"
-              echo "internet gateway, the subnets, the security groups, the route tables and the VPC."
+
+              for a in $(aws ec2 describe-addresses \
+                           --query 'Addresses[?AssociationId==null].AllocationId' --output text); do
+                aws ec2 release-address --allocation-id "$a" && echo "   address $a"
+              done
+
+              for e in $(aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=$v" \
+                           --query 'VpcEndpoints[].VpcEndpointId' --output text); do
+                aws ec2 delete-vpc-endpoints --vpc-endpoint-ids "$e" >/dev/null && echo "   endpoint $e"
+              done
+
+              for g in $(aws ec2 describe-internet-gateways \
+                           --filters "Name=attachment.vpc-id,Values=$v" \
+                           --query 'InternetGateways[].InternetGatewayId' --output text); do
+                aws ec2 detach-internet-gateway --internet-gateway-id "$g" --vpc-id "$v"
+                aws ec2 delete-internet-gateway --internet-gateway-id "$g" && echo "   gateway $g"
+              done
+
+              for s in $(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$v" \
+                           --query 'Subnets[].SubnetId' --output text); do
+                aws ec2 delete-subnet --subnet-id "$s" && echo "   subnet $s"
+              done
+
+              for g in $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$v" \
+                           --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text); do
+                aws ec2 delete-security-group --group-id "$g" && echo "   security group $g"
+              done
+
+              for r in $(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$v" \
+                           --query 'RouteTables[?length(Associations[?Main==`true`])==`0`].RouteTableId' \
+                           --output text); do
+                aws ec2 delete-route-table --route-table-id "$r" && echo "   route table $r"
+              done
+
+              aws ec2 delete-vpc --vpc-id "$v" && echo "   vpc $v"
+            done
+
+            # **Asked again rather than assumed.** Every command above can fail on a dependency
+            # this loop did not know about, and a cleanup that reported success from its own
+            # exit codes would be the shape `CLAUDE.md` refuses: *verified by asking the account,
+            # never by reading a workflow's exit code.*
+            left=$(aws ec2 describe-vpcs \
+              --filters "Name=tag:Name,Values=databricks-WorkerEnvId(workerenv-${workspace_id}-*)" \
+              --query 'Vpcs[].VpcId' --output text | tr '\t' '\n' | sed '/^$/d')
+            if [ -n "$left" ]; then
+              echo "::error::the network Databricks made for workspace ${workspace_id} is still there:"
+              for v in $left; do echo "  $v"; done
+              echo "A NAT gateway is about 35 USD a month and a public IPv4 about 4, and none of"
+              echo "it carries this project's tag, so nothing else in this repository can see it."
               exit 1
             fi
             echo "OK  no Databricks-managed VPC left for workspace ${workspace_id}"

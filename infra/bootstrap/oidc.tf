@@ -757,8 +757,76 @@ data "aws_iam_policy_document" "deploy_estate" {
       "s3:ListAllMyBuckets",
       "kms:ListKeys",
       "kms:ListAliases",
+
+      # **The eight EC2 describes, added after `destroy` failed on the first of them.**
+      #
+      #     UnauthorizedOperation ... holdout-deploy is not authorized to perform:
+      #     ec2:DescribeVpcs because no identity-based policy allows the action
+      #
+      # `destroy.yml` ends by looking for the VPC Databricks makes for a workspace and does not
+      # remove when the workspace goes — the check added the day that leak was found, written
+      # without asking whether the role it runs as could make the call. **A check the role may
+      # not perform is not a weaker check; it is no check**, and it reported as a failed destroy
+      # of an estate that had in fact been destroyed.
+      #
+      # Every one of these is the shape the paragraph above describes: a Describe that takes a
+      # filter rather than a resource, whose denial names an ARN with an empty id. None of them
+      # can be scoped, and each returns things belonging to the other projects in this account —
+      # the filtering is in the caller, as it is for the five above.
+      "ec2:DescribeVpcs",
+      "ec2:DescribeNatGateways",
+      "ec2:DescribeAddresses",
+      "ec2:DescribeSubnets",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeRouteTables",
+      "ec2:DescribeInternetGateways",
+      "ec2:DescribeVpcEndpoints",
     ]
     resources = ["*"]
+  }
+
+  # ---------------------------------------------------------------- the network Databricks left
+  #
+  # **Three destroys, three leaks, three manual cleanups.** `infra/foundation/workspace.tf`
+  # declares no `network_id`, which is Databricks-managed networking: Databricks creates a VPC in
+  # *this* account named `databricks-WorkerEnvId(workerenv-<workspace id>-…)`, with a NAT gateway
+  # and a public IPv4 in it, and deleting the workspace does not remove it. Measured: about 35 USD
+  # a month for the gateway and 4 for the address, per cycle, invisible to the survivor check
+  # because none of it carries this project's tag.
+  #
+  # **Conditioned on the `Name` tag rather than on the region, and that is the whole argument.**
+  # This account holds four other projects. A statement scoped by region would let this role
+  # delete any VPC in it, which would be the widest write grant in this policy by a long way and
+  # would break what the restatement above claims: that `resources = ["*"]` survives only where
+  # the call is a read. The tag Databricks writes is the one thing that names these resources as
+  # a workspace's, so it is what the condition is made of.
+  #
+  # **And it is expected to be incomplete.** The VPC carries that tag — measured, three times.
+  # Whether every subnet, security group, route table and gateway inside it does was never
+  # recorded before they were deleted by hand, so the next destroy is the measurement: a child
+  # that does not carry it will deny by name, which is a fact arriving the way this repository
+  # prefers rather than a guess written into a policy.
+  statement {
+    sid    = "RemoveTheNetworkDatabricksMade"
+    effect = "Allow"
+    actions = [
+      "ec2:DeleteNatGateway",
+      "ec2:ReleaseAddress",
+      "ec2:DeleteVpcEndpoints",
+      "ec2:DetachInternetGateway",
+      "ec2:DeleteInternetGateway",
+      "ec2:DeleteSubnet",
+      "ec2:DeleteSecurityGroup",
+      "ec2:DeleteRouteTable",
+      "ec2:DeleteVpc",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:*/*"]
+
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/Name"
+      values   = ["databricks-WorkerEnvId(workerenv-*"]
+    }
   }
 }
 
