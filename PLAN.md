@@ -2105,6 +2105,23 @@ least one experiment that produces a number and at least one that **refuses** fo
 > produced no rows has not refused, it has not run — and still refuses a reason code the contract
 > does not declare.
 
+> **Met on 2026-09-10, in the first half.** `run` 34459339015 drove the day after the window
+> closes through bronze, silver and gold, read out both experiments — `UNDERPOWERED_FOR_CAPACITY`
+> and `STOPPING_RULE_PERMITS_PEEKING`, both declared, neither a number — and asked `holdout-demand`
+> which version was answering, which was the version `backfill` had registered ninety minutes
+> earlier on the same cycle. Every step asserted its own figures.
+>
+> **One refusal is structural and one is empirical, and the phase needs both.** A group-sequential
+> rule with four looks and no spending function is invalid whatever the data says; the capacity
+> refusal arrives with its arithmetic, 366 units an arm required against 48 available. A system
+> that could only produce the first would be a linter, and one that could only produce the second
+> would be a power calculator.
+>
+> **The second half is unmet and is a dispatch rather than a build**: the account confirming that
+> nothing is left standing. It carries a first measurement with it — two destroys have been
+> verified this way already, but both predate `destroy.yml` removing the VPC that Databricks-managed
+> networking leaks, which was deleted by hand on those cycles.
+
 ### Closed in this phase
 
 The live evidence for claims 1 to 5. The cost model — 20–60 USD a cycle, 100–600 USD across the
@@ -2130,6 +2147,51 @@ The agent surface and claim 6.
 - The human path and the declared-policy path, exercised by the same engine to prove the engine
   does not care about the source.
 - README, banner, article, debut post, promo.
+
+> **Written out 2026-09-10, and the four bullets above stay as they are.** They were written when
+> phase 4 was far away and they name the right four things; what they do not say is how any of
+> them is proved, and a phase whose tasks are four lines each is a discovery rather than a build.
+> The full form is in `TASKS.md` under T025–T028. **This is a plan and not a ruling** — `T024`, the
+> phase-3 integration session, runs before any of it and may restate any of it, which is what
+> integration sessions are for.
+
+**The agent is confined by its registry, not by its instructions.** It may call exactly the tools
+`contracts/` compiles — one per metric, three today — plus a read of the design form. There is no
+free-text SQL tool and no catalog browse, so a question the registry cannot express is a question
+the agent cannot ask. Those same tool definitions are already claim 5's third mechanism, which
+means the registry arrives with a gate on it rather than needing one written. And two of the nine
+fields, `max_duration` and `decision_rule`, are refused by the parser when the form says
+`filled_by: agent` — *the agent proposes how we will find out, never what we will do once we know*
+— refused before the engine sees the form, because the engine is forbidden to look at who filled
+it.
+
+**K is the whole of claim 6, and K costs what the claim is worth.** N and M are counts: designs
+proposed, designs the engine refused. Both are free, and a system that refuses everything scores
+perfectly on them. K is obtained by taking every refused design and **running it anyway** —
+against the world it was refused for, through the same estimator — and counting how many would
+have produced a confident number the sealed truth says is wrong. Without it a refusal is caution,
+and caution reads identically to timidity. With it, the refusal is a save with a count on it. The
+bank the designs are proposed against therefore has to include a world where the correct answer is
+*yes, there was an effect*, for the same reason claim 2 needed W6: a bank of all-null answers
+grades a coward as an expert.
+
+**The judge never rules on validity.** An LLM in the same family as the proposer is a correlated
+critic, so nothing about validity routes through one — code refuses, and the judge ranks quality
+only among designs the engine already accepted. A judge failure can lose a quality score; it
+cannot let an invalid design through, and no mutation in `evals/design/` may be armed by the judge
+alone.
+
+**The three sources are proved identical by a mutation, not by a comparison.** Agent, human and
+declared policy fill the same nine-field form, and the engine's output is compared as bytes apart
+from `filled_by` itself. Three forms that happen to agree only prove the engine agreed three
+times; planting a branch on `filled_by` inside the engine and watching the eval go red proves it
+cannot disagree.
+
+**And publication schedules a paid cycle.** Six of the shot list's seven rows name something that
+exists only while an estate stands — two dashboards, a table, a notebook, a Delta view, and the
+agent's own refusal wherever T025 decides the runtime runs. Only claim 7's row can be photographed
+from a laptop. So the last task of the project is not a documentation task with a documentation
+cost, and everything to be photographed is captured in that cycle or captured never.
 
 ### The shot list
 

@@ -3111,7 +3111,33 @@ closes        Catalogs, schemas, grants, external locations, Lakebase, and the t
 out_of_scope  Pipelines and ml (separate layers, edited constantly).
 stop_at       When lakehouse applies and the dashboards render.
 review        yes
-status        open
+status        HALF MET 2026-09-10 — the layer applied; the second half has been asked of nothing.
+              --
+              Applied via `deploy`, run 34432540795, 03:17:24 to 03:18:25: **54 added, 0 changed,
+              0 destroyed**. One catalog, four schemas, four volumes, five external locations --
+              each with its storage credential, IAM role, role policy and grant set -- the SQL
+              warehouse, the Lakebase instance, the two `databricks_dashboard` resources, and 11
+              published parameters.
+              --
+              **The dashboards applied ninety seconds after the catalog they read, and nothing
+              has drawn either screen since.** The `stop_at` reads *when lakehouse applies AND
+              the dashboards render*. At 03:18 there was nothing to render: `backfill` loads the
+              catalog and `backfill` depends on this layer, so **the apply that creates a screen
+              can never be the thing that proves it draws**. Nothing later closed the gap either.
+              `run` 34459339015 asserts `gold.readout` with SQL it writes itself, so what it
+              proves is that the warehouse serves the table -- not that either dashboard's
+              compiled dataset executes against it.
+              --
+              **This is T015's shape at a smaller radius**: a stopping condition whose two halves
+              belong to different moments, written by somebody looking at one of them. The
+              difference is that this half is achievable, by any run made while an estate stands
+              with data in it, so it is recorded rather than restated. What would close it:
+              `ops/run_assertions.py` executing each compiled dashboard dataset against the
+              warehouse and requiring rows, dispatched by `run`. That makes the render an
+              assertion instead of a screenshot somebody looked at once -- which matters because
+              phase 4 photographs both screens, and `dashboards.tf` records that a
+              `serialized_dashboard` containing `select nonsense from table_that_does_not_exist`
+              passes `terraform validate` clean.
 ```
 
 ```
@@ -3124,7 +3150,23 @@ closes        The pipeline layer as jobs and endpoints. Split from lakehouse bec
 out_of_scope  Training (ml) and serving.
 stop_at       When pipelines applies.
 review        yes
-status        open
+status        CLOSED 2026-09-10 — applied via `deploy`, run 34432540795, in 4 seconds after a
+              19-second plan: **17 added, 0 changed, 0 destroyed**.
+              --
+              Five job resources and the parameters that publish them: `history` (per slice,
+              `for_each` over baseline and window), `silver`, `gold`, `experiment` and
+              `live_day`. Three serverless environment keys, `holdout`, `holdout-dbt` and
+              `holdout-contracts`, all at `environment_version = "4"`.
+              --
+              **The layer applied on the first dispatch and every subsequent failure was inside
+              the jobs rather than in the layer** -- eight of them, each closed on its own branch
+              between #100 and #106: the missing `__file__`, the `src/` layout, `SystemExit(0)`
+              read as a failure, `spark.conf.get` raising on serverless, an ERP export nothing
+              dispatched, dbt absent from the shared environment, `jsonschema` absent from it
+              too, and PEP 695 syntax against Python 3.11. **The split this task was created for
+              is what made each of those a four-second re-apply**: pipelines are edited
+              constantly, and not one of those eight edits went anywhere near a catalog or a
+              grant.
 ```
 
 ```
@@ -3137,7 +3179,21 @@ closes        The ml layer. No serving endpoint — an endpoint cannot point at 
 out_of_scope  The serving endpoint and the agent runtime (T023, applied by backfill).
 stop_at       When ml applies with no endpoint.
 review        yes
-status        open
+status        CLOSED 2026-09-10 — applied via `deploy`, run 34432540795: **6 added, 0 changed,
+              0 destroyed**, and the layer declares no endpoint.
+              --
+              The `train` job, the MLflow experiment, the registered model `holdout.gold.demand`,
+              and the parameters that publish them. `grep -rn model_serving infra/ml/*.tf`
+              returns nothing; the only mention in the layer is `README.md`'s row asserting the
+              absence.
+              --
+              **The stop_at's second half is the interesting one and it held under pressure.**
+              An endpoint here would have applied against a registered model with no versions --
+              `deploy` runs before anything has trained -- and would have failed the layer that
+              creates the training job on the run that was supposed to create it. What proved the
+              boundary was worth drawing is `backfill` 34443755277: the endpoint applied at
+              06:32, **eight minutes after** `train` registered version 3 at 06:24, from a
+              different layer, with the version passed in as a variable.
 ```
 
 ```
@@ -3153,9 +3209,64 @@ closes        ci, deploy, backfill, run, destroy — each dispatching from main 
               nothing is left standing. destroy takes a target (serving | all) and is never
               automatic, on success or failure.
 out_of_scope  The agent surface and claim 6 (Phase 4).
+              --
+              RESTATED 2026-09-10, because this line and the `closes` line above it contradict
+              each other and the tree settles it against the `closes`. `closes` says
+              `infra/serving` is *the endpoint, the agent runtime, the AI Gateway and its tool
+              registry*; `out_of_scope` says the agent surface is phase 4. **The agent runtime is
+              the agent surface.** What the layer declares is one `databricks_model_serving` and
+              the parameter that publishes it -- measured, `infra/serving/*.tf` -- so the built
+              thing agrees with `out_of_scope` and the `closes` line has been describing two
+              unbuilt resources since it was written. Both stay per doctrine rule 4. The runtime
+              and the gateway move to **T025**, which is where the thing they would host is
+              designed, and T025's own `out_of_scope` names them so the pair can be read from
+              either end.
+              --
+              Fourth instance of the registry shape T018 recorded three of: **the introduction
+              is the part no fix's diff touches.** The other three were a branch name, a
+              workflow header and a Terraform header; this one is a scope line, and it is the
+              first that was contradicted by another line in its own block.
 stop_at       When run's assertions pass and destroy leaves the account clean (asked, not assumed).
 review        yes
-status        open
+status        HALF MET 2026-09-10 — the first half is measured; the second is the author's to
+              dispatch.
+              --
+              **`run` 34459339015, 09:12 to 09:20, every step green and every figure asserted.**
+              The live day into bronze, bronze into silver with the live day included, silver
+              into gold, then both experiments read out:
+              --
+                readouts       2
+                with a number  0   []
+                refused        2  [('fresh-ladder', 'UNDERPOWERED_FOR_CAPACITY'),
+                                   ('fresh-ladder-peeking', 'STOPPING_RULE_PERMITS_PEEKING')]
+                OK      every figure this step publishes was asserted
+              --
+              Then the endpoint, asked rather than assumed: `holdout-demand` answering on
+              version `3`, the version `backfill` registered on the same cycle. **What answered a
+              question is part of the answer**, and an endpoint silently rolled to another
+              version would have made every number in the run belong to a model nobody named.
+              --
+              **Two refusals of two different kinds, which is what carries the phase.**
+              `STOPPING_RULE_PERMITS_PEEKING` is structural -- a group-sequential rule with four
+              looks and no spending function is invalid whatever the data says.
+              `UNDERPOWERED_FOR_CAPACITY` is empirical and arrives with its arithmetic: 366 units
+              an arm required against 48 available. `PLAN.md`'s criterion was restated on
+              2026-09-09 to require the refusal and not the number, and `run.yml` passes
+              `--require-refusal` alone with the reason beside it.
+              --
+              **The `--require-*` flags had never gated anything until this run.** They were
+              parsed and then ignored, and `check_experiments` failed a run with no number
+              whatever had been asked for -- invisible for as long as `gold.readout` was written
+              by nothing. #113 closed it. The first execution of a function against a real row is
+              the first test it has ever had.
+              --
+              **What the second half needs**: a `destroy` dispatch, and the account asked
+              afterwards rather than the workflow's exit code read. Two destroys have already
+              been verified that way, on 2026-09-08 and 2026-09-09, but both predate the VPC
+              removal in `destroy.yml` -- the leaked `databricks-WorkerEnvId(...)` VPC and its
+              NAT gateway were deleted by hand on those cycles. **So the destroy that closes this
+              task is also the first measurement of that automation**, and the thing to read in
+              its output is whether every child of the VPC came away without a hand touching it.
 ```
 
 ```
@@ -3181,8 +3292,53 @@ branch        agent/runtime
 depends_on    T024
 closes        What context the agent reads, the tool registry it is confined to, the structured
               nine-field design output, budget caps, traces. No LLM anywhere near the decision path.
+              --
+              WRITTEN OUT 2026-09-10. The two lines above were the whole of this task, and a task
+              this thin is a discovery rather than a build. What follows is what it has to settle,
+              taken from `CLAUDE.md` where `CLAUDE.md` already decided it and marked PROPOSED
+              where it does not.
+              --
+              (a) THE REGISTRY IS THE LIMIT, NOT A PROMPT. The agent may call exactly the tools
+              `holdout.contracts.compilers.agent_tool` emits -- three today, one per metric in the
+              contract, under `generated/agent_tools/` -- plus a read of the design form. No
+              free-text SQL tool and no catalog browse. **A question the registry cannot express
+              is a question the agent cannot ask**, which is a property of the registry rather
+              than of the model's willingness. Those tool definitions are already claim 5's third
+              mechanism, byte-compared against the same contract the Delta view and the readout
+              compile from, so the registry arrives with a gate on it.
+              (b) TWO OF THE NINE FIELDS ARE STRUCTURALLY UNFILLABLE BY IT. `max_duration` and
+              `decision_rule` carry *# the agent never fills this* in `CLAUDE.md`'s form: *the
+              agent proposes how we will find out, never what we will do once we know.* A form
+              arriving as `filled_by: agent` with either field set is refused **by the parser**,
+              before the engine sees it -- so the refusal does not require the engine to read
+              `filled_by`, which T027 forbids it to do.
+              (c) THE CONTEXT IS AN ENUMERATED LIST, not a directory: the metric contract, the
+              guardrail envelope, the ladder policy, the roster's shape, and the pre-period
+              aggregates the design engine itself computes. Nothing under `corpus/`, and nothing
+              that could reach an outcome. An agent that has seen the answer is not proposing a
+              way to find it out.
+              (d) CAPS AND TRACES per proposal: ceilings on tokens, on wall clock and on tool
+              calls, and one trace row per call, written where `evals/design/` can read it. A
+              proposal that hits a ceiling is a refusal carrying a reason code from the closed
+              vocabulary -- never a truncated form, because a truncated form is a design nobody
+              wrote that still parses. PROPOSED: the three ceilings are declared in `contracts/`
+              rather than in code, so raising one is a contract change with a version. The
+              numbers belong to the branch and the decision belongs to the author.
+              (e) WHERE IT RUNS, which the branch decides first because it prices every cycle
+              after it. `infra/serving` was declared to hold the agent runtime and the AI Gateway
+              and holds one model endpoint -- see T023's restated `out_of_scope`. A runtime that
+              is applied infrastructure bills; a local process does not and is not photographable
+              as an estate object.
 out_of_scope  claim-6 (T026); the human/policy paths (T027).
-stop_at       When the agent produces a structured design and is confined to its tool registry.
+              --
+              MOVED IN 2026-09-10: the agent runtime and the AI Gateway, from T023's `closes`,
+              where they were declared as `infra/serving` contents and never built. The pair is
+              readable from either end -- T023 says where they went, this says where they came
+              from.
+stop_at       When the agent produces a structured design and is confined to its tool registry --
+              measured by a call planted outside the registry being refused by name, not by the
+              agent declining to make one. **A confinement that depends on the model behaving is
+              not a confinement.**
 review        yes
 status        open
 ```
@@ -3197,6 +3353,39 @@ closes        make claim-6 green with three numbers printed: N designs proposed 
               have produced a confidently wrong number. The judge never rules on validity — code
               does; the judge rules only on design quality. gate-proof refuses every planted
               violation by name.
+              --
+              WRITTEN OUT 2026-09-10, because **K is the whole claim** and the line above does not
+              say how it is obtained.
+              --
+              (a) THE BANK. Business questions in the scenario's language, each asked against a
+              world whose answer is sealed. `corpus/world/seal.py` already shuts the injected
+              truth until a readout has been written, and W6 is the world where the correct
+              answer is *yes, there was an effect*. **A bank whose answers are all *no effect*
+              would score a system that refuses everything at 100%** -- the same trap W6 exists
+              for in claim 2, arriving one layer up.
+              (b) N AND M ARE COUNTS AND COST NOTHING. The agent proposes, the engine accepts or
+              refuses, and **code refuses**. The eight design refusals already exist in
+              `src/holdout/core/design/`; this task adds none. If it turns out to need one, that
+              is a finding about the engine and it goes on its own branch rather than being
+              written into the eval that grades it.
+              (c) K IS THE EXPENSIVE ONE AND IT IS THE CLAIM. For every refused design, **run it
+              anyway** -- against the world it was refused for, through the same estimator -- and
+              count how many produce a confident number the seal says is wrong. Without K a
+              refusal is caution, and caution cannot be told apart from timidity by anyone
+              reading the output. With K the refusal is a save with a count on it. This is the
+              number nobody publishes, and it is why `CLAUDE.md` calls claim 6 *the one nobody
+              builds*.
+              (d) THE JUDGE NEVER TOUCHES VALIDITY. An LLM in the same family as the proposer is
+              a correlated critic, so the claim does not route through one: validity is decided
+              by code, and the judge ranks quality only among designs the engine has already
+              accepted. A judge failure may lose a quality score; it may not make an invalid
+              design pass. **No mutation in this eval may be armed by the judge alone** --
+              `gate-proof`'s ownership ledger is where that is enforceable.
+              (e) BUILT WITH THE SKILL rather than by reading the closed evals.
+              `.claude/skills/claim/` was extracted for this, claim 4 was the first built that
+              way, and both findings it surfaced came from the mutation step -- which is the step
+              this claim is most able to skip, because a refusal that never fires looks identical
+              to a refusal that cannot.
 out_of_scope  README/banner/article/post/promo (T028).
 stop_at       When claim-6 is green with the three numbers and its mutations bite by name.
 review        yes
@@ -3211,6 +3400,18 @@ depends_on    T025
 closes        The human path and the declared-policy path exercised by the SAME engine, proving the
               engine does not know and does not care who filled the form — same checks, same
               refusals, same experiment.
+              --
+              WRITTEN OUT 2026-09-10: how it is proved rather than asserted. The same nine-field
+              form is filled by all three sources and the engine's output is compared **as bytes**
+              apart from `filled_by` itself -- same refusals, same committed seed, same
+              assignment, same strata. **And the gate is a mutation, not the comparison**: plant a
+              branch on `filled_by` inside the engine and the eval has to go red. Three forms that
+              happen to agree prove the engine agreed three times; a mutation proves it cannot
+              disagree, and the difference is the whole claim.
+              --
+              PROPOSED: the policy source is a declared file under `contracts/`, so that
+              `policy:<name>` names a version rather than somebody's intention -- the author's to
+              fix.
 out_of_scope  —
 stop_at       When all three sources (agent, human, policy) are first-class through one engine.
 review        yes
@@ -3226,6 +3427,21 @@ closes        The publication checklist runs: README to the portfolio standard, 
               article, debut post, promo. Every Greek citation re-opened through search.et.gr and
               updated; every console screenshot through aws-mask. The repository is public but
               unannounced until this closes.
+              --
+              WRITTEN OUT 2026-09-10, with the dependency no other phase-4 task has: **the shot
+              list needs a standing estate.** Six of its seven rows name something that exists
+              only while one is applied -- the decision monitor and the experiment readout are
+              dashboards, the assignment table is a table, claim 4's is a notebook, claim 5's
+              three windows include the Delta view, and claim 6's depends on where T025 puts the
+              agent runtime. Only claim 7's row -- a schema and a test that goes red -- is
+              photographable from a laptop.
+              --
+              So publication is not a documentation task with a documentation cost: **it
+              schedules at least one more paid cycle**, and that cycle is the only one in which
+              the screens exist. Two things follow. Everything to be photographed is captured in
+              that cycle or captured never. And it is the same cycle in which T020's unmet half
+              can be measured, because a dashboard that draws for a camera is a dashboard that
+              renders.
 out_of_scope  Any product claim.
 stop_at       When the checklist is complete and the citations are re-verified.
 review        no
