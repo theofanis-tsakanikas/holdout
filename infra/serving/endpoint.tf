@@ -34,8 +34,25 @@ resource "databricks_model_serving" "demand" {
     }
   }
 
+  # **`holdout_project`, and the underscore is the finding rather than a preference.**
+  #
+  #     cannot create model serving: Endpoint tag key holdout:project is either not between
+  #     1-255 characters long or contains one or more of the reserved characters: . , = / or :
+  #
+  # Every other object in this estate carries `holdout:project` — it is what the budget filters
+  # on, what the reaper enumerates, and what `destroy`'s survivor check reads. **Model serving
+  # refuses a colon in a tag key**, so this one object cannot carry the estate's own key, and the
+  # thing that reached the estate first was the whole `backfill`: baseline, window, silver, gold,
+  # training, a registered version, and then this.
+  #
+  # **What that costs is stated rather than absorbed.** A serving endpoint is a Databricks object
+  # and was never in the AWS tag population — `tag:GetResources` has never returned one — so
+  # nothing that reads `holdout:project` loses sight of anything it could see before. What would
+  # be wrong is to leave it untagged: `infra/foundation/reaper.py` enumerates billing surfaces by
+  # tag on the workspace side, and an endpoint with no key at all is the shape of the finding this
+  # register already holds about the network Databricks leaves behind.
   tags {
-    key   = "holdout:project"
+    key   = "holdout_project"
     value = "holdout"
   }
 }
