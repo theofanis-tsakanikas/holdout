@@ -6055,3 +6055,33 @@ Databricks object; `tag:GetResources` has never returned one, so nothing that re
 scoped to the resource that refused rather than to every resource that looks like it
 *Now:* `infra/serving/endpoint.tf` :: `    key   = "holdout_project"`
 *Status:* open
+
+---
+**The registered model was a reference to a checkout that exists on one machine** ·
+found 2026-09-10 · by the serving endpoint spending eight minutes reaching `UPDATE_FAILED`
+
+    Error: cannot create model serving: failed to reach NOT_UPDATING, got UPDATE_FAILED
+
+`pipelines/ml/registry.py` logs a `mlflow.pyfunc.PythonModel` defined inside `register()`, so
+cloudpickle stores that wrapper **by value** — the serving container needs nothing to rebuild it.
+What the wrapper holds is a `DemandModel`, and that class lives in `pipelines.ml.model`, which is
+importable at log time and therefore stored **by reference**. A serving endpoint has this
+repository nowhere on its path.
+
+**So the version in the registry was not a model; it was a pointer to a checkout.** It loaded
+wherever `pipelines` happened to be importable — the training task, the laptop — and nowhere else.
+`code_paths` copies `pipelines/` and `src/holdout/` into the artifact and puts them on `sys.path`
+at load, which is what makes a registered version a thing rather than a promise.
+
+> **`backfill` reached this at the end**, after the baseline, the comparison window, two passes of
+> silver and gold, the promotion gates and a registered version — and the endpoint then spent
+> eight minutes failing. Terraform reported the state and not the reason, because the reason is on
+> the endpoint. The same workflow now asks it, for `ops/run_job.sh`'s reason: a run that cannot
+> say why costs every wrong theory as well as the dispatch.
+
+*Site:* `pipelines/ml/registry.py` :: `            code_paths=[str(_ROOT / "pipelines"), str(_ROOT / "src" / "holdout")],`
+*Disposition:* branch `ml/a-served-model-carries-the-code-that-made-it`
+*Closed:* 2026-09-10 — the artifact carries the code that defines it, and the workflow reads the
+endpoint's own state when the apply cannot reach one
+*Now:* `pipelines/ml/registry.py` :: `            code_paths=[str(_ROOT / "pipelines"), str(_ROOT / "src" / "holdout")],`
+*Status:* open

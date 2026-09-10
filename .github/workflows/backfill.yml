@@ -259,5 +259,18 @@ jobs:
             -backend-config="region=$AWS_REGION" \
             -backend-config="kms_key_id=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn --query Parameter.Value --output text)"
 
-          terraform -chdir=infra/serving apply -input=false -auto-approve \
-            -var="model_version=${VERSION}"
+          # **The endpoint's own state, when the apply cannot get one.** Terraform reports
+          # `failed to reach NOT_UPDATING, got UPDATE_FAILED` and stops there; the reason a
+          # container could not load a model is on the endpoint, and reading it is the difference
+          # between one dispatch and two. `ops/run_job.sh` makes the same argument for jobs.
+          if ! terraform -chdir=infra/serving apply -input=false -auto-approve \
+                 -var="model_version=${VERSION}"; then
+            echo "── the endpoint did not come up; asking it why"
+            databricks serving-endpoints get holdout-demand --output json 2>/dev/null \
+              | jq -r '
+                  "  state:  " + ((.state // {}) | tostring),
+                  "  config: " + ((.pending_config // .config // {}) | tostring)
+                ' | head -c 4000
+            echo
+            exit 1
+          fi
