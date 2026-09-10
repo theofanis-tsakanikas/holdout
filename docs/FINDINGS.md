@@ -6016,3 +6016,42 @@ recorded rather than raised, and the acceptance asks for the refusal it can hone
 *Now:* `tests/pipelines/test_experiments.py` :: `    erp.export(control, root / "landing", day=baseline_closes - timedelta(days=1))`
 *Now:* `pipelines/gold/experiments.py` :: `        # **Refused is an answer, and the run carries on to record it.**`
 *Status:* open
+
+---
+**Forty minutes of estate to learn that a colon is a reserved character** ·
+found 2026-09-10 · by `backfill` reaching `serving`, which nothing had ever reached before
+
+    Error: cannot create model serving: Endpoint tag key holdout:project is either not between
+    1-255 characters long or contains one or more of the reserved characters: . , = / or :
+
+**Everything upstream of it succeeded**, and most of it for the first time: the baseline history
+and the ERP drops into bronze, silver, gold with all five dbt models, the design step assessing
+both experiments and recording their refusals, **the comparison window generated and loaded**, a
+second pass of silver and gold, and then `train, gate, register` — which produced
+`holdout.gold.demand version 1`, the first model version this project has ever registered.
+
+Then a character in a string stopped it.
+
+**The estate carries one tag key on purpose.** `holdout:project` is what the budget's cost filter
+matches, what `infra/foundation/reaper/reap.py` enumerates, and what `destroy`'s survivor list
+reads — four mechanisms agreeing about what belongs to this project because there is one key
+rather than four. Model serving refuses a colon, so that one object cannot carry it and now
+carries `holdout_project`.
+
+**What that costs is small and is stated rather than absorbed.** A serving endpoint is a
+Databricks object; `tag:GetResources` has never returned one, so nothing that reads
+`holdout:project` loses sight of anything it could see before.
+
+> **And the gate written for it was wrong first, in the direction that matters.** Written over
+> every Databricks tag block it went red against `infra/lakehouse/warehouse.tf`, which carries
+> `holdout:project` and **applies** — measured on the estate the same day. The restriction is
+> per-resource. A gate that refuses what the platform accepts is not stricter, it is wrong, and
+> its fix would have been to change a key that never needed changing. The population is the
+> resource that refused, and another joins it when another refuses.
+
+*Site:* `infra/serving/endpoint.tf` :: `    key   = "holdout_project"`
+*Disposition:* branch `infra/an-endpoint-tag-cannot-hold-a-colon`
+*Closed:* 2026-09-10 — a key the endpoint's API accepts, with the reason beside it, and a gate
+scoped to the resource that refused rather than to every resource that looks like it
+*Now:* `infra/serving/endpoint.tf` :: `    key   = "holdout_project"`
+*Status:* open
