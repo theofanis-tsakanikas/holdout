@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/design_harness.schema.json",
+  "title": "Claim 6's harness, declared",
+  "description": "What claim 6's EVAL consumes, beside aa_harness.yaml and apart from inference.yaml for the reason that file gives: a number the engine never reads must not be mistakeable for one it does. Every entry is a {value, source} pair; nothing here is law and every source says so. Several counts are budgets against a measured cost and say which.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "effective_from",
+    "seeds",
+    "peeking",
+    "post_hoc",
+    "machinery"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "effective_from": {
+      "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date"
+    },
+    "note": {
+      "type": "string"
+    },
+    "seeds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lotteries_per_design"
+      ],
+      "properties": {
+        "lotteries_per_design": {
+          "description": "Lotteries drawn against each recorded design under each violation, for the published run.",
+          "$ref": "#/$defs/sourced_positive_integer"
+        }
+      }
+    },
+    "peeking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "looks"
+      ],
+      "properties": {
+        "looks": {
+          "description": "Interim looks, equally spaced over the window, with no spending function.",
+          "$ref": "#/$defs/sourced_positive_integer"
+        }
+      }
+    },
+    "post_hoc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "controls_excluded"
+      ],
+      "properties": {
+        "controls_excluded": {
+          "description": "How many of the best-performing control units a post-hoc exclusion removes.",
+          "$ref": "#/$defs/sourced_positive_integer"
+        }
+      }
+    },
+    "machinery": {
+      "description": "What a planted mutation runs at: the same checks at one lottery per design.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lotteries_per_design"
+      ],
+      "properties": {
+        "lotteries_per_design": {
+          "$ref": "#/$defs/sourced_positive_integer"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/provenance"
+    },
+    "sourced_positive_integer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source"
+      ],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    }
+  }
+}

@@ -3354,7 +3354,31 @@ closes        A drift report. Builds nothing.
 out_of_scope  Building any product code.
 stop_at       When the report is written and each proposed fix is its own branch.
 review        n/a — this task IS the review.
-status        open
+status        CLOSED 2026-09-11 — `docs/reviews/phase-3.md`, on branch `docs/phase-3-integration`,
+              and it built nothing.
+              --
+              **It ran late, and says so first.** Phase 3's criterion was met on 2026-09-10 and
+              T025 and T026 were built on 2026-09-11 before this session opened; `T025 depends_on
+              T024` and nothing reads `depends_on`. Two of its findings were produced by phase-4
+              work rather than found here.
+              --
+              What was run: `make check` 1881 green, every eval green including `eval-uplift`
+              13/13 and the new `eval-design` 11/11, `gate-proof` 9/9 over 56 mutations, `expiry`
+              38/32/6, the roster at two scales, the forge's ruleset and environments, and the
+              account after `destroy`. No claim's proof has collapsed; both barriers hold; the
+              roster table reproduces exactly.
+              --
+              Seven dispositions, three of them branches: the three deferrals whose unlock
+              conditions were met unnoticed; the layer count into `make figures`'s `PROSE`, which
+              closes three findings adrift since the first week of September; and rule 7 restated
+              a fourth time, because the door phase 3 delivered is shut to people and keyed for
+              the automation. Four are the author's, and two of those were already in the
+              register, adrift for nine and eleven days when re-found. **Twenty-four of eighty-one
+              open findings are adrift**, and that is the review's last figure.
+              --
+              The forge question the skill mandates: three required contexts, three defined, the
+              list matches. And the second known member of that class: the `destroy` environment
+              carries no reviewer in the forge while its workflow's header says it does.
 ```
 
 ---
@@ -3576,6 +3600,35 @@ status        BUILT 2026-09-11, awaiting review; the three numbers are printed a
               `Decimal`, solved rather than searched, checked at W and W−1, sharing the
               contract's z values and nothing else; ten designs compared, zero disagreements,
               and the dropped-z mutation is what it alone catches.
+              --
+              **The same day, `evals/design-under-violation` gave K its teeth.** `violate.py`
+              runs every recorded design under a four-look rule with no spending function and
+              every accepted design re-submitted with its best eight controls excluded -- the
+              refusals whose reason predicts a wrong number *above* chance -- on the null
+              world, with the estimator run exactly as `close()` runs it after the four checks:
+              --
+                K · power, guards off  0 of 6   (expected by chance: 0.30)
+                K · peeking            4 of 28  (14.3% against α = 5%; honest end-of-window 1 of 28)
+                K · post-hoc           1 of 4 significant; the raw difference rose 4 of 4
+                gate-proof             6/6 bit
+              --
+              The configuration is a contract, `contracts/design/design_harness.yaml`, beside
+              `aa_harness.yaml` and for its reason: four lotteries per design published, one
+              under `gate-proof`, and `evals.design.machinery` is what a mutation runs. The
+              violated runs go through a process pool, seed in and record out, the way
+              `evals/uplift/parallel.py` argues a seal must never be pickled.
+              --
+              **Two errors the run caught in the eval's own design.** Seven designs that
+              differ only in MDE and metric drew the identical lottery from the identical seed,
+              and one unlucky draw was counted seven times -- 5 of 28 that was 1 of 4; the seed
+              now carries the design's index. And the adjusted estimate does not rise
+              mechanically when the best controls are dropped, because the covariate adjustment
+              re-fits on the units left -- it rose in two of four -- so the raw difference
+              carries the assertion and the adjusted shift is published beside it.
+              --
+              Interference has no K and is no longer deferred: under interference there is no
+              estimand for a number to be wrong against, which is the refusal's own reason. The
+              region roster and the units column are re-deferred on their own, with a date.
 ```
 
 ```

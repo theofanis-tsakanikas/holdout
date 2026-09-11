@@ -1,0 +1,74 @@
+# What claim 6's eval is configured with. `aa_harness.yaml` is what claim 2's harness consumes;
+# this is its sibling for `evals/design/`, and it lives beside it for the reason that file gives:
+# what the EVAL consumes is kept apart from what the CORE consumes, so a number the engine never
+# reads cannot be mistaken for one it does.
+#
+# Every entry is a {value, source} pair, and every source is a scenario_assumption whose note
+# carries the measurement it was set against. Nothing here is law. Several of the counts are
+# budgets, and they say so; what they are budgets against was measured on 2026-09-11 on the
+# author's laptop: one violated run -- a lottery drawn, its outcomes composed, and the estimator
+# run with the contract's B = 1000 -- costs about 2.5 seconds, dominated by the reference plan
+# the permutation test is computed under, which is built once per lottery and reused across
+# the looks.
+
+version:        1
+effective_from: 2026-09-11
+
+# ------------------------------------------------------------------ how many lotteries
+
+seeds:
+  lotteries_per_design:
+    value: 4
+    source:
+      kind: scenario_assumption
+      note: >-
+        Lotteries drawn against each recorded design under each violation. A rate over one
+        draw is not a rate; over four draws of the eleven gradable designs it is a sample of
+        forty-four per scenario, which is enough to see a peeker's false-positive rate sit
+        above alpha and not enough to publish a third decimal. It is a budget: the whole eval
+        runs inside one CI entry with its four mutations, and `ci.yml`'s ceiling is what it is
+        budgeted against.
+      verified_on: 2026-09-11
+
+# ------------------------------------------------------------------ the violations
+
+peeking:
+  looks:
+    value: 4
+    source:
+      kind: scenario_assumption
+      note: >-
+        Interim looks, equally spaced over the comparison window, with no spending function:
+        the rule the estate's own second experiment declared and was refused for on
+        2026-09-10. Four is a weekly review over an eight-week window with a look every
+        fortnight, which is what a category manager actually asks for.
+      verified_on: 2026-09-11
+
+post_hoc:
+  controls_excluded:
+    value: 8
+    source:
+      kind: scenario_assumption
+      note: >-
+        How many of the best-performing control units a post-hoc exclusion removes, each with
+        a reason that reads well. Eight of a control arm of about fifty-three: small, because
+        the point is that a handful of well-argued exclusions moves the estimate, and an
+        exclusion of half the arm would move it for a reason nobody needs an eval to see.
+      verified_on: 2026-09-11
+
+# ------------------------------------------------------------------ what a mutation runs
+
+machinery:
+  lotteries_per_design:
+    value: 1
+    source:
+      kind: scenario_assumption
+      note: >-
+        The same checks, the same code, at one lottery per design, so that `gate-proof` can
+        run the eval once per planted mutation inside its cap. What is asserted at this size
+        is that every violated design was refused with the right code and that the estimate
+        moved the way the violation predicts -- properties of one draw. The rates are absent
+        here rather than computed on one draw and printed as though they meant the same thing,
+        which is `aa_harness.yaml`'s rule and the reason its rate checks are absent from
+        `evals.uplift.machinery` too.
+      verified_on: 2026-09-11

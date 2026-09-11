@@ -1592,6 +1592,11 @@ gate bites. The seam that eval needs is built and verified — envelopes constru
 numbers, with `contracts/` never opened — but the eval itself is not written.
 *Unlock condition:* `corpus/real/` and the eval directories, each with the mutation that proves its
 gate. Until then claim 1 has **not** closed, and PLAN.md says so.
+*Closed:* 2026-09-11 — met in phase 1, when `corpus/real/` and the first eval directories landed
+with their mutations; six evals and fifty-six mutations exist today and `make gate-proof`
+audits them. The oldest entry in the section, closed by the phase-3 integration review a
+fortnight after its condition was met — and the phase-1 and phase-2 reviews both read this
+section and did not see it, which is the finding rather than the closure.
 
 **`terraform validate` and `make preview-audit` in CI** · deferred 2026-08-27
 CLAUDE.md lists both in the `ci` workflow. Neither has anything to act on: there is no `infra/` and
@@ -1631,6 +1636,11 @@ no declared inventory of preview surfaces.
 > like the estate. No `apply`, no backend, no credential, no resource that exists, nothing that
 > costs a cent; `terraform init -backend=false` and `validate` only. Applying is `T020`'s, which
 > `T013`'s own `out_of_scope` says.
+*Closed:* 2026-09-11 — the condition was met on 2026-09-05, when `infra/bootstrap` became the
+first Terraform layer, and nobody noticed for six days. Both targets run in `ci.yml`'s `gate`
+job and in `make check` today. Found by the phase-3 integration review reading the registry as
+a population, which is the only way a met condition is ever found: `make expiry` checks that a
+condition is present, never that it is met.
 
 **`docs/SCENARIO.md` and `docs/DAY-ONE.md`** · deferred 2026-08-27
 Both are named in CLAUDE.md's "read this first" table and neither exists. `DAY-ONE.md` has nothing
@@ -1727,6 +1737,10 @@ the other way round.
 > *Revised condition:* the estate, where a catalog exists and `${catalog}` resolves — which is
 > `T020`, the lakehouse layer. The prior condition stays per doctrine rule 4 and it was met; what
 > is left is the one consumer that cannot be met without a workspace.
+*Closed:* 2026-09-11 — the condition, *phase 2, when gold is built*, was met twice over: gold
+was built locally by `make gold` in phase 2, and on the estate by `backfill` 34443755277 on
+2026-09-10, five dbt models compiled from the contracts and executed on serverless SQL. The
+entry outlived its condition by a phase. Found by the phase-3 integration review.
 
 **Metric versions v1 and v2 are invented history** · deferred 2026-08-27
 They exist so that as-of resolution, the supersession chain and the restatement gate are
@@ -2593,3 +2607,27 @@ exists, and a decision about whether a peeking path may live in an eval at all, 
 author's.
 *Expires:* 2026-12-31 — the claim's own headline names K, and a K that only measures α cannot
 stand as the closing figure of the project indefinitely.
+*Closed:* 2026-09-11 — by `evals/design-under-violation`, the same day, on two of the three
+scenarios and with the third refused on its own terms. `evals/design/violate.py` runs every
+recorded design under a four-look rule with no spending function and every accepted design
+re-submitted with its best eight controls excluded; the engine refuses both (`D10`, `D11`) and,
+run anyway on the null world, **peeking reports a false positive in 4 of 28 lotteries (14.3%
+against α = 5%, with the honest end-of-window at 1 of 28) and the post-hoc exclusion raises the
+raw difference in 4 of 4 and turns 1 of 4 significant.** Interference is not run and is not a
+deferral any more: under interference a unit's outcome depends on its neighbours' arms, so there
+is no potential outcome to subtract and no estimand for a number to be wrong against — which is
+the reason the engine refuses the unit, and a K against a truth that does not exist would be the
+eval inventing the thing the refusal exists to say is uninventable. The region roster and the
+units column are still absent and are recorded below on their own.
+
+**The two smaller limits recorded above are re-deferred here, on their own** · deferred 2026-09-11
+The harness has a roster of stores and none of regions, so a region design is `ungraded` with the
+reason; the harness ledger carries no units column, so a design naming
+`units_sold_per_store_week` is `ungraded` too. Both were folded into the K entry above and neither
+was closed by the change that closed it, so they get an entry of their own rather than vanishing
+inside a closed one.
+*Unlock condition:* a region covariate matrix — the store matrix aggregated by region with a
+pre-period over it — and a `units` field on `evals/uplift/outcomes.Ledger` filled from the POS
+lines the world already emits; either is an afternoon and neither changes an instrument.
+*Expires:* 2027-03-31 — two of eleven recorded designs were ungraded for the first reason on
+2026-09-11, and a bank that keeps proposing region designs will keep being a third ungraded.
