@@ -599,6 +599,12 @@ CLAIM_2_TESTS_COST := 533
 CLAIM_3_COST := 453
 CLAIM_4_COST := 159
 CLAIM_5_COST := 750
+# **480, a bound above 463 measured cold on run 34560323264** -- the first run the target
+# existed, on a runner, with its own world-cache key missing so W1 at harness scale and its
+# potential outcomes were generated from nothing. Four mutations at 44-72s each on the
+# runner against 24-36s on the laptop. Warm it is lower and nobody has measured it there;
+# a cost declared from the cold run cannot be stale in the direction that trips the ceiling.
+CLAIM_6_COST := 480
 CLAIM_7_COST := 98
 GATE_PROOF_COST := 30
 SILVER_COST := 165
