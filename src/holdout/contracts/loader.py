@@ -31,6 +31,7 @@ from holdout.contracts.model import (
     Carryover,
     ContractSet,
     Covariate,
+    DesignHarness,
     FloorBehaviour,
     Guardrail,
     GuardrailRule,
@@ -95,7 +96,13 @@ CLAIMED_FILES = {
     "policies": None,  # every *.yaml
     "vocabularies": frozenset({REASON_CODES.name}),
     "design": frozenset(
-        {"aa_harness.yaml", "balance_covariates.yaml", "form.schema.yaml", "inference.yaml"}
+        {
+            "aa_harness.yaml",
+            "balance_covariates.yaml",
+            "design_harness.yaml",
+            "form.schema.yaml",
+            "inference.yaml",
+        }
     ),
     # A fifth family, added by T014. It is `ml` rather than a section of `design/` because a
     # training run is not an experiment design: `design/` is read by the engine that decides
@@ -411,6 +418,17 @@ def _training(raw: dict[str, Any]) -> TrainingSettings:
     )
 
 
+def _design_harness(raw: dict[str, Any]) -> DesignHarness:
+    return DesignHarness(
+        version=raw["version"],
+        effective_from=_as_date(raw["effective_from"]),
+        lotteries_per_design=int(raw["seeds"]["lotteries_per_design"]["value"]),
+        peeking_looks=int(raw["peeking"]["looks"]["value"]),
+        post_hoc_controls_excluded=int(raw["post_hoc"]["controls_excluded"]["value"]),
+        machinery_lotteries_per_design=int(raw["machinery"]["lotteries_per_design"]["value"]),
+    )
+
+
 def _runtime(raw: dict[str, Any]) -> RuntimeSettings:
     ceilings, proposer = raw["ceilings"], raw["proposer"]
     return RuntimeSettings(
@@ -537,6 +555,9 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
     )
     inference_pairs = validated([design_dir / "inference.yaml"], "inference.schema.json", "design")
     harness_pairs = validated([design_dir / "aa_harness.yaml"], "aa_harness.schema.json", "design")
+    design_harness_pairs = validated(
+        [design_dir / "design_harness.yaml"], "design_harness.schema.json", "design"
+    )
     training_pairs = validated([root / "ml" / "training.yaml"], "training.schema.json", "ml")
     runtime_pairs = validated([root / "agent" / "runtime.yaml"], "runtime.schema.json", "agent")
     form_path = design_dir / "form.schema.yaml"
@@ -565,6 +586,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
         training=_training(training_pairs[0][1]),
         runtime=_runtime(runtime_pairs[0][1]),
         aa_harness=_aa_harness(harness_pairs[0][1]),
+        design_harness=_design_harness(design_harness_pairs[0][1]),
         design_form=MappingProxyType(form_raw),
         census=counted,
     )

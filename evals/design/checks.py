@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
 
-from evals.design import build, grade, reference
+from evals.design import build, grade, reference, violate
 from evals.report import Check, Report
 from holdout.core.design import DesignRefusal, Feasible, assess
 from holdout.core.design.form import FilledBy, FilledByKind, Unit
@@ -49,6 +49,15 @@ UNREACHABLE_BY_THE_AGENT: dict[str, str] = {
 
 
 @dataclass(frozen=True, slots=True)
+class Configuration:
+    """How many lotteries each violated design is drawn under. The published run reads the
+    contract's `seeds`; `evals.design.machinery` reads its `machinery` block."""
+
+    lotteries_per_design: int
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
 class Measured:
     contracts: build.ContractSet
     world: build.World
@@ -57,6 +66,8 @@ class Measured:
     verdicts: tuple[grade.Verdict, ...]
     anyways: tuple[grade.Anyway, ...]
     boundaries: dict[int, reference.Boundary]
+    violations: tuple[violate.Violated, ...]
+    configuration: Configuration
 
     @property
     def proposals(self) -> tuple[build.Recorded, ...]:
@@ -78,16 +89,21 @@ class Measured:
         return self.recording.outcomes[v.index].proposal is not None
 
 
-def measure() -> Measured:
+def published(contracts: build.ContractSet) -> Configuration:
+    return Configuration(contracts.design_harness.lotteries_per_design, "published")
+
+
+def machinery(contracts: build.ContractSet) -> Configuration:
+    return Configuration(contracts.design_harness.machinery_lotteries_per_design, "machinery")
+
+
+def measure(configuration: Configuration | None = None) -> Measured:
     contracts = build.contracts()
     world = build.world(contracts)
     recording = build.recording()
+    configured = configuration if configuration is not None else published(contracts)
     verdicts = tuple(grade.verdict(o, contracts=contracts, built=world) for o in recording.outcomes)
-    anyways = tuple(
-        a
-        for o, v in zip(recording.outcomes, verdicts, strict=True)
-        if (a := grade.anyway(o, v, contracts=contracts, built=world)) is not None
-    )
+    anyways = grade.anyway_all(recording)
     boundaries: dict[int, reference.Boundary] = {}
     for o, v in zip(recording.outcomes, verdicts, strict=True):
         if o.proposal is None or v.ungraded is not None:
@@ -105,6 +121,7 @@ def measure() -> Measured:
             variance_cents2=pre.variance_per_unit_week,
             mean_cents=pre.mean_per_unit_week,
         )
+    violations = violate.run_all(recording, lotteries=configured.lotteries_per_design)
     return Measured(
         contracts=contracts,
         world=world,
@@ -113,6 +130,8 @@ def measure() -> Measured:
         verdicts=verdicts,
         anyways=anyways,
         boundaries=boundaries,
+        violations=tuple(violations),
+        configuration=configured,
     )
 
 
@@ -254,8 +273,10 @@ def _d4(m: Measured) -> Check:
 
 def _d5(m: Measured) -> Check:
     """Three attributions, one verdict. Compared on what the engine decides, never the digest."""
+    # The agent's verdict is the one `measure` already computed; the human's and the policy's
+    # are assessed here and compared against it. Three assessments per design were two more
+    # than the comparison needs, and at nine designs that was the cost of a violated run.
     attributions = (
-        FilledBy(kind=FilledByKind.AGENT),
         FilledBy(kind=FilledByKind.HUMAN, name="A. Reviewer"),
         FilledBy(kind=FilledByKind.POLICY, name="quarterly_fresh_review"),
     )
@@ -264,11 +285,16 @@ def _d5(m: Measured) -> Check:
     for o, v in zip(m.recording.outcomes, m.verdicts, strict=True):
         if o.proposal is None or v.ungraded is not None:
             continue
+        if o.proposal.unit is not grade.GRADABLE_UNIT:
+            continue  # refused by the unit's predicate alone, which reads no attribution
         compared += 1
         pre = m.world.pre_by_metric[o.proposal.primary_metric]
         metric = m.contracts.metric_versions(o.proposal.primary_metric)[-1]
         base = build.complete(o.proposal)
-        results = []
+        agent_result: Feasible | DesignRefusal = (
+            v.feasible if v.feasible is not None else v.refused  # type: ignore[assignment]
+        )
+        results: list[Feasible | DesignRefusal] = [agent_result]
         for who in attributions:
             form = _restamped(base, who)
             results.append(
@@ -476,6 +502,98 @@ def _d9(m: Measured) -> Check:
     )
 
 
+def _d10(m: Measured) -> Check:
+    """Peeking, run anyway. The engine's refusal is asserted; the rate is published."""
+    peeked = [v for v in m.violations if v.scenario == "peeking"]
+    unrefused = [v for v in peeked if "STOPPING_RULE_PERMITS_PEEKING" not in v.refused_codes]
+    ran = [v for v in peeked if v.honest.weeks > 0]
+    wrong = [v for v in ran if v.wrong]
+    alpha = Fraction(m.contracts.inference.alpha)
+    looks = m.contracts.design_harness.peeking_looks
+    designs = len({v.index for v in peeked})
+    per = m.configuration.lotteries_per_design
+    rate = (
+        f" ({len(wrong) / len(ran):.1%} against α = {float(alpha):.0%}; honest end-of-window: "
+        f"{sum(1 for v in ran if v.honest.significant)} of {len(ran)})"
+        if ran
+        else ""
+    )
+    return Check(
+        id="D10.a-peeking-design-is-refused-and-run-anyway-it-reports-false-positives",
+        question=(
+            "is every design, under a group-sequential rule with no spending function, refused "
+            "STOPPING_RULE_PERMITS_PEEKING -- and, run anyway on the null world with the number "
+            "read at every look, is the false-positive rate published beside α?"
+        ),
+        passed=bool(peeked) and not unrefused,
+        figure=(
+            f"{designs} design(s) × {per} lotter{'y' if per == 1 else 'ies'}, {looks} looks: "
+            f"K = {len(wrong)} of {len(ran)} reported a false positive{rate}"
+        ),
+        detail=(
+            "a rate over one lottery per design is not a rate and is not published as one"
+            if per < 2
+            else ""
+        ),
+        counterexamples=tuple(
+            f"{v.index:03d}/{v.lottery_seed}: not refused for peeking "
+            f"({v.refused_codes or 'accepted'})"
+            for v in unrefused
+        ),
+    )
+
+
+def _d11(m: Measured) -> Check:
+    """Post-hoc exclusions, run anyway. Refused, and the estimate moved as chosen."""
+    moved = [v for v in m.violations if v.scenario == "post_hoc"]
+    unrefused = [v for v in moved if "EXCLUSIONS_DEFINED_POST_HOC" not in v.refused_codes]
+    ran = [v for v in moved if v.honest.weeks > 0]
+    # The mechanical half: dropping the controls with the highest outcomes cannot lower the
+    # raw treatment-minus-control difference. The adjusted estimate the readout reports can
+    # move either way, because the covariate adjustment re-fits on the units left -- measured
+    # on the first published run, it rose in two of four -- so the raw difference carries the
+    # assertion and the adjusted shift is published beside it.
+    not_up = [v for v in ran if v.reported.raw_difference_cents < v.honest.raw_difference_cents]
+    wrong = [v for v in ran if v.wrong]
+    excluded = m.contracts.design_harness.post_hoc_controls_excluded
+    designs = len({v.index for v in moved})
+    per = m.configuration.lotteries_per_design
+    shift = (
+        "; mean shift raw "
+        + f"{sum(float(v.reported.raw_difference_cents - v.honest.raw_difference_cents) for v in ran) / len(ran):+.0f}c"
+        + ", adjusted "
+        + f"{sum(float(v.reported.uplift_cents - v.honest.uplift_cents) for v in ran) / len(ran):+.0f}c"
+        if ran
+        else ""
+    )
+    return Check(
+        id="D11.a-post-hoc-exclusion-is-refused-and-run-anyway-it-moves-the-estimate",
+        question=(
+            "is a locked design re-submitted with its best controls excluded refused "
+            "EXCLUSIONS_DEFINED_POST_HOC -- and, run anyway, does the raw difference move in the "
+            "direction the exclusion was chosen to move it, every time?"
+        ),
+        passed=bool(moved) and not unrefused and not not_up,
+        figure=(
+            f"{designs} locked design(s) × {per} lotter{'y' if per == 1 else 'ies'}, {excluded} "
+            f"controls excluded: the raw difference rose in {len(ran) - len(not_up)} of {len(ran)}; "
+            f"K = {len(wrong)} became significant{shift}"
+        ),
+        counterexamples=(
+            *(
+                f"{v.index:03d}/{v.lottery_seed}: not refused ({v.refused_codes or 'accepted'})"
+                for v in unrefused
+            ),
+            *(
+                f"{v.index:03d}/{v.lottery_seed}: the raw difference fell "
+                f"{float(v.honest.raw_difference_cents):+.0f}c -> "
+                f"{float(v.reported.raw_difference_cents):+.0f}c"
+                for v in not_up
+            ),
+        ),
+    )
+
+
 # --------------------------------------------------------------------------- the report
 
 NOTES: tuple[str, ...] = (
@@ -483,10 +601,11 @@ NOTES: tuple[str, ...] = (
     "committed, read on every run, and printed with its size.",
     "The recording is a fixed sample from a dated model, stamped with its id; the claim is "
     "about the engine and not about that model.",
-    "K is computed only for refusals the harness can run with the guards off -- today, the "
-    "power refusals on the null world -- and its rate there is bounded below by alpha, which "
-    "is not a finding. Refusals for interference, peeking and post-hoc exclusions need the "
-    "worlds that violate them and are a deferral, named in docs/DECISIONS.md.",
+    "K is three numbers, not one. The power refusals run with the guards off are wrong at "
+    "alpha on the null world, which is the estimator behaving; peeking and post-hoc exclusions "
+    "are run under the violation itself and are wrong above alpha, which is the refusal "
+    "saving. Interference has no truth to be wrong against -- that is why the engine refuses "
+    "the unit -- and is counted as refused-not-runnable.",
     "A design at a unit the harness has no roster for, or on a metric the ledger has no "
     "history for, is ungraded with the reason and never assessed against another design's "
     "roster or variance.",
@@ -499,9 +618,21 @@ NOTES: tuple[str, ...] = (
 )
 
 
-def run() -> Report:
-    m = measure()
-    checks = (_d1(m), _d2(m), _d3(m), _d4(m), _d5(m), _d6(m), _d7(m), _d8(m), _d9(m))
+def run(configuration: Configuration | None = None) -> Report:
+    m = measure(configuration)
+    checks = (
+        _d1(m),
+        _d2(m),
+        _d3(m),
+        _d4(m),
+        _d5(m),
+        _d6(m),
+        _d7(m),
+        _d8(m),
+        _d9(m),
+        _d10(m),
+        _d11(m),
+    )
     return Report(
         claim=6,
         title="the design engine refuses an invalid design regardless of where the judgment came from",
@@ -509,6 +640,14 @@ def run() -> Report:
         numbers=_numbers(m),
         notes=NOTES,
     )
+
+
+def _k_line(m: Measured, scenario: str) -> str:
+    ran = [v for v in m.violations if v.scenario == scenario and v.honest.weeks > 0]
+    if not ran:
+        return "nothing runnable"
+    wrong = sum(1 for v in ran if v.wrong)
+    return f"{wrong} of {len(ran)} confidently wrong ({wrong / len(ran):.1%})"
 
 
 def _numbers(m: Measured) -> tuple[tuple[str, str], ...]:
@@ -542,8 +681,14 @@ def _numbers(m: Measured) -> tuple[tuple[str, str], ...]:
         ("feasible", str(len(m.feasible))),
         ("ungraded", ", ".join(f"{k} ×{n}" for k, n in sorted(ungraded.items())) or "0"),
         (
-            "K",
+            "K · power, guards off",
             f"{sum(1 for a in m.anyways if a.significant and a.excludes_truth)} of {len(m.anyways)} run anyway",
+        ),
+        ("K · peeking", _k_line(m, "peeking")),
+        ("K · post-hoc", _k_line(m, "post_hoc")),
+        (
+            "configuration",
+            f"{m.configuration.name}: {m.configuration.lotteries_per_design} lottery seed(s) per design",
         ),
         ("units proposed", ", ".join(f"{u} ×{n}" for u, n in sorted(units.items()))),
         ("metrics proposed", ", ".join(f"{k} ×{n}" for k, n in sorted(metrics.items()))),
