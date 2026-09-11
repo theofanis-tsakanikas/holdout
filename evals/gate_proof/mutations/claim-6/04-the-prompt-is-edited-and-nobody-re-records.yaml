@@ -1,0 +1,22 @@
+# The most ordinary change there is: somebody improves a sentence in the agent's prompt. The
+# recording on disk was made against the old sentence, so every design in it was proposed by
+# an agent that no longer exists in the tree -- and every number the eval publishes would be
+# about that agent. `D1` recomputes the prompt fingerprint from the tree on every run and
+# refuses a recording whose agent moved, which is what makes grading a recording honest
+# rather than convenient. Without it, this edit is invisible and the numbers stay green.
+
+id:          the-prompt-is-edited-and-nobody-re-records
+claim:       6
+eval_module: evals.design
+targets:     [D1.the-recording-is-from-the-agent-in-the-tree]
+
+breaks: >-
+  the agent's system prompt gains a sentence and the committed recording is left as it was,
+  so the eval grades designs proposed by an agent the tree no longer contains.
+
+file: src/holdout/agent/propose.py
+
+anchor: |
+        f"Deliver by calling `{PROPOSE}` once."
+replacement: |
+        f"Deliver by calling `{PROPOSE}` once. Prefer the store as the unit."

@@ -36,6 +36,7 @@ def _recording(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         [
             calls(("propose_design", GOOD_DELIVERY)),
             text("no thank you"),
+            text("still no -- the question cannot be expressed"),  # the one nudge, declined
             calls(("propose_design", dict(GOOD_DELIVERY, mde={"kind": "absolute", "value": 0}))),
         ]
     )

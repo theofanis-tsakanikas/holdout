@@ -55,13 +55,24 @@ def test_a_model_that_never_stops_asking_is_stopped_by_name() -> None:
     assert outcome.trace[-1].kind == "failed"
 
 
-def test_a_model_that_talks_instead_of_delivering_is_no_delivery() -> None:
-    model = Scripted([text("I would rather not.")])
+def test_a_model_that_talks_instead_of_delivering_is_nudged_once_then_no_delivery() -> None:
+    model = Scripted([text("I would rather not."), text("Still not.")])
     outcome = propose(
         "q", context=CONTEXT, model=model, executor=Echo(), ceilings=Ceilings(1000, 60, 6)
     )
     assert outcome.failed == "no_delivery"
+    assert [r.kind for r in outcome.trace] == ["model", "nudge", "model", "failed"]
     assert "end_turn" in outcome.trace[-1].detail
+    assert len(model.seen) == 2, "one nudge and no more"
+
+
+def test_a_nudged_model_that_then_delivers_is_a_proposal() -> None:
+    model = Scripted([text("Let me think..."), calls(("propose_design", GOOD_DELIVERY))])
+    outcome = propose(
+        "q", context=CONTEXT, model=model, executor=Echo(), ceilings=Ceilings(1000, 60, 6)
+    )
+    assert outcome.proposal is not None
+    assert "nudge" in [r.kind for r in outcome.trace]
 
 
 def test_a_model_that_spends_past_the_ceiling_is_tokens() -> None:

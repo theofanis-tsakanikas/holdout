@@ -2561,3 +2561,35 @@ is a number a public README would repeat.
 rather than an event — and the session came and went while the figure stayed.
 *Expires:* 2026-11-30 — because an unlock condition is prose and can never expire, and a sourceless
 number in the file every session reads first should not be able to sit here indefinitely.
+
+**Claim 6's K is computed on the null world, for the power refusals, and for nothing else** · deferred 2026-09-11
+`evals/design/` runs a refused design anyway — drawn from its committed seed over the engine's own
+roster, closed on the world's potential outcomes with the four validity checks skipped — and counts
+the ones whose number is significant at the declared α while the interval excludes the truth. On
+2026-09-11 that is **six designs, all refused for power, on W1**, and the measured K is 0 against an
+expectation by chance of 0.30. That is the estimator behaving on a null world, and the eval prints
+the expectation beside the count so nobody reads it as the refusal saving anything.
+
+What K is for is **the refusals whose reason predicts a wrong number at a rate *above* chance** —
+interference, where a neighbour's arm leaks into the outcome; peeking, where an interim look spends
+the level; post-hoc exclusions, where the roster was chosen after the outcomes. Each of those needs
+the world that violates it: W2 for interference, which the harness already generates per lottery;
+a "look early" path for peeking, which `may_read` today refuses outright and would have to be
+bypassed deliberately in the eval and nowhere else; and a re-submission with moved exclusions, which
+the recording — moment 1 by construction — cannot carry. None of the three is a research question;
+each is machinery, and each is deliberately not built by the branch that found the limit.
+
+Two smaller limits of the same shape are recorded with it rather than given entries of their own,
+because one change closes them: the harness has a roster of **stores** and none of regions, so a
+region design is `ungraded` with the reason (two of eleven in the recording); and the harness
+ledger carries revenue, cost of goods and waste and **not units**, so a design naming
+`units_sold_per_store_week` is `ungraded` too. A region roster is a covariate matrix aggregated by
+region and a pre-period over it; a units column is one more field on the ledger the world already
+emits.
+*Unlock condition:* `evals/design-under-violation` — the branch that gives `grade.anyway` a world
+per refusal code and the two rosters the harness lacks, and turns `D6` from a count against chance
+into a count against each refusal's own prediction. It needs the estate's W2 machinery, which
+exists, and a decision about whether a peeking path may live in an eval at all, which is the
+author's.
+*Expires:* 2026-12-31 — the claim's own headline names K, and a K that only measures α cannot
+stand as the closing figure of the project indefinitely.

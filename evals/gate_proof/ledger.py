@@ -608,11 +608,12 @@ def audit() -> Report:
             "that any gate bites — this target runs nothing. `make claim-N` plants that "
             "claim's mutations and demands a refusal from the check each one names",
             "that the vocabulary is covered. Twelve `at_decision` codes are reached by `G8` "
-            "and all four `at_readout` codes by claims 2 and 3, but seven of the eight "
-            "`at_design` codes are reached by no eval at all — they exist only in "
-            "`tests/core/test_refusal_codes.py`, which is cases their own author wrote. "
-            "`evals/design/` is claim 6 and phase 4, and claim 6's headline counts N proposed "
-            "and M refused over exactly that vocabulary. Printed here rather than left to be "
+            "and all four `at_readout` codes by claims 2 and 3. Of the eight `at_design` "
+            "codes, claim 6's `D7` reaches three from a model's own designs and names the "
+            "five it cannot reach with the reason each — restated 2026-09-11; this line "
+            "read *seven of the eight are reached by no eval at all* until `evals/design/` "
+            "landed. The five still exist only in `tests/core/test_refusal_codes.py`, which "
+            "is cases their own author wrote. Printed here rather than left to be "
             "rediscovered.",
             "that the mutation set is complete; it is the set of breaks we thought of, and "
             "a curated set is not mutation testing",

@@ -1,0 +1,33 @@
+# The bank. Written by this repository, and said so in README.md §3 -- the model chooses the
+# design, the bank chooses what is asked, and the claim is about what is chosen.
+#
+# Written against the estate's own categories -- dairy, bakery and poultry -- and against the
+# two policies its contracts declare: `ladder_policy@v1`, the ladder the estate runs and the
+# control of every experiment, and `shallow_ladder_policy@v1`, the same rungs a quarter
+# shallower. The first bank asked about "a deeper markdown" and "starting the ladder earlier",
+# interventions no contract declares, and the model declined all twelve questions for exactly
+# that reason. A bank has to ask about what the estate can do.
+#
+# Each question pulls toward a different part of the form -- a metric, a unit, an exclusion, a
+# stopping rule, a scope -- so that the refusals the recording reaches are not all the same one.
+# What it cannot do is make the model propose what it will not; a question the model answers
+# with prose is `declined` and published as such. Read on every run and printed with its size.
+
+questions:
+  - Does the shallower ladder raise category margin per store-week on bakery, compared with the ladder we run today?
+  - Would the shallower ladder reduce waste value on dairy, or only move margin?
+  - Is the shallower ladder worth running on poultry, where waste is highest, and what is the smallest margin gain worth detecting there?
+  - Should we test the shallower ladder across every store in one region so results arrive faster?
+  - If we randomise by store-week instead of by store, could we read the shallower ladder's result in a fortnight?
+  - Can we exclude the twenty smallest stores from a shallower-ladder test so the effect on the large-format estate is clear?
+  - Would randomising at the store-category level let us test the shallower ladder on bakery and dairy in one experiment?
+  - How small an improvement in category margin from the shallower ladder is worth detecting on bakery, and can this estate detect it?
+  - Should a shallower-ladder experiment stop early if the first two weeks already look significant?
+  - Is a one percent margin improvement from the shallower ladder detectable across the whole roster within the window?
+  - Would the shallower ladder reduce waste value on poultry by a tenth, and could we detect that?
+  - Can a single region be the treatment arm for the shallower ladder while the rest of the estate is the control?
+  # Added after the second recording reached every code but UNDERPOWERED_FOR_CAPACITY and D7
+  # went red. Waste value is the noisiest metric the ledger has; a half-percent change on it
+  # needs more stores than exist at any window, and a bank that never asks for one never
+  # shows the engine saying so.
+  - Would the shallower ladder cut waste value on poultry by half a percent, and could we ever detect a change that small?

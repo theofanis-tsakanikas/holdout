@@ -2205,6 +2205,38 @@ cost, and everything to be photographed is captured in that cycle or captured ne
 | 6 · the engine refuses | the agent's design → the refusal and its reason code |
 | 7 · no person | the decision key schema · the test that goes red |
 
+### Progress
+
+> **2026-09-11 — T025 and T026 built in one day, and the day's finding is the same one twice.**
+>
+> The agent surface landed first: a registry that is the limit, a `ProposedDesign` that is seven
+> fields with nowhere to put the two the contract marks `x-never-filled-by: [agent]`, an
+> enumerated context, a sixth contract family for the ceilings and the proposer, and a
+> recording sealed with the fingerprint of the agent that made it. It ran against a real model
+> through Bedrock with the account's own credentials and no second secret.
+>
+> Then claim 6, built with the skill, README first. **`make claim-6` is green: N = 11 of 13,
+> M = 8 by code, K = 0 of 6 run anyway against a chance expectation of 0.30, four mutations
+> biting by name.** The three numbers are printed, and the third is honest: every refusal the
+> recording reaches that can be run is a power refusal on the null world, and a design run
+> there with the guards off is wrong at α whatever the engine said. The K that means something
+> — interference, peeking, post-hoc exclusions, each run on the world that violates it — is a
+> deferral with an unlock condition and a date, not a footnote.
+>
+> **The finding, twice.** The agent, asked twelve questions about interventions, declined all
+> twelve, because the only policy it could name was the control: the candidate ladder had lived
+> in `corpus/world/policy.py` as `ladder_policy@candidate` for two weeks, a ref the compiled
+> form's closed list did not contain, and the A/A harness had never noticed because it builds
+> its form in Python and skips the schema. A treatment the estate's own experiment delivers,
+> that no design may name, is two definitions of one thing — and it took a proposer that
+> cannot skip the schema to find it. Then the same shape in the model: ten questions in twelve
+> ended in prose, the design reasoned out and never delivered, until the loop gave one bounded
+> second turn. **Both are the recurring finding — a population blind to what lacks the property
+> — and both were found by running rather than by reading.**
+>
+> What phase 4 still owes: the K above; the estate half of the agent runtime, needed only for
+> the recording that ships; `T027`'s declared-policy file, which is a decision; and `T028`.
+
 ### What closes this phase
 
 `make claim-6` green with the three numbers printed, and `make gate-proof` refusing every planted

@@ -599,6 +599,12 @@ CLAIM_2_TESTS_COST := 533
 CLAIM_3_COST := 453
 CLAIM_4_COST := 159
 CLAIM_5_COST := 750
+# **480, a bound above 463 measured cold on run 34560323264** -- the first run the target
+# existed, on a runner, with its own world-cache key missing so W1 at harness scale and its
+# potential outcomes were generated from nothing. Four mutations at 44-72s each on the
+# runner against 24-36s on the laptop. Warm it is lower and nobody has measured it there;
+# a cost declared from the cold run cannot be stale in the direction that trips the ceiling.
+CLAIM_6_COST := 480
 CLAIM_7_COST := 98
 GATE_PROOF_COST := 30
 SILVER_COST := 165
@@ -699,6 +705,19 @@ claim-5:  ## claim 5 — one definition, three mechanisms, the same integer
 
 eval-definition:  ## just claim 5's eval, without the mutations
 	$(RUN) python -m evals.definition
+
+claim-6:  ## claim 6 — the design engine refuses an invalid design regardless of where the judgment came from
+	$(RUN) python -m evals.design
+	$(RUN) python -m evals.gate_proof --claim 6
+
+eval-design:  ## just claim 6's eval, without the mutations — grades the committed recording
+	$(RUN) python -m evals.design
+
+# **Never run by CI, and the only target under evals/ that opens a socket.** It asks the model
+# every question in the bank and commits nothing; what it writes is committed by a person,
+# deliberately, on the day the manifest names. The proposer is contracts/agent/runtime.yaml's.
+record-designs:  ## ask the model every question in evals/design/questions.yaml and seal the answers
+	$(RUN) python -m evals.design.record
 
 claim-7:  ## claim 7 — a decision that targets a person is structurally impossible
 	$(RUN) python -m evals.oversight

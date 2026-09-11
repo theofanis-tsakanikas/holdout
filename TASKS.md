@@ -3523,7 +3523,59 @@ closes        make claim-6 green with three numbers printed: N designs proposed 
 out_of_scope  README/banner/article/post/promo (T028).
 stop_at       When claim-6 is green with the three numbers and its mutations bite by name.
 review        yes
-status        open
+status        BUILT 2026-09-11, awaiting review; the three numbers are printed and the
+              mutations bite by name, and the third number is honest about what it measures.
+              --
+              `make claim-6`, on the laptop, warm world cache:
+              --
+                N proposed        11 of 13; 8 needed the one nudge
+                declined          no_delivery ×1, tool_calls ×1
+                M refused         8: UNDERPOWERED_FOR_CAPACITY ×1, UNDERPOWERED_FOR_DURATION ×6,
+                                     UNIT_GUARANTEES_INTERFERENCE ×2
+                feasible          1
+                ungraded          unit region ×2
+                K                 0 of 6 run anyway (expected by chance at α=1/20: 0.30)
+                gate-proof        4/4 bit -- 36s, 24s, 32s and 30s
+              --
+              **K is the claim and today it measures α.** Every refusal the recording reaches
+              that can be run is a power refusal on the null world, and a refused design run
+              with the guards off there is wrong at the false-positive rate whatever the engine
+              said. The eval prints the expectation beside the count so the 0 is not read as a
+              save. The K that means something -- interference, peeking, post-hoc exclusions,
+              each run on the world that violates it -- is a deferral in `docs/DECISIONS.md`
+              with an unlock condition and a date, and the README says so in §3.
+              --
+              (a) THE BANK was written against the two policies the contracts declare and the
+              estate's own three categories, and it was written twice: the first bank asked
+              about interventions no contract had and the model declined all twelve. It was
+              sharpened once more when a recording reached every code but one and `D7` went
+              red -- a thirteenth question asking for a change no roster could detect.
+              (b) N AND M are counted live on every run; the recording carries no verdict and
+              `D3` refuses one that does.
+              (c) K is `grade.anyway`: the refused design drawn from its seed over the engine's
+              own roster, closed on the world's potential outcomes with the four checks skipped,
+              its number compared to the seal. Built and running; scoped as above.
+              (d) NO LLM JUDGE, and none deferred: validity is code, the truth is sealed, and a
+              quality score is a number nothing checks. `CLAUDE.md` permits one; this eval
+              declines it as code that serves no claim.
+              (e) BUILT WITH THE SKILL. The README was written first and both findings the
+              build produced came from running rather than reading: the candidate policy that
+              lived in code and not in the contracts, and the model that writes its analysis as
+              prose and stops, ten questions in twelve, until given one bounded second turn.
+              --
+              **What it cost to make the agent proposable at all.** `shallow_ladder_policy@v1`
+              is now a contract -- a second policy rather than a second version, because the
+              timeline check holds one version of an id in force -- and `corpus/world/policy.py`
+              reads it as data. The A/A harness had named `ladder_policy@candidate` for two
+              weeks, a ref the compiled form's closed list did not contain, and passed because
+              it builds its form in Python and skips the schema. The harness docstring pointed
+              at a deferral in `docs/DECISIONS.md` that a search for the policy's name does not
+              find: prose claiming a record nobody wrote, restated in place.
+              --
+              **`D8` is the second implementation the skill asks for.** The power boundary in
+              `Decimal`, solved rather than searched, checked at W and W−1, sharing the
+              contract's z values and nothing else; ten designs compared, zero disagreements,
+              and the dropped-z mutation is what it alone catches.
 ```
 
 ```
@@ -3549,7 +3601,21 @@ closes        The human path and the declared-policy path exercised by the SAME 
 out_of_scope  —
 stop_at       When all three sources (agent, human, policy) are first-class through one engine.
 review        yes
-status        open
+status        HALF DELIVERED 2026-09-11 by T026, and the half that remains is a decision.
+              --
+              `evals/design/checks.py`'s `D5` stamps every graded design `agent`,
+              `human:A. Reviewer` and `policy:quarterly_fresh_review`, assesses all three, and
+              compares what the engine decided -- roster, sample, window, arms, draw index, or
+              the refusal codes with their details -- never the digest, which is meant to differ.
+              Nine designs, three attributions, zero disagreements. And the mutation this task
+              asked for is planted: `the-engine-trusts-a-human-more-than-the-agent` halves the
+              binding arm for agent-filled forms, and `D5` goes red in 36 seconds.
+              --
+              What is not delivered is the PROPOSED line above: a declared-policy source as a
+              file under `contracts/`, so that `policy:<name>` names a version rather than a
+              string. Today the attribution is a string in three places and no file. Whether
+              that is worth a seventh contract family is the author's; the engine's half of the
+              sentence is proved without it.
 ```
 
 ```
