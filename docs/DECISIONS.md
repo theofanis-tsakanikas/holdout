@@ -2593,3 +2593,35 @@ exists, and a decision about whether a peeking path may live in an eval at all, 
 author's.
 *Expires:* 2026-12-31 — the claim's own headline names K, and a K that only measures α cannot
 stand as the closing figure of the project indefinitely.
+
+**The assignment table's owner is the identity that runs every job** · deferred 2026-09-11
+
+Doctrine rule 7 promised, on 2026-08-30, that *unopenability arrives in phase 3, with the read-only
+assignment table*. Phase 3 delivered the table and `CLAUDE.md`'s fourth restatement of the rule
+says what it delivers: `delta.appendOnly` refuses update, delete and overwrite at the storage;
+`grants.tf` gives people `SELECT` and `BROWSE` and nothing that writes; and the jobs run as the
+service principal that **owns** `gold.experiment_assignment`. In Unity Catalog an owner can append,
+can unset the table property, and can drop the table. So the door is shut to people, keyed for the
+automation, and the key is the identity that runs the pipelines — the one that would be
+compromised, or simply mis-scripted, by the same session that would then want to reassign a unit.
+
+*Why it is not fixed here:* closing it is an ownership decision, not a sentence: a second
+service principal that owns the assignment table and runs no job, with the pipeline principal
+granted `MODIFY` and nothing more — which is one more identity to mint, publish through SSM and
+rotate; or a Unity Catalog control that no owner can unset, which does not exist for a table
+property today. Either is a `lakehouse` change with a blast radius the review builds nothing in,
+and either needs the estate up to measure — the estate is down until the phase-4 cycle.
+
+*What must not happen:* the rule's block gaining a fifth restatement that says *unopenable* on the
+strength of the second principal existing, without a measurement that the pipeline principal's
+`ALTER TABLE … UNSET TBLPROPERTIES` is refused. The measurement is the claim; the identity is the
+mechanism.
+
+*Unlock condition:* the phase-4 estate cycle, with the estate standing: the branch that adds the
+owning principal to `infra/lakehouse/` is measured there by attempting, as the pipeline principal,
+the three writes `appendOnly` refuses and the property change it does not, and recording which of
+the four the catalog refuses. Failing that, the author deciding in writing that *shut to people,
+keyed for the automation* is the guarantee the project ships with, in which case rule 7's block
+says so and this entry closes on that decision.
+*Expires:* 2027-01-31 — the rule is the one the project calls *what keeps the other six honest*,
+and it cannot describe a plan indefinitely.
