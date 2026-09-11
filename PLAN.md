@@ -2130,6 +2130,14 @@ five to ten cycles it realistically takes — replaced by a real bill.
 **Then an integration session**, before the next phase opens: read the whole repository against
 `CLAUDE.md` and report conceptual drift. It builds nothing.
 
+> **Held 2026-09-11, after the next phase had opened**, which the report records as its first
+> finding about itself. `docs/reviews/phase-3.md`: no claim's proof has collapsed, both barriers
+> hold, the roster reproduces; the ruleset matches `ci.yml`; three deferrals had their unlock
+> conditions met unnoticed; the layout block is on its fourth crossing while three entries about it
+> sat adrift; the door phase 3 delivered is shut to people and keyed for the automation; and the
+> `destroy` environment has no reviewer in the forge while its workflow says it does. Three
+> branches proposed, four decisions for the author, and twenty-four findings adrift.
+
 ### Open
 
 The agent surface and claim 6.
@@ -2236,6 +2244,16 @@ cost, and everything to be photographed is captured in that cycle or captured ne
 >
 > What phase 4 still owes: the K above; the estate half of the agent runtime, needed only for
 > the recording that ships; `T027`'s declared-policy file, which is a decision; and `T028`.
+>
+> **Later the same day, K got its teeth.** `evals/design/violate.py` runs every recorded design
+> under a four-look rule with no spending function, and every accepted design re-submitted with
+> its best eight controls excluded, on the world whose true effect is zero. **Peeking: a false
+> positive in 4 of 28 lotteries — 14.3% against α = 5%, with the honest end-of-window at 1 of
+> 28. Post-hoc exclusion: the raw difference rose in 4 of 4 and 1 of 4 turned significant.**
+> Those are the refusals saving something, with a count on it. The power refusals stay at α,
+> printed beside their expectation; interference has no K because it has no estimand, which is
+> the refusal's own reason. Six mutations bite, and the configuration is a contract. What
+> phase 4 still owes is now the estate half of the runtime, `T027`'s decision, and `T028`.
 
 ### What closes this phase
 

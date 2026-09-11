@@ -7,7 +7,7 @@
 
 id:          the-prompt-is-edited-and-nobody-re-records
 claim:       6
-eval_module: evals.design
+eval_module: evals.design.machinery
 targets:     [D1.the-recording-is-from-the-agent-in-the-tree]
 
 breaks: >-

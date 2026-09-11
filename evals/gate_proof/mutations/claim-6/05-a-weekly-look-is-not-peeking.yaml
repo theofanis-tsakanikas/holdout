@@ -1,0 +1,23 @@
+# The argument that arrives with the first impatient stakeholder: "we are not peeking, we are
+# monitoring". A group-sequential rule with no spending function is waved through, and the
+# readout will be asked for at every look. The engine stops refusing it, and nothing else in
+# the system notices, because `may_read` refuses an early *result* and not an early *design*.
+# D10 runs every recorded design under exactly that rule and asserts the refusal first; run
+# anyway on the null world, four unadjusted looks reported false positives at three times the
+# declared level on the first published run, which is what the refusal is worth.
+
+id:          a-weekly-look-is-not-peeking
+claim:       6
+eval_module: evals.design.machinery
+targets:     [D10.a-peeking-design-is-refused-and-run-anyway-it-reports-false-positives]
+
+breaks: >-
+  a group-sequential stopping rule with no spending function is no longer refused at design,
+  so an experiment may declare interim looks and spend its level at each of them.
+
+file: src/holdout/core/design/feasibility.py
+
+anchor: |
+    if stopping.permits_peeking:
+replacement: |
+    if stopping.permits_peeking and stopping.looks is not None and stopping.looks > 4:
