@@ -3354,7 +3354,31 @@ closes        A drift report. Builds nothing.
 out_of_scope  Building any product code.
 stop_at       When the report is written and each proposed fix is its own branch.
 review        n/a — this task IS the review.
-status        open
+status        CLOSED 2026-09-11 — `docs/reviews/phase-3.md`, on branch `docs/phase-3-integration`,
+              and it built nothing.
+              --
+              **It ran late, and says so first.** Phase 3's criterion was met on 2026-09-10 and
+              T025 and T026 were built on 2026-09-11 before this session opened; `T025 depends_on
+              T024` and nothing reads `depends_on`. Two of its findings were produced by phase-4
+              work rather than found here.
+              --
+              What was run: `make check` 1881 green, every eval green including `eval-uplift`
+              13/13 and the new `eval-design` 11/11, `gate-proof` 9/9 over 56 mutations, `expiry`
+              38/32/6, the roster at two scales, the forge's ruleset and environments, and the
+              account after `destroy`. No claim's proof has collapsed; both barriers hold; the
+              roster table reproduces exactly.
+              --
+              Seven dispositions, three of them branches: the three deferrals whose unlock
+              conditions were met unnoticed; the layer count into `make figures`'s `PROSE`, which
+              closes three findings adrift since the first week of September; and rule 7 restated
+              a fourth time, because the door phase 3 delivered is shut to people and keyed for
+              the automation. Four are the author's, and two of those were already in the
+              register, adrift for nine and eleven days when re-found. **Twenty-four of eighty-one
+              open findings are adrift**, and that is the review's last figure.
+              --
+              The forge question the skill mandates: three required contexts, three defined, the
+              list matches. And the second known member of that class: the `destroy` environment
+              carries no reviewer in the forge while its workflow's header says it does.
 ```
 
 ---

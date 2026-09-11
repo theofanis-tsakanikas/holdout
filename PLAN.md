@@ -2130,6 +2130,14 @@ five to ten cycles it realistically takes — replaced by a real bill.
 **Then an integration session**, before the next phase opens: read the whole repository against
 `CLAUDE.md` and report conceptual drift. It builds nothing.
 
+> **Held 2026-09-11, after the next phase had opened**, which the report records as its first
+> finding about itself. `docs/reviews/phase-3.md`: no claim's proof has collapsed, both barriers
+> hold, the roster reproduces; the ruleset matches `ci.yml`; three deferrals had their unlock
+> conditions met unnoticed; the layout block is on its fourth crossing while three entries about it
+> sat adrift; the door phase 3 delivered is shut to people and keyed for the automation; and the
+> `destroy` environment has no reviewer in the forge while its workflow says it does. Three
+> branches proposed, four decisions for the author, and twenty-four findings adrift.
+
 ### Open
 
 The agent surface and claim 6.
