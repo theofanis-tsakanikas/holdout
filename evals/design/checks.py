@@ -18,7 +18,7 @@ from fractions import Fraction
 from evals.design import build, grade, reference
 from evals.report import Check, Report
 from holdout.core.design import DesignRefusal, Feasible, assess
-from holdout.core.design.form import FilledBy, FilledByKind
+from holdout.core.design.form import FilledBy, FilledByKind, Unit
 from holdout.core.design.refusal import DesignRefusalCode
 
 #: Every `at_design` code, and whether the agent's route can reach it. What it cannot reach is
@@ -445,6 +445,37 @@ def _d8(m: Measured) -> Check:
     )
 
 
+def _d9(m: Measured) -> Check:
+    """The interference table, engine against reference, over every unit -- not over the
+    recording. A break that admits a unit is caught here whatever the model proposed, which is
+    what `D7` could not promise: on 2026-09-11 a recording held two interference refusals and
+    admitting one unit left the code reached by the other, so the mutation survived `D7`."""
+    from holdout.core.design.feasibility import interference_of
+
+    carryover = m.contracts.inference.carryover
+    problems: list[str] = []
+    table: list[str] = []
+    for unit in Unit:
+        engine = interference_of(unit, carryover) is not None
+        independent = reference.crosses_a_declared_carryover(unit, carryover)
+        table.append(f"{unit.value}: {'refused' if engine else 'admitted'}")
+        if engine != independent:
+            problems.append(
+                f"{unit.value}: the engine {'refuses' if engine else 'admits'} it and the "
+                f"contract's carryover block says {'refuse' if independent else 'admit'}"
+            )
+    return Check(
+        id="D9.the-interference-table-is-the-contracts",
+        question=(
+            "for every unit of randomisation, does the engine's interference verdict equal the "
+            "one derived a second way from the contract's carryover block?"
+        ),
+        passed=not problems,
+        figure="; ".join(table),
+        counterexamples=tuple(problems),
+    )
+
+
 # --------------------------------------------------------------------------- the report
 
 NOTES: tuple[str, ...] = (
@@ -470,7 +501,7 @@ NOTES: tuple[str, ...] = (
 
 def run() -> Report:
     m = measure()
-    checks = (_d1(m), _d2(m), _d3(m), _d4(m), _d5(m), _d6(m), _d7(m), _d8(m))
+    checks = (_d1(m), _d2(m), _d3(m), _d4(m), _d5(m), _d6(m), _d7(m), _d8(m), _d9(m))
     return Report(
         claim=6,
         title="the design engine refuses an invalid design regardless of where the judgment came from",

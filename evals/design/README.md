@@ -55,6 +55,7 @@ refusal prevented. A confident number whose interval excludes the truth is a wro
 | `D5.three-sources-one-verdict` | does the same form, stamped `agent`, `human:<name>` and `policy:<name>`, produce byte-identical verdicts — and does a planted branch on `filled_by` inside the engine turn this red? |
 | `D6.a-refused-design-run-anyway-is-wrong-at-the-rate-the-refusal-predicts` | over the refused designs that can be run, is the share producing a confident wrong number at least what the refusal's own reason implies — and never below the false-positive floor a valid design would have? |
 | `D7.every-reachable-refusal-is-reached` | does the recording reach every `at_design` code the agent's route can reach — and is every code it cannot reach named, with the reason, rather than absent? |
+| `D9.the-interference-table-is-the-contracts` | for every unit of randomisation, does the engine's interference verdict equal the one derived a second way from the contract's carryover block — over every unit, not over the recording, so that a unit admitted by mistake is caught whatever the model proposed? |
 | `D8.the-power-boundary-lands-where-independent-arithmetic-puts-it` | for every graded design, does a second implementation of the power boundary — `Decimal`, solved rather than searched — agree with the engine on refuse-or-accept, on which code, and on the window and sample where it accepts? |
 
 `D5` is the sentence in `CLAUDE.md` — *the engine does not know and does not care who filled

@@ -28,8 +28,8 @@ from dataclasses import dataclass
 from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal, localcontext
 from fractions import Fraction
 
-from holdout.contracts.model import InferenceSettings
-from holdout.core.design.form import DesignForm, MdeKind
+from holdout.contracts.model import Carryover, InferenceSettings
+from holdout.core.design.form import DesignForm, MdeKind, Unit
 
 HORIZON_WEEKS = 52
 ARMS = 2
@@ -117,3 +117,29 @@ def boundary(
 
 def as_fraction(value: Decimal) -> Fraction:
     return Fraction(value)
+
+
+def crosses_a_declared_carryover(unit: Unit, carryover: Carryover) -> bool:
+    """The interference table, derived a second time from the contract's carryover block.
+
+    Three declared facts and four units; the engine's `interference_of` derives a table from
+    them and this derives it again, written as two questions rather than a chain of `if`s:
+
+    * does the unit split arms **inside one store**? Only `store_category` and `store_week` do;
+      a store is what a shopper visits and a region is strictly coarser.
+    * and does a declared carryover cross that split? A split along **time** is crossed by
+      reference-price memory that no washout has exhausted; a split along **categories** is
+      crossed by cross-price substitution.
+
+    Written this way so that a unit added to the engine's admissible tuple -- the change a
+    session makes when an agent keeps proposing it -- is refused here on the contract's own
+    facts, whatever the recording happens to contain. `washout_weeks` of `None` is not zero:
+    a washout nobody declared exhausts nothing.
+    """
+    splits_inside_a_store = unit in (Unit.STORE_CATEGORY, Unit.STORE_WEEK)
+    if not splits_inside_a_store:
+        return False
+    if unit is Unit.STORE_WEEK:
+        exhausted = carryover.washout_weeks is not None and carryover.washout_weeks > 0
+        return carryover.reference_price_memory and not exhausted
+    return carryover.cross_price_substitution
