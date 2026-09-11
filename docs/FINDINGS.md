@@ -4503,7 +4503,12 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 > file that goes stale every time the estate grows, and an anchor that never needed restating
 > would be one watching a line nothing changes.
 *Now:* `CLAUDE.md` :: `  then **append-only**. `delta.appendOnly` refuses an update, a delete and an insert overwrite,`
-*Now:* `CLAUDE.md` :: `6 rest on. Five families, none of which is a vendor feature.`
+*Now:* `CLAUDE.md` :: `6 rest on. Six families, none of which is a vendor feature.`
+
+> **Restated 2026-09-11 by `T025`, `Five` → `Six`, when `contracts/agent/` landed.** The same
+> anchor shape as the layer count above it: the sentence is the count, the count moves when a
+> family lands, and `make findings` reporting `REVERTED` on the closing text is the mechanism
+> doing its job. Two families have landed since the closure and both moved it.
 *Status:* open
 
 ---

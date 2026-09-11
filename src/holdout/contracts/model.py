@@ -447,6 +447,26 @@ class TrainingSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class RuntimeSettings:
+    """`contracts/agent/runtime.yaml`, resolved.
+
+    Three ceilings on what one proposal may spend and the model that proposes, every one a
+    `{value, source}` pair in the contract. The ceilings are `int` and `Decimal`, never a
+    float; the model is an id, a region and which of Bedrock's two endpoints serves it --
+    declared beside the id because sent to the wrong one the model answers *does not exist*.
+    """
+
+    version: int
+    effective_from: date
+    tokens_per_proposal: int
+    seconds_per_proposal: Decimal
+    tool_calls_per_proposal: int
+    model_id: str
+    region: str
+    legacy_endpoint: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ContractSet:
     """Every contract in the repository, validated and resolved.
 
@@ -463,6 +483,7 @@ class ContractSet:
     balance_covariates: BalanceCovariates
     inference: InferenceSettings
     training: TrainingSettings
+    runtime: RuntimeSettings
     aa_harness: AaHarness
     design_form: MappingProxyType[str, Any]
     census: Any

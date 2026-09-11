@@ -1,0 +1,101 @@
+# The agent's runtime — what it may spend on one proposal, and which model it is.
+#
+# A sixth family, and the argument for a contract rather than a constant is the one
+# `inference.yaml` makes: a number in a `.py` file is precisely the "value without a source"
+# the contract layer exists to refuse, and a ceiling is a number somebody will raise the day
+# a proposal runs into it. Raising it here is a versioned change with a note beside it.
+#
+# **Nothing here is law**, and every source says so. Every value is a `scenario_assumption`
+# that carries the measurement it was set from in its note — `CLAUDE.md`'s rule about a
+# number in configuration: *set it from a measurement of the thing that will run, never from
+# a projection.* The measurement is the first real run, on 2026-09-11, and the headroom over
+# it is stated as headroom.
+#
+# **The model is a contract value for a second reason.** A recording that claim 6 grades is
+# stamped with the model that made it; a model id that lived in code would make the
+# recording's provenance a matter of `git blame`. What the id was, on what endpoint, and
+# when it was last seen to exist, is here.
+
+version:        1
+effective_from: 2026-09-11
+
+# ------------------------------------------------------------------ the ceilings
+#
+# Hitting any of these produces no proposal and a named failure. It never produces a
+# truncated design, because a truncated design is a design nobody wrote that still parses,
+# and it would be counted as though somebody had proposed it.
+
+ceilings:
+  tokens_per_proposal:
+    value: 8000
+    source:
+      kind: scenario_assumption
+      note: >-
+        Output tokens across every model call one question makes. Measured on the first
+        real run, 2026-09-11, Haiku 4.5 through Bedrock: 936 output tokens over two calls
+        (350 + 586). Eight thousand is roughly eight times that, which is room for a model
+        that reasons at length and not room for one that loops.
+      verified_on: 2026-09-11
+
+  seconds_per_proposal:
+    value: 180
+    source:
+      kind: scenario_assumption
+      note: >-
+        Wall clock for one question, end to end. Measured 12.1 seconds on the same run.
+        Three minutes is fifteen times that; a proposal that has not arrived by then is a
+        model that is stuck, and the honest answer is a named failure rather than a wait.
+      verified_on: 2026-09-11
+
+  tool_calls_per_proposal:
+    value: 6
+    source:
+      kind: scenario_assumption
+      note: >-
+        Metric-tool calls one question may make before delivering; the delivery itself is
+        not counted. Measured: three, one per metric in the contract, on the first call.
+        Six is twice the registry, so a model may ask each metric twice and no more -- a
+        seventh call is a model that is not converging.
+      verified_on: 2026-09-11
+
+# ------------------------------------------------------------------ the proposer
+#
+# Read out of `aws bedrock list-foundation-models --by-provider anthropic` and
+# `get-foundation-model-availability` rather than typed from memory. On 2026-09-11 this
+# account could invoke exactly one Claude model: the newer generation -- Sonnet 5, Opus 5,
+# Sonnet 4.6, Opus 4.8 -- all listed but `agreementAvailability: NOT_AVAILABLE`, which is
+# model access not yet enabled in the account rather than a fact about the region. When it
+# is, this block changes and nothing in `src/holdout/agent/` does.
+
+proposer:
+  model_id:
+    value: eu.anthropic.claude-haiku-4-5-20251001-v1:0
+    source:
+      kind: scenario_assumption
+      note: >-
+        Claude Haiku 4.5 through Amazon Bedrock's EU cross-region inference profile. The
+        only Anthropic model the account's model-access agreement covered on the day, which
+        makes it the development proposer rather than the chosen one; the recording that
+        ships should be made with the strongest model the account can reach, and the id
+        that made it is what the recording is stamped with.
+      verified_on: 2026-09-11
+
+  region:
+    value: eu-west-1
+    source:
+      kind: scenario_assumption
+      note: The estate's region, and the region the model was listed in.
+      verified_on: 2026-09-11
+
+  legacy_endpoint:
+    value: true
+    source:
+      kind: scenario_assumption
+      note: >-
+        Bedrock serves Claude through two endpoints and an id belongs to one of them. The
+        ARN-versioned ids, this one included, are served by the older InvokeModel path
+        behind an inference-profile prefix; the bare ids of the newer generation are served
+        by the Messages-API endpoint. Sent to the wrong one, Haiku 4.5 answered
+        "does not exist" -- measured, the first attempt -- so which endpoint is declared
+        beside the id rather than inferred from its spelling.
+      verified_on: 2026-09-11

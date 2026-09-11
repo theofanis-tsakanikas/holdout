@@ -47,6 +47,7 @@ from holdout.contracts.model import (
     ReasonCodes,
     Restatement,
     Rounding,
+    RuntimeSettings,
     TrainingSettings,
     freeze,
 )
@@ -102,6 +103,11 @@ CLAIMED_FILES = {
     # filed under the wrong family is read by the wrong consumer, and `inference.yaml` is
     # already in this list because it MOVED once for that reason.
     "ml": frozenset({"training.yaml"}),
+    # A sixth family, added by T025, for the same reason `ml` is not a corner of `design/`:
+    # the agent hands the design engine a form, and a ceiling on what the agent may spend
+    # doing so is not a property of any design. The model id lives here too, because the
+    # recording claim 6 grades is stamped with it.
+    "agent": frozenset({"runtime.yaml"}),
 }
 
 #: Families whose numbers the independent provenance walk descends. Originally "numbers
@@ -114,7 +120,7 @@ CLAIMED_FILES = {
 #: The design *form* is still excluded from the walk in the only way that matters: it is a
 #: JSON Schema, read by `_check_form` rather than by `validated`, so its `value` keys — which
 #: are schema vocabulary and not data — are never descended.
-PROVENANCE_FAMILIES = ("guardrails", "policies", "design", "ml")
+PROVENANCE_FAMILIES = ("guardrails", "policies", "design", "ml", "agent")
 
 
 def repo_relative(path: Path, base: Path = REPO_ROOT) -> str:
@@ -405,6 +411,20 @@ def _training(raw: dict[str, Any]) -> TrainingSettings:
     )
 
 
+def _runtime(raw: dict[str, Any]) -> RuntimeSettings:
+    ceilings, proposer = raw["ceilings"], raw["proposer"]
+    return RuntimeSettings(
+        version=raw["version"],
+        effective_from=_as_date(raw["effective_from"]),
+        tokens_per_proposal=int(ceilings["tokens_per_proposal"]["value"]),
+        seconds_per_proposal=_as_decimal(ceilings["seconds_per_proposal"]["value"]),
+        tool_calls_per_proposal=int(ceilings["tool_calls_per_proposal"]["value"]),
+        model_id=str(proposer["model_id"]["value"]),
+        region=str(proposer["region"]["value"]),
+        legacy_endpoint=bool(proposer["legacy_endpoint"]["value"]),
+    )
+
+
 def _aa_harness(raw: dict[str, Any]) -> AaHarness:
     seeds = raw["seeds"]
     machinery = raw["machinery"]
@@ -518,6 +538,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
     inference_pairs = validated([design_dir / "inference.yaml"], "inference.schema.json", "design")
     harness_pairs = validated([design_dir / "aa_harness.yaml"], "aa_harness.schema.json", "design")
     training_pairs = validated([root / "ml" / "training.yaml"], "training.schema.json", "ml")
+    runtime_pairs = validated([root / "agent" / "runtime.yaml"], "runtime.schema.json", "agent")
     form_path = design_dir / "form.schema.yaml"
     if form_path.is_file():
         form_raw = read(form_path)
@@ -542,6 +563,7 @@ def load(contracts_dir: Path | None = None) -> ContractSet:
         balance_covariates=_balance_covariates(covariate_pairs[0][1]),
         inference=_inference(inference_pairs[0][1]),
         training=_training(training_pairs[0][1]),
+        runtime=_runtime(runtime_pairs[0][1]),
         aa_harness=_aa_harness(harness_pairs[0][1]),
         design_form=MappingProxyType(form_raw),
         census=counted,
