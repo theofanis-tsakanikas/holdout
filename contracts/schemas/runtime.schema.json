@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holdout.local/schemas/runtime.schema.json",
+  "title": "The agent's runtime settings",
+  "description": "What the agent may spend on one proposal, and which model it is. A sixth family rather than a corner of design/: design/ is read by the engine that decides whether an experiment may exist, and the agent is one of three sources that hand that engine a form -- a ceiling on the agent's spend is not a property of any design. Every entry is a {value, source} pair; nothing here is law, so every source is a scenario_assumption whose note carries the measurement the value was set from. A model id is here for a second reason: the recording claim 6 grades is stamped with it, and a model nobody can name is a proposer from nobody.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "effective_from", "ceilings", "proposer"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "effective_from": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/iso_date" },
+    "note": { "type": "string" },
+
+    "ceilings": {
+      "description": "Hitting any ceiling produces no proposal and a named failure, never a truncated design.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tokens_per_proposal", "seconds_per_proposal", "tool_calls_per_proposal"],
+      "properties": {
+        "tokens_per_proposal": {
+          "description": "Output tokens across every model call one question makes.",
+          "$ref": "#/$defs/sourced_positive_integer"
+        },
+        "seconds_per_proposal": {
+          "description": "Wall clock for one question, end to end.",
+          "$ref": "#/$defs/sourced_positive_number"
+        },
+        "tool_calls_per_proposal": {
+          "description": "Metric-tool calls one question may make before delivering. The delivery itself is not counted.",
+          "$ref": "#/$defs/sourced_positive_integer"
+        }
+      }
+    },
+
+    "proposer": {
+      "description": "Which model, where, and through which of Bedrock's two endpoints.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "region", "legacy_endpoint"],
+      "properties": {
+        "model_id": {
+          "description": "The id as the endpoint takes it, inference-profile prefix included where one is needed.",
+          "$ref": "#/$defs/sourced_identifier"
+        },
+        "region": {
+          "description": "The AWS region the model is invoked in.",
+          "$ref": "#/$defs/sourced_identifier"
+        },
+        "legacy_endpoint": {
+          "description": "true for an ARN-versioned id served by the InvokeModel path; false for a bare id served by the Messages-API endpoint.",
+          "$ref": "#/$defs/sourced_boolean"
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "source": { "$ref": "https://holdout.local/schemas/common.schema.json#/$defs/provenance" },
+    "sourced_positive_integer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "integer", "minimum": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_positive_number": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_identifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "string", "minLength": 1 },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "sourced_boolean": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "boolean" },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    }
+  }
+}

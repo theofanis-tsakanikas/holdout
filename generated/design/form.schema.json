@@ -121,12 +121,14 @@
           ]
         },
         "kind": {
+          "description": "relative_pct is a percentage of the pre-period mean, so 10 means ten percent; absolute is a difference on the metric itself, in the metric's canonical integer unit per unit of randomisation per week -- cents, for a metric declared in EUR.",
           "enum": [
             "relative_pct",
             "absolute"
           ]
         },
         "value": {
+          "description": "A positive magnitude. The sign does not carry the direction -- `direction` does -- and a negative or zero value is refused as malformed rather than read as a decrease. Added 2026-09-11 after a model, asked to design an experiment expected to reduce waste, delivered -2.0 here and `either` in `direction`.",
           "exclusiveMinimum": 0,
           "type": "number"
         }

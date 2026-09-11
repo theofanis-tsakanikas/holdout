@@ -3416,7 +3416,65 @@ stop_at       When the agent produces a structured design and is confined to its
               agent declining to make one. **A confinement that depends on the model behaving is
               not a confinement.**
 review        yes
-status        open
+status        BUILT 2026-09-11, the local half; awaiting review. The stop_at is met and measured:
+              a scripted model that calls `run_sql` is refused by name, traced under that name,
+              never reaches the executor, and is told so -- and the loop edited to look names up
+              directly instead of through `admit` turns that test red.
+              --
+              **Ran against a real model the same day, which is where the design came from.**
+              Claude Haiku 4.5 through Amazon Bedrock, with the AWS credentials the account
+              already has -- no second secret -- via the Anthropic SDK's Bedrock client. Twelve
+              seconds, two model calls, three tool calls, one delivery; the design completed with
+              the two withheld fields and assessed by the engine against the W1 harness fixture:
+              **FEASIBLE**. Then three questions recorded: two proposals, one `no_delivery`.
+              --
+              What each of (a)-(e) became:
+              (a) `registry.py` -- the compiled `agent_tools` and nothing else, `admit()` the one
+              door, `fingerprint()` over the definitions as the model sees them.
+              (b) `proposal.py` -- **a type, not a validator.** `ProposedDesign` is seven fields
+              and has nowhere to put the two the contract marks `x-never-filled-by: [agent]`;
+              `complete()` takes them keyword-only with no default. The delivery tool is the
+              compiled form minus those fields, read from the marker rather than typed.
+              (c) `context.py` -- six entries in a fixed order; the surviving roster and the
+              control arm, never the store count on its own; nothing from `corpus/`, nothing
+              inside the window.
+              (d) `contracts/agent/runtime.yaml` -- **the sixth contract family**: three ceilings
+              and the proposer, six `{value, source}` pairs, each note carrying the run it was
+              measured from. Hitting a ceiling is a named failure from a closed set of five,
+              never a truncated design; a delivery `form.py` refuses is `malformed_delivery`,
+              recorded with what was delivered.
+              (e) DECIDED: the runtime is an adapter. `client.py` is the one module that opens
+              a socket, behind a three-method `Model`; the same loop runs from a laptop through
+              Bedrock and, later, through the estate's gateway. **The estate half is not built**
+              and is not needed until the recording that ships.
+              `record.py` -- every question in order, both fingerprints, the contract version,
+              a digest over the directory. The eval will recompute the fingerprints and report
+              STALE; that half is T026's.
+              --
+              **What only the real call showed, in the order it showed it.** The tool API
+              refuses four JSON Schema keywords the compiled form uses -- `uniqueItems`,
+              `exclusiveMinimum`, `oneOf`, `minItems > 1` -- each read off a 400 and translated,
+              and every constraint dropped is re-imposed by `form.py` a step later. The model
+              put the effect's direction in the sign of the MDE, twice, where the form keeps it
+              in `direction`; the contract's description of `mde.value` did not say so and now
+              does, with the incident beside it, and the next delivery was right. And asked to
+              randomise by region, the model **declined to propose** rather than propose and be
+              refused -- so the prompt now says a refusal is the system's to give and the eval
+              will publish the `no_delivery` rate beside N, M and K, for the reason claim 2
+              publishes the false-refusal rate.
+              --
+              **Three things T026 inherits, found here rather than there.** The policy family
+              has one member, so every intervention is A/A until `ladder_policy@v2` exists --
+              the author's to add. The harness fixture carries a pre-period for one metric, so a
+              design naming `waste_value_per_store_week` was assessed against the margin's
+              variance; the bank needs a pre-period per metric, and the context the same. And
+              the questions are written against the estate's own categories, which are `dairy`,
+              `bakery` and `poultry` and not `fruit`.
+              --
+              Bedrock could invoke exactly one Anthropic model on the day: the newer generation
+              is listed and `agreementAvailability: NOT_AVAILABLE` -- model access not enabled in
+              the account. One console step, the author's; then the contract changes and nothing
+              in `src/holdout/agent/` does.
 ```
 
 ```

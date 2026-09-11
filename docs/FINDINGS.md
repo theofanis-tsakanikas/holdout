@@ -3205,7 +3205,14 @@ pretend to be one. What it changes is that *did you run `make check-locked`* has
 > and the difference is that this one has a gate over it and went red in seconds rather than on a
 > runner four days later. The prior wording stays per doctrine rule 4.
 
-*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*", "mlflow.*", "pandas.*"]`
+*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*", "mlflow.*", "pandas.*", "anthropic.*"]`
+
+> **Anchor restated 2026-09-11 by `T025`**, when `anthropic.*` joined the list -- the `agent`
+> extra's client, found by `gate` the way `dbt` was, on a runner after a green local `make
+> check`. The line read `... "mlflow.*", "pandas.*"]` before. The finding is still open and
+> still about the same thing: this list grew by hand a fourth time, and the two lists it must
+> agree with did not move, because a client is not an engine. Whether that asymmetry is the
+> finding's point or its exception is for the disposition below.
 *Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def test_every_engine_is_ignorable_by_mypy() -> None:`
 *Site:* `Makefile` :: `check-locked:  ## make check in the environment CI's`
 *Disposition:* `pipelines/gold`, which is this branch, for the two lists that can be compared and
@@ -4503,7 +4510,12 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 > file that goes stale every time the estate grows, and an anchor that never needed restating
 > would be one watching a line nothing changes.
 *Now:* `CLAUDE.md` :: `  then **append-only**. `delta.appendOnly` refuses an update, a delete and an insert overwrite,`
-*Now:* `CLAUDE.md` :: `6 rest on. Five families, none of which is a vendor feature.`
+*Now:* `CLAUDE.md` :: `6 rest on. Six families, none of which is a vendor feature.`
+
+> **Restated 2026-09-11 by `T025`, `Five` → `Six`, when `contracts/agent/` landed.** The same
+> anchor shape as the layer count above it: the sentence is the count, the count moves when a
+> family lands, and `make findings` reporting `REVERTED` on the closing text is the mechanism
+> doing its job. Two families have landed since the closure and both moved it.
 *Status:* open
 
 ---

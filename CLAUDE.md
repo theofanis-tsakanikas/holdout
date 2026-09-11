@@ -631,7 +631,7 @@ only **what may be claimed**.
 ## The contract layer
 
 `contracts/` is the source of truth, versioned in this repository, and it is what claims 1, 5 and
-6 rest on. Five families, none of which is a vendor feature.
+6 rest on. Six families, none of which is a vendor feature.
 
 ### `metrics/` — one definition, four consumers
 
@@ -741,6 +741,24 @@ nothing in `pipelines/ml/` is that engine. It landed with `T014` and this headin
 count above said **four** until 2026-09-05, which is the same defect as a directory described in
 the present tense before it exists, in the other direction.
 
+### `agent/` — what one proposal may spend, and which model proposes
+
+`runtime.yaml` — three ceilings on one proposal, tokens, seconds and tool calls, and the
+proposer: a model id, a region, and which of Bedrock's two endpoints serves it. **Six values,
+each a `{value, source}` pair**, all `scenario_assumption`, each note carrying the measurement
+it was set from — the first real run, on 2026-09-11 — because a ceiling is a number in
+configuration and `CLAUDE.md`'s own rule is that such a number is set from a measurement of
+the thing that will run, never from a projection.
+
+**A sixth family rather than a corner of `design/`, for the reason `ml/` gave.** `design/` is
+read by the engine that decides whether an experiment may exist; the agent is one of three
+sources that hand that engine a form, and a ceiling on the agent's spend is not a property of
+any design. **The model id is here for a second reason**: the recording claim 6 grades is
+stamped with the model that made it, and an id that lived in a Python file would make that
+provenance a matter of `git blame`. Hitting a ceiling produces no proposal and a named
+failure, never a truncated design — a truncated form is a design nobody wrote that still
+parses.
+
 ### The six rules
 
 1. Every contract is versioned and **never deleted**.
@@ -775,6 +793,11 @@ src/holdout/core/      pure functions — no SDK, no engine
   demand/              the censoring correction — claim 4's reader and its curve
 src/holdout/contracts/ the loader and the compilers: `contracts/` read into typed objects,
   compilers/           and compiled out to every consumer. `make contracts` is its entry point
+src/holdout/agent/     the other AI system — what context it reads, the tool registry it is
+                       confined to, and `ProposedDesign`, which is seven fields and has
+                       nowhere to put the two the agent may never fill. Nothing here opens a
+                       connection: the runtime is an adapter so the same agent runs from a
+                       laptop and through the estate's gateway
 src/holdout/adapters/  thin cloud callers
 contracts/             the source of truth (above)
 generated/             what the compilers emit, byte-compared on every run — never hand-edited
