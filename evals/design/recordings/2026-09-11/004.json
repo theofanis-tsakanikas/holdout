@@ -1,10 +1,10 @@
 {
   "failed": null,
   "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
-  "prompt_fingerprint": "e3ebaf710bbffdef2741e0987257c3c3561400b2c376033d332bdd68bcf50032",
+  "prompt_fingerprint": "fbe791fd62ae2e4b5d6bf64480585c9389fb00d375f14c7722dea8908f9c4387",
   "proposal": {
     "exclusions": [],
-    "hypothesis": "The shallow_ladder_policy increases category margin per store-week compared to the ladder_policy by reducing price-driven waste without proportionally reducing sales.",
+    "hypothesis": "Shallow ladder pricing increases category margin per store-week compared to standard ladder pricing.",
     "intervention": {
       "control": "ladder_policy@v1",
       "treatment": "shallow_ladder_policy@v1"
@@ -12,7 +12,7 @@
     "mde": {
       "direction": "either",
       "kind": "relative_pct",
-      "value": "5.0"
+      "value": "5"
     },
     "primary_metric": "category_margin_per_store_week",
     "scope": {
@@ -24,18 +24,18 @@
       "products": null,
       "stores": null
     },
-    "unit": "store"
+    "unit": "store_week"
   },
   "question": "If we randomise by store-week instead of by store, could we read the shallower ladder's result in a fortnight?",
   "registry_fingerprint": "fe6d37fcaf97ecf0f326d10c1f57c49e51520bac7d4ca0242759ce85f0b85e44",
   "trace": [
     {
       "detail": "end_turn",
-      "elapsed_s": 6.578363291999267,
+      "elapsed_s": 6.600827791000484,
       "input_tokens": 3478,
       "kind": "model",
       "name": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
-      "output_tokens": 402,
+      "output_tokens": 434,
       "step": 1
     },
     {
@@ -49,11 +49,11 @@
     },
     {
       "detail": "tool_use",
-      "elapsed_s": 4.195036584000263,
-      "input_tokens": 3949,
+      "elapsed_s": 3.711966000000757,
+      "input_tokens": 3981,
       "kind": "model",
       "name": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
-      "output_tokens": 275,
+      "output_tokens": 246,
       "step": 2
     },
     {
@@ -75,7 +75,7 @@
       "content": [
         {
           "citations": null,
-          "text": "I need to think through what you're asking. You're asking whether randomising by store-week instead of store would let you measure the effect of the shallow_ladder_policy in a two-week window.\n\nThe answer is **no**, and for a fundamental reason: randomising by store-week creates interference in this trade.\n\nHere's why: if you randomise by store-week, the same store appears in both treatment and control arms in different weeks. Because pricing policies have carryover effects on inventory, customer behaviour, and margin \u2014 effects that persist across weeks \u2014 a store in the treatment arm one week will carry forward effects that contaminate the control measurement in that same store in a different week.\n\nThe contract has explicitly refused store-week as a unit of randomisation for this reason. You can only choose from: **region**, **store**, **store_category**, or **store_week** \u2014 but store_week is rejected by the engine as producing interference.\n\nSo your actual choice is:\n- **store**: Clean randomisation, no interference, but you need the full experiment window to measure effects and accumulate power.\n- **store_category**: Randomises within stores across the three categories (dairy, bakery, poultry), so the same store runs both arms but on different products.\n- **region**: Groups stores by region and randomises regions, larger unit, lower power per unit but potentially cleaner if regions are independent enough.\n\nIf you need a result in a fortnight, the constraint is not the unit of randomisation \u2014 it's that two weeks may simply not be enough time for the shallow ladder policy's effect on margin to stabilise and become measurable against the pre-period variance (CV of 0.08).\n\nWould you like me to design an experiment with a two-week window using store randomisation, to see whether the power calculation suggests it's feasible?",
+          "text": "I need to consider what randomising by store-week means for the timeline and detectability of results.\n\nRandomising by store-week (rather than by store) means you're re-randomizing the assignment to treatment and control in each week. This creates much finer-grained variation \u2014 each store experiences both arms across different weeks \u2014 which typically:\n\n1. **Increases power** per unit of time, because you're accumulating more independent randomisation units faster. With 320 stores, randomising by store gives you 320 units. Randomising by store-week gives you 320 \u00d7 (number of weeks) independent units.\n\n2. **Enables faster results** because you can detect effects sooner with more independent comparisons accumulating each week.\n\nHowever, there are critical trade-offs:\n\n**Against reading results in a fortnight:**\n- You'd have only ~2 weeks of data, which is a very small sample even with finer granularity\n- The pre-period variance I have is already quite high (CV of 0.13 for category margin), and with only 2 weeks you'd have limited power\n- Store-week randomisation can introduce **interference** \u2014 a store's experience one week could influence the next week's purchasing or operations, creating carryover effects that violate the independence assumption\n\n**The core question:** The system's roster note flags that \"some units guarantee interference in this trade and are refused at design.\" Store-week is a known interference risk in retail, because customer behaviour and inventory carry over between weeks at the same store.\n\nRather than speculate whether the design would be accepted, let me ask: **Would you like me to propose an experiment design using store-week randomisation with a 2-week horizon?** The engine will tell us immediately whether interference concerns prevent it. Or would you prefer to explore a store-level design with a longer horizon, which is more likely to be feasible?\n\nWhat's driving the fortnight constraint \u2014 is there a business deadline?",
           "type": "text"
         }
       ],
@@ -88,23 +88,18 @@
     {
       "content": [
         {
-          "citations": null,
-          "text": "You're right. The question can be expressed as a design. I'll propose it:",
-          "type": "text"
-        },
-        {
           "caller": null,
-          "id": "toolu_bdrk_012czbFZBXvKYG78iYjvFXQe",
+          "id": "toolu_bdrk_01J6yGPpjGsmrrhEfe6L2EGL",
           "input": {
             "exclusions": [],
-            "hypothesis": "The shallow_ladder_policy increases category margin per store-week compared to the ladder_policy by reducing price-driven waste without proportionally reducing sales.",
+            "hypothesis": "Shallow ladder pricing increases category margin per store-week compared to standard ladder pricing.",
             "intervention": {
               "control": "ladder_policy@v1",
               "treatment": "shallow_ladder_policy@v1"
             },
             "mde": {
               "kind": "relative_pct",
-              "value": 5.0
+              "value": 5
             },
             "primary_metric": "category_margin_per_store_week",
             "scope": {
@@ -115,7 +110,7 @@
               ],
               "stores": "all"
             },
-            "unit": "store"
+            "unit": "store_week"
           },
           "name": "propose_design",
           "toolset_name": null,

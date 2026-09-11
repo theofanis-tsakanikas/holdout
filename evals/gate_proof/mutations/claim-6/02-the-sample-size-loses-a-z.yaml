@@ -1,0 +1,22 @@
+# A typo in the one formula the power refusals rest on: the squared standardised effect
+# becomes a linear one. Every design needs far fewer units than it does, so designs that are
+# underpowered are accepted with confidence, and nothing downstream notices because the
+# readout's own power check reads the *realised* variance and a lucky draw passes it. The
+# reference boundary in `evals/design/reference.py` solves the window from the same formula
+# written differently, and is the only thing that can see this.
+
+id:          the-sample-size-loses-a-z
+claim:       6
+eval_module: evals.design
+targets:     [D8.the-power-boundary-lands-where-independent-arithmetic-puts-it]
+
+breaks: >-
+  the required sample per arm is computed from (z_alpha + z_beta) rather than its square, so
+  every underpowered design is sized at a fraction of what it needs and accepted.
+
+file: src/holdout/core/design/feasibility.py
+
+anchor: |
+    numerator = ARMS * z_sum * z_sum * variance
+replacement: |
+    numerator = ARMS * z_sum * variance

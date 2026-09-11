@@ -1,0 +1,21 @@
+# The interference table gains a unit it should not have. `store_category` splits the arms
+# along categories inside one store, and the contract declares cross-price substitution --
+# the arms share customers by construction. Admitting it is the change a session makes when
+# an agent keeps proposing it and every refusal reads as the engine being difficult. The
+# recording holds exactly such a design, and with this change the engine stops refusing it.
+
+id:          store-category-is-admitted-as-a-unit
+claim:       6
+eval_module: evals.design
+targets:     [D7.every-reachable-refusal-is-reached]
+
+breaks: >-
+  a store_category design is no longer refused for interference; the arms share shoppers
+  across the categories of one store and the engine says nothing.
+
+file: src/holdout/core/design/feasibility.py
+
+anchor: |
+    if unit in (Unit.STORE, Unit.REGION):
+replacement: |
+    if unit in (Unit.STORE, Unit.REGION, Unit.STORE_CATEGORY):

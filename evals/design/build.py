@@ -28,7 +28,7 @@ import yaml
 from corpus.world import scale as scales
 
 from evals.uplift import design as design_module
-from evals.uplift import harness
+from evals.uplift import harness, parallel
 from evals.uplift.outcomes import Ledger, Week
 from holdout.agent.context import PrePeriod as ShownPrePeriod
 from holdout.agent.context import Roster, enumerated
@@ -47,8 +47,14 @@ RECORDINGS = HERE / "recordings"
 #: The world every question is asked against. W1 is the null world: the true effect is zero, so
 #: a refused design run anyway that reports a significant effect is a false positive the
 #: refusal prevented. K on other worlds is a later stage and is named in the README.
+#:
+#: **The seed is claim 2's first**, derived from the same function that spells the harness's,
+#: so the fixture this eval builds is byte-for-byte one claim 2 already built and cached --
+#: locally under `.worlds/` and on CI under the same digest key. A seed of this eval's own
+#: would have generated a second harness-scale world and its potential outcomes on every cold
+#: runner, for no independence gained: the world is the same generator either way.
 WORLD = "W1"
-WORLD_SEED = "design-0"
+WORLD_SEED = parallel.world_seeds(1)[0]
 LOTTERY_SEED = "design-lottery-0"
 SCALE = scales.HARNESS
 

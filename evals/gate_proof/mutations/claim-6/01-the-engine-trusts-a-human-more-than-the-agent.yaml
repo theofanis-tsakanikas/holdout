@@ -1,0 +1,23 @@
+# The change somebody makes after the first agent-proposed design goes wrong: "let's be a
+# bit more careful with the model's designs". It reads as prudence, it is one line, and it
+# is the end of claim 6 -- the engine now knows who filled the form and decides differently
+# for one of the three sources. Every existing test of a human-filled form keeps passing.
+
+id:          the-engine-trusts-a-human-more-than-the-agent
+claim:       6
+eval_module: evals.design
+targets:     [D5.three-sources-one-verdict]
+
+breaks: >-
+  an agent-filled form is sized against half the binding arm's capacity, so a design the
+  engine accepts from a human is refused as underpowered when the agent proposes it, field
+  for field the same.
+
+file: src/holdout/core/design/feasibility.py
+
+anchor: |
+    arm_capacity, control_capacity = _capacity(len(available), inference)
+replacement: |
+    arm_capacity, control_capacity = _capacity(len(available), inference)
+    if form.filled_by.kind.value == "agent":
+        arm_capacity = arm_capacity // 2

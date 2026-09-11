@@ -55,6 +55,7 @@ refusal prevented. A confident number whose interval excludes the truth is a wro
 | `D5.three-sources-one-verdict` | does the same form, stamped `agent`, `human:<name>` and `policy:<name>`, produce byte-identical verdicts — and does a planted branch on `filled_by` inside the engine turn this red? |
 | `D6.a-refused-design-run-anyway-is-wrong-at-the-rate-the-refusal-predicts` | over the refused designs that can be run, is the share producing a confident wrong number at least what the refusal's own reason implies — and never below the false-positive floor a valid design would have? |
 | `D7.every-reachable-refusal-is-reached` | does the recording reach every `at_design` code the agent's route can reach — and is every code it cannot reach named, with the reason, rather than absent? |
+| `D8.the-power-boundary-lands-where-independent-arithmetic-puts-it` | for every graded design, does a second implementation of the power boundary — `Decimal`, solved rather than searched — agree with the engine on refuse-or-accept, on which code, and on the window and sample where it accepts? |
 
 `D5` is the sentence in `CLAUDE.md` — *the engine does not know and does not care who filled
 the form* — made checkable, and it is checked by a mutation rather than by agreement: three
@@ -102,7 +103,9 @@ Printed on every run, as `Report.notes`, because a limit that lives only here st
 quietly.
 
 - **The questions were written by this repository.** The model chose the designs; the bank
-  chose what to ask. A bank of questions that all invite the same refusal would inflate M and
+  chose what to ask -- and was sharpened once, on 2026-09-11, when a recording reached every
+  code but one and `D7` went red: a thirteenth question that asks for a change no roster could
+  detect. A bank of questions that all invite the same refusal would inflate M and
   say nothing, and the defence is that the bank is committed, read on every run, and printed
   with its size — not that it is unbiased.
 - **The recording is a fixed sample from a dated model.** It is stamped with the model id and

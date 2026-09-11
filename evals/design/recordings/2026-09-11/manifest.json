@@ -7,12 +7,12 @@
     "pre_period",
     "units_of_randomisation"
   ],
-  "digest": "38448c867ac64ba25b2536ca9f19613b29b8619bd786e855c56d9d8fb896fc88",
-  "failed": 0,
+  "digest": "6bd309d7812d6e8d32773766959f90b70e52b0814fd491df7fc0d5f40168bdb8",
+  "failed": 2,
   "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
-  "prompt_fingerprint": "e3ebaf710bbffdef2741e0987257c3c3561400b2c376033d332bdd68bcf50032",
-  "proposals": 12,
-  "questions": 12,
+  "prompt_fingerprint": "fbe791fd62ae2e4b5d6bf64480585c9389fb00d375f14c7722dea8908f9c4387",
+  "proposals": 11,
+  "questions": 13,
   "recorded_on": "2026-09-11",
   "registry_fingerprint": "fe6d37fcaf97ecf0f326d10c1f57c49e51520bac7d4ca0242759ce85f0b85e44",
   "runtime_contract_version": 1
