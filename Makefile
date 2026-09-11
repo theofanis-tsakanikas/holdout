@@ -604,7 +604,17 @@ CLAIM_5_COST := 750
 # potential outcomes were generated from nothing. Four mutations at 44-72s each on the
 # runner against 24-36s on the laptop. Warm it is lower and nobody has measured it there;
 # a cost declared from the cold run cannot be stale in the direction that trips the ceiling.
-CLAIM_6_COST := 480
+#
+# **Then 1,170, a bound above 1,165 measured cold on run 34572001820**, the run that gave K
+# its violations: the eval alone went 332s and six mutations 833s, against 463 for the whole
+# target a day earlier. Four lotteries per design, four interim looks and a post-hoc
+# re-submission are three more runs of the machinery per design, and the cost says so rather
+# than the bin staying packed on a number the change made false. **It is over the budget, so
+# `claim-6` is its own bin** -- the packer's signal, not an error -- and it is over the
+# ceiling too, cold; the ceiling check abstains on a cold cache and a warm run has not yet
+# been measured, which is the same standing gap `claim-5` carries. The first warm run on
+# `main` is the measurement, and this comment is where its number goes.
+CLAIM_6_COST := 1170
 CLAIM_7_COST := 98
 GATE_PROOF_COST := 30
 SILVER_COST := 165
