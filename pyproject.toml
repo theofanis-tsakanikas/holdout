@@ -166,7 +166,11 @@ no_implicit_reexport = false
 # not in any extra at all. They are the *estate's* packages, present in the Databricks
 # serverless environment and installed on no machine this repository controls — so
 # `pipelines/ml/registry.py` imports them inside the one function that runs there.
-module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*", "mlflow.*", "pandas.*"]
+# `anthropic.*` is the `agent` extra's client, imported inside the one method that opens a
+# socket, for the reason `boto3.*` is here for the reaper: `gate` typechecks a tree that has
+# neither, and found this one the same way it found `dbt` -- on a runner, after a green local
+# `make check` on a laptop that had the extra installed.
+module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*", "mlflow.*", "pandas.*", "anthropic.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
