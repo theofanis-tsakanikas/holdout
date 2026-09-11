@@ -2187,7 +2187,15 @@ moves a directory across that line.
 *Site:* `CLAUDE.md` :: `**Declared and not yet built — phase 2 and later.**`
 *Disposition:* none — the check is small and the edit it would force is to `CLAUDE.md`, which is
 the author's. Filed so the first branch that creates one of those directories does not have to
-rediscover that no gate noticed
+rediscover that no gate noticed — then branch `ops/the-layer-count-is-a-figure`, 2026-09-11
+*Closed:* 2026-09-11 — the third direction is asked: `layout_built_while_declared_future` walks
+the declared-future block with the same parent-child resolution as `layout_fabrications` and
+goes red on any name that resolves to a directory. Nine days adrift, three crossings recorded
+under it, and the edit it forces is the one the block's own note already demands — *a directory
+that exists may not be described as unbuilt* — so it was never the author's to weigh, only to
+notice. Found the fourth time by the phase-3 integration review, which is what sent it here
+*Now:* `ops/figures.py` :: `def layout_built_while_declared_future(text: str | None = None) -> tuple[list[str], list[str]]:`
+*Now:* `CLAUDE.md` :: `> and a directory named under *Declared and not yet built* that exists is a red run in its own`
 *Status:* open
 
 > **Restated 2026-09-03 by `pipelines/silver`, which is the crossing this entry was filed
@@ -2975,7 +2983,13 @@ This is recorded as its third instance rather than as a new finding.
 
 *Site:* `CLAUDE.md` :: `pipelines/gold/        dbt`
 *Disposition:* none — the same as the entry it instantiates. The `CLAUDE.md` edit is the author's
-and is with him; this branch does not touch that file
+and is with him; this branch does not touch that file — then branch
+`ops/the-layer-count-is-a-figure`, 2026-09-11, with the entry it instantiates
+*Closed:* 2026-09-11 — the silence has a check now, and the fourth crossing is what earned it:
+`ml/` and `serving/` sat under *the other two are phase 3* for a day after they were applied,
+with every gate green. Closed with *Nothing checks that a directory declared not yet built is
+still unbuilt*, which is the mechanism; this entry was its instance
+*Now:* `CLAUDE.md` :: `> right. Found by the phase-3 integration review, `docs/reviews/phase-3.md` §2a and §3. The`
 *Status:* open
 
 ---
@@ -4489,7 +4503,7 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 *Disposition:* branch `ops/a-published-figure-is-read-off-its-measurement` — was *the author's*, and he delegated all five on 2026-09-05 in the words *do the most professional thing*
 *Closed:* 2026-09-05 — all five restated, and the first of them registered so it cannot recur. **The `infra/` restatement moved again on 2026-09-05, when `infra/bootstrap/` landed and made *`lakehouse/` is the only layer that exists* false in the other direction — `make findings` reported `REVERTED` on the closing text rather than letting the correction go stale, which is the whole argument for closure restating a site instead of releasing it. The `*Now:*` below is the second restatement, not the first.** The figure was **not one line**: `18,069` was wrong in `CLAUDE.md`, the `Makefile`, `evals/oversight/README.md` four times and `corpus/real/MANIFEST.yaml`, which was a whole epoch behind. The fifth row had no site of its own and is restated at `CLAUDE.md` :: `that matter most — ``8/200 = 4.0%``` — the number the eval prints, kept illustrative but no longer a figure nobody measured. `SPEC-T003.md`'s `9/200` is **not** touched: a spec written before the measurement is a record of what was asked for, and editing it would rewrite the question
 *Now:* `CLAUDE.md` :: `the closed field set refuses 18,069 of 18,069.`
-*Now:* `CLAUDE.md` :: `infra/                 Terraform. **Four layers exist**: `bootstrap/` — state backend, OIDC,`
+*Now:* `CLAUDE.md` :: `infra/                 Terraform. **Six layers exist**: `bootstrap/` — state backend, OIDC,`
 
 > **This `*Now:*` was restated 2026-09-06 by `T018`, and it is the third time in two days that
 > this closure has been asked for one.** The anchor read `Two layers exist`; `T018` built
@@ -4509,6 +4523,16 @@ found 2026-09-05 · by `T016`, running the evals behind each figure
 > and four exist. **That is the anchor working**: the line it watches is the one sentence in the
 > file that goes stale every time the estate grows, and an anchor that never needed restating
 > would be one watching a line nothing changes.
+>
+> **Restated a fourth time 2026-09-11 by `ops/the-layer-count-is-a-figure`, `Four` → `Six` — and
+> the paragraph above was wrong about what it was watching.** `ml/` and `serving/` landed on
+> 2026-09-10 and the sentence did not move, so the anchor matched it exactly once and this
+> register was green for a day with the count two short. *The anchor working* was the anchor
+> seeing the sentence change; what it cannot see is the sentence staying while the tree moves,
+> and the three restatements it was proud of were three occasions on which somebody happened to
+> edit the line. The count is now a figure in `make figures`'s `PROSE` registry, re-run against
+> the directories `make terraform` walks, which is the instrument for a present-tense number and
+> had never been handed this one. Found by the phase-3 integration review, §2a.
 *Now:* `CLAUDE.md` :: `  then **append-only**. `delta.appendOnly` refuses an update, a delete and an insert overwrite,`
 *Now:* `CLAUDE.md` :: `6 rest on. Six families, none of which is a vendor feature.`
 
