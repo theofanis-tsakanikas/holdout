@@ -371,6 +371,34 @@ rigged" is that validity comes from the lottery, not from the simulator.**
 > limit was declared in all three places from the day each was written. What was wrong was one
 > sentence in the doctrine, which is the layer with no gate behind it.
 
+> **Restated 2026-09-11 by the phase-3 integration review, because phase 3 delivered the table
+> and the sentence above promised more than a table can keep.** What arrived, each against the
+> function that makes it true:
+>
+> - `gold.experiment_assignment` carries `delta.appendOnly`, and the **storage** refuses an
+>   update, a delete and an insert overwrite — three of four, measured in
+>   `pipelines/gold/assignment.py` against delta-spark 4.4.0. An **append is permitted**, and
+>   `verify` is what catches it: it re-reads the table and recomputes the digest over what it
+>   found, so a row appended after the seal is a `CONTAMINATED_ASSIGNMENT` at readout and not a
+>   silent fifth unit in the control arm.
+> - `infra/lakehouse/grants.tf` gives `account users` `SELECT` and `BROWSE` and nothing that
+>   writes. **For a person, the door is shut**, by the catalog rather than by a type.
+> - The jobs run as the service principal that **owns** the objects, and in Unity Catalog an
+>   owner can append, can alter the table's properties — `appendOnly` included — and can drop
+>   the table. **For the automation, the door is keyed**, and the key is the same identity that
+>   runs every job on the estate.
+>
+> So the honest sentence today is one step past *detection* and not at *unopenable*: **one door,
+> shut to people, keyed for the principal that runs the pipelines, and reporting every hand laid
+> on it.** The restatement above was written on 2026-08-30, before `lakehouse` existed, and it
+> described what the layer was meant to do rather than what a layer of this shape can do — the
+> same defect as `experiments/` in the layout block, a plan that became a description by nobody
+> re-reading it after the thing was built. Closing the gap is an ownership decision — a second
+> principal that owns the assignment table and runs nothing, or a table property no owner can
+> unset — and that is the author's, in `docs/DECISIONS.md`, not a sentence's. The prior
+> wordings stay per rule 4; the delta is that *unopenability arrives in phase 3* did not, and
+> the file that governs every other branch now says so.
+
 ---
 
 ## Non-negotiable engineering rules
