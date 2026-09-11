@@ -1592,6 +1592,11 @@ gate bites. The seam that eval needs is built and verified — envelopes constru
 numbers, with `contracts/` never opened — but the eval itself is not written.
 *Unlock condition:* `corpus/real/` and the eval directories, each with the mutation that proves its
 gate. Until then claim 1 has **not** closed, and PLAN.md says so.
+*Closed:* 2026-09-11 — met in phase 1, when `corpus/real/` and the first eval directories landed
+with their mutations; six evals and fifty-six mutations exist today and `make gate-proof`
+audits them. The oldest entry in the section, closed by the phase-3 integration review a
+fortnight after its condition was met — and the phase-1 and phase-2 reviews both read this
+section and did not see it, which is the finding rather than the closure.
 
 **`terraform validate` and `make preview-audit` in CI** · deferred 2026-08-27
 CLAUDE.md lists both in the `ci` workflow. Neither has anything to act on: there is no `infra/` and
@@ -1631,6 +1636,11 @@ no declared inventory of preview surfaces.
 > like the estate. No `apply`, no backend, no credential, no resource that exists, nothing that
 > costs a cent; `terraform init -backend=false` and `validate` only. Applying is `T020`'s, which
 > `T013`'s own `out_of_scope` says.
+*Closed:* 2026-09-11 — the condition was met on 2026-09-05, when `infra/bootstrap` became the
+first Terraform layer, and nobody noticed for six days. Both targets run in `ci.yml`'s `gate`
+job and in `make check` today. Found by the phase-3 integration review reading the registry as
+a population, which is the only way a met condition is ever found: `make expiry` checks that a
+condition is present, never that it is met.
 
 **`docs/SCENARIO.md` and `docs/DAY-ONE.md`** · deferred 2026-08-27
 Both are named in CLAUDE.md's "read this first" table and neither exists. `DAY-ONE.md` has nothing
@@ -1727,6 +1737,10 @@ the other way round.
 > *Revised condition:* the estate, where a catalog exists and `${catalog}` resolves — which is
 > `T020`, the lakehouse layer. The prior condition stays per doctrine rule 4 and it was met; what
 > is left is the one consumer that cannot be met without a workspace.
+*Closed:* 2026-09-11 — the condition, *phase 2, when gold is built*, was met twice over: gold
+was built locally by `make gold` in phase 2, and on the estate by `backfill` 34443755277 on
+2026-09-10, five dbt models compiled from the contracts and executed on serverless SQL. The
+entry outlived its condition by a phase. Found by the phase-3 integration review.
 
 **Metric versions v1 and v2 are invented history** · deferred 2026-08-27
 They exist so that as-of resolution, the supersession chain and the restatement gate are
