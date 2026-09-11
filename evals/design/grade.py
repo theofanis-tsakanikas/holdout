@@ -28,7 +28,7 @@ from fractions import Fraction
 
 from corpus.world import Arm as WorldArm
 
-from evals.design import build
+from evals.design import build, pool
 from evals.uplift import design as design_module
 from evals.uplift import grouped_metric, potential
 from holdout.core.design import DesignRefusal, DesignRefusalReason, Feasible, assess
@@ -242,6 +242,31 @@ def anyway(
         excludes_truth=not (low <= 0 <= high),
         units=len(reported),
     )
+
+
+def _anyway_task(index: int) -> Anyway | None:
+    contracts, world, recording = pool.worker_state()
+    recorded = recording.outcomes[index]
+    return anyway(
+        recorded,
+        verdict(recorded, contracts=contracts, built=world),
+        contracts=contracts,
+        built=world,
+    )
+
+
+def anyway_all(recording: build.Recording, *, workers: int | None = None) -> tuple[Anyway, ...]:
+    """The guards-off number for every refused design, across the pool, in recording order.
+
+    **Measured before it was parallelised**, on 2026-09-11: `anyway` over the thirteen
+    outcomes took 29s of a 37s machinery run on a fourteen-core laptop, serially, while the
+    violations beside it ran across every core. Each design's number is one exact-arithmetic
+    permutation test that shares nothing with the others, so the pool changes what it costs
+    and nothing about what comes out -- the verdict is recomputed in the worker from the same
+    contracts and world, and the serial path is the same function.
+    """
+    results = pool.run(_anyway_task, [o.index for o in recording.outcomes], workers=workers)
+    return tuple(r for r in results if r is not None)
 
 
 def _unit_weeks_for(
