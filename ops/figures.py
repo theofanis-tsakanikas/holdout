@@ -455,6 +455,24 @@ def workflows_that_exist() -> int:
     return sum(1 for f in root.iterdir() if f.suffix in (".yml", ".yaml"))
 
 
+def terraform_layers_that_exist() -> int:
+    """Every directory under `infra/` that carries a `.tf` file.
+
+    The same population `make terraform` walks -- a directory with no `.tf` file *is not a
+    layer* there and is counted as *other* -- and the same one `CLAUDE.md`'s layout block
+    counts in the words `**N layers exist**`. Enumerated rather than listed, for the reason the
+    `terraform` target's own comment gives: a list of layer names in a second place is a second
+    registry of which layers exist, kept by hand, in a file nobody reads when adding one.
+    """
+    root = REPO_ROOT / "infra"
+    if not root.is_dir():
+        raise InstrumentMissingError(
+            "infra/ is not where this module looks for it, so the layers the layout block "
+            "counts cannot be checked against the layers that are there."
+        )
+    return sum(1 for d in root.iterdir() if d.is_dir() and any(d.glob("*.tf")))
+
+
 def workflows_the_table_marks_as_built() -> int:
     """How many rows say **yes**.
 
@@ -996,6 +1014,33 @@ def _claim_7(key: str) -> Callable[[], int]:
 
 
 PROSE: tuple[Figure, ...] = (
+    # ------------------------------------------------------- the layout block's two counts
+    #
+    # **The count is the sentence, and an anchor sees the sentence change but not stay wrong.**
+    # `docs/FINDINGS.md`'s closure of 2026-09-05 restated its `*Now:*` anchor every time a
+    # layer landed -- *Two* -> *Three* -> *Four*, three restatements in three days -- and called
+    # it the anchor working. Then `ml/` and `serving/` landed on 2026-09-10, the sentence stayed
+    # at *Four*, the anchor matched it exactly once, and `make findings` was green. `make
+    # findings` notices a line that moved; a line that stayed while the world moved is invisible
+    # to it. This registry is the instrument for that case, built 2026-08-31, and it had never
+    # been given the sentence. Found by the phase-3 integration review, `docs/reviews/phase-3.md`
+    # section 2a.
+    #
+    # Both sides of each figure are enumerated, neither is a list: the layers are the directories
+    # `make terraform` would validate, and the workflows are `workflows_that_exist`, which the
+    # `workflows` coverage row already reads.
+    Figure(
+        "CLAUDE.md",
+        r"\*\*(?P<n>[A-Za-z]+)\s+layers\s+exist\*\*",
+        lambda: terraform_layers_that_exist(),
+        "how many Terraform layers the layout block says exist under infra/",
+    ),
+    Figure(
+        "CLAUDE.md",
+        r"\.github/\s+\*\*(?P<n>[A-Za-z]+)\s+workflows",
+        lambda: workflows_that_exist(),
+        "how many workflows the layout block says .github/ holds",
+    ),
     Figure(
         "ops/language.py",
         r"uses\s+\*\*(?P<n>[a-z]+)\*\*\s+distinct\s+Greek\s+tokens",
@@ -1125,16 +1170,26 @@ PROSE: tuple[Figure, ...] = (
 )
 
 
-def prose_failures() -> tuple[list[str], list[str]]:
-    """Every registered figure, recomputed and compared with what its document says."""
+def prose_failures(
+    registry: tuple[Figure, ...] = PROSE,
+    read: Callable[[Path], str | None] | None = None,
+) -> tuple[list[str], list[str]]:
+    """Every registered figure, recomputed and compared with what its document says.
+
+    `read` is how a test hands this a document with a stale count in it without writing to
+    `CLAUDE.md`; it returns `None` for a file that is not there. The default reads the tree.
+    """
     failures: list[str] = []
     missing: list[str] = []
-    for figure in PROSE:
+    for figure in registry:
         path = REPO_ROOT / figure.path
-        if not path.is_file():
+        text = (
+            read(path) if read else (path.read_text(encoding="utf-8") if path.is_file() else None)
+        )
+        if text is None:
             missing.append(f"{figure.path} does not exist, so {figure.says} cannot be checked")
             continue
-        match = re.search(figure.pattern, path.read_text(encoding="utf-8"))
+        match = re.search(figure.pattern, text)
         if match is None:
             missing.append(
                 f"{figure.path}: the sentence carrying {figure.says} is not there in the shape "
@@ -1314,6 +1369,53 @@ def layout_fabrications() -> tuple[list[str], list[str]]:
     )
 
 
+def layout_built_while_declared_future(text: str | None = None) -> tuple[list[str], list[str]]:
+    """Every directory the declared-future block names must **not** exist.
+
+    **The third direction of the layout question, asked on 2026-09-11 after three crossings
+    went unnoticed.** `layout_packages_named` asks *is everything real listed*;
+    `layout_fabrications` asks *is everything listed real*, and exempts the declared-future
+    block because a name without a directory is that block's whole point. Nothing asked *is
+    everything declared future still future*: `pipelines/ingest/` on 2026-09-02, `silver/` on
+    the 3rd and `gold/` on the 4th each crossed the line while the map went on calling them
+    unbuilt, and the row read `22 = 22` through all three. `docs/FINDINGS.md` predicted the
+    first and recorded the other two under *the same silence three times*.
+
+    Resolution is the one `layout_fabrications` uses: an indented line is a child of the last
+    unindented one, so the check sees `pipelines/gold` and not a `gold/` anywhere in the tree.
+    """
+    if text is None:
+        text = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    block = LAYOUT_BLOCK.search(text)
+    if block is None:
+        return [], [
+            "layout: CLAUDE.md has no `## Repository layout` section in the shape this module "
+            "reads it, so what the map declares unbuilt cannot be checked."
+        ]
+    future = LAYOUT_DECLARED_FUTURE.search(block.group("body"))
+    if future is None:
+        return [], []
+    built: list[str] = []
+    parent = ""
+    for entry in LAYOUT_ENTRY.finditer(future.group("body")):
+        name = entry.group("name")
+        if entry.group("indent"):
+            candidate = f"{parent.rstrip('/')}/{name}" if parent else name
+        else:
+            candidate = name
+            parent = name
+        if (REPO_ROOT / candidate).is_dir():
+            built.append(candidate)
+    return (
+        [
+            f"the layout declares {name!r} not yet built and the directory exists. Move it into "
+            "the block above, in the present tense, in the change that built it."
+            for name in sorted(set(built))
+        ],
+        [],
+    )
+
+
 def rows() -> tuple[list[Row], list[str]]:
     found: list[Row] = []
     missing: list[str] = []
@@ -1340,6 +1442,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
     floors, floor_missing = floor_failures()
     unrun, unrun_missing = unrun_target_failures()
     fabricated, fabricated_missing = layout_fabrications()
+    crossed, crossed_missing = layout_built_while_declared_future()
     invented, invented_missing = skills_claimed_that_are_not_there()
     ghosts, ghost_missing = workflows_claimed_that_are_not_there()
     prose, prose_missing = prose_failures()
@@ -1348,6 +1451,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         *floor_missing,
         *unrun_missing,
         *fabricated_missing,
+        *crossed_missing,
         *invented_missing,
         *ghost_missing,
         *prose_missing,
@@ -1402,6 +1506,19 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         )
         print("        naming what does not sends them looking for it.", file=out)
         print("", file=out)
+    if crossed:
+        print(
+            f"FAIL    the layout declares {len(crossed)} directory(ies) not yet built that exist",
+            file=out,
+        )
+        for line in crossed:
+            print(f"        {line}", file=out)
+        print(
+            "        A directory that exists may not be described as unbuilt -- the second half "
+            "of the block's own rule.",
+            file=out,
+        )
+        print("", file=out)
     if missing:
         print("FAIL    an instrument could not answer, which is not a count of zero", file=out)
         for line in missing:
@@ -1425,7 +1542,7 @@ def report(found: list[Row], missing: list[str], out: TextIO) -> int:
         )
         print("        as if it were what exists.", file=out)
         return 1
-    if missing or floors or unrun or fabricated or invented or ghosts or prose:
+    if missing or floors or unrun or fabricated or crossed or invented or ghosts or prose:
         return 1
 
     print(f"  {len(PROSE)} figure(s) in prose re-run and unchanged", file=out)

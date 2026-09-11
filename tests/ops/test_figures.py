@@ -530,3 +530,91 @@ def test_every_target_that_owns_marked_tests_runs_in_ci_today() -> None:
     failures, missing = figures.unrun_target_failures()
     assert missing == []
     assert failures == []
+
+
+# ------------------------------------------------ the layout block's counts, and its third direction
+
+
+def _claude() -> str:
+    return (figures.REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+
+
+def _layout_figures() -> tuple[figures.Figure, ...]:
+    registered = tuple(f for f in figures.PROSE if f.path == "CLAUDE.md" and "layout" in f.says)
+    assert len(registered) == 2, "the two layout counts are no longer both in PROSE"
+    return registered
+
+
+def test_the_layout_counts_are_figures_and_reproduce() -> None:
+    """Both counts in the block agree with the tree today, or this branch landed red."""
+    failures, missing = figures.prose_failures(_layout_figures())
+    assert failures == [] and missing == []
+
+
+def test_a_layer_count_that_stayed_while_the_tree_moved_is_red() -> None:
+    """The shape the anchor could not see: the sentence unchanged, the tree two layers larger.
+
+    `make findings` restated its anchor on this line three times as layers landed and called it
+    the anchor working. Then two layers landed, the line stayed at *Four*, and the anchor
+    matched it exactly once. This plants that exact state -- the count the block carried on
+    2026-09-11 before the review -- and asks the registry rather than the anchor.
+    """
+    claude = _claude()
+    live = re.search(r"\*\*(?P<n>[A-Za-z]+) layers exist\*\*", claude)
+    assert live is not None
+    stale = claude.replace(live.group(0), "**Four layers exist**", 1)
+    assert figures.terraform_layers_that_exist() != 4, (
+        "the tree holds four layers, so the plant is vacuous"
+    )
+
+    failures, missing = figures.prose_failures(_layout_figures(), read=lambda _: stale)
+    assert missing == []
+    assert len(failures) == 1
+    assert "says Four" in failures[0] and "layers" in failures[0]
+
+
+def test_a_layout_count_whose_sentence_moved_is_missing_not_green() -> None:
+    """Narrow the instrument: the sentence rewritten so the pattern cannot find it.
+
+    The block read *ci.yml, and it is the only one* until 2026-09-11 -- a count with no number
+    in it, which no registry could have read. An edit back to that shape must report *not
+    there*, never *agrees*.
+    """
+    claude = _claude()
+    live = re.search(r"\.github/\s+\*\*[A-Za-z]+\s+workflows", claude)
+    assert live is not None
+    unreadable = claude.replace(
+        live.group(0), ".github/               **`ci.yml`, and it is the only one.**", 1
+    )
+
+    failures, missing = figures.prose_failures(_layout_figures(), read=lambda _: unreadable)
+    assert failures == []
+    assert len(missing) == 1 and "not there in the shape" in missing[0]
+
+
+def test_a_directory_declared_future_that_exists_is_refused() -> None:
+    """The third direction, asked after three crossings went unnoticed.
+
+    `pipelines/ingest/`, `silver/` and `gold/` each sat under *Declared and not yet built* after
+    being built, and the coverage row read `22 = 22` through all three. The plant is a real
+    directory -- `tests/`, which every checkout has -- written into the future block; the check
+    must name it. The block's own entries are left alone, so this also asserts they are all
+    still unbuilt, which is the check's ordinary job.
+    """
+    claude = _claude()
+    header = "**Declared and not yet built"
+    assert header in claude
+    body_start = claude.index(header)
+    fence = claude.index("```\n", body_start) + 4
+    planted = (
+        claude[:fence]
+        + "tests/                 a real directory, declared unbuilt\n"
+        + claude[fence:]
+    )
+
+    built, missing = figures.layout_built_while_declared_future(planted)
+    assert missing == []
+    assert len(built) == 1 and "'tests'" in built[0]
+
+    built, missing = figures.layout_built_while_declared_future(claude)
+    assert (built, missing) == ([], [])
