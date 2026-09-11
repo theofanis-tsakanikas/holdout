@@ -7,7 +7,7 @@
 
 id:          the-sample-size-loses-a-z
 claim:       6
-eval_module: evals.design
+eval_module: evals.design.machinery
 targets:     [D8.the-power-boundary-lands-where-independent-arithmetic-puts-it]
 
 breaks: >-

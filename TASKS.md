@@ -3600,6 +3600,35 @@ status        BUILT 2026-09-11, awaiting review; the three numbers are printed a
               `Decimal`, solved rather than searched, checked at W and W−1, sharing the
               contract's z values and nothing else; ten designs compared, zero disagreements,
               and the dropped-z mutation is what it alone catches.
+              --
+              **The same day, `evals/design-under-violation` gave K its teeth.** `violate.py`
+              runs every recorded design under a four-look rule with no spending function and
+              every accepted design re-submitted with its best eight controls excluded -- the
+              refusals whose reason predicts a wrong number *above* chance -- on the null
+              world, with the estimator run exactly as `close()` runs it after the four checks:
+              --
+                K · power, guards off  0 of 6   (expected by chance: 0.30)
+                K · peeking            4 of 28  (14.3% against α = 5%; honest end-of-window 1 of 28)
+                K · post-hoc           1 of 4 significant; the raw difference rose 4 of 4
+                gate-proof             6/6 bit
+              --
+              The configuration is a contract, `contracts/design/design_harness.yaml`, beside
+              `aa_harness.yaml` and for its reason: four lotteries per design published, one
+              under `gate-proof`, and `evals.design.machinery` is what a mutation runs. The
+              violated runs go through a process pool, seed in and record out, the way
+              `evals/uplift/parallel.py` argues a seal must never be pickled.
+              --
+              **Two errors the run caught in the eval's own design.** Seven designs that
+              differ only in MDE and metric drew the identical lottery from the identical seed,
+              and one unlucky draw was counted seven times -- 5 of 28 that was 1 of 4; the seed
+              now carries the design's index. And the adjusted estimate does not rise
+              mechanically when the best controls are dropped, because the covariate adjustment
+              re-fits on the units left -- it rose in two of four -- so the raw difference
+              carries the assertion and the adjusted shift is published beside it.
+              --
+              Interference has no K and is no longer deferred: under interference there is no
+              estimand for a number to be wrong against, which is the refusal's own reason. The
+              region roster and the units column are re-deferred on their own, with a date.
 ```
 
 ```

@@ -2593,3 +2593,27 @@ exists, and a decision about whether a peeking path may live in an eval at all, 
 author's.
 *Expires:* 2026-12-31 — the claim's own headline names K, and a K that only measures α cannot
 stand as the closing figure of the project indefinitely.
+*Closed:* 2026-09-11 — by `evals/design-under-violation`, the same day, on two of the three
+scenarios and with the third refused on its own terms. `evals/design/violate.py` runs every
+recorded design under a four-look rule with no spending function and every accepted design
+re-submitted with its best eight controls excluded; the engine refuses both (`D10`, `D11`) and,
+run anyway on the null world, **peeking reports a false positive in 4 of 28 lotteries (14.3%
+against α = 5%, with the honest end-of-window at 1 of 28) and the post-hoc exclusion raises the
+raw difference in 4 of 4 and turns 1 of 4 significant.** Interference is not run and is not a
+deferral any more: under interference a unit's outcome depends on its neighbours' arms, so there
+is no potential outcome to subtract and no estimand for a number to be wrong against — which is
+the reason the engine refuses the unit, and a K against a truth that does not exist would be the
+eval inventing the thing the refusal exists to say is uninventable. The region roster and the
+units column are still absent and are recorded below on their own.
+
+**The two smaller limits recorded above are re-deferred here, on their own** · deferred 2026-09-11
+The harness has a roster of stores and none of regions, so a region design is `ungraded` with the
+reason; the harness ledger carries no units column, so a design naming
+`units_sold_per_store_week` is `ungraded` too. Both were folded into the K entry above and neither
+was closed by the change that closed it, so they get an entry of their own rather than vanishing
+inside a closed one.
+*Unlock condition:* a region covariate matrix — the store matrix aggregated by region with a
+pre-period over it — and a `units` field on `evals/uplift/outcomes.Ledger` filled from the POS
+lines the world already emits; either is an afternoon and neither changes an instrument.
+*Expires:* 2027-03-31 — two of eleven recorded designs were ungraded for the first reason on
+2026-09-11, and a bank that keeps proposing region designs will keep being a third ungraded.

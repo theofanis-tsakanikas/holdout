@@ -91,6 +91,10 @@ DEPENDS_ON: tuple[str, ...] = (
     "evals/uplift/outcomes.py",
     "evals/uplift/reference.py",
     "contracts/policies/ladder_policy@v1.yaml",
+    # Read by `corpus/world/policy.candidate` since 2026-09-11; before that the candidate was
+    # computed from the ladder and this list was complete. A world generated under one set
+    # of depths and served under another is the failure this list exists to prevent.
+    "contracts/policies/shallow_ladder_policy@v1.yaml",
 )
 
 
