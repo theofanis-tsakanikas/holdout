@@ -34,14 +34,12 @@ strata, the interval by inversion — and nothing is read from disk.
 
 from __future__ import annotations
 
-import os
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from fractions import Fraction
 
 from corpus.world import Arm as WorldArm
 
-from evals.design import build, grade
+from evals.design import build, grade, pool
 from evals.uplift import grouped_metric
 from holdout.contracts.model import DesignHarness
 from holdout.core.design import DesignRefusal, Feasible, assess
@@ -445,24 +443,8 @@ class Task:
     scenario: str
 
 
-_WORKER: dict[str, object] = {}
-
-
-def _worker_state() -> tuple[build.ContractSet, build.World, build.Recording]:
-    if not _WORKER:
-        contracts = build.contracts()
-        _WORKER["contracts"] = contracts
-        _WORKER["world"] = build.world(contracts)
-        _WORKER["recording"] = build.recording()
-    return (
-        _WORKER["contracts"],  # type: ignore[return-value]
-        _WORKER["world"],
-        _WORKER["recording"],
-    )
-
-
 def run_task(task: Task) -> Violated | None:
-    contracts, world, recording = _worker_state()
+    contracts, world, recording = pool.worker_state()
     recorded = recording.outcomes[task.index]
     scenario = peeking if task.scenario == "peeking" else post_hoc
     return scenario(recorded, contracts=contracts, built=world, lottery_seed=task.lottery_seed)
@@ -471,25 +453,14 @@ def run_task(task: Task) -> Violated | None:
 def run_all(
     recording: build.Recording, *, lotteries: int, workers: int | None = None
 ) -> tuple[Violated, ...]:
-    """Every (design, seed, scenario), across a process pool, in a deterministic order.
-
-    Deterministic because the tasks are enumerated in order and the results are collected
-    in that order whatever the pool did with them; a parallel run and a serial run of the
-    same tasks are the same computation. `workers=1` runs in-process, which is the debugging
-    aid and not a second implementation.
-    """
+    """Every (design, seed, scenario), across `evals.design.pool`, in a deterministic order."""
     tasks = [
         Task(index=o.index, lottery_seed=seed, scenario=scenario)
         for seed in lottery_seeds(lotteries)
         for o in recording.outcomes
         for scenario in ("peeking", "post_hoc")
     ]
-    size = workers if workers is not None else max(1, os.cpu_count() or 1)
-    if size == 1:
-        results = [run_task(task) for task in tasks]
-    else:
-        with ProcessPoolExecutor(max_workers=size) as pool:
-            results = list(pool.map(run_task, tasks))
+    results = pool.run(run_task, tasks, workers=workers)
     return tuple(r for r in results if r is not None)
 
 
