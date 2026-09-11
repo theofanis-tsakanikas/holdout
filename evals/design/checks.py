@@ -103,11 +103,7 @@ def measure(configuration: Configuration | None = None) -> Measured:
     recording = build.recording()
     configured = configuration if configuration is not None else published(contracts)
     verdicts = tuple(grade.verdict(o, contracts=contracts, built=world) for o in recording.outcomes)
-    anyways = tuple(
-        a
-        for o, v in zip(recording.outcomes, verdicts, strict=True)
-        if (a := grade.anyway(o, v, contracts=contracts, built=world)) is not None
-    )
+    anyways = grade.anyway_all(recording)
     boundaries: dict[int, reference.Boundary] = {}
     for o, v in zip(recording.outcomes, verdicts, strict=True):
         if o.proposal is None or v.ungraded is not None:

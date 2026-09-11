@@ -604,7 +604,25 @@ CLAIM_5_COST := 750
 # potential outcomes were generated from nothing. Four mutations at 44-72s each on the
 # runner against 24-36s on the laptop. Warm it is lower and nobody has measured it there;
 # a cost declared from the cold run cannot be stale in the direction that trips the ceiling.
-CLAIM_6_COST := 480
+#
+# **Then 1,170, a bound above 1,165 measured cold on run 34572001820**, the run that gave K
+# its violations: the eval alone went 332s and six mutations 833s, against 463 for the whole
+# target a day earlier. Four lotteries per design, four interim looks and a post-hoc
+# re-submission are three more runs of the machinery per design, and the cost says so rather
+# than the bin staying packed on a number the change made false. **It is over the budget, so
+# `claim-6` is its own bin** -- the packer's signal, not an error -- and it is over the
+# ceiling too, cold -- and **warm as well: 1,123s alone on run 34578040921**, the first warm
+# run, which tripped the ceiling in the bin it shared with `claim-4` at 1,267s. Profiled, the
+# guards-off number for every refused design ran **serially** -- one exact-arithmetic
+# permutation test per design, 29s of a 37s machinery run on the laptop -- while the
+# violations beside it ran across every core. `evals/design/pool.py` now runs both phases
+# through one pool: the machinery went 37s to 15s on the laptop, the whole target 139s, same
+# figures, 6/6 mutations biting. **The runner has not measured the parallel target yet**, so
+# the declared cost stays at the last runner measurement rather than a projection from a
+# fourteen-core laptop -- the mistake `claims` made on its first day -- and `claim-6` keeps
+# its own bin until the first warm run on `main` says what it costs. This comment is where
+# that number goes.
+CLAIM_6_COST := 1170
 CLAIM_7_COST := 98
 GATE_PROOF_COST := 30
 SILVER_COST := 165
