@@ -820,31 +820,17 @@ tests/                 the suite the gates run
 docs/
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
-.github/               **Five workflows**, all built: `ci.yml` on every push, and the four
-                       that dispatch — `deploy · backfill · run · destroy` — in the table below
-infra/                 Terraform. **Six layers exist**: `bootstrap/` — state backend, OIDC,
+.github/               **`ci.yml`, and it is the only one.** The four that dispatch are phase 3
+                       and are listed below as declared rather than built
+infra/                 Terraform. **Four layers exist**: `bootstrap/` — state backend, OIDC,
                        the deploy role, the published parameters and the budget, applied from a
                        laptop once — `foundation/` — the data key, the four S3 zones, the
-                       workspace, the metastore switch and the TTL reaper — `lakehouse/` —
-                       the catalog, the schemas and the two compiled AI/BI dashboards —
-                       `pipelines/` — the three jobs that move bronze to silver to gold —
-                       `ml/` — the training job and the registered model — and `serving/` —
-                       the endpoint, applied last and destroyed first. `make terraform`
+                       workspace, the metastore switch and the TTL reaper — and `lakehouse/` —
+                       the catalog, the schemas and the two compiled AI/BI dashboards — and
+                       `pipelines/` — the three jobs that move bronze to silver to gold. The
+                       other two (`ml · serving`) are phase 3, and `make terraform`
                        validates every layer the glob finds rather than a list
 ```
-
-> **Both counts above are figures now, and the block said `Four layers exist` and `ci.yml, and
-> it is the only one` until 2026-09-11.** `ml/` and `serving/` were applied on 2026-09-10 and
-> the four dispatch workflows had all existed since 2026-09-08; the sentences stayed, and every
-> gate was green — the third crossing of this block's own rule, after the two the note below
-> records, and the one that made it a property of the instrument rather than an accident of two
-> branches. `make findings` restated its anchor on this line three times in three days as layers
-> landed and called that *the anchor working*; it can see a line move and cannot see a line stay
-> while the world moves. So `make figures`'s `PROSE` registry now re-runs both counts against
-> the tree — the layers `make terraform` would validate, the files under `.github/workflows/` —
-> and a directory named under *Declared and not yet built* that exists is a red run in its own
-> right. Found by the phase-3 integration review, `docs/reviews/phase-3.md` §2a and §3. The
-> prior wording stays per doctrine rule 4; the count is the delta.
 
 > **This block said `Two layers exist` and named `foundation` among the four that do not, until
 > `T018` built it on 2026-09-06.** The rule stated below — *a directory that does not exist may
