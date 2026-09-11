@@ -622,7 +622,14 @@ CLAIM_5_COST := 750
 # fourteen-core laptop -- the mistake `claims` made on its first day -- and `claim-6` keeps
 # its own bin until the first warm run on `main` says what it costs. This comment is where
 # that number goes.
-CLAIM_6_COST := 1170
+#
+# **And it is 790, a bound above the maximum of two warm runs alone on the runner: 789s on
+# run 34619195151 and 779s on run 34621974806.** Two observations, both kept, because a
+# maximum over one is one. Over the budget by nothing: at 790 nothing in this list fits
+# beside it under 800, so `claim-6` stays its own bin **on merit**, exactly as `claim-5`
+# does, and a cost that is a runner measurement rather than a cold bound is what lets the
+# ceiling say something the next time the target moves.
+CLAIM_6_COST := 790
 CLAIM_7_COST := 98
 GATE_PROOF_COST := 30
 SILVER_COST := 165
