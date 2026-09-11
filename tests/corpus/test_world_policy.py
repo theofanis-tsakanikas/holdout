@@ -92,6 +92,9 @@ def test_a_price_never_falls_below_a_cent(ladder: MarkdownPolicy) -> None:
 
 def test_the_candidate_is_the_same_rungs_a_quarter_shallower(ladder: MarkdownPolicy) -> None:
     treatment = candidate(ladder)
+    assert treatment.policy_id == "shallow_ladder_policy@v1", (
+        "the candidate is a contract since 2026-09-11, and this is the one it is"
+    )
     assert treatment.policy_id != ladder.policy_id
     for control_step, treated_step in zip(ladder.steps, treatment.steps, strict=True):
         assert treated_step.hours_to_expiry_at_most == control_step.hours_to_expiry_at_most

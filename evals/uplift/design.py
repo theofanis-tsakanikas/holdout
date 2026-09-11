@@ -202,6 +202,15 @@ def form(
     treatment arm's ref is `corpus/world/policy.candidate`'s, which is **not** a version in
     `contracts/policies/` — a gap recorded as a deferral in `docs/DECISIONS.md` rather than
     papered over, and one the engine does not currently look for.
+
+    **Restated 2026-09-11 by `T026`: the gap is closed and the deferral could not be found.**
+    The candidate is `contracts/policies/shallow_ladder_policy@v1.yaml` and
+    `policy.candidate` reads it as data, so the ref this form names is in the compiled
+    closed list. What closed it was not this harness but the agent: asked twelve questions
+    it declined all twelve, because the schema it delivers through does not let it skip the
+    list the way this function does. And the deferral the sentence above points at is in no
+    entry of `docs/DECISIONS.md` that a search for the policy's name finds -- prose claiming
+    a record nobody wrote, the shape `CLAUDE.md` catalogues, recorded here rather than erased.
     """
     return DesignForm(
         hypothesis=(

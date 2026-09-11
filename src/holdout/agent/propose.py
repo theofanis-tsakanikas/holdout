@@ -53,6 +53,15 @@ FORM_SCHEMA = REPO_ROOT / "generated" / "design" / "form.schema.json"
 
 PROPOSE = "propose_design"
 
+#: The second and last turn a question gets when the first ended in prose. Part of what the
+#: model is told, so part of the prompt fingerprint.
+NUDGE = (
+    f"That analysis is not an answer. Either call `{PROPOSE}` now with the design you have "
+    "reasoned your way to -- a design you expect to be refused is still a design, and the "
+    "refusal is the system's to give -- or say in one line that no design can be expressed "
+    "for this question and why."
+)
+
 #: Attribution rather than a field, stamped by `complete()`, and so never in the delivery tool.
 ATTRIBUTION = "filled_by"
 
@@ -99,7 +108,7 @@ class TraceRow:
     """One thing that happened, in order. `kind` is one of a closed set of five."""
 
     step: int
-    kind: str  # model | tool | proposal | refused_tool | failed
+    kind: str  # model | tool | proposal | refused_tool | nudge | failed
     name: str
     input_tokens: int = 0
     output_tokens: int = 0
@@ -227,7 +236,7 @@ def system_prompt(context: dict[str, str]) -> str:
 def prompt_fingerprint(context: dict[str, str]) -> str:
     """A digest over the system prompt and the delivery tool -- what the model was told."""
     canonical = json.dumps(
-        {"system": system_prompt(context), "deliver": proposal_tool()},
+        {"system": system_prompt(context), "deliver": proposal_tool(), "nudge": NUDGE},
         sort_keys=True,
         separators=(",", ":"),
     )
@@ -257,6 +266,7 @@ def propose(
     tokens_spent = 0
     tool_calls_made = 0
     step = 0
+    nudged = False
 
     def failed(which: str, detail: str) -> Outcome:
         trace.append(TraceRow(step=step, kind="failed", name=which, detail=detail))
@@ -307,6 +317,20 @@ def propose(
 
         tool_uses = [b for b in response.content if getattr(b, "type", "") == "tool_use"]
         if response.stop_reason != "tool_use" or not tool_uses:
+            if not nudged:
+                # **One nudge, and only one.** Measured on 2026-09-11: ten of twelve questions
+                # ended with the model writing its analysis as prose and stopping, the design
+                # it had reasoned its way to never delivered. A second turn that says "deliver
+                # or decline in one line" is not pressure to propose what the model judges
+                # impossible -- declining is still an answer -- and it is bounded, so a model
+                # that will not deliver costs one more call and not a loop. Recorded in the
+                # trace as its own kind, so a recording shows which proposals needed it.
+                nudged = True
+                trace.append(TraceRow(step=step, kind="nudge", name=PROPOSE))
+                messages.append({"role": "assistant", "content": response.content})
+                messages.append({"role": "user", "content": NUDGE})
+                transcript.append({"role": "user", "content": NUDGE})
+                continue
             return failed(
                 "no_delivery",
                 f"the model stopped with {response.stop_reason!r} without calling {PROPOSE}",

@@ -26,6 +26,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LADDER_CONTRACT = REPO_ROOT / "contracts" / "policies" / "ladder_policy@v1.yaml"
+CANDIDATE_CONTRACT = REPO_ROOT / "contracts" / "policies" / "shallow_ladder_policy@v1.yaml"
 
 #: What a price produced by the ladder carries, all the way to the label, the P&L and the
 #: experiment — doctrine rule 2. Read from the contract, not written here.
@@ -131,43 +132,36 @@ def contract_ladder(path: Path = LADDER_CONTRACT) -> MarkdownPolicy:
     return from_contract_document(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
-def candidate(
-    control: MarkdownPolicy, policy_id: str = "ladder_policy@candidate"
-) -> MarkdownPolicy:
-    """The treatment arm: the same rungs, a quarter shallower at every one of them.
+def candidate(control: MarkdownPolicy, path: Path = CANDIDATE_CONTRACT) -> MarkdownPolicy:
+    """The treatment arm: `shallow_ladder_policy@v1`, read as data.
 
-    Public on purpose. A design form declares `intervention: {treatment, control}`, so what is
-    being tested was never a secret — the *effect* is, and the effect is emergent. Nothing here
-    says how much money this makes, and reading it will not tell you.
+    **Read from a contract since 2026-09-11, computed from the ladder before it.** This function
+    used to take a quarter off every depth of `control` and name the result
+    `ladder_policy@candidate` -- a policy ref that existed in this package and nowhere else, so
+    the compiled design form's closed list did not contain it and the agent, asked twelve
+    questions about interventions, declined all twelve for want of a treatment it could name.
+    The A/A harness never noticed because it builds its form in Python and skips the schema. A
+    treatment the estate's own experiment delivers, that no design may name, is two definitions
+    of one thing, and the contract is the one that stays.
 
-    **Why shallower rather than deeper.** The obvious candidate is a more aggressive ladder,
-    and it was the first one written here. Measured against its own counterfactual it destroyed
-    between 5% and 25% of category margin, for a reason the generator has and nobody typed in:
-    reference-price memory. A store that marks down harder teaches its shoppers a lower normal
-    price, and the demand it loses at full price the rest of the week costs more than the waste
-    it saved. That is a real mechanism in grocery retail and it is why the effect of a markdown
-    policy is not obvious from arithmetic — which is the entire reason this project holds stores
-    back to measure it.
+    `control` is still taken, for the one thing this function still checks: the candidate must
+    be the ladder's rungs at the ladder's hours, or it is not the candidate. The depths' relation
+    to the ladder's -- a quarter shallower -- is asserted by `tests/corpus/test_world_policy.py`
+    against both contracts, so the two cannot drift apart without a red run.
 
-    So the treatment is the hypothesis a category manager actually proposes: *we are giving
-    away more than we need to.* It leaves the rungs where the contract puts them and takes a
-    quarter off each depth. Waste rises a little and realised price rises more.
-
-    **What calibration recorded, and what it deliberately did not.** The candidate was chosen
-    by running it against its own counterfactual, so the sign is known and is disclosed here:
-    the effect is real and it is positive, which is what W6 requires of it — a world where
-    nothing happens is W1 and already exists. The *magnitude* is not written down anywhere,
-    including here, because it moved by a factor of four between seeds and by more than that
-    between scales. There is no such number as "the effect of this policy": there is only the
-    effect in a given world, computed after the readout. That is not a limitation of the
-    corpus. It is the thing the project is about.
+    **Why shallower rather than deeper** is now the contract's own comment, kept in full there.
+    The short form: a deeper ladder teaches shoppers a lower normal price, and what it loses at
+    full price the rest of the week costs more than the waste it saves. The *magnitude* of the
+    candidate's effect is written nowhere, including here, because it moved by a factor of four
+    between seeds: there is only the effect in a given world, computed after the readout.
     """
-    steps = tuple(
-        LadderStep(
-            step=step.step,
-            hours_to_expiry_at_most=step.hours_to_expiry_at_most,
-            depth_pct=max(1, round(step.depth_pct * 3 / 4)),
+    treatment = contract_ladder(path)
+    if tuple(s.hours_to_expiry_at_most for s in treatment.steps) != tuple(
+        s.hours_to_expiry_at_most for s in control.steps
+    ):
+        raise ValueError(
+            f"{treatment.policy_id} does not share {control.policy_id}'s rungs; a candidate "
+            "that moves the hours as well as the depths is two changes, and the experiment "
+            "could not say which one it measured."
         )
-        for step in control.steps
-    )
-    return MarkdownPolicy(policy_id=policy_id, marker=control.marker, steps=steps)
+    return treatment

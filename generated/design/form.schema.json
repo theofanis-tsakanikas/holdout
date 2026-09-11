@@ -72,14 +72,16 @@
         "control": {
           "$comment": "closed list `policy_refs`, resolved from the contracts at compile time. Do not edit: add or remove the contract instead.",
           "enum": [
-            "ladder_policy@v1"
+            "ladder_policy@v1",
+            "shallow_ladder_policy@v1"
           ],
           "type": "string"
         },
         "treatment": {
           "$comment": "closed list `policy_refs`, resolved from the contracts at compile time. Do not edit: add or remove the contract instead.",
           "enum": [
-            "ladder_policy@v1"
+            "ladder_policy@v1",
+            "shallow_ladder_policy@v1"
           ],
           "type": "string"
         }

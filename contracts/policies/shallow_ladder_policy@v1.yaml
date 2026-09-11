@@ -1,0 +1,91 @@
+# The candidate: the same rungs as the ladder, a quarter shallower at every one of them.
+#
+# **A second policy rather than a second version.** `ladder_policy` is one id with one version
+# in force; a `ladder_policy@v2` would supersede v1 and the timeline check would require it to,
+# because that family models *which ladder the estate runs*, not which ladders it could compare.
+# An experiment names two policies and asks which is better. If this one wins, the answer is a
+# `ladder_policy@v2` that supersedes v1 with these steps -- and that is the decision rule's job,
+# never this file's.
+#
+# **Why it exists as a contract, from 2026-09-11.** It lived in `corpus/world/policy.py` as
+# `candidate()`, computed from the ladder and named `ladder_policy@candidate` -- a policy ref the
+# compiled design form's closed list did not contain, so the A/A harness could name it only
+# because the harness builds its form in Python and skips the schema. The agent cannot skip the
+# schema: asked twelve questions about interventions on 2026-09-11 it declined all twelve, each
+# time for the reason that the only policy it could name was the control. A treatment the
+# estate's own experiment runs, that no design may name, is two definitions of one thing.
+#
+# **Why shallower rather than deeper**, kept from the code it replaces: the obvious candidate is
+# a more aggressive ladder, and measured against its own counterfactual it destroyed between
+# 5% and 25% of category margin through reference-price memory -- a store that marks down harder
+# teaches its shoppers a lower normal price. The treatment is the hypothesis a category manager
+# actually proposes: *we are giving away more than we need to.* The **magnitude** of its effect
+# is written nowhere, including here; it moved by a factor of four between seeds.
+#
+# `tests/corpus/test_world_policy.py` asserts every depth here is `round(3/4 × the ladder's)`,
+# so the two contracts cannot drift apart without a red run.
+
+id:             shallow_ladder_policy
+version:        1
+effective_from: 2026-03-01
+effective_to:   null
+supersedes:     null
+title:          The ladder, a quarter shallower -- the candidate the estate tests against it
+kind:           deterministic
+decision_path:  markdown
+safe_state:     false
+marker:         FALLBACK_LADDER
+
+description: >-
+  The same schedule of reductions as ladder_policy@v1, keyed on the same hours before expiry,
+  with every depth reduced by a quarter. Deterministic for the same reason the ladder is: one
+  correct answer for a given input, no model consulted. It is not a safe state -- the fresh
+  path falls to ladder_policy@v1 and to nothing else -- and it carries the ladder's marker
+  because a price it produces is still a ladder price and not a model's.
+
+steps:
+
+  - step: 1
+    hours_to_expiry_at_most: 24
+    depth_pct: 15
+    source:
+      kind: scenario_assumption
+      note: >-
+        round(20 × 3/4). Derived from ladder_policy@v1's first rung by the rule that made the
+        corpus's candidate, and checked against it by test rather than trusted.
+      verified_on: 2026-09-11
+
+  - step: 2
+    hours_to_expiry_at_most: 12
+    depth_pct: 26
+    source:
+      kind: scenario_assumption
+      note: round(35 × 3/4), derived from the ladder's second rung.
+      verified_on: 2026-09-11
+
+  - step: 3
+    hours_to_expiry_at_most: 6
+    depth_pct: 38
+    source:
+      kind: scenario_assumption
+      note: round(50 × 3/4), derived from the ladder's third rung.
+      verified_on: 2026-09-11
+
+  - step: 4
+    hours_to_expiry_at_most: 3
+    depth_pct: 52
+    source:
+      kind: scenario_assumption
+      note: >-
+        round(70 × 3/4) under Python's round-half-to-even, which is the rounding the code that
+        made the candidate used; 52.5 rounds to 52 there and to 53 under half-up. Recorded so
+        that a reader who recomputes it by hand and gets 53 knows which rule was applied.
+      verified_on: 2026-09-11
+
+floor_behaviour:
+  when_step_breaches_floor: clamp_to_floor
+  statement: >-
+    As the ladder: a step whose price falls below the floor guardrail is applied at the floor,
+    not at the step, and the guardrail set decides whether any legal price sells the item.
+
+idempotency_key: [sku_id, store_id, ladder_step]
