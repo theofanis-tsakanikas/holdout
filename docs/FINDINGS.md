@@ -3205,7 +3205,14 @@ pretend to be one. What it changes is that *did you run `make check-locked`* has
 > and the difference is that this one has a gate over it and went red in seconds rather than on a
 > runner four days later. The prior wording stays per doctrine rule 4.
 
-*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*", "mlflow.*", "pandas.*"]`
+*Site:* `pyproject.toml` :: `module = ["jsonschema.*", "pyarrow.*", "pyspark.*", "delta.*", "deltalake.*", "dbt.*", "boto3.*", "mlflow.*", "pandas.*", "anthropic.*"]`
+
+> **Anchor restated 2026-09-11 by `T025`**, when `anthropic.*` joined the list -- the `agent`
+> extra's client, found by `gate` the way `dbt` was, on a runner after a green local `make
+> check`. The line read `... "mlflow.*", "pandas.*"]` before. The finding is still open and
+> still about the same thing: this list grew by hand a fourth time, and the two lists it must
+> agree with did not move, because a client is not an engine. Whether that asymmetry is the
+> finding's point or its exception is for the disposition below.
 *Site:* `tests/boundary/test_the_engine_is_never_skipped.py` :: `def test_every_engine_is_ignorable_by_mypy() -> None:`
 *Site:* `Makefile` :: `check-locked:  ## make check in the environment CI's`
 *Disposition:* `pipelines/gold`, which is this branch, for the two lists that can be compared and
