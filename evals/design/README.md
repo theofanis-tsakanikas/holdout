@@ -11,6 +11,8 @@ make claim-6          the eval, and the mutations claim 6 owns
 make eval-design      the eval alone
 make record-designs   ask the model every question in the bank and seal the answers -- deliberate,
                       never run by CI, and the only step here that opens a socket
+
+python -m evals.design.machinery   the same checks at one lottery per design -- what a mutation runs
 ```
 
 **The trap, in this eval's own words.** The thing under test is a set of refusals. If the
@@ -55,6 +57,8 @@ refusal prevented. A confident number whose interval excludes the truth is a wro
 | `D5.three-sources-one-verdict` | does the same form, stamped `agent`, `human:<name>` and `policy:<name>`, produce byte-identical verdicts — and does a planted branch on `filled_by` inside the engine turn this red? |
 | `D6.a-refused-design-run-anyway-is-wrong-at-the-rate-the-refusal-predicts` | over the refused designs that can be run, is the share producing a confident wrong number at least what the refusal's own reason implies — and never below the false-positive floor a valid design would have? |
 | `D7.every-reachable-refusal-is-reached` | does the recording reach every `at_design` code the agent's route can reach — and is every code it cannot reach named, with the reason, rather than absent? |
+| `D10.a-peeking-design-is-refused-and-run-anyway-it-reports-false-positives` | is every design, under a group-sequential rule with no spending function, refused `STOPPING_RULE_PERMITS_PEEKING` — and, run anyway on the null world with the number read at every look, is the false-positive rate published beside α? |
+| `D11.a-post-hoc-exclusion-is-refused-and-run-anyway-it-moves-the-estimate` | is a locked design re-submitted with its best controls excluded refused `EXCLUSIONS_DEFINED_POST_HOC` — and, run anyway, does the raw difference move in the direction the exclusion was chosen to move it, every time? |
 | `D9.the-interference-table-is-the-contracts` | for every unit of randomisation, does the engine's interference verdict equal the one derived a second way from the contract's carryover block — over every unit, not over the recording, so that a unit admitted by mistake is caught whatever the model proposed? |
 | `D8.the-power-boundary-lands-where-independent-arithmetic-puts-it` | for every graded design, does a second implementation of the power boundary — `Decimal`, solved rather than searched — agree with the engine on refuse-or-accept, on which code, and on the window and sample where it accepts? |
 
@@ -113,17 +117,23 @@ quietly.
   the day, and `D1` refuses a stale one, but it is one model's answers on one day and the claim
   is about the engine, not about that model. A stronger proposer produces fewer refusals for
   cruder reasons and more for subtle ones; the numbers are read with the model id beside them.
-- **`K` is computed only for the refusals the harness can run.** A design refused as
-  underpowered can be drawn and closed; one refused because its unit guarantees interference
-  can be run on the world that has interference; one refused because its metric is not in the
-  contract cannot be run at all, because there is nothing to measure. Every refusal that cannot
-  be run is counted and named in the output, and the rate is over the ones that can.
-- **`K`'s rate on a null world is bounded below by α, and that bound is not a finding.** An
-  underpowered design on W1 produces a false positive at the declared rate whatever the engine
-  said; the eval publishes that expectation beside the measurement so a number that merely
-  matches α is not read as a save. What `K` shows is the refusals whose reason predicts a rate
-  *above* α — peeking, interference, post-hoc exclusions — where the design is wrong for a
-  reason, not by chance.
+- **`K` is three numbers, and one of them measures α.** The power refusals run with the guards
+  off are wrong at the declared rate on the null world whatever the engine said — the eval
+  prints the expectation beside the count so that number is never read as a save. Peeking and
+  post-hoc exclusions are run under the violation itself, and there the refusal is a save with a
+  count on it: on the first published run, four unadjusted looks reported a false positive in
+  **4 of 28** lotteries against an honest **1 of 28**, and excluding the best eight controls
+  raised the raw difference in **4 of 4** and turned **1 of 4** significant on a world whose true
+  effect is zero.
+- **Interference has no `K`, and the reason is the refusal's own.** Under interference a unit's
+  outcome depends on its neighbours' arms, so there is no potential outcome to subtract and no
+  truth for a number to be wrong against. A `K` computed there would be the eval inventing the
+  estimand the refusal exists to say does not exist. Interference refusals are counted as
+  refused-not-runnable, with the reason.
+- **The published rates are over four lotteries per design.** Enough to see a peeker's rate sit
+  above α, not enough for a third decimal; the count is a budget against one CI entry and says
+  so in `contracts/design/design_harness.yaml`. A mutation runs the same checks at one lottery,
+  where every assertion is a property of one draw and no rate is printed as though it were one.
 - **Two of the three metrics the agent may name have a pre-period here; the third does not.**
   The harness ledger carries revenue, cost of goods and waste, so a design on the margin or on
   waste value is assessed against its own metric's history. `units_sold_per_store_week` has no

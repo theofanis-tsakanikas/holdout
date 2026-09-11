@@ -1,0 +1,24 @@
+# The re-submission that reads as housekeeping: the same experiment, opened again with a
+# handful of stores excluded "on review", each with a sentence beside it. The engine compares
+# the exclusion set against the one locked when the experiment opened, and this change stops
+# it looking -- the locked form is compared with itself, the copy-paste shape, and the
+# comparison stays in the code and is never true. D11 locks every accepted
+# design, moves its best controls out, and asserts the refusal; run anyway, the raw difference
+# rose in every case on the first published run and one of four became significant on a world
+# whose true effect is zero.
+
+id:          a-locked-design-forgets-its-exclusions
+claim:       6
+eval_module: evals.design.machinery
+targets:     [D11.a-post-hoc-exclusion-is-refused-and-run-anyway-it-moves-the-estimate]
+
+breaks: >-
+  a design re-submitted with a different exclusion set from the one locked at moment 1 is
+  accepted as the same design, so exclusions can be chosen after the outcomes are known.
+
+file: src/holdout/core/design/feasibility.py
+
+anchor: |
+    if previously_locked is not None and previously_locked.exclusion_pairs != form.exclusion_pairs:
+replacement: |
+    if previously_locked is not None and previously_locked.exclusion_pairs != previously_locked.exclusion_pairs:

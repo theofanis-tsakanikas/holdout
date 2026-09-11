@@ -447,6 +447,22 @@ class TrainingSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class DesignHarness:
+    """`contracts/design/design_harness.yaml`, resolved. What claim 6's **eval** consumes.
+
+    Beside `AaHarness` and apart from `InferenceSettings`, for the reason that one gives: a
+    number the engine never reads must not be mistakeable for one it does.
+    """
+
+    version: int
+    effective_from: date
+    lotteries_per_design: int
+    peeking_looks: int
+    post_hoc_controls_excluded: int
+    machinery_lotteries_per_design: int
+
+
+@dataclass(frozen=True, slots=True)
 class RuntimeSettings:
     """`contracts/agent/runtime.yaml`, resolved.
 
@@ -485,6 +501,7 @@ class ContractSet:
     training: TrainingSettings
     runtime: RuntimeSettings
     aa_harness: AaHarness
+    design_harness: DesignHarness
     design_form: MappingProxyType[str, Any]
     census: Any
     """The provenance walk's tally — see `holdout.contracts.provenance.Census`. Typed loosely
