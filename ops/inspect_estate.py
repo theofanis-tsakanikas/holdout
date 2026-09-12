@@ -39,6 +39,7 @@ import re
 import sys
 import time
 import urllib.error
+from pathlib import Path
 from typing import Any
 
 from ops.run_assertions import _api, _declared_reason_codes
@@ -107,11 +108,24 @@ def _one(statement: str, warehouse_id: str, catalog: str) -> Any:
 
 
 # ------------------------------------------------------------------ the tables
-def check_tables(catalog: str, warehouse_id: str) -> int:
+def check_tables(catalog: str, warehouse_id: str, bronze_volume: str) -> int:
     failed = 0
     print("── tables, with their rows")
+    # **Bronze is files in a volume, not tables in a schema** -- measured on run 34676694580,
+    # where `SHOW TABLES IN holdout.bronze` returned nothing over an estate whose silver held
+    # six million sales. `pipelines/ingest` lands one directory per source under the bronze
+    # volume and `pipelines/silver` reads them by path; the schema exists for the volume.
+    listed = sql(f"LIST '{bronze_volume}'", warehouse_id)
+    if not listed.ok:
+        print(f"FAIL  LIST {bronze_volume}: {listed.error or listed.state}")
+        failed = 1
+    else:
+        sources = sorted(r[1].rstrip("/").rsplit("/", 1)[-1] for r in listed.rows)
+        print(f"  bronze volume {bronze_volume}: {len(sources)} source(s) {sources}")
+        if not sources:
+            print("FAIL  the bronze volume is empty; nothing was ingested")
+            failed = 1
     for schema, expected in (
-        ("bronze", ()),
         ("silver", EXPECTED["silver"]),
         ("gold", EXPECTED["gold"]),
     ):
@@ -130,9 +144,6 @@ def check_tables(catalog: str, warehouse_id: str) -> int:
             except RuntimeError as bad:
                 print(f"  {schema}.{name:<32} unreadable: {str(bad)[:120]}")
                 failed = 1
-        if schema == "bronze" and not names:
-            print("FAIL  bronze holds no tables; nothing was ingested")
-            failed = 1
         for name in expected:
             if name not in names:
                 print(f"FAIL  {catalog}.{schema}.{name} is not there, and the pipelines write it")
@@ -270,8 +281,53 @@ def check_dashboards(warehouse_id: str) -> int:
                     + ("   <- EMPTY" if not got.rows else "")
                 )
             else:
-                print(f"    {dataset['name']:<20} CANNOT DRAW: {(got.error or got.state)[:220]}")
+                print(f"    {dataset['name']:<20} CANNOT DRAW: {(got.error or got.state)[:900]}")
                 failed = 1
+    return failed
+
+
+# ------------------------------------------------------------------ the demo's own queries
+DEMO_QUERIES = Path(__file__).with_name("demo_queries.sql")
+
+
+def demo_blocks(text: str) -> list[tuple[str, str, bool]]:
+    """`(name, sql, expect_refused)` per `-- @name` block, comments stripped from the SQL."""
+    blocks: list[tuple[str, str, bool]] = []
+    name, refused = "", False
+    lines: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("-- @name"):
+            if name:
+                blocks.append((name, "\n".join(lines).strip().rstrip(";"), refused))
+            name, refused, lines = stripped.split(None, 2)[2], False, []
+        elif stripped.startswith("-- @expect refused"):
+            refused = True
+        elif name and not stripped.startswith("--"):
+            lines.append(line)
+    if name:
+        blocks.append((name, "\n".join(lines).strip().rstrip(";"), refused))
+    return blocks
+
+
+def check_demo_queries(warehouse_id: str) -> int:
+    """Every query the recording will type, run now, so the recording shows a measurement."""
+    print(f"── the demo's queries, from {DEMO_QUERIES.name}")
+    failed = 0
+    for name, statement, expect_refused in demo_blocks(DEMO_QUERIES.read_text(encoding="utf-8")):
+        got = sql(statement, warehouse_id)
+        if expect_refused:
+            if got.ok:
+                print(f"  {name:<48} ACCEPTED, and the estate had to refuse it")
+                failed = 1
+            else:
+                print(f"  {name:<48} refused: {(got.error or got.state)[:90]}")
+        elif got.ok:
+            first = json.dumps(got.rows[0], default=str)[:110] if got.rows else "-"
+            print(f"  {name:<48} {len(got.rows):>6} row(s)  {first}")
+        else:
+            print(f"  {name:<48} FAILED: {(got.error or got.state)[:300]}")
+            failed = 1
     return failed
 
 
@@ -311,13 +367,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--catalog", required=True)
     parser.add_argument("--warehouse-id", required=True)
     parser.add_argument("--endpoint", required=True)
+    parser.add_argument("--bronze-volume", required=True)
     args = parser.parse_args(argv)
 
     failed = 0
-    failed |= check_tables(args.catalog, args.warehouse_id)
+    failed |= check_tables(args.catalog, args.warehouse_id, args.bronze_volume)
     failed |= check_readout(args.catalog, args.warehouse_id)
     failed |= check_assignment(args.catalog, args.warehouse_id)
     failed |= check_dashboards(args.warehouse_id)
+    failed |= check_demo_queries(args.warehouse_id)
     failed |= check_endpoint(args.endpoint)
     failed |= check_lineage(args.catalog, args.warehouse_id)
     print()

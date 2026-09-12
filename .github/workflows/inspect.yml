@@ -92,7 +92,9 @@ jobs:
           CATALOG=$(param /holdout/lakehouse/catalog)
           WAREHOUSE=$(param /holdout/lakehouse/warehouse_id)
           ENDPOINT=$(param /holdout/serving/endpoint_name 2>/dev/null || echo "holdout-demand")
+          BRONZE=$(param /holdout/lakehouse/volume_bronze)
 
           uv sync --frozen --no-dev
           uv run python -m ops.inspect_estate \
-            --catalog "$CATALOG" --warehouse-id "$WAREHOUSE" --endpoint "$ENDPOINT"
+            --catalog "$CATALOG" --warehouse-id "$WAREHOUSE" --endpoint "$ENDPOINT" \
+            --bronze-volume "$BRONZE"
