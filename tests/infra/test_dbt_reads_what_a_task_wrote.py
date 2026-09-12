@@ -43,6 +43,20 @@ def _declared_sources(group: str | None = None) -> set[str]:
     }
 
 
+def _silver_tables() -> set[str]:
+    """`SILVER_TABLES` read off `pipelines/silver/build.py` as text, because importing it
+    imports pyspark and the `gate` job deliberately has none -- the reason `make test`
+    deselects silver's tests. The tuple is a literal, so the AST is the same declaration."""
+    import ast
+
+    module = ast.parse((tasks.REPO_ROOT / "pipelines" / "silver" / "build.py").read_text("utf-8"))
+    for node in module.body:
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", "") == "SILVER_TABLES":
+            assert node.value is not None
+            return set(ast.literal_eval(node.value))
+    raise AssertionError("pipelines/silver/build.py no longer declares SILVER_TABLES as a literal")
+
+
 def test_there_is_a_dbt_task_to_check() -> None:
     """An empty population passes every assertion below it and proves nothing."""
     assert JOBS.is_file(), f"{JOBS} is gone; this gate and the job it judges move together."
@@ -83,15 +97,13 @@ def test_the_sources_are_the_tables_that_task_writes() -> None:
     gold job starts; a table declared there that silver does not write is the same relation
     dbt looks for and nothing creates, one job further up.
     """
-    from pipelines.silver.build import SILVER_TABLES
-
     assert _declared_sources("priced") == set(facts.PRICED_TABLES), (
         f"sources.yml's `priced` group declares {sorted(_declared_sources('priced'))} and "
         f"pipelines/gold/facts.py writes {sorted(facts.PRICED_TABLES)}. The ordering above is "
         "only worth having while these are the same set: a source added to one and not the "
         "other is a relation dbt looks for and no task creates."
     )
-    unwritten = _declared_sources("silver") - set(SILVER_TABLES)
+    unwritten = _declared_sources("silver") - _silver_tables()
     assert not unwritten, (
         f"sources.yml's `silver` group declares {sorted(unwritten)}, which "
         "pipelines/silver/build.py does not write. dbt would look for it after a silver job "
