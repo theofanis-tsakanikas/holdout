@@ -4,6 +4,98 @@
     {
       "displayName": "category_margin_per_store_week@v3 by arm",
       "name": "arm_metric",
+      "parameters": [
+        {
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "displayName": "data_version_gold_decision_economics",
+          "keyword": "data_version_gold_decision_economics"
+        },
+        {
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "displayName": "data_version_gold_experiment_assignment",
+          "keyword": "data_version_gold_experiment_assignment"
+        },
+        {
+          "dataType": "INTEGER",
+          "defaultSelection": {
+            "values": {
+              "dataType": "INTEGER",
+              "values": [
+                {
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "displayName": "data_version_gold_waste",
+          "keyword": "data_version_gold_waste"
+        },
+        {
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "fresh-ladder"
+                }
+              ]
+            }
+          },
+          "displayName": "experiment_id",
+          "keyword": "experiment_id"
+        },
+        {
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1970-W01"
+                }
+              ]
+            }
+          },
+          "displayName": "period_end",
+          "keyword": "period_end"
+        },
+        {
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "1970-W01"
+                }
+              ]
+            }
+          },
+          "displayName": "period_start",
+          "keyword": "period_start"
+        }
+      ],
       "queryLines": [
         "-- GENERATED FILE — DO NOT EDIT\n",
         "-- source:     contracts/metrics/category_margin_per_store_week.v3.yaml\n",
@@ -100,15 +192,25 @@
       "name": "verdict",
       "queryLines": [
         "select\n",
+        "  coalesce(cast(uplift as string), reason_code) as verdict,\n",
         "  experiment_id,\n",
+        "  moment,\n",
+        "  metric_ref,\n",
+        "  data_version,\n",
+        "  period_opens_on,\n",
+        "  period_ends_on,\n",
+        "  seed,\n",
         "  uplift,\n",
-        "  confidence_interval,\n",
+        "  ci_low,\n",
+        "  ci_high,\n",
         "  p_value,\n",
-        "  alpha,\n",
-        "  digest,\n",
-        "  data_version\n",
+        "  draws,\n",
+        "  reason_code,\n",
+        "  reason_codes,\n",
+        "  checks,\n",
+        "  digest\n",
         "from gold.readout\n",
-        "where experiment_id = :experiment_id\n"
+        "order by experiment_id\n"
       ]
     }
   ],
@@ -178,6 +280,51 @@
         },
         {
           "position": {
+            "height": 3,
+            "width": 12,
+            "x": 0,
+            "y": 7
+          },
+          "widget": {
+            "name": "verdicts",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "verdict"
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "experiment_id"
+                  },
+                  {
+                    "fieldName": "verdict"
+                  },
+                  {
+                    "fieldName": "ci_low"
+                  },
+                  {
+                    "fieldName": "ci_high"
+                  },
+                  {
+                    "fieldName": "p_value"
+                  },
+                  {
+                    "fieldName": "reason_codes"
+                  }
+                ]
+              },
+              "version": 3,
+              "widgetType": "table"
+            }
+          }
+        },
+        {
+          "position": {
             "height": 4,
             "width": 6,
             "x": 6,
@@ -224,7 +371,7 @@
             "height": 4,
             "width": 6,
             "x": 0,
-            "y": 7
+            "y": 10
           },
           "widget": {
             "name": "per_store_effect",
@@ -255,7 +402,7 @@
             "height": 4,
             "width": 6,
             "x": 6,
-            "y": 7
+            "y": 10
           },
           "widget": {
             "name": "locked_design",
@@ -274,13 +421,19 @@
                     "fieldName": "experiment_id"
                   },
                   {
+                    "fieldName": "seed"
+                  },
+                  {
                     "fieldName": "digest"
                   },
                   {
                     "fieldName": "data_version"
                   },
                   {
-                    "fieldName": "alpha"
+                    "fieldName": "period_opens_on"
+                  },
+                  {
+                    "fieldName": "period_ends_on"
                   }
                 ]
               },

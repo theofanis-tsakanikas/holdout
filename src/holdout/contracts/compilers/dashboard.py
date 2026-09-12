@@ -58,28 +58,40 @@ from holdout.contracts.compilers.readout import compile_readout
 if TYPE_CHECKING:
     from holdout.contracts.model import ContractSet, Metric
 
-#: The fields of `holdout.core.experiment.readout.Readout`, in its own declaration order.
+#: The columns of `gold.readout` **as the pipeline writes them** -- `pipelines/gold/experiments.py`'s
+#: `SCHEMA`, in its order.
 #:
-#: **Written here rather than imported**, because `holdout/contracts/` does not import
-#: `holdout/core/` and adding the first such import for a dashboard would be a new coupling
-#: direction bought with a picture. `tests/contracts/test_dashboard.py` compares the two
-#: in both directions, so a field renamed in the core turns the build red here.
+#: **Until 2026-09-12 this was the field list of `holdout.core.experiment.readout.Readout`**, the
+#: type, with a test that the two agreed in both directions -- and they did, while the table
+#: nobody had built was built by `T022` in a different shape: the interval flattened to
+#: `ci_low`/`ci_high`, the period to two dates, `alpha`, `statistic`, `balance` and `draw_index`
+#: not carried, and `reason_code` added, because a refusal is a row too and the type has no field
+#: for one. The screen's `verdict` dataset went on selecting `confidence_interval` and `alpha`
+#: from a table with neither, and would have failed to draw on the first day anybody opened it.
+#: Two projections of one thing -- the type and the table -- each compared with the compiler
+#: and never with each other. **Found by `ops/inspect_estate.py`, written the day the author
+#: asked whether the dashboards draw.**
+#:
+#: Written here rather than imported, because `holdout/contracts/` does not import
+#: `pipelines/`; `tests/contracts/test_dashboard.py` compares this tuple with the pipeline's
+#: `SCHEMA` in both directions, so a column the pipeline renames turns the build red here.
 READOUT_COLUMNS: tuple[str, ...] = (
     "experiment_id",
+    "moment",
     "metric_ref",
     "data_version",
-    "period",
+    "period_opens_on",
+    "period_ends_on",
     "seed",
-    "draw_index",
-    "digest",
     "uplift",
-    "confidence_interval",
+    "ci_low",
+    "ci_high",
     "p_value",
     "draws",
-    "alpha",
-    "statistic",
+    "reason_code",
+    "reason_codes",
     "checks",
-    "balance",
+    "digest",
 )
 
 #: The metric the readout screen is built for. The primary metric of the experiments this project
@@ -123,6 +135,47 @@ def _readout_metric(contracts: ContractSet) -> Metric:
     )
 
 
+#: The parameters the compiled readout carries, each with the default a dashboard needs to run
+#: at all. `data_version_*` are Delta versions and default to 0, the version every table has;
+#: `experiment_id` defaults to the first experiment `pipelines/gold/experiments.py` declares;
+#: the period bounds default to a window that matches nothing, so the screen opens empty rather
+#: than on a slice nobody chose.
+_PARAMETER_DEFAULTS: dict[str, tuple[str, str]] = {
+    "experiment_id": ("STRING", "fresh-ladder"),
+    "period_start": ("STRING", "1970-W01"),
+    "period_end": ("STRING", "1970-W01"),
+}
+
+
+def _readout_parameters(query: str) -> list[dict[str, Any]]:
+    """Every `:marker` in the compiled readout, declared the way Lakeview reads it."""
+    import re
+
+    markers = sorted(set(re.findall(r"(?<![:\w]):([A-Za-z_]\w*)", query)))
+    declared: list[dict[str, Any]] = []
+    for marker in markers:
+        if marker.startswith("data_version_"):
+            data_type, default = "INTEGER", "0"
+        elif marker in _PARAMETER_DEFAULTS:
+            data_type, default = _PARAMETER_DEFAULTS[marker]
+        else:
+            raise DashboardError(
+                f"the compiled readout carries a parameter `:{marker}` this compiler has no "
+                "default for, so the dashboard's dataset could not run. Declare it."
+            )
+        declared.append(
+            {
+                "displayName": marker,
+                "keyword": marker,
+                "dataType": data_type,
+                "defaultSelection": {
+                    "values": {"dataType": data_type, "values": [{"value": default}]}
+                },
+            }
+        )
+    return declared
+
+
 def compile_readout_dashboard(contracts: ContractSet) -> str:
     """The experiment readout screen. Four check tiles, a hero counter, and the locked design.
 
@@ -151,24 +204,30 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                 # `generated/readout/`, so the screen and the readout cannot disagree about the
                 # metric without `make contracts` going red.
                 "queryLines": compile_readout(metric).splitlines(keepends=True),
+                # **The compiled readout is parametrised, and a dashboard dataset that names a
+                # parameter it does not declare cannot run at all** -- measured on 2026-09-12 by
+                # `ops/inspect_estate.py`, which refuses to send such a query because the
+                # warehouse's answer is the same sentence. So every marker the readout carries
+                # is declared here, and the defaults are the one experiment and the tables'
+                # first versions: a viewer types the pinned versions off the readout row, which
+                # is the pin demonstrated rather than described.
+                "parameters": _readout_parameters(compile_readout(metric)),
             },
             {
                 "name": "verdict",
                 "displayName": "The number, or the reason there is none",
-                # Reads the readout row. The columns are `READOUT_COLUMNS`; the table is phase
-                # 3's and does not exist yet, which is recorded in `docs/FINDINGS.md` rather
-                # than hidden by a query that would silently return nothing.
+                # Every readout row, every column the pipeline writes, and one derived column:
+                # `verdict` is the uplift where there is one and the reason code where there is
+                # not -- **one column for both cases**, which is what "at the same size" means
+                # when it is a query rather than a sentence. No parameter: both experiments are
+                # shown, because the screen exists to put the refusal beside the number.
                 "queryLines": [
                     "select\n",
-                    "  experiment_id,\n",
-                    "  uplift,\n",
-                    "  confidence_interval,\n",
-                    "  p_value,\n",
-                    "  alpha,\n",
-                    "  digest,\n",
-                    "  data_version\n",
+                    "  coalesce(cast(uplift as string), reason_code) as verdict,\n",
+                    *(f"  {column},\n" for column in READOUT_COLUMNS[:-1]),
+                    f"  {READOUT_COLUMNS[-1]}\n",
                     "from gold.readout\n",
-                    "where experiment_id = :experiment_id\n",
+                    "order by experiment_id\n",
                 ],
             },
         ],
@@ -206,6 +265,30 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                     },
                     {
                         "widget": {
+                            "name": "verdicts",
+                            "queries": [{"name": "main", "query": {"datasetName": "verdict"}}],
+                            "spec": {
+                                "version": 3,
+                                "widgetType": "table",
+                                "encodings": {
+                                    "columns": [
+                                        {"fieldName": column}
+                                        for column in (
+                                            "experiment_id",
+                                            "verdict",
+                                            "ci_low",
+                                            "ci_high",
+                                            "p_value",
+                                            "reason_codes",
+                                        )
+                                    ]
+                                },
+                            },
+                        },
+                        "position": {"x": 0, "y": 7, "width": 12, "height": 3},
+                    },
+                    {
+                        "widget": {
                             "name": "arms_by_week",
                             "queries": [{"name": "main", "query": {"datasetName": "arm_metric"}}],
                             "spec": {
@@ -238,7 +321,7 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                                 },
                             },
                         },
-                        "position": {"x": 0, "y": 7, "width": 6, "height": 4},
+                        "position": {"x": 0, "y": 10, "width": 6, "height": 4},
                     },
                     {
                         "widget": {
@@ -252,15 +335,17 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                                         {"fieldName": column}
                                         for column in (
                                             "experiment_id",
+                                            "seed",
                                             "digest",
                                             "data_version",
-                                            "alpha",
+                                            "period_opens_on",
+                                            "period_ends_on",
                                         )
                                     ]
                                 },
                             },
                         },
-                        "position": {"x": 6, "y": 7, "width": 6, "height": 4},
+                        "position": {"x": 6, "y": 10, "width": 6, "height": 4},
                     },
                 ],
             }
