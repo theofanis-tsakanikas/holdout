@@ -62,6 +62,21 @@ from holdout.silver.price_displayed
 group by accepted
 order by accepted;
 
+-- @name every-price-on-this-estate-is-a-fallback
+-- Doctrine rule 2. The decision record, by outcome and marker, on the day the run drove: both
+-- declared policies are deterministic ladders, so the band is all amber -- no model touched the
+-- shelf, and the screen says so rather than hiding it behind a percentage.
+select
+  date(decided_at) as day,
+  outcome,
+  marker,
+  count(*) as decisions,
+  round(avg(depth_pct), 1) as mean_depth_pct
+from holdout.gold.decisions
+where date(decided_at) = (select max(date(decided_at)) from holdout.gold.decisions)
+group by 1, 2, 3
+order by 1, 2, 3;
+
 -- @name quarantine-is-a-health-metric
 -- Silver quarantines rather than drops; the size of the table is the figure.
 select count(*) as quarantined from holdout.silver.quarantine;
