@@ -3764,7 +3764,23 @@ write it.
 *Site:* `pipelines/gold/__init__.py` :: ``C`    `experiment_assignment` · `exposure` · `outcomes` · `readout`        two of four`
 *Disposition:* `T016`, alongside the model-to-scenario join. It is not `T013`'s — a producer needs
 the experiment to have run — and it is not phase 3's to discover, because what the estate can
-demonstrate is decided before it opens
+demonstrate is decided before it opens — then branch
+`lakehouse/the-readout-screen-reads-the-readout-table`, 2026-09-12
+*Closed:* 2026-09-12 — in two halves, eight days apart, and the gap between them is the finding
+this entry did not predict. `T022` gave the row a producer on 2026-09-08: `gold.readout`, written
+by the readout job with `reason_code` beside `uplift`, exactly one of them set. **And the screen
+went on reading the type.** The compiler's columns were the `Readout` dataclass's fields, tested
+against that dataclass in both directions, while the pipeline flattened the interval, dropped
+`alpha`, and added the refusal column — two projections of one table, each compared with the
+compiler and never with each other, so `verdict` selected `confidence_interval` and `alpha` from a
+table with neither and the project's central screen could not draw. Found by
+`ops/inspect_estate.py`, written the day the author asked whether the dashboards draw. Now the
+compiler's columns are the pipeline's `SCHEMA`, compared both ways by the test that used to
+compare the type; `verdict` derives one column — `coalesce(uplift, reason_code)` — so the
+refusal and the number share a cell; and every parameter the compiled readout carries is
+declared, because a dataset naming an undeclared marker cannot run at all
+*Now:* `src/holdout/contracts/compilers/dashboard.py` :: `#: The columns of `gold.readout` **as the pipeline writes them** -- `pipelines/gold/experiments.py`'s`
+*Now:* `pipelines/gold/__init__.py` :: ``C`    `experiment_assignment` · `exposure` · `outcomes` · `readout`        two of four`
 *Status:* open
 
 ---
