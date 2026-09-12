@@ -6299,3 +6299,31 @@ author's — whether the estate should route the live day's decisions through th
 the guardrails, which is `pipelines/decision` and a task nobody has written, or whether the
 project ships with the decision path proved local and the experiment proved on the estate
 *Status:* open
+
+---
+
+**Two workflow inputs that did nothing, found by an estate running a sha two hours old** ·
+found 2026-09-12 · by `ops/inspect_estate.py` reporting three tables absent after a `run` that
+passed on a `main` that wrote them
+
+`run.yml` declared `git_ref_pin` — *pin the jobs to the dispatched sha rather than to `main`*,
+default `true` — and applied it nowhere: its own header said *no `setup-terraform` here,
+deliberately*. `backfill` pins the jobs when it runs, and nothing since moves the pin, so `run`
+34686244804 drove the day through jobs pinned to `65518bb` while `main` was at `a598173` with the
+decision record in it. Every step asserted its figures and passed; the figures were the old
+code's. **An input that does nothing is worse than no input, because it reads as a promise**, and
+the workflow's own log printed the sha it was dispatched with beside jobs running another.
+
+And the repair path had the same defect one file over: `deploy.yml`'s `layer` options listed
+`all · foundation · lakehouse`, three of five, while the comment beside the list called it *a
+display of the population asserted against the rule below* — and the assertion below is over
+`all`'s derivation, not over the list. `layer=pipelines` was refused with HTTP 422. Both inputs
+were true of the design and false of the file, in the file that is the design's only reader.
+
+*Site:* `.github/workflows/run.yml` :: `      # **Terraform, since 2026-09-12, for one apply.** The header above said *no`
+*Site:* `.github/workflows/deploy.yml` :: `        # **Three of five until 2026-09-12.** `pipelines` and `ml` landed on 2026-09-08 and 09`
+*Disposition:* branch `ops/run-pins-what-it-runs` — `run` makes the apply `backfill` makes, and
+the option list names every layer. What is not closed: nothing asserts that a declared input is
+read by a step, and this is the second time in a week (`--require-*` in `ops/run_assertions.py`
+was the first, `#113`) that one was not
+*Status:* open
