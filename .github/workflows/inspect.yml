@@ -58,6 +58,13 @@ jobs:
     name: ask the estate what every screen will show
     needs: verified
     runs-on: ubuntu-latest
+    # **The deploy role is trusted from three environment subjects and from nothing else**,
+    # and the first dispatch said so: `Not authorized to perform sts:AssumeRoleWithWebIdentity`
+    # on a job that declared no environment and so presented the branch-form subject. The
+    # honest environment for a job that reads is `plan`, whose read-only role
+    # `infra/bootstrap/oidc.tf` names as a repair not yet made; until it exists this reads
+    # with the deploy role, under the deploy environment, and says so.
+    environment: deploy
     timeout-minutes: 30
 
     steps:
