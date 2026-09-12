@@ -47,8 +47,23 @@ from ops.run_assertions import _api, _declared_reason_codes
 #: What `pipelines/silver` and `pipelines/gold` write, by name, so an absent one is a failure
 #: and not a shorter list. Bronze is one table per source and is counted, not named.
 EXPECTED = {
-    "silver": ("sales", "shelf_state", "price_displayed", "reference", "quarantine"),
-    "gold": ("decision_economics", "waste", "experiment_assignment", "readout"),
+    "silver": (
+        "sales",
+        "shelf_state",
+        "price_displayed",
+        "reference",
+        "stores",
+        "decisions",
+        "quarantine",
+    ),
+    "gold": (
+        "decision_economics",
+        "waste",
+        "experiment_assignment",
+        "readout",
+        "policies",
+        "decisions",
+    ),
 }
 DASHBOARD_PREFIX = "Holdout — "
 PARAMETER = re.compile(r"(?<![:\w]):([A-Za-z_]\w*)")

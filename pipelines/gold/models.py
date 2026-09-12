@@ -41,6 +41,8 @@ EXPECTED_MODELS: tuple[str, ...] = (
     "category_margin_per_store_week_v3",
     "units_sold_per_store_week_v1",
     "waste_value_per_store_week_v1",
+    "policies",
+    "decisions",
 )
 
 

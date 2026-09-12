@@ -7,7 +7,7 @@ consumers actually running.
 `A`    `decision_economics` · `waste` · `store_day`                         two of three
 `B`    `demand_features` — point-in-time correct                            not built
 `C`    `experiment_assignment` · `exposure` · `outcomes` · `readout`        two of four
-`D`    `decisions` — immutable, written at decision time                    not built
+`D`    `decisions` — immutable, written at decision time                    built 2026-09-12
 =====  ===================================================================  =============
 
 **What is absent is absent on purpose and `T011` names neither.** `closes` asks for the metric
@@ -18,6 +18,19 @@ and is where point-in-time correctness has something to be correct *for*; `expos
 written by the decision path at decision time into Lakebase, and a gold table built from a
 corpus that never took a decision would be a table of nothing. **Building an empty one to
 satisfy an expectation about the word *gold* is worse than an absence with a reason.**
+
+**`D` was built on 2026-09-12, and the sentence above about it was wrong in its premise.** The
+corpus *does* take a decision: `corpus/world/` writes a `price_decisions` stream at the moment
+the policy produces a price, before the label acknowledges it -- the decision record, written
+at decision time, exactly as the family is described -- and `bulk.load` had been landing it in
+bronze since `T009` while `pipelines/silver/__init__.py` named it as the one stream nothing
+read. What was true is that nothing on this estate writes the record into Lakebase: the
+decision path's model is trained and served here and is not in the loop that prices the shelf,
+so every decision is a ladder decision. `silver.decisions` reads the stream; `gold.decisions`
+joins each decision to the compiled `policies` model for the contract's marker and outcome. It
+was built because the decision monitor -- the screen doctrine rule 2 is proved on -- was
+compiled to read `gold.decisions` and drew from nothing, which `ops/inspect_estate.py` read off
+the warehouse on run 34676694580.
 
 The one rule this layer is really about
 ---------------------------------------

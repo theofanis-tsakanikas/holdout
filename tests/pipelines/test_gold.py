@@ -30,6 +30,7 @@ refuses it and refuses the two spellings that would turn an absent engine into a
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -56,15 +57,19 @@ SCALE = "rehearsal"
 #: that the dbt model could not, because only dbt takes a file name as an identifier.
 READOUT_STEM = "category_margin_per_store_week.v3"
 
-#: The five models the project builds. Declared here **and** in `pipelines/gold/models.py`, and
+#: The seven models the project builds. Declared here **and** in `pipelines/gold/models.py`, and
 #: the first test compares the two: a run that silently built fewer is the vacuous pass this
 #: file exists to refuse, and a list kept in one place cannot notice it disagreeing with itself.
+#: Five until 2026-09-12; `policies` and `decisions` are family D, the decision record, built
+#: the day the decision monitor was found reading a table nothing wrote.
 MODELS: tuple[str, ...] = (
     "decision_economics",
     "waste",
     "category_margin_per_store_week_v3",
     "units_sold_per_store_week_v1",
     "waste_value_per_store_week_v1",
+    "policies",
+    "decisions",
 )
 
 
@@ -120,7 +125,9 @@ def gold(spark: SparkSession, estate: Path, tmp_path_factory: pytest.TempPathFac
 # ------------------------------------------------------------------ it builds
 
 
-def test_gold_builds_five_models_against_local_delta(spark: SparkSession, gold: Built) -> None:
+def test_gold_builds_every_declared_model_against_local_delta(
+    spark: SparkSession, gold: Built
+) -> None:
     """`stop_at`'s first half: every model exists, holds rows, and is a **Delta** table.
 
     **The provider is asserted, and that is not decoration.** `file_format` is a dbt *model*
@@ -163,6 +170,8 @@ def test_a_run_that_built_fewer_models_is_refused_rather_than_reported_as_succes
         "category_margin_per_store_week_v3",
         "units_sold_per_store_week_v1",
         "waste_value_per_store_week_v1",
+        "policies",
+        "decisions",
     ]
     assert models.missing(()) == list(models.EXPECTED_MODELS)
 
@@ -797,3 +806,48 @@ def test_the_readout_splits_by_arm_from_the_assignment_and_from_nowhere_else(
     assert rows, "the readout returned nothing, so the arms it did not return prove nothing"
     for row in rows:
         assert Arm(row["arm"]) is seal.arms[row["store_id"]]
+
+
+# ------------------------------------------------------------- the decision record, family D
+
+
+@pytest.mark.gold
+def test_the_decision_record_carries_the_contracts_marker_on_every_row(
+    spark: SparkSession, gold: Built
+) -> None:
+    """Rule 2: the fallback is visible on the record. Every decision on this estate is one.
+
+    Both declared policies are deterministic ladders, so every row resolves to `fallback` with
+    the contract's `FALLBACK_LADDER` marker -- joined in from the compiled `policies` model,
+    never typed into the decisions model. A row with a null marker would be a decision under a
+    policy the contract layer does not know, and there must be none of those here.
+    """
+    from pipelines.gold import session
+
+    rows = spark.sql(
+        f"select outcome, marker, count(*) as n from {session.SCHEMA}.decisions group by 1, 2"
+    ).collect()
+    assert rows, "the decision record is empty, so every assertion over it is vacuous"
+    assert {(r["outcome"], r["marker"]) for r in rows} == {("fallback", "FALLBACK_LADDER")}, rows
+
+
+@pytest.mark.gold
+def test_the_decision_monitors_dataset_draws_from_the_record(
+    spark: SparkSession, gold: Built
+) -> None:
+    """The compiled monitor's query, run against the tables gold built, returns the day driven.
+
+    `ops/inspect_estate.py` runs the same dataset against the estate; this is the local half,
+    so a dataset that could not draw goes red before a deploy rather than after one.
+    """
+    from holdout.contracts.compilers.dashboard import compile_decision_monitor
+    from holdout.contracts.loader import load
+
+    monitor = json.loads(compile_decision_monitor(load()))
+    (dataset,) = monitor["datasets"]
+    assert not dataset.get("parameters"), "the monitor's dataset takes no parameter"
+    query = "".join(dataset["queryLines"])
+    rows = spark.sql(query).collect()
+    assert rows, "the monitor's dataset drew nothing over a built decision record"
+    assert {r["outcome"] for r in rows} == {"fallback"}
+    assert len({r["hour"].date() for r in rows}) == 1, "the dataset is about one day, the newest"
