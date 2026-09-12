@@ -353,8 +353,21 @@ jobs:
             for model in $models; do
               round=0
               while :; do
-                versions=$(databricks model-versions list "$model" --output json 2>/dev/null \
-                  | jq -r '.[]?.version // empty')
+                # **The list is read, never assumed, and a list that fails is an error.** The
+                # first version piped the CLI through `2>/dev/null` into `jq '.[]?'`: a refused
+                # credential, a wrong host or a page shaped `{model_versions: [...]}` would each
+                # have read as *no versions*, the loop would have said the model was empty, and
+                # Terraform would have refused the deletion a step later for the reason this
+                # function exists to remove -- a silence wearing the shape of success. The CLI's
+                # exit code is checked, and both shapes a list can arrive in are read.
+                if ! listed=$(databricks model-versions list "$model" --output json); then
+                  echo "::error::listing $model's versions failed; the message above is the CLI's."
+                  echo "Nothing was emptied and nothing is claimed to be."
+                  exit 1
+                fi
+                versions=$(printf '%s' "$listed" | jq -r '
+                  (if type == "array" then . else (.model_versions // []) end)
+                  | .[]? | .version // empty')
                 [ -z "$versions" ] && break
 
                 round=$((round + 1))
