@@ -46,18 +46,22 @@ from holdout.contracts.compilers.dashboard import (
 )
 from holdout.contracts.compilers.dbt import compile_dbt_model
 from holdout.contracts.compilers.design_form import compile_design_form
+from holdout.contracts.compilers.policies import MODEL_PATH as POLICIES_PATH
+from holdout.contracts.compilers.policies import compile_policies_model
 from holdout.contracts.compilers.readout import compile_readout
 from holdout.contracts.compilers.sql_function import compile_sql_function
 from holdout.contracts.model import ContractSet, Metric
 
 __all__ = [
     "MONITOR_PATH",
+    "POLICIES_PATH",
     "READOUT_PATH",
     "compile_agent_tool",
     "compile_all",
     "compile_dbt_model",
     "compile_decision_monitor",
     "compile_design_form",
+    "compile_policies_model",
     "compile_readout",
     "compile_readout_dashboard",
     "compile_sql_function",
@@ -104,4 +108,5 @@ def compile_all(contracts: ContractSet) -> dict[str, str]:
     artefacts["generated/design/form.schema.json"] = compile_design_form(contracts)
     artefacts[READOUT_PATH] = compile_readout_dashboard(contracts)
     artefacts[MONITOR_PATH] = compile_decision_monitor(contracts)
+    artefacts[POLICIES_PATH] = compile_policies_model(contracts)
     return artefacts

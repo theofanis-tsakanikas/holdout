@@ -97,6 +97,40 @@ def price_displayed(esl_acks: DataFrame) -> tuple[DataFrame, DataFrame]:
     )
 
 
+def decisions(price_decisions: DataFrame) -> tuple[DataFrame, DataFrame]:
+    """What the chain decided, before anything was dispatched -- family D's record, at silver.
+
+    `CLAUDE.md`: *"D · the decision record — decisions (immutable, written at decision time)"*.
+    The corpus writes that record as the `price_decisions` stream, at the moment the policy
+    produced a price and before the label acknowledged anything, and until 2026-09-12 it was
+    the one bronze stream nothing read -- `pipelines/silver/__init__.py` said so. The decision
+    monitor, which doctrine rule 2 requires, was compiled against `gold.decisions` and drew from
+    nothing; `ops/inspect_estate.py` read the warehouse's answer on run 34676694580.
+
+    The shape is the source's, one row per decision. A decision with no positive price is not
+    a decision the chain could have dispatched and goes to quarantine; the arm it carries is
+    the world's, which is why gold's readout never reads this table -- `experiments.py` says
+    which tables may carry an arm and this is not one of them.
+    """
+    return apply(
+        price_decisions,
+        [
+            Expectation(
+                "decided_price_positive",
+                sf.col("price_decided_cents") > 0,
+                "a decision that prices the item at nothing was never dispatched",
+            ),
+            Expectation(
+                "ladder_step_is_a_rung",
+                sf.col("ladder_step") >= 0,
+                "a ladder step below the first rung names nothing in the policy",
+            ),
+        ],
+        table="decisions",
+        business_key=("store_id", "sku_id", "event_ts"),
+    )
+
+
 def shelf_state(shelf_days: DataFrame, sold: DataFrame) -> tuple[DataFrame, DataFrame]:
     """Whether the shelf emptied, and the last hour it is known to have held stock.
 

@@ -12,3 +12,12 @@ sources:
         description: Every receipt line, with the cost as it was known at the moment of the sale.
       - name: priced_waste
         description: Every disposal, valued at the cost known on the day it happened.
+
+  # What `pipelines/silver` writes and gold reads **without repricing**: the decision record is
+  # the chain's own and carries no cost to resolve. The one silver table dbt reads directly,
+  # because `facts.py`'s job is the as-of join and this table needs none.
+  - name: silver
+    schema: silver
+    tables:
+      - name: decisions
+        description: What the chain decided, before anything was dispatched -- one row per decision.

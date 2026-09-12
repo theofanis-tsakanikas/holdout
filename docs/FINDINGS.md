@@ -6267,3 +6267,35 @@ with no name, which is the direction `make figures`'s layout row cannot see.
 pipelines' callers under it and make the line true. Small either way, and it is a decision about
 where cloud calls live.
 *Status:* open
+
+---
+
+**The screen rule 2 is proved on read a table nothing wrote, and passed two runs that way** ·
+found 2026-09-12 · by `ops/inspect_estate.py` on run 34676694580, the first time anybody asked the
+deployed dashboards to draw
+
+`Holdout — decision monitor` had one dataset, `gold.decisions`, and the warehouse's answer was
+*the table or view `gold`.`decisions` cannot be found*. Nothing had ever written it: `pipelines/
+gold/__init__.py` marked family D *not built* with the reason that *a corpus that never took a
+decision* would give a table of nothing — while `corpus/world/` had been writing `price_decisions`
+at decision time since `T009`, `bulk.load` had been landing it in bronze, and
+`pipelines/silver/__init__.py` named it as the one stream nothing read. Two `run`s passed with
+every figure asserted, because `run` asserts tables and opens no screen.
+
+**Two things were wrong and they are different.** The table was absent, and that is closed by
+this branch: `silver.decisions` reads the stream, `gold.decisions` joins it to the compiled
+`policies` model for the contract's marker and outcome, and the monitor's dataset reads the
+newest day in the record rather than `current_date()`, which on a corpus day drew nothing even
+with a table. The other is not closed and is not this branch's: **the decision path
+`CLAUDE.md` describes does not run on this estate.** The demand model is trained and served and
+is never asked for a price; both policies are ladders; so every row is a fallback, no guardrail
+fires, and the monitor's model share, calibration band and refusal table describe a path the
+estate does not have. `CLAUDE.md`'s monitor section is restated to say so.
+
+*Site:* `pipelines/gold/dbt/models/decisions.sql` :: `-- Gold family D. The decision record: immutable, written at decision time, one row per decision.`
+*Site:* `CLAUDE.md` :: `> **Restated 2026-09-12, the first day anybody asked the deployed screen to draw.** It read`
+*Disposition:* the table, branch `pipelines/the-decision-record-reaches-gold`; the path, the
+author's — whether the estate should route the live day's decisions through the served model and
+the guardrails, which is `pipelines/decision` and a task nobody has written, or whether the
+project ships with the decision path proved local and the experiment proved on the estate
+*Status:* open

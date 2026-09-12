@@ -36,6 +36,9 @@ BRONZE_TABLES: tuple[str, ...] = (
     # argument: three of the five covariates an assignment is balanced on are store attributes
     # and no event stream has any of them.
     "store_master",
+    # **Seventh, and the last one unread.** The chain's own decision record, read since
+    # 2026-09-12 because the decision monitor was compiled against a gold table nothing wrote.
+    "price_decisions",
 )
 
 #: What silver writes. `quarantine` is one table for every source, because its size is a health
@@ -46,6 +49,7 @@ SILVER_TABLES: tuple[str, ...] = (
     "shelf_state",
     "reference",
     "stores",
+    "decisions",
 )
 
 
@@ -140,6 +144,7 @@ def build(
     shelf, shelf_bad = tables.shelf_state(frames["shelf_days"], sales)
     costs, costs_bad = tables.reference(frames["cost_ledger"], frames["product_master"])
     store_rows, store_bad = tables.stores(frames["store_master"])
+    decided, decided_bad = tables.decisions(frames["price_decisions"])
 
     written: dict[str, int] = {}
     for name, frame in (
@@ -148,11 +153,18 @@ def build(
         ("shelf_state", shelf),
         ("reference", costs),
         ("stores", store_rows),
+        ("decisions", decided),
     ):
         put(name, frame)
         written[name] = frame.count()
 
-    quarantine = sales_bad.union(displayed_bad).union(shelf_bad).union(costs_bad).union(store_bad)
+    quarantine = (
+        sales_bad.union(displayed_bad)
+        .union(shelf_bad)
+        .union(costs_bad)
+        .union(store_bad)
+        .union(decided_bad)
+    )
     put("quarantine", quarantine)
     written["quarantine"] = quarantine.count()
     return written

@@ -12,7 +12,7 @@
         "  reason_code,\n",
         "  count(*) as decisions\n",
         "from gold.decisions\n",
-        "where decided_at >= current_date()\n",
+        "where date(decided_at) = (select max(date(decided_at)) from gold.decisions)\n",
         "group by 1, 2, 3, 4\n"
       ]
     }

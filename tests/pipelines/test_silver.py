@@ -105,7 +105,7 @@ def _rows(spark: SparkSession, table: Path) -> DataFrame:
 
 def test_silver_builds_against_local_delta(spark: SparkSession, silver: Path) -> None:
     """Five tables, written as Delta and read back by the engine that wrote them."""
-    for name in ("sales", "price_displayed", "shelf_state", "reference", "quarantine"):
+    for name in ("sales", "price_displayed", "shelf_state", "reference", "decisions", "quarantine"):
         assert (silver / name / "_delta_log").is_dir(), f"{name} is not a Delta table"
         _rows(spark, silver / name).count()
 
@@ -339,7 +339,7 @@ def test_the_declarations_are_run_by_the_engine_not_only_read(bronze: Path, tmp_
         check=False,
     )
     output = finished.stdout + finished.stderr
-    for flow in ("sales", "price_displayed", "shelf_state", "reference"):
+    for flow in ("sales", "price_displayed", "shelf_state", "reference", "decisions"):
         assert f"{flow} has COMPLETED" in output, output[-2000:]
     assert "Run is COMPLETED" in output
     assert finished.returncode == 0

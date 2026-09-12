@@ -950,6 +950,23 @@ seven-day calibration drift, where leaving the band is what asks for retraining.
 against category by markdown depth, showing the ladder working. A table of recent refusals with
 their reason codes.
 
+> **Restated 2026-09-12, the first day anybody asked the deployed screen to draw.** It read
+> `gold.decisions`, and nothing wrote `gold.decisions`: the corpus records every decision at
+> decision time as the `price_decisions` stream, bronze had held it since `T009`, and no layer
+> read it — `pipelines/silver/__init__.py` said so in as many words, for ten days. Measured by
+> `ops/inspect_estate.py` on run 34676694580, off the warehouse's own answer, on an estate
+> that had passed `run` twice. The record now reaches gold: `silver.decisions`, and
+> `gold.decisions` joined to the contract's policies for the marker and the outcome.
+>
+> **And what the screen shows on this estate is one amber band.** Both declared policies are
+> deterministic ladders; the demand model is trained and served here and is not in the loop
+> that prices the shelf, so every decision is a fallback, no guardrail fires at decision time,
+> and the refusal table is empty. That is not the screen this section describes and it is the
+> truth of the estate that stands — rule 2 proved as *the fallback is visible*, on a day where
+> the fallback is everything. The calibration band and the model share of the counter row
+> describe a decision path this estate does not run, and are read here as the design, not as
+> a screenshot anybody has. The prior wording stays per rule 4; the delta is the finding.
+
 **Both dashboards consume the metric contract**, so they are part of claim 5's evidence rather than
 decoration on top of it.
 

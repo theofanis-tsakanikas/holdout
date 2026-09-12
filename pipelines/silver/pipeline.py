@@ -80,3 +80,9 @@ def shelf_state_view():  # type: ignore[no-untyped-def]
 def reference_view():  # type: ignore[no-untyped-def]
     kept, _ = tables.reference(_bronze("cost_ledger"), _bronze("product_master"))
     return kept
+
+
+@dp.materialized_view(name="decisions", comment="What the chain decided, before dispatch")
+def decisions_view():  # type: ignore[no-untyped-def]
+    kept, _ = tables.decisions(_bronze("price_decisions"))
+    return kept

@@ -376,6 +376,11 @@ def compile_decision_monitor(contracts: ContractSet) -> str:
             {
                 "name": "decisions_today",
                 "displayName": "Decisions, by outcome and hour",
+                # **The day driven, not the calendar's today.** `where decided_at >=
+                # current_date()` read as a live monitor and drew nothing: the live day `run`
+                # drives is a day of the corpus, and the record's newest day is the one the
+                # screen is about. Measured on run 34676694580, one layer above this -- the
+                # table itself was not there -- and corrected with it.
                 "queryLines": [
                     "select\n",
                     "  date_trunc('hour', decided_at) as hour,\n",
@@ -384,7 +389,7 @@ def compile_decision_monitor(contracts: ContractSet) -> str:
                     "  reason_code,\n",
                     "  count(*) as decisions\n",
                     "from gold.decisions\n",
-                    "where decided_at >= current_date()\n",
+                    "where date(decided_at) = (select max(date(decided_at)) from gold.decisions)\n",
                     "group by 1, 2, 3, 4\n",
                 ],
             }

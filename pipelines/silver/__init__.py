@@ -63,4 +63,10 @@ noticed, because nothing downstream of silver existed to need the fifth: `catego
 category]`**, so gold could not have been built at the grain its own contract declares. That is
 this branch. `store_master` and `price_decisions` are still unread and are named in
 `tables.reference` rather than left to be found the same way.
+
+**Seven of seven, from 2026-09-12.** `store_master` entered as `stores` when the assignment
+needed covariates; `price_decisions` entered as `decisions` when the decision monitor was found
+reading a gold table nothing wrote. Both were named here as unread rather than left to be found,
+and both were found anyway by something needing them rather than by the sentence -- which is
+what the sentence was for.
 """
