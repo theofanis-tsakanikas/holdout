@@ -54,3 +54,28 @@ resource "databricks_schema" "landing" {
   comment       = "Where files arrive. Governed here so lineage starts at the file."
   force_destroy = true
 }
+
+# **The workspace's default namespace is this catalog, and the reason is a measurement.**
+#
+# Every compiled artefact names its tables in two parts -- `gold.readout`, `gold.waste` --
+# because the readout job runs under `USE CATALOG` and dbt is told the catalog by its
+# profile. A dashboard is told nothing: a Lakeview dataset runs under the workspace's default
+# namespace, which on 2026-09-12 was `hive_metastore`, and `ops/inspect_estate.py` read the
+# warehouse's own answer -- *the table or view `gold`.`decisions` cannot be found … search
+# path: `system`.`session`, `system`.`builtin`, `system`.`ai`, `hive_metastore`* -- against
+# the same two-part names every other consumer resolves without trouble. So the third
+# consumer of the metric contract could not find the tables the first two wrote.
+#
+# Two fixes were available. Qualifying the compiled SQL with a catalog would put a deploy-time
+# name into a contract artefact that `make contracts` byte-compares, and would break the
+# readout job's binding, which substitutes `:markers` and nothing else. Telling the workspace
+# which catalog it means is one resource, is what the SQL editor and Genie inherit too, and
+# is where the fact belongs: the catalog is the lakehouse layer's, so its being the default
+# is the lakehouse layer's to declare.
+resource "databricks_default_namespace_setting" "holdout" {
+  provider = databricks.workspace
+
+  namespace {
+    value = databricks_catalog.holdout.name
+  }
+}
