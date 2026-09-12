@@ -149,8 +149,16 @@ jobs:
       #
       # **No `setup-terraform` here, deliberately**: this workflow runs no Terraform. `backfill`
       # applies `serving` and needs it; `run` drives the estate that is already standing.
+      # (Restated 2026-09-12: it runs one, to pin the jobs -- see the step below.)
       - uses: databricks/setup-cli@main
       - uses: astral-sh/setup-uv@v5
+      # **Terraform, since 2026-09-12, for one apply.** The header above said *no
+      # `setup-terraform` here, deliberately: this workflow runs no Terraform* -- and
+      # `git_ref_pin` was declared as an input and applied by nothing. Measured on run
+      # 34686244804: `main` carried the decision record, the run passed, and the jobs ran a sha
+      # two hours old because `backfill` had pinned them and nothing since had moved the pin.
+      # An input that does nothing is worse than no input: it reads as a promise.
+      - uses: hashicorp/setup-terraform@v3
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -162,14 +170,32 @@ jobs:
       - name: Drive the day through Zerobus
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
+          SHA: ${{ github.sha }}
+          PIN: ${{ inputs.git_ref_pin }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+          TF_VAR_databricks_client_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          TF_VAR_databricks_client_secret: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
           set -euo pipefail
 
           DATABRICKS_HOST=$(aws ssm get-parameter --name /holdout/foundation/workspace_url \
             --query Parameter.Value --output text)
           export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
+
+          # The same apply `backfill` makes, for the same reason: the jobs run the sha this
+          # workflow was dispatched with, or the input saying so is a lie.
+          if [ "$PIN" = "true" ]; then
+            echo "── pinning the jobs to ${SHA}"
+            for layer in pipelines ml; do
+              terraform -chdir="infra/$layer" init -input=false \
+                -backend-config="bucket=$(aws ssm get-parameter --name /holdout/bootstrap/state_bucket --query Parameter.Value --output text)" \
+                -backend-config="key=$layer/terraform.tfstate" \
+                -backend-config="region=$AWS_REGION" \
+                -backend-config="kms_key_id=$(aws ssm get-parameter --name /holdout/bootstrap/state_kms_key_arn --query Parameter.Value --output text)"
+              terraform -chdir="infra/$layer" apply -input=false -auto-approve -var="git_commit=${SHA}"
+            done
+          fi
 
           # **The driver is this repository's own, not a Terraform resource, and it runs as a
           # job rather than here.**
