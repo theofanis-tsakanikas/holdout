@@ -62,6 +62,13 @@ on:
           - all
           - foundation
           - lakehouse
+          - pipelines
+          - ml
+        # **Three of five until 2026-09-12.** `pipelines` and `ml` landed on 2026-09-08 and 09
+        # and this list was not told; the comment below calls it *a display of the population*
+        # asserted against the rule, and nothing asserted it -- the assertion is over `all`'s
+        # derivation, not over this block. Found by a dispatch of `layer=pipelines` refused with
+        # HTTP 422, on an estate whose jobs were pinned to a sha two hours old.
         # `bootstrap` is deliberately absent and its absence is the rule rather than an
         # oversight: it creates the state backend every layer above it keeps state in and the
         # role this workflow assumes, so it cannot be applied by something that depends on both.
