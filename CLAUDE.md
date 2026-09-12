@@ -848,8 +848,10 @@ tests/                 the suite the gates run
 docs/
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
-.github/               **Five workflows**, all built: `ci.yml` on every push, and the four
-                       that dispatch — `deploy · backfill · run · destroy` — in the table below
+.github/               **Six workflows**, all built: `ci.yml` on every push, the four that
+                       spend — `deploy · backfill · run · destroy` — and `inspect`, which
+                       asks the standing estate what every screen will show and changes
+                       nothing. All six in the table below
 infra/                 Terraform. **Six layers exist**: `bootstrap/` — state backend, OIDC,
                        the deploy role, the published parameters and the budget, applied from a
                        laptop once — `foundation/` — the data key, the four S3 zones, the
@@ -1088,6 +1090,7 @@ reading a workflow's exit code.
 | `backfill` | dispatch | **yes** | load history, build silver and gold, train, gate, register, apply `serving` |
 | `run` | dispatch | **yes** | drive the day, run both experiments, answer a live question, assert against the account |
 | `destroy` | dispatch | **yes** | takes a target: `serving` (the expensive layer, ~2 min) or `all` (reverse order), then asks the account |
+| `inspect` | dispatch | **yes** | opens what a demo would open — every table with its rows, both readouts in full, the assignment table's door tried, every dashboard dataset executed as the dashboard executes it, the endpoint, lineage — and changes nothing. **Added 2026-09-12**, the day the author asked whether the dashboards draw and no command could answer |
 
 **The suite runs upstream of every apply.** Nothing reaches AWS until all of it is green.
 
