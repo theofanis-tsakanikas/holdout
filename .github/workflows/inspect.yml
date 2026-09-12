@@ -1,0 +1,91 @@
+# **`inspect` — ask the standing estate what every screen a demo would open is going to show.**
+#
+# The sixth workflow, and the only one that changes nothing. `run` asserts the figures it
+# publishes; this opens what a person at the console opens before a recording — every table
+# with its rows, both readouts in full, the assignment table's door tried, every dashboard's
+# datasets executed the way the dashboard executes them, the endpoint, lineage — and prints
+# the transcript, so *the dashboards render* is a line in a log and not a memory of a screen.
+#
+# **Why a workflow and not a laptop.** The credential that reaches the workspace is a GitHub
+# secret, correctly; the laptop's profiles reach the account and nothing in it. Everything
+# that asks the estate a question goes through here, on the deploy role, with the same
+# `verified` gate as the workflows that spend money — the queries change nothing, but the
+# code that runs them is still code, and a red suite does not reach AWS.
+#
+# Dispatched from `main` only, like the four that spend. Reads everything, writes nothing.
+
+name: inspect
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+concurrency:
+  group: estate
+  cancel-in-progress: false
+
+jobs:
+  verified:
+    name: the suite was green on this sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The dispatched sha has a successful ci run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          runs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&per_page=100" \
+                   --jq '[.workflow_runs[] | {status, conclusion, event, url}]')
+          echo "$runs" | jq -r '.[] | "  \(.event)  \(.status)  \(.conclusion // "-")  \(.url)"'
+          green=$(echo "$runs" | jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length')
+          if [ "$green" -eq 0 ]; then
+            echo "::error::no successful ci run for ${SHA}. Nothing reaches AWS on a red or unrun suite."
+            exit 1
+          fi
+          echo "OK  ${green} successful ci run(s) for ${SHA}"
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::inspect dispatches from main only, like the workflows that spend."
+            exit 1
+          fi
+
+  inspect:
+    name: ask the estate what every screen will show
+    needs: verified
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: holdout-inspect-${{ github.run_id }}
+          role-duration-seconds: 3600
+
+      - name: Open every screen
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          param() { aws ssm get-parameter --name "$1" --query Parameter.Value --output text; }
+          DATABRICKS_HOST=$(param /holdout/foundation/workspace_url)
+          export DATABRICKS_HOST
+          CATALOG=$(param /holdout/lakehouse/catalog)
+          WAREHOUSE=$(param /holdout/lakehouse/warehouse_id)
+          ENDPOINT=$(param /holdout/serving/endpoint_name 2>/dev/null || echo "holdout-demand")
+
+          uv sync --frozen --no-dev
+          uv run python -m ops.inspect_estate \
+            --catalog "$CATALOG" --warehouse-id "$WAREHOUSE" --endpoint "$ENDPOINT"
