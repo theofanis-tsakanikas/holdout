@@ -12,7 +12,6 @@ would all pass over a dashboard that had copied the query once and drifted since
 
 from __future__ import annotations
 
-import dataclasses
 import json
 from typing import Any
 
@@ -30,7 +29,6 @@ from holdout.contracts.compilers.dashboard import (
 )
 from holdout.contracts.compilers.readout import compile_readout
 from holdout.contracts.loader import load
-from holdout.core.experiment.readout import Readout
 
 CONTRACTS = load()
 
@@ -68,26 +66,74 @@ def test_the_readout_dataset_is_the_compiled_readout_itself(
     assert "".join(lines) == compile_readout(metric)
 
 
-def test_the_readout_columns_are_the_core_types_own_fields() -> None:
-    """The one place this compiler names a table that does not exist, bound to a declaration.
+def test_the_readout_columns_are_the_columns_the_pipeline_writes() -> None:
+    """The screen reads the table that exists, compared with the code that writes it.
 
-    `gold.readout` is phase 3's, so the dashboard names columns for a table nobody has built.
-    **They are not invented**: they are the fields of `holdout.core.experiment.readout.Readout`,
-    the type the core already returns and the one phase 3 will materialise.
+    **This test compared the compiler with the wrong thing for eight days.** Until 2026-09-12
+    it asserted `READOUT_COLUMNS` equalled the fields of `holdout.core.experiment.readout.Readout`
+    -- the type -- and it was green while `T022` wrote `gold.readout` in a different shape: the
+    interval flattened to `ci_low`/`ci_high`, the period to two dates, `alpha` and `statistic` and
+    `balance` not carried, `reason_code` added because a refusal is a row and the type has no
+    field for one. The dashboard's `verdict` dataset selected `confidence_interval` and `alpha`
+    from a table with neither. Two projections of one thing, each compared with the compiler and
+    never with each other; the table is what the screen reads, so the table is what this compares.
 
-    **Compared in both directions**, because either half alone is satisfiable by an accident: a
-    subset check passes a compiler that dropped a field, and a superset check passes one that
-    invented one. This is the arrangement `tests/core/test_refusal_codes.py` uses for the refusal
-    enums — three mechanisms, no imports between them, and a test that they agree.
+    **Compared in both directions**, for the reason the first version gave: a subset check passes
+    a compiler that dropped a column, a superset check passes one that invented one.
 
-    `holdout/contracts/` does not import `holdout/core/` and this test is why it does not need
-    to: the coupling lives here, where a test may import both, rather than in the contract layer.
+    `holdout/contracts/` does not import `pipelines/` and this test is why it does not need to:
+    the coupling lives here, where a test may import both.
     """
-    declared = tuple(field.name for field in dataclasses.fields(Readout))
-    assert declared == READOUT_COLUMNS, (
-        "the dashboard's column list and the Readout type have diverged. Whichever moved, the "
-        "dashboard is now naming a column nobody declares or missing one that exists."
+    from pipelines.gold.experiments import SCHEMA
+
+    written = tuple(column.strip().split(" ")[0] for column in SCHEMA.split(","))
+    assert written == READOUT_COLUMNS, (
+        "the dashboard's column list and the pipeline's readout schema have diverged. Whichever "
+        "moved, the screen is now naming a column the table does not have or missing one it has."
     )
+
+
+def test_the_verdict_dataset_selects_every_column_and_one_verdict(
+    readout_dashboard: dict[str, Any],
+) -> None:
+    """One column carries both cases, and nothing the table has is left off the screen."""
+    text = "".join(_dataset(readout_dashboard, "verdict")["queryLines"])
+    for column in READOUT_COLUMNS:
+        assert f"  {column}" in text, f"the verdict dataset does not select {column}"
+    assert "coalesce(cast(uplift as string), reason_code) as verdict" in text
+    assert ":" not in text.replace("::", ""), "the verdict dataset takes no parameter"
+    placed = next(
+        widget
+        for widget in readout_dashboard["pages"][0]["layout"]
+        if widget["widget"]["name"] == "verdicts"
+    )
+    shown = [c["fieldName"] for c in placed["widget"]["spec"]["encodings"]["columns"]]
+    assert "verdict" in shown and placed["position"]["width"] == 12
+
+
+def test_every_parameter_the_readout_carries_is_declared(
+    readout_dashboard: dict[str, Any],
+) -> None:
+    """A dataset naming a parameter its dashboard does not declare cannot draw.
+
+    Measured by `ops/inspect_estate.py` on 2026-09-12: the compiled readout carries six markers
+    and the dataset declared none, so the two data widgets on the project's central screen could
+    not have run on any day since the dashboard was applied.
+    """
+    import re
+
+    for dataset in readout_dashboard["datasets"]:
+        text = "".join(dataset["queryLines"])
+        markers = set(re.findall(r"(?<![:\w]):([A-Za-z_]\w*)", text))
+        declared = {p["keyword"] for p in dataset.get("parameters", [])}
+        assert markers <= declared, (
+            f"{dataset['name']} names undeclared parameters {markers - declared}"
+        )
+        for parameter in dataset.get("parameters", []):
+            default = parameter["defaultSelection"]["values"]["values"][0]["value"]
+            assert default != "", (
+                f"{parameter['keyword']} has no default and the screen cannot open"
+            )
 
 
 def test_every_check_tile_comes_from_the_closed_vocabulary(
