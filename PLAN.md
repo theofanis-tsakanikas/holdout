@@ -2215,6 +2215,33 @@ cost, and everything to be photographed is captured in that cycle or captured ne
 
 ### Progress
 
+> **2026-09-12 — the estate stands, and the first day anybody asked its screens to draw.**
+>
+> The phase-4 cycle ran clean on the first dispatch: `deploy all` in five minutes, `backfill` in
+> twenty-seven, `run` in eight, every figure asserted, both experiments refusing for the reasons
+> the phase-3 criterion names, the endpoint answering with the version the cycle registered, the
+> reaper armed and reporting `deleted: []` under its TTL. Then the author asked whether the
+> dashboards draw, and no command could answer.
+>
+> **`inspect` is the sixth workflow and the only one that changes nothing.** It opens what a
+> recording opens: every table with its rows, the readout in full, the assignment table's door
+> tried with a predicate that matches nothing, every dashboard dataset fetched from the workspace
+> and executed as the dashboard executes it, the endpoint, lineage, and the demo's own queries
+> from `ops/demo_queries.sql` -- so what is typed live was measured by a command. **Its first
+> honest run was red four ways**, and none of the four had been visible to two green `run`s:
+> the readout screen read the *type's* columns while the table had the *pipeline's*; six
+> parameters were named and none declared; the monitor read `gold.decisions`, which nothing
+> wrote, while the corpus had recorded every decision at decision time since T009 and silver
+> named the stream as the one nothing read; and the workspace's default catalog was
+> `hive_metastore`. Four branches, one `deploy all` -- because `run`'s `git_ref_pin` input was
+> applied by nothing and the jobs were running a sha two hours old -- and the sixth run is green.
+>
+> **T020 is met and the decision record reaches gold.** Every price on this estate is a
+> fallback, the monitor shows one amber band, and `CLAUDE.md`'s monitor section says which of
+> its widgets describe a decision path this estate does not run. Two findings of the week's
+> family -- *an input declared and applied by nothing* -- are filed against `run.yml` and
+> `deploy.yml` and closed in #133.
+
 > **2026-09-11 — T025 and T026 built in one day, and the day's finding is the same one twice.**
 >
 > The agent surface landed first: a registry that is the limit, a `ProposedDesign` that is seven

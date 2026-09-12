@@ -3138,6 +3138,29 @@ status        HALF MET 2026-09-10 — the layer applied; the second half has bee
               phase 4 photographs both screens, and `dashboards.tf` records that a
               `serialized_dashboard` containing `select nonsense from table_that_does_not_exist`
               passes `terraform validate` clean.
+              --
+              **MET 2026-09-12, by `inspect` run 34687112669, after six runs that were not.**
+              The second half became a workflow: `inspect` fetches each dashboard from the
+              workspace and executes every dataset the way the dashboard does. The first honest
+              run, 34676694580, found what the paragraph above predicted and more: the readout
+              screen's `verdict` selected `confidence_interval` and `alpha` from a table with
+              neither and named a parameter it did not declare; `arm_metric` named six; the
+              monitor read `gold.decisions`, which nothing wrote; and the workspace's default
+              catalog was `hive_metastore`, so a correct two-part name would not have resolved
+              either. Four branches later -- #130, #131, #132, and `deploy all` re-pointing jobs
+              a `run` had left on a two-hour-old sha -- the transcript reads:
+              --
+                Holdout — decision monitor     decisions_today   draws: 4 row(s)
+                Holdout — experiment readout   arm_metric        draws: 0 row(s)  <- EMPTY
+                                               verdict           draws: 2 row(s)
+                every table, both readouts, the door, every dashboard dataset and the
+                endpoint answer
+              --
+              `arm_metric` is empty because both experiments refused at design and no lottery
+              was drawn, which is the screen's correct state and not a defect. The nine demo
+              queries in `ops/demo_queries.sql` ran on the same run, the door was tried and
+              refused by name, and the decision record shows one amber band -- 3,168 decisions
+              on the day driven, every one a fallback, mean depth 43.8%.
 ```
 
 ```
