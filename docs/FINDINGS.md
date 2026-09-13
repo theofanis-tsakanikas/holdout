@@ -6462,3 +6462,20 @@ state key's scheduling -- applied from the laptop and read back with `simulate-p
 *Site:* `tests/ops/test_every_action_is_pinned_by_sha.py` :: `def test_every_action_the_workflow_uses_is_pinned_to_a_commit(path: Path) -> None:`
 *Disposition:* branch `ops/every-action-pinned-and-the-role-cannot-grow`
 *Status:* open
+
+---
+
+**Claim 7 has not been extended to the tables the estate writes** · found 2026-09-13 · by closing
+the deferral whose unlock condition fired on 2026-09-04
+
+`docs/DECISIONS.md` deferred claim 7's reach — *`holdout.core` and the contracts, and nothing else
+exists yet* — until T011 built gold. Gold exists since 2026-09-04, silver since 2026-09-03, and
+`gold.decisions` since 2026-09-12, and `evals/oversight/` still reads the core's types and the
+contracts. A customer column arriving in a silver table's declared schema or in the decision record
+is exactly where one would arrive with a straight face, and nothing refuses it there.
+
+*Site:* `evals/oversight/README.md` :: `## 1 · What is attacked`
+*Disposition:* the author's — extend `ops/personhood`'s closed field set to the silver tables'
+declared schemas and to `gold.decisions`, which is an afternoon and a claim-7 mutation; or say in
+the README that the estate's tables are outside the proof
+*Status:* open
