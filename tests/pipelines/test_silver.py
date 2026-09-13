@@ -546,3 +546,37 @@ def test_the_category_survives_a_sale_the_cost_join_cannot_answer(
         "the one-join counterfactual lost a different number of categories than the number of "
         "sales it could not price, so this test is no longer measuring what it says it is"
     )
+
+
+# ------------------------------------------------- every event stream is one row per event
+
+
+@pytest.mark.parametrize(
+    ("table", "source"),
+    [("price_displayed", "esl_acks"), ("decisions", "price_decisions"), ("sales", "pos_lines")],
+)
+def test_a_stream_delivered_twice_is_one_row_per_event(
+    spark: SparkSession, bronze: Path, tmp_path: Path, table: str, source: str
+) -> None:
+    """The driver redelivers a share of every stream; silver keeps one row per business key.
+
+    `sales` did this from the start and the other two streams did not, so exposure counted a
+    label twice and the decision monitor a decision twice. **The attack is a bronze in which
+    every row of the source arrives twice**, the second copy an hour later: the table built over
+    it must be exactly the table built over the original.
+    """
+    from pipelines.silver import tables
+    from pyspark.sql import functions as sf
+
+    original = spark.read.parquet(str(bronze / source))
+    later = original.withColumn("arrival_ts", sf.col("arrival_ts") + sf.expr("INTERVAL 1 HOUR"))
+    doubled = original.unionByName(later)
+    build = getattr(tables, table)
+
+    once, _ = build(original)
+    twice, _ = build(doubled)
+    assert twice.count() == once.count(), (
+        f"{table} holds {twice.count()} rows over a doubled {source} and {once.count()} over the "
+        "original: the redelivery was kept as a second event"
+    )
+    assert twice.count() > 0
