@@ -68,6 +68,24 @@ def sales(pos_lines: DataFrame) -> tuple[DataFrame, DataFrame]:
     )
 
 
+def _first_arrival(frame: DataFrame, key: tuple[str, ...]) -> DataFrame:
+    """One row per business key: the earliest arrival, as `sales` keeps it.
+
+    **`sales` deduplicated and the other two event streams did not, until 2026-09-13.** The
+    ingest driver delivers a share of every stream twice, on purpose, because an at-least-once
+    transport does; `sales` kept one row per receipt line and `price_displayed` and `decisions`
+    kept both, so exposure counted a label twice and the decision monitor counted a decision
+    twice -- 298,932 decisions against 298,927 displayed prices on the estate of 2026-09-12, a
+    difference that was the duplicates and nothing else. Found by a fresh-context review.
+    """
+    first = Window.partitionBy(*key).orderBy(sf.col("arrival_ts").asc())
+    return (
+        frame.withColumn("_rank", sf.row_number().over(first))
+        .filter(sf.col("_rank") == 1)
+        .drop("_rank")
+    )
+
+
 def price_displayed(esl_acks: DataFrame) -> tuple[DataFrame, DataFrame]:
     """What the shelf showed, from the acknowledgement and never from the decision.
 
@@ -78,7 +96,7 @@ def price_displayed(esl_acks: DataFrame) -> tuple[DataFrame, DataFrame]:
     table an experiment reads exposure from.
     """
     return apply(
-        esl_acks,
+        _first_arrival(esl_acks, ("store_id", "sku_id", "event_ts")),
         [
             Expectation(
                 "displayed_price_positive",
@@ -113,7 +131,7 @@ def decisions(price_decisions: DataFrame) -> tuple[DataFrame, DataFrame]:
     which tables may carry an arm and this is not one of them.
     """
     return apply(
-        price_decisions,
+        _first_arrival(price_decisions, ("store_id", "sku_id", "event_ts")),
         [
             Expectation(
                 "decided_price_positive",
