@@ -92,6 +92,8 @@ READOUT_COLUMNS: tuple[str, ...] = (
     "reason_codes",
     "checks",
     "digest",
+    "readout_at",
+    "restates",
 )
 
 #: The metric the readout screen is built for. The primary metric of the experiments this project
@@ -221,12 +223,19 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                 # not -- **one column for both cases**, which is what "at the same size" means
                 # when it is a query rather than a sentence. No parameter: both experiments are
                 # shown, because the screen exists to put the refusal beside the number.
+                # **The newest row per experiment**, because the table appends and each row
+                # names the one it restates (doctrine rule 4). The history is the table itself;
+                # the verdict is its last word.
                 "queryLines": [
                     "select\n",
                     "  coalesce(cast(uplift as string), reason_code) as verdict,\n",
                     *(f"  {column},\n" for column in READOUT_COLUMNS[:-1]),
                     f"  {READOUT_COLUMNS[-1]}\n",
-                    "from gold.readout\n",
+                    "from (\n",
+                    "  select *, row_number() over (partition by experiment_id order by "
+                    "readout_at desc) as _rank\n",
+                    "  from gold.readout\n",
+                    ") where _rank = 1\n",
                     "order by experiment_id\n",
                 ],
             },
