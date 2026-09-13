@@ -557,6 +557,8 @@ out_of_scope  Path filtering, refused by name in docs/FINDINGS.md: skipping clai
               documents change reintroduces a claim that silently does not run.
 stop_at       When the sharded and unsharded outputs are compared and equal.
 review        yes
+status        closed — `CLAIM_2_SHARDS`, `claim-2-shard` and `claim-2-combine` are in the Makefile
+              and `ci.yml` runs them; the status line was never written, found 2026-09-12.
 ```
 
 **Why it depends on T00F rather than merely following it.** Concurrency, measured: queue delay
@@ -590,6 +592,9 @@ stop_at       When (1) is in the tree and (2) is written up with the exact API c
               verification, and PUT TO THE AUTHOR. A peer session cannot authorise it and this
               session does not ask one to.
 review        yes
+status        open — (2) is put to the author and no merge queue is applied; the `main` ruleset
+              requires an up-to-date branch instead, which serialises merges by hand. The status
+              line was never written, found 2026-09-12.
 ```
 
 **And the cost case is measured now, because it did not survive being asked.** The disposition in
@@ -3251,7 +3256,7 @@ out_of_scope  The agent surface and claim 6 (Phase 4).
               first that was contradicted by another line in its own block.
 stop_at       When run's assertions pass and destroy leaves the account clean (asked, not assumed).
 review        yes
-status        HALF MET 2026-09-10 — the first half is measured; the second is the author's to
+status        CLOSED 2026-09-12 (below). Was: HALF MET 2026-09-10 — the first half is measured; the second is the author's to
               dispatch.
               --
               **`run` 34459339015, 09:12 to 09:20, every step green and every figure asserted.**
@@ -3366,6 +3371,24 @@ status        HALF MET 2026-09-10 — the first half is measured; the second is 
               --
               The orphan from this cycle costs nothing now and is invisible to the automation for
               the same reason: it will need one manual deletion whenever somebody gets to it.
+              --
+              **CLOSED 2026-09-12 by `destroy all` run 34691807438, and the account asked
+              afterwards by hand.** Dispatched from `main` at `0ca0507` after the phase-4 cycle
+              (`deploy` 34668058250 · `backfill` 34668420661 · `run` 34669704611, every step
+              asserted). `serving` 3 → `ml` 6 — after `holdout.gold.demand` was emptied of its
+              version, the failure of 2026-09-10 — → `pipelines` 17 → `lakehouse` 55 →
+              `foundation` 56 resources destroyed, then the workspace's VPC removed by the
+              workflow under the tag-then-delete statement: NAT, Elastic IP, endpoint, IGW, four
+              subnets, two security groups, route table, VPC, no hand on any of it. **The account,
+              asked from the laptop afterwards**: SSM holds the four bootstrap parameters, S3 the
+              two tfstate buckets, KMS the state key and six data keys `PendingDeletion`, IAM
+              `holdout-deploy`; no NAT, no Elastic IP, no Lambda; the Databricks account lists
+              zero workspaces, metastores, storage configurations and credentials. What stands
+              beyond the survivor list is the orphan of 2026-09-10 above, and it alone.
+              --
+              **Recorded a day late, by a fresh-context review noticing it was not.** The run
+              closed the phase's criterion and this file said HALF MET for twenty hours, which is
+              the review's §6 and the reason it is written here in full.
 ```
 
 ```
