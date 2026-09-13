@@ -85,6 +85,7 @@ from holdout.core.experiment import (
 )
 from pipelines import window as window_module
 from pipelines.gold import assignment as assignment_table
+from pipelines.gold import readout as readout_module
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -207,7 +208,20 @@ def _monday(iso_week: str) -> datetime:
 
 
 def _metric_table(metrics: Sequence[Any]) -> tuple[str, Any]:
-    """The compiled table for `PRIMARY_METRIC`'s latest version, and the metric behind it."""
+    """The compiled table for `PRIMARY_METRIC`'s version in force now, and the metric behind it.
+
+    **`max(version)` is the version the compilers emitted, and that is the limit, said out
+    loud.** A fresh-context review on 2026-09-12 asked what happens when `v4` is declared after
+    a design is locked: this reads the readout out on a definition the design was never sized
+    against. The repair that reads *the version in force on the design date* was tried and
+    refused by the artefacts: the estate's window opens on 2025-10-27, when `v2` was in force,
+    and `v2` has no compiled table because `in_force_metrics` compiles only what is in force
+    now -- the world is dated a year behind the contracts. The honest pin is the design's:
+    a sealed assignment that carries the metric ref it was sized on, which is a change to
+    `holdout.core.experiment.SealedAssignment` and is filed in `docs/FINDINGS.md` rather than
+    approximated here. Until then a metric contract that supersedes `v3` is a restatement of
+    every open experiment, and `contracts/metrics/`'s own rule already says so.
+    """
     family = [metric for metric in metrics if metric.id == PRIMARY_METRIC]
     if not family:
         raise ExperimentError(
@@ -398,6 +412,7 @@ def _row(
     moment: str,
     data_version: str,
     period: tuple[str, str],
+    readout_at: str,
 ) -> dict[str, Any]:
     """One `gold.readout` row, in the shape `ops/run_assertions.py` reads.
 
@@ -422,6 +437,8 @@ def _row(
         "reason_codes": None,
         "checks": None,
         "digest": None,
+        "readout_at": readout_at,
+        "restates": None,
     }
     if isinstance(outcome, DesignRefusal):
         row["reason_code"] = outcome.reasons[0].code.value
@@ -452,7 +469,7 @@ SCHEMA = (
     "experiment_id string, moment string, metric_ref string, data_version string, "
     "period_opens_on string, period_ends_on string, seed string, uplift double, "
     "ci_low int, ci_high int, p_value double, draws int, reason_code string, "
-    "reason_codes string, checks string, digest string"
+    "reason_codes string, checks string, digest string, readout_at string, restates string"
 )
 TABLE = "readout"
 
@@ -464,6 +481,7 @@ class Measured:
     metric: Any
     metric_ids: tuple[str, ...]
     table: str
+    stem: str  # the compiled readout's file stem, `{id}.v{version}`
     data_version: str
     roster: tuple[str, ...]
     matrix: CovariateMatrix
@@ -540,6 +558,7 @@ def measure(spark: SparkSession, *, scale: str, gold_schema: str, silver_schema:
         metric=metric,
         metric_ids=tuple(sorted({each.id for each in contracts.metrics})),
         table=qualified,
+        stem=f"{metric.id}.v{metric.version}",
         data_version=_data_version(spark, qualified),
         roster=roster,
         matrix=matrix,
@@ -697,8 +716,20 @@ def readout(
     """
     measured = measure(spark, scale=scale, gold_schema=gold_schema, silver_schema=silver_schema)
     treatment_policy, control_policy = _policy_refs()
-    outcomes = _outcomes(spark, measured)
     exposed, delivered, distinct_refs = _exposure(spark, silver_schema, measured.period_weeks)
+    # **The pin is taken once, before any experiment is read, and every experiment is read at
+    # it.** `pin_now` asks each relation the compiled readout names for its current Delta
+    # version; the versions go into the row beside the number, and the number is what the
+    # compiled query returns at those versions -- so re-running the readout with the row's own
+    # versions is the same query over the same bytes. Until 2026-09-13 the estate read the
+    # dbt metric table at *latest* and stored a version it had not read at, while the compiled
+    # pinned readout ran only in tests; `CLAUDE.md`'s *the readout pins a Delta version* was a
+    # sentence about a file nothing on the estate executed. Found by a fresh-context review.
+    pinned = readout_module.pin_now(
+        spark, readout_module.artefact(measured.stem).read_text("utf-8")
+    )
+    data_version = ",".join(f"{relation}@{version}" for relation, version in sorted(pinned.items()))
+    readout_at = datetime.now(UTC).isoformat(timespec="seconds")
 
     rows: list[dict[str, Any]] = []
     for declared, verdict in _verdicts(measured):
@@ -710,6 +741,7 @@ def readout(
                     moment="design",
                     data_version=measured.data_version,
                     period=(measured.period_weeks[0], measured.period_weeks[-1]),
+                    readout_at=readout_at,
                 )
             )
             continue
@@ -719,12 +751,15 @@ def readout(
         # is what says the rows on disk are that lottery and not something that replaced it.
         assignment_table.verify(spark, seal, schema=gold_schema)
         on_roster = frozenset(seal.roster)
+        outcomes = _outcomes_pinned(
+            spark, measured, experiment_id=declared.experiment_id, versions=pinned, roster=on_roster
+        )
         rows.append(
             _row(
                 declared,
                 outcome=close(
                     seal,
-                    outcomes={u: v for u, v in outcomes.items() if u in on_roster},
+                    outcomes=outcomes,
                     exposed=frozenset(exposed & frozenset(seal.treatment)),
                     delivered={u: r for u, r in delivered.items() if u in on_roster},
                     treatment_policy=treatment_policy,
@@ -740,34 +775,64 @@ def readout(
                     mde_absolute=verdict.mde_absolute,
                     direction=MdeDirection.EITHER,
                     form_digest=verdict.form_digest,
-                    data_version=measured.data_version,
+                    data_version=data_version,
                     period=measured.period,
                     asked_on=measured.period.ends_on,
                 ),
                 moment="readout",
-                data_version=measured.data_version,
+                data_version=data_version,
                 period=(measured.period_weeks[0], measured.period_weeks[-1]),
+                readout_at=readout_at,
             )
         )
     _report(rows, distinct_refs)
     return rows
 
 
-def _outcomes(spark: SparkSession, measured: Measured) -> dict[str, int]:
-    """The unit outcome: the mean store-week over the comparison window, in cents."""
-    over_window = _by_unit_week(spark, measured.table, measured.period_weeks)
-    if not over_window:
+def _outcomes_pinned(
+    spark: SparkSession,
+    measured: Measured,
+    *,
+    experiment_id: str,
+    versions: Mapping[str, int],
+    roster: frozenset[str],
+) -> dict[str, int]:
+    """The unit outcome over the comparison window, from the compiled readout at pinned versions.
+
+    The compiled query returns `(arm, store_id, iso_week, category, metric_value)` for the
+    units the assignment table holds for this experiment, at the versions given; this sums the
+    categories into a store-week -- the reduction `_by_unit_week` makes for the pre-period --
+    and averages the window's weeks per unit. A unit on the roster with **no row at all** is
+    refused rather than scored zero: a store-week that sold and wasted nothing is a zero the
+    data says, a store the window never saw is a zero this module would be inventing.
+    """
+    closes = measured.period.ends_on
+    year, week, _ = closes.isocalendar()
+    frame, _bound = readout_module.run(
+        spark,
+        measured.stem,
+        experiment_id=experiment_id,
+        versions=versions,
+        period_start=measured.period_weeks[0],
+        period_end=f"{year:04d}-W{week:02d}",
+    )
+    by_unit_week: dict[tuple[str, str], int] = {}
+    for row in frame.collect():
+        key = (row["store_id"], row["iso_week"])
+        by_unit_week[key] = by_unit_week.get(key, 0) + round(float(row["metric_value"]) * 100)
+    unseen = sorted(unit for unit in roster if not any(k[0] == unit for k in by_unit_week))
+    if not by_unit_week or unseen:
         raise ExperimentError(
-            f"{measured.table} holds nothing for the comparison window "
-            f"{measured.period_weeks[0]}..{measured.period_weeks[-1]}. The window's days are "
-            "generated under the committed assignment and loaded after `design` has run: if "
-            "this is empty, that step has not happened."
+            f"the compiled readout for {experiment_id} at {dict(versions)} returned "
+            f"{len(by_unit_week)} store-week(s) and {len(unseen)} roster unit(s) with none: "
+            f"{unseen[:8]}. The window's days are generated under the committed assignment and "
+            "loaded after `design` has run; a unit the window never saw is not a zero."
         )
     return {
         unit: round(
-            statistics.fmean([over_window.get((unit, week), 0) for week in measured.period_weeks])
+            statistics.fmean([by_unit_week.get((unit, week), 0) for week in measured.period_weeks])
         )
-        for unit in measured.roster
+        for unit in roster
     }
 
 
@@ -788,13 +853,39 @@ def _report(rows: Sequence[Mapping[str, Any]], distinct_refs: Mapping[str, int])
 
 
 def write(spark: SparkSession, rows: Sequence[Mapping[str, Any]], *, schema: str) -> int:
-    """Replace `gold.readout` with this run's rows, and return how many were written."""
+    """Append this run's rows to `gold.readout`, each naming the row it restates.
+
+    **It was `overwrite`, in the one table that is the system's last word.** Doctrine rule 4 --
+    *a correction never erases what was previously stated; the prior value, the reason and the
+    delta are recoverable* -- and the readout replaced itself on every run, so a second run over
+    late data would have left no trace of the first number. Now every run appends, and a row
+    carries `restates`: the `readout_at` of the row it supersedes for the same experiment, or
+    null for the first. The latest row per experiment is what the acceptance and the screen read;
+    the rest is the history rule 4 asks for. Found by a fresh-context review on 2026-09-12.
+    """
     spark.sql(f"create schema if not exists {schema}")
-    frame = spark.createDataFrame([dict(row) for row in rows], SCHEMA)
-    frame.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(
-        f"{schema}.{TABLE}"
-    )
+    table = f"{schema}.{TABLE}"
+    previous: dict[str, str] = {}
+    if spark.catalog.tableExists(table):
+        for row in spark.sql(
+            f"select experiment_id, max(readout_at) as readout_at from {table} "
+            "group by experiment_id"
+        ).collect():
+            if row["readout_at"] is not None:
+                previous[row["experiment_id"]] = row["readout_at"]
+    stamped = [{**dict(row), "restates": previous.get(str(row["experiment_id"]))} for row in rows]
+    frame = spark.createDataFrame(stamped, SCHEMA)
+    frame.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(table)
     return len(rows)
+
+
+def latest(spark: SparkSession, *, schema: str) -> list[dict[str, Any]]:
+    """The newest row per experiment -- what a reader of the readout means by *the readout*."""
+    frame = spark.sql(
+        "select * from (select *, row_number() over (partition by experiment_id order by "
+        f"readout_at desc) as _rank from {schema}.{TABLE}) where _rank = 1"
+    ).drop("_rank")
+    return [row.asDict() for row in frame.collect()]
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -117,8 +117,12 @@ def check_experiments(
     and `run.yml` passes `--require-refusal` alone.
     """
     table = READOUT.format(catalog=catalog)
+    # **The newest row per experiment.** `gold.readout` appends since 2026-09-13 and each row
+    # names the one it restates, so *the readout* is the latest row and the rest is history.
     rows = _sql(
-        f"SELECT experiment_id, uplift, reason_code FROM {table}",
+        "SELECT experiment_id, uplift, reason_code FROM (SELECT *, row_number() OVER "
+        f"(PARTITION BY experiment_id ORDER BY readout_at DESC) AS _rank FROM {table}) "
+        "WHERE _rank = 1",
         warehouse_id,
     )
     if not rows:

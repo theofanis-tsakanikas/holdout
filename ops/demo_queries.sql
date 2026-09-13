@@ -16,13 +16,25 @@
 select
   experiment_id,
   coalesce(cast(uplift as string), reason_code) as verdict,
+  ci_low,
+  ci_high,
+  p_value,
   reason_codes,
-  period_opens_on,
-  period_ends_on,
-  seed,
+  readout_at,
+  restates,
   data_version
-from holdout.gold.readout
+from (
+  select *, row_number() over (partition by experiment_id order by readout_at desc) as _rank
+  from holdout.gold.readout
+) where _rank = 1
 order by experiment_id;
+
+-- @name the-readout-never-erases
+-- Doctrine rule 4. Every readout ever taken, each naming the one it restates; the prior value,
+-- the moment and the delta are all still here.
+select experiment_id, readout_at, restates, coalesce(cast(uplift as string), reason_code) as verdict, data_version
+from holdout.gold.readout
+order by experiment_id, readout_at;
 
 -- @name the-door-is-append-only
 -- Claim 3. The storage refuses an update, a delete and an overwrite; the property is on the
