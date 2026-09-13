@@ -276,6 +276,21 @@ failure — the kind that is noticed by the budget alert rather than by a red ru
 
 ---
 
+### 8 · Confirming the reaper's failure subscription — added 2026-09-13
+
+`infra/foundation/reaper.tf` subscribes the alert address to `holdout-reaper-failures` on every
+`deploy foundation`. An email subscription is created **pending** and AWS sends the address one
+*Subscription Confirmation* message; until its link is clicked the subscription delivers nothing,
+and the topic is exactly as unheard as it was before the subscription existed. There is no API
+that confirms it on the recipient's behalf — that is the point of the confirmation.
+
+So, once per foundation apply that creates the subscription (a destroyed foundation takes the
+subscription with it, and the next `deploy` recreates it pending): open the confirmation email,
+click *Confirm subscription*, and check `aws sns list-subscriptions-by-topic` shows an ARN rather
+than `PendingConfirmation`. The budget's alerts are confirmed the same way, once, and were.
+
+---
+
 ## What is deliberately not here, because it has an API
 
 Named rather than omitted, so that a later session does not helpfully re-add it and turn this file

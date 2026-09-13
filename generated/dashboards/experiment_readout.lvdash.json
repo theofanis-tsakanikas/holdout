@@ -208,8 +208,13 @@
         "  reason_code,\n",
         "  reason_codes,\n",
         "  checks,\n",
-        "  digest\n",
-        "from gold.readout\n",
+        "  digest,\n",
+        "  readout_at,\n",
+        "  restates\n",
+        "from (\n",
+        "  select *, row_number() over (partition by experiment_id order by readout_at desc) as _rank\n",
+        "  from gold.readout\n",
+        ") where _rank = 1\n",
         "order by experiment_id\n"
       ]
     }

@@ -683,6 +683,9 @@ data "aws_iam_policy_document" "deploy_estate" {
       "sns:GetTopicAttributes",
       "sns:SetTopicAttributes",
       "sns:TagResource",
+      # A subscription, since 2026-09-13: the topic had none and nobody heard it.
+      "sns:Subscribe",
+      "sns:Unsubscribe",
 
       # Reads, as verbs.
       "sns:Get*",

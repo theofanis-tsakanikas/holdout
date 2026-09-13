@@ -47,9 +47,9 @@ on:
   workflow_dispatch:
     inputs:
       reaper_dry_run:
-        description: "Reaper reports instead of deleting. Leave true until one dry run is read."
+        description: "Reaper reports instead of deleting. One dry run and one armed run have been read; false is the net."
         type: boolean
-        default: true
+        default: false
       owns_metastore:
         description: "This project owns the region's UC metastore. Leave true unless another project does."
         type: boolean
