@@ -231,6 +231,33 @@ def test_the_readout_table_is_written_in_the_shape_the_acceptance_reads(
     )
 
 
+def test_a_second_readout_restates_the_first_and_erases_nothing(
+    spark: SparkSession, rows: list[dict[str, object]]
+) -> None:
+    """Doctrine rule 4, on the table that is the system's last word.
+
+    `write` used to overwrite. Written twice, the table holds both readouts; every second row
+    names the `readout_at` of the first for its experiment; `latest` returns the second; and the
+    first is still there with its number.
+    """
+    from pipelines.gold import experiments
+
+    before = [r.asDict() for r in spark.sql("select * from gold.readout").collect()]
+    again = [{**row, "readout_at": "2999-01-01T00:00:00+00:00"} for row in rows]
+    experiments.write(spark, again, schema="gold")
+
+    after = [r.asDict() for r in spark.sql("select * from gold.readout").collect()]
+    assert len(after) == len(before) + len(again), "the second write erased rows"
+    first_at = {row["experiment_id"]: row["readout_at"] for row in before}
+    seconds = [row for row in after if row["readout_at"] == "2999-01-01T00:00:00+00:00"]
+    assert seconds and all(row["restates"] == first_at[row["experiment_id"]] for row in seconds), (
+        "a restating row does not name the readout it restates"
+    )
+    newest = experiments.latest(spark, schema="gold")
+    assert {row["readout_at"] for row in newest} == {"2999-01-01T00:00:00+00:00"}
+    assert len(newest) == len(experiments.DECLARED)
+
+
 def test_the_window_agrees_with_the_harness() -> None:
     """Two hand-kept declarations of one window, compared rather than trusted."""
     from evals.uplift import design as harness_design

@@ -6369,3 +6369,37 @@ exports daily, the test exports the way the estate does, `run.yml` requires the 
 refusal both. What is not closed: `inspect` and `run` still do not assert the unpriced share,
 which is the figure that would have found this in a day
 *Status:* open
+
+---
+
+**The readout overwrote itself, and the pinned readout the docs describe ran only in tests** ·
+found 2026-09-12 · by a fresh-context review reading `write` and grepping for callers of
+`pipelines/gold/readout.py`
+
+`gold.readout` was written with `mode("overwrite")`: the second readout of an experiment erased
+the first with no prior value, no reason and no delta, in the table that is the system's last
+word — doctrine rule 4 refused by its own conclusion. And `CLAUDE.md`'s *the readout pins a Delta
+version* described `pipelines/gold/readout.py`, which binds the compiled `generated/readout/*.sql`
+at pinned versions and was called by `tests/pipelines/test_gold.py` and by nothing on the estate:
+the estate read the dbt metric table at *latest* and stored a version it had not read at.
+
+**Closed in this branch, both halves.** `write` appends and stamps `restates` with the
+`readout_at` of the row it supersedes; `latest` and every reader — the acceptance, the screen's
+`verdict`, the demo's query — take the newest row per experiment and the table keeps the rest.
+`readout` pins every relation once, runs the compiled query at those versions per experiment,
+and writes the versions beside the number; measured locally, the compiled path returns the same
++9,552 cents as the dbt table did, which is claim 5 agreeing on the estate's own readout path.
+
+**Not closed, and named:** which *metric version* a readout reads. `_metric_table` takes the
+version the compilers emitted, which is the one in force now; a `v4` declared after a design was
+locked would read it out on a definition it was never sized against. Reading *the version in force
+on the design date* was tried and refused by the artefacts — the estate's window opens in 2025,
+when `v2` was in force, and `v2` has no compiled table because only what is in force now is
+compiled. The honest pin is the design's: a `SealedAssignment` that carries the metric ref it was
+sized on, a core change.
+
+*Site:* `pipelines/gold/experiments.py` :: `    """Append this run's rows to `gold.readout`, each naming the row it restates.`
+*Site:* `pipelines/gold/experiments.py` :: `    **`max(version)` is the version the compilers emitted, and that is the limit, said out`
+*Disposition:* branch `gold/the-readout-restates` for the two closed halves; the metric pin in the
+seal is the author's — a core type change with a restatement of every test that builds one
+*Status:* open
