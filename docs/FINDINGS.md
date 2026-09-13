@@ -6374,6 +6374,27 @@ counted tables and never asked what share of them was priced.
 exports daily, the test exports the way the estate does, `run.yml` requires the number and the
 refusal both. What is not closed: `inspect` and `run` still do not assert the unpriced share,
 which is the figure that would have found this in a day
+*Closed:* 2026-09-13 — on the estate, `run` 34758751989: `fresh-ladder` +12,398 cents [+11,223,
++13,571], p = 0.001, and the peeking design refused, under `--require-number --require-refusal`;
+225 assignment rows where there had been none. The unpriced-share assertion stays owed and is
+the next entry's
+*Now:* `pipelines/ingest/erp.py` :: `def export_days(`
+*Now:* `CLAUDE.md` :: `> **Restated 2026-09-13: the refusal above was correct, and its cause was not the world.** The`
+*Status:* open
+
+---
+
+**Nothing asserts the share of sales the estate could price** · found 2026-09-13 · by closing the
+entry above
+
+The bug above was visible in one figure the gold job prints on every run — *sales with no
+published cost* — and nothing read it. `run` asserts the readout; `inspect` counts tables. A run
+that priced 3% of its sales passed twice. The assertion is one query over `gold.priced_sales`:
+the share with a null `unit_cost_as_of`, against a declared ceiling.
+
+*Site:* `ops/inspect_estate.py` :: `def check_readout(catalog: str, warehouse_id: str) -> int:`
+*Disposition:* the author's — a ceiling on the unpriced share is a number in configuration and
+wants a source; `run` is where it belongs, beside the readout assertion
 *Status:* open
 
 ---
