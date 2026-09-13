@@ -6408,6 +6408,10 @@ sized on, a core change.
 *Site:* `pipelines/gold/experiments.py` :: `    **`max(version)` is the version the compilers emitted, and that is the limit, said out`
 *Disposition:* branch `gold/the-readout-restates` for the two closed halves; the metric pin in the
 seal is the author's — a core type change with a restatement of every test that builds one
+*Status:* open
+
+---
+
 **Level 2 could not see the bill, and level 1 had never fired and could not have** · found
 2026-09-12 · by a fresh-context review reading `budget.tf` against Cost Explorer and `reap.py`
 against the API
