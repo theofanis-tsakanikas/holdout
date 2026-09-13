@@ -6369,3 +6369,32 @@ exports daily, the test exports the way the estate does, `run.yml` requires the 
 refusal both. What is not closed: `inspect` and `run` still do not assert the unpriced share,
 which is the figure that would have found this in a day
 *Status:* open
+
+---
+
+**Level 2 could not see the bill, and level 1 had never fired and could not have** · found
+2026-09-12 · by a fresh-context review reading `budget.tf` against Cost Explorer and `reap.py`
+against the API
+
+`CLAUDE.md` ranks three levels of teardown guarantee. **The budget** filtered on the project tag
+and serverless DBUs bill through the Marketplace untagged: 0.42 USD read against 47 USD paid,
+measured. **The reaper** defaulted to dry run in `variables.tf` and in `deploy.yml`, so every
+`deploy foundation` where the operator forgot the input reset the net to *report*; its failure
+topic had no subscription, so a raise landed on a dead-letter queue nobody heard; and its delete
+handle was `id or name` for every surface while a serving endpoint — the one surface that bills
+while idle — deletes by name, so the first real collection would have been a 404 recorded as an
+error. Three guards, each declared, none of which would have held on the day it was needed.
+
+**Closed in `infra/the-nets-that-hold`**: a second budget on the *Databricks Lakehouse Platform*
+line, same limit and thresholds, no action, reading 47 USD on the day it was applied; the alert
+address published once as a SecureString and the topic subscribed to it (the confirmation click is
+`docs/DAY-ONE.md` §8); the dry-run default `false` in both places, with the two read runs that
+earned it; and a per-surface delete field with a fake workspace proving the old handle asked for
+a UUID. **Not closed**: Lakebase's `CU_1` has no auto-stop and is what would bill if the runner
+died between `deploy` and `destroy` — the reaper is what collects it, at 48 hours.
+
+*Site:* `infra/bootstrap/budget.tf` :: `resource "aws_budgets_budget" "databricks" {`
+*Site:* `infra/foundation/reaper/reap.py` :: `#: **The third element exists because the first delete would have been a 404.** The handle was`
+*Disposition:* branch `infra/the-nets-that-hold`; the Lakebase auto-stop the author's, priced
+against the reaper's TTL
+*Status:* open

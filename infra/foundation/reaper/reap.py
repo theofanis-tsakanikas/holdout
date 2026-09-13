@@ -101,12 +101,20 @@ SURVIVORS = (
     ":parameter/holdout/",
 )
 
-#: Databricks compute that bills while idle, as `(api path, the key its listing returns)`.
-#: **A hand-written population**, declared as one in the docstring along with what is outside it.
+#: Databricks compute that bills while idle, as `(api path, the key its listing returns, the
+#: field the DELETE takes)`. **A hand-written population**, declared as one in the docstring
+#: along with what is outside it.
+#:
+#: **The third element exists because the first delete would have been a 404.** The handle was
+#: `id or name` for every surface; a serving endpoint's listing carries both, and its DELETE is
+#: by **name** -- so the reaper would have asked to delete `serving-endpoints/<uuid>`, been told
+#: no such endpoint, recorded an error, and left the one thing that bills while idle standing.
+#: A warehouse deletes by id and a Lakebase instance by name. Found by a fresh-context review on
+#: 2026-09-12, from the API, on a net that had never had to fire.
 BILLING_SURFACES = (
-    ("serving-endpoints", "endpoints"),
-    ("sql/warehouses", "warehouses"),
-    ("database/instances", "database_instances"),
+    ("serving-endpoints", "endpoints", "name"),
+    ("sql/warehouses", "warehouses", "id"),
+    ("database/instances", "database_instances", "name"),
 )
 
 
@@ -285,7 +293,7 @@ def collect_billing_surfaces(host: str, token: str, report: Report, dry_run: boo
     thing which was supposed to clean up did not finish. **The errors are raised by the caller
     after the sweep**, which is what puts a failed run somewhere a person sees.
     """
-    for surface, key in BILLING_SURFACES:
+    for surface, key, field in BILLING_SURFACES:
         try:
             listing = _databricks(host, token, surface)
         except (urllib.error.URLError, urllib.error.HTTPError) as error:
@@ -297,7 +305,10 @@ def collect_billing_surfaces(host: str, token: str, report: Report, dry_run: boo
 
         for item in listing.get(key, []):
             name = item.get("name") or item.get("id", "?")
-            handle = f"{surface}/{item.get('id') or item.get('name')}"
+            if not item.get(field):
+                report.errors.append(f"{surface}: a listing row carries no {field!r}: {item}")
+                continue
+            handle = f"{surface}/{item[field]}"
             if dry_run:
                 report.would_delete.append(f"{handle} ({name})")
                 continue

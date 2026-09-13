@@ -184,3 +184,45 @@ resource "aws_budgets_budget_action" "halt" {
     subscription_type = "EMAIL"
   }
 }
+
+# ---------------------------------------------------------------- the bill the tag cannot see
+#
+# **The budget above measured 0.42 USD in a month the account paid 47 USD for Databricks.**
+# Serverless DBUs bill through the AWS Marketplace as *Databricks Lakehouse Platform*, and that
+# line carries no `holdout:project` tag whatever the workspace was tagged -- measured with Cost
+# Explorer on 2026-09-12, grouped by the tag: the whole Databricks line under `holdout:project$`,
+# empty. So the budget that is supposed to be *level 2 of the teardown guarantee, catching what
+# escapes level 1* could not see the one line that is the estate's cost, and its halt at 150%
+# would never have fired on it. Found by a fresh-context review; `CLAUDE.md` already said the
+# infrastructure is *bundled into the serverless DBU rate* without drawing this consequence.
+#
+# **A second budget on the service, not a wider filter on the first.** The first budget's
+# action disables the deploy role, and a filter that counted every Databricks charge in the
+# account would disable this project's role for a bill another project might run up; the
+# `watermark` comment above makes exactly that argument. So this one alerts and never acts: the
+# same limit, the same three thresholds, the same address, and the honest statement that it
+# counts **every** Databricks charge in this account -- which today is this project's alone,
+# measured rather than assumed, and which stops being true the day a sibling opens a workspace.
+resource "aws_budgets_budget" "databricks" {
+  name         = "holdout-databricks"
+  budget_type  = "COST"
+  limit_amount = var.budget_limit_usd
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  cost_filter {
+    name   = "Service"
+    values = ["Databricks Lakehouse Platform"]
+  }
+
+  dynamic "notification" {
+    for_each = [50, 80, 100]
+    content {
+      comparison_operator        = "GREATER_THAN"
+      threshold                  = notification.value
+      threshold_type             = "PERCENTAGE"
+      notification_type          = "ACTUAL"
+      subscriber_email_addresses = [var.budget_alert_email]
+    }
+  }
+}
