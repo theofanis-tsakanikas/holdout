@@ -24,17 +24,15 @@ id="$1"
 label="${2:-job $1}"
 
 echo "── ${label} (job ${id})"
-if databricks jobs run-now "$id" --timeout 3h; then
-  exit 0
-fi
-
-echo "── ${label} FAILED; fetching what the job said"
-
-# **Nothing below may abort the report.** `set -e` is right for the run itself and wrong for the
-# explanation of why it failed: a `jq` that cannot read one field would take the whole diagnosis
-# with it, which is what happened the first time this script ran and the reason it ran twice.
-# The step still fails — the `exit 1` at the bottom is unconditional.
-set +e
+# **The CLI's exit code says the run *ended*, not that it succeeded.** `run-now --timeout`
+# waits for `life_cycle_state` to reach TERMINATED or SKIPPED and returns 0 whatever
+# `result_state` says; a task that raised is TERMINATED / FAILED and exits 0. This script read
+# that as success for as long as it existed, and every step below it would have carried on --
+# `backfill` applying the previous model's version, `run` asserting yesterday's readout. Found
+# by a fresh-context review on 2026-09-12, from the SDK's waiter rather than from a run that
+# happened to fail that way; no run in the record did, which is not the same as none can.
+started=0
+databricks jobs run-now "$id" --timeout 3h || started=$?
 
 # The most recent run of this job. `run-now --timeout` does not hand back an id on the failing
 # path, and the job is started once per step, so the latest run is this one.
@@ -53,6 +51,20 @@ if [ -z "$run_id" ]; then
 fi
 
 run=$(databricks jobs get-run "$run_id" --output json)
+result=$(printf '%s' "$run" | jq -r '.state.result_state // .status.termination_details.code // ""')
+if [ "$started" -eq 0 ] && [ "$result" = "SUCCESS" ]; then
+  echo "   result_state SUCCESS  $(printf '%s' "$run" | jq -r '.run_page_url // "-"')"
+  exit 0
+fi
+
+echo "── ${label} FAILED (exit ${started}, result_state ${result:-?}); fetching what the job said"
+
+# **Nothing below may abort the report.** `set -e` is right for the run itself and wrong for the
+# explanation of why it failed: a `jq` that cannot read one field would take the whole diagnosis
+# with it, which is what happened the first time this script ran and the reason it ran twice.
+# The step still fails — the `exit 1` at the bottom is unconditional.
+set +e
+
 echo "   run page: $(printf '%s' "$run" | jq -r '.run_page_url // "-"')"
 if [ "$(printf '%s' "$run" | jq -r '(.tasks // []) | length')" = "0" ]; then
   echo "   the run carries no tasks; what get-run returned:"
