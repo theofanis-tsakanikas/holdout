@@ -297,7 +297,19 @@ jobs:
           # `check_experiments` still refuses a reason code the contract does not declare, and
           # still refuses an empty readout — a run that produced no rows at all has not refused,
           # it has not run.
-          uv run python -m ops.run_assertions             --warehouse-id "$WAREHOUSE" --catalog "$CATALOG"             --require-refusal
+          #
+          # **And the number is required again, since 2026-09-13, because the figures above were
+          # an artefact.** The coefficient of variation of 3.48 was not the metric's: the ERP's
+          # history was exported once, on the last day of each slice, so silver's `known_from`
+          # put every cost on that day and `cost_as_of` refused every sale before it -- seven
+          # weeks of nothing and one of everything. `pipelines/ingest/erp.py::export_days`
+          # carries the measurement: exported daily, no sale is unpriced, the CV is 0.12,
+          # `fresh-ladder` is sealed with 192 treated and 48 control, and its readout on W6 is a
+          # number with an interval. So the criterion is what `PLAN.md` first wrote: at least
+          # one experiment produces a number and at least one refuses, and a run that cannot
+          # tell a correct refusal from a data-availability bug is not a gate. Found by a
+          # fresh-context review on 2026-09-12; the paragraphs above stay per doctrine rule 4.
+          uv run python -m ops.run_assertions             --warehouse-id "$WAREHOUSE" --catalog "$CATALOG"             --require-number --require-refusal
 
       - name: Ask the endpoint a live question
         env:

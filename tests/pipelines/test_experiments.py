@@ -63,7 +63,6 @@ def built(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> Path
     *a convenience and not a lottery*, and a readout over those is an uplift stated without a
     valid holdout.
     """
-    from datetime import timedelta
 
     from corpus.world import prepare
     from corpus.world.assignment import Arm, all_control
@@ -81,16 +80,20 @@ def built(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> Path
 
     chain = prepare("W6", seed=SEED, scale=SCALE)
     control = prepare("W6", seed=SEED, scale=SCALE, assignment=all_control(chain.chain))
-    # **The drop is the last day inside the baseline, which is what the estate exports.**
+    # **The ERP exports on every day of the baseline, which is what the estate now exports.**
     #
-    # It was `DAY` — the second day of the world — and that made this test *easier* than the
-    # estate in the one way that matters: a cost ledger two days old prices eight weeks of sales
-    # at one cost, so the margin per store-week barely moves and the variance the design is sized
-    # against is far smaller than the real one. `infra/pipelines/jobs.tf` exports on the last day
-    # inside each slice, because a drop publishes every row effective at or before the day it
-    # names. A test that prices against a staler ledger than the estate is a test that can pass a
-    # design the estate refuses.
-    erp.export(control, root / "landing", day=baseline_closes - timedelta(days=1))
+    # It was `DAY` — the second day of the world — and then the last day inside the baseline,
+    # and both were wrong in opposite directions, which the paragraph that stood here read
+    # backwards. A drop two days in carries no later cost step, so every sale is priced at a
+    # stale cost and the variance is too small. A drop on the last day carries every step and
+    # silver knows all of them on that day, so every earlier sale has no cost at all, is
+    # dropped, and the variance is the variance of seven empty weeks against one full one --
+    # CV 3.57, the figure the estate refused on. `erp.export_days` carries the measurement.
+    # Exported daily, no sale is unpriced and the design is sealed. A test that prices its
+    # sales the way the estate does is the only test that can say what the estate will do.
+    erp.export_days(
+        control, root / "landing" / "baseline-drops", since=baseline_opens, until=baseline_closes
+    )
     erp.history(control, root / "landing", since=baseline_opens, until=baseline_closes)
 
     def rebuild(arrived_at: datetime) -> None:
@@ -116,6 +119,9 @@ def built(spark: SparkSession, tmp_path_factory: pytest.TempPathFactory) -> Path
     arms = {store.store_id: Arm.CONTROL for store in chain.chain.stores}
     arms.update({store: Arm(arm) for store, arm in committed})
     treated = prepare("W6", seed=SEED, scale=SCALE, assignment=arms)
+    erp.export_days(
+        treated, root / "landing" / "window-drops", since=window_opens, until=window_closes
+    )
     erp.history(treated, root / "landing", since=window_opens, until=window_closes, into="window")
     rebuild(datetime(2026, 9, 4, 9, 0))  # noqa: DTZ001 — the corpus is naive on purpose
     return root
@@ -151,6 +157,16 @@ def test_every_declared_experiment_comes_back_with_an_answer(
     cannot support one at the declared MDE and asserting it would be asserting the artefact. What
     is left is the shape: every declared experiment comes back, each row answers with exactly one
     of an uplift or a reason code, and at least one refuses.
+
+    **And the number is back, since 2026-09-13, because the refusal was the artefact.** Both
+    drop days above were wrong in opposite directions: two days in, no later cost step is known
+    and every sale is priced stale; the last day, every step is known and every earlier sale has
+    no cost the ERP had published, is dropped by `decision_economics`, and the pre-period is
+    seven empty weeks against one full one -- the CV of 3.57 the estate refused on. Exported on
+    every day of the slice, as `erp.export_days` now does and the estate now does, no sale is
+    unpriced, the CV is 0.12, `fresh-ladder` is sealed, and on W6 -- a world with a real effect
+    -- its readout is a number with an interval. A corpus that could not carry the experiment
+    was a ledger nobody had priced. Found by a fresh-context review on 2026-09-12.
     """
     from pipelines.gold import experiments
 
@@ -164,6 +180,11 @@ def test_every_declared_experiment_comes_back_with_an_answer(
     assert refusals, (
         "no experiment refused. A run in which everything succeeded has not demonstrated the "
         "thing this project is about."
+    )
+    numbers = [row for row in rows if row["uplift"] is not None]
+    assert numbers, (
+        "no experiment produced a number. W6 carries a real effect and the ledger is priced on "
+        "every day of the baseline; a readout that still refuses is a bug, not a demonstration."
     )
     for row in rows:
         assert (row["uplift"] is None) != (row["reason_code"] is None), (
