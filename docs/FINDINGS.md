@@ -5577,7 +5577,13 @@ two facts and reporting one sends the reader to the wrong file.
 *Closed:* 2026-09-08 — one script, both workflows, a gate that refuses a job started around it,
 and a second gate over the script's own parsing after the first version could not parse the
 client it calls
-*Now:* `ops/run_job.sh` :: `echo "── ${label} FAILED; fetching what the job said"`
+*Now:* `ops/run_job.sh` :: `echo "── ${label} FAILED (exit ${started}, result_state ${result:-?}); fetching what the job said"`
+
+> **Restated 2026-09-13 by `ops/the-runner-reads-the-result-state`.** The diagnostic this entry
+> closed on ran only when the CLI exited non-zero, and the CLI exits zero on a run that ended
+> FAILED. So the report existed and was reachable by one failure shape of two; the line now
+> names the exit code and the result state it fired on, and a shimmed CLI proves the second
+> shape reaches it.
 *Status:* open
 
 ---
