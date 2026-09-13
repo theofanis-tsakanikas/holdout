@@ -403,6 +403,29 @@ jobs:
           done
 
       # ─────────────────────────────────────────────────────────────────────────
+      # **`destroy serving` asks the workspace, since 2026-09-13.** The AWS-side check
+      # below is for `all`; a teardown of the expensive layer alone verified nothing but
+      # its own exit code, and the endpoint is the one surface that bills while idle.
+      # ─────────────────────────────────────────────────────────────────────────
+      - name: Ask the workspace whether the endpoint is gone
+        if: ${{ always() && inputs.target == 'serving' }}
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          DATABRICKS_HOST=$(aws ssm get-parameter --name /holdout/foundation/workspace_url \
+            --query Parameter.Value --output text)
+          export DATABRICKS_HOST DATABRICKS_AUTH_TYPE=oauth-m2m
+          standing=$(databricks serving-endpoints list --output json | jq -r '(if type == "array" then . else (.endpoints // []) end) | .[]?.name // empty' | grep '^holdout' || true)
+          if [ -n "$standing" ]; then
+            echo "::error::serving endpoint(s) still standing after destroy serving: $standing"
+            exit 1
+          fi
+          echo "OK  no holdout serving endpoint is standing"
+
+      # ─────────────────────────────────────────────────────────────────────────
       # **The step that makes the sentence true.** Everything above is a workflow's
       # control flow; this asks AWS.
       # ─────────────────────────────────────────────────────────────────────────
@@ -476,13 +499,18 @@ jobs:
             unexpected="$unexpected $arn"
           done
 
+          # **The verdict is given at the end, after the VPC has been dealt with.** Until
+          # 2026-09-13 an unexpected tagged resource exited here, before the block below ran,
+          # so a red survivor check would have left the NAT gateway -- the one thing that bills
+          # by the hour -- running, with an error about tags. Found by a fresh-context review.
+          verdict=0
           if [ -n "$(echo "$unexpected" | tr -d ' ')" ]; then
             echo "::error::these carry this project's tag, are not on the survivor list, and are"
             echo "not awaiting deletion:"
             for a in $unexpected; do echo "  $a"; done
             echo "A destroy that exits 0 has removed what its state knew about. This is the"
             echo "account's answer, and it disagrees."
-            exit 1
+            verdict=1
           fi
 
           # **A second population, because the first one cannot see this.**
@@ -579,42 +607,43 @@ jobs:
                 aws ec2 create-tags --resources $children --tags "Key=Name,Value=$parent"
               fi
 
+              # **`cmd && echo` under `set -e` does not stop on a failed `cmd`** -- the `&&`
+              # list is exempt from errexit by design -- so every delete below used to fail
+              # into silence and the only check afterwards was whether the VPC was gone.
+              # Each is now a verb that says what it did or records that it did not, and a
+              # child that would not go is a red run with its name in it.
+              gone() { echo "   $1"; }
+              stayed() { echo "::error::$1 could not be removed"; verdict=1; }
               for n in $nats; do
-                echo "   nat $n"
-                aws ec2 delete-nat-gateway --nat-gateway-id "$n" >/dev/null
                 # A NAT gateway holds its network interface until it is fully deleted, and the
                 # subnet under it cannot go while that interface exists. Waited for rather than
                 # retried, because the failure otherwise is a half-removed VPC.
-                aws ec2 wait nat-gateway-deleted --nat-gateway-ids "$n" || true
+                if aws ec2 delete-nat-gateway --nat-gateway-id "$n" >/dev/null; then
+                  if aws ec2 wait nat-gateway-deleted --nat-gateway-ids "$n"; then gone "nat $n"; else stayed "nat $n (deletion did not complete)"; fi
+                else stayed "nat $n"; fi
               done
 
               # After the gateways, because an address in use cannot be released.
               for a in $addresses; do
-                aws ec2 release-address --allocation-id "$a" && echo "   address $a"
+                if aws ec2 release-address --allocation-id "$a"; then gone "address $a"; else stayed "address $a"; fi
               done
-
               for e in $endpoints; do
-                aws ec2 delete-vpc-endpoints --vpc-endpoint-ids "$e" >/dev/null && echo "   endpoint $e"
+                if aws ec2 delete-vpc-endpoints --vpc-endpoint-ids "$e" >/dev/null; then gone "endpoint $e"; else stayed "endpoint $e"; fi
               done
-
               for g in $gateways; do
-                aws ec2 detach-internet-gateway --internet-gateway-id "$g" --vpc-id "$v"
-                aws ec2 delete-internet-gateway --internet-gateway-id "$g" && echo "   gateway $g"
+                if aws ec2 detach-internet-gateway --internet-gateway-id "$g" --vpc-id "$v" \
+                   && aws ec2 delete-internet-gateway --internet-gateway-id "$g"; then gone "gateway $g"; else stayed "gateway $g"; fi
               done
-
               for s in $subnets; do
-                aws ec2 delete-subnet --subnet-id "$s" && echo "   subnet $s"
+                if aws ec2 delete-subnet --subnet-id "$s"; then gone "subnet $s"; else stayed "subnet $s"; fi
               done
-
               for g in $groups; do
-                aws ec2 delete-security-group --group-id "$g" && echo "   security group $g"
+                if aws ec2 delete-security-group --group-id "$g"; then gone "security group $g"; else stayed "security group $g"; fi
               done
-
               for r in $tables; do
-                aws ec2 delete-route-table --route-table-id "$r" && echo "   route table $r"
+                if aws ec2 delete-route-table --route-table-id "$r"; then gone "route table $r"; else stayed "route table $r"; fi
               done
-
-              aws ec2 delete-vpc --vpc-id "$v" && echo "   vpc $v"
+              if aws ec2 delete-vpc --vpc-id "$v"; then gone "vpc $v"; else stayed "vpc $v"; fi
             done
 
             # **Asked again rather than assumed.** Every command above can fail on a dependency
@@ -629,9 +658,22 @@ jobs:
               for v in $left; do echo "  $v"; done
               echo "A NAT gateway is about 35 USD a month and a public IPv4 about 4, and none of"
               echo "it carries this project's tag, so nothing else in this repository can see it."
-              exit 1
+              verdict=1
+            else
+              echo "OK  no Databricks-managed VPC left for workspace ${workspace_id}"
             fi
-            echo "OK  no Databricks-managed VPC left for workspace ${workspace_id}"
+            # An address released from no VPC is an address still billing; the re-check above
+            # looks at VPCs and would not see one. Asked separately.
+            orphaned=$(aws ec2 describe-addresses \
+              --filters "Name=tag:Name,Values=databricks-WorkerEnvId(workerenv-${workspace_id}-*)" \
+              --query 'Addresses[].AllocationId' --output text | tr '\t' '\n' | sed '/^$/d')
+            if [ -n "$orphaned" ]; then
+              echo "::error::Elastic IP(s) named for workspace ${workspace_id} are still allocated: $orphaned"
+              verdict=1
+            fi
+          fi
+          if [ "$verdict" -ne 0 ]; then
+            exit 1
           fi
 
           echo "OK  only the survivor list is standing: state bucket and its logs, the state key,"
