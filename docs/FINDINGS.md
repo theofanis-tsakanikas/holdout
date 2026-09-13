@@ -6369,3 +6369,27 @@ exports daily, the test exports the way the estate does, `run.yml` requires the 
 refusal both. What is not closed: `inspect` and `run` still do not assert the unpriced share,
 which is the figure that would have found this in a day
 *Status:* open
+
+---
+
+**Five workflows took actions by tag and one by branch, and the role could grant itself the account** ·
+found 2026-09-12 · by a fresh-context review reading `uses:` lines and `RolesThisProjectOwns`
+
+`ci.yml` pinned every action to a commit and said so; `deploy`, `backfill`, `run`, `destroy` and
+`inspect` -- the five that carry the deploy role and the Databricks secret -- took `@v4`, `@v3`
+and `databricks/setup-cli@main`, a branch, on the workflow that tears the estate down. And the
+role's own policy allowed `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on `role/holdout-*`,
+which names the role itself, while `prevent_destroy` on the state bucket guards `terraform
+destroy` and nothing else.
+
+**Closed in `ops/every-action-pinned-and-the-role-cannot-grow`**: every `uses:` in every
+workflow is a commit with its tag beside it, and `tests/ops/test_every_action_is_pinned_by_sha.py`
+enumerates the directory so a sixth workflow arrives under the rule; and a `holdout-deploy-never`
+policy of explicit Denies -- the role's own policies and trust, the state buckets' deletion, the
+state key's scheduling -- applied from the laptop and read back with `simulate-principal-policy`:
+`iam:PutRolePolicy explicitDeny · s3:DeleteBucket explicitDeny · ssm:GetParameter allowed`.
+
+*Site:* `infra/bootstrap/oidc.tf` :: `data "aws_iam_policy_document" "deploy_never" {`
+*Site:* `tests/ops/test_every_action_is_pinned_by_sha.py` :: `def test_every_action_the_workflow_uses_is_pinned_to_a_commit(path: Path) -> None:`
+*Disposition:* branch `ops/every-action-pinned-and-the-role-cannot-grow`
+*Status:* open

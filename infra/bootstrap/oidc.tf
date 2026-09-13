@@ -911,6 +911,63 @@ resource "aws_iam_role_policy" "deploy_estate" {
   policy = data.aws_iam_policy_document.deploy_estate.json
 }
 
+# ---------------------------------------------------------------- what the role may never do
+#
+# **`RolesThisProjectOwns` grants `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on
+# `role/holdout-*`, and this role is `holdout-deploy`.** So the role could widen its own policy
+# and its own trust -- a workflow running with it, or anything that stole a session from one,
+# could grant itself the account. Every Allow above is scoped by name and none of them scopes
+# the name *this* role carries out. And `prevent_destroy` on the state bucket is a Terraform
+# lifecycle rule: it stops `terraform destroy`, not `aws s3api delete-bucket` from the same
+# role. Found by a fresh-context review on 2026-09-12.
+#
+# An explicit Deny wins over every Allow in the account, which is why it is one, and why it
+# lives in its own policy: a reader of the Allows above sees what the role can do, a reader of
+# this sees what nothing above it can ever add back.
+data "aws_iam_policy_document" "deploy_never" {
+  statement {
+    sid    = "NeverGrowItself"
+    effect = "Deny"
+    actions = [
+      "iam:AttachRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:PutRolePolicy",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:UpdateRole",
+      "iam:DeleteRole",
+    ]
+    resources = [aws_iam_role.deploy.arn]
+  }
+
+  statement {
+    sid    = "NeverDeleteTheState"
+    effect = "Deny"
+    actions = [
+      "s3:DeleteBucket",
+      "s3:DeleteBucketPolicy",
+      "s3:PutBucketVersioning",
+    ]
+    resources = [
+      aws_s3_bucket.state.arn,
+      aws_s3_bucket.logs.arn,
+    ]
+  }
+
+  statement {
+    sid       = "NeverScheduleTheStateKeyForDeletion"
+    effect    = "Deny"
+    actions   = ["kms:ScheduleKeyDeletion", "kms:DisableKey"]
+    resources = [aws_kms_key.state.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "deploy_never" {
+  name   = "holdout-deploy-never"
+  role   = aws_iam_role.deploy.id
+  policy = data.aws_iam_policy_document.deploy_never.json
+}
+
 data "aws_partition" "current" {}
 
 resource "aws_iam_policy" "deploy_state" {
