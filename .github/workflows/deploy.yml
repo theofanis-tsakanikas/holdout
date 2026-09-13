@@ -93,7 +93,11 @@ concurrency:
   # One apply at a time, and **never cancelled**. `ci.yml` cancels in progress because a
   # superseded test run is waste; a superseded *apply* is a half-built estate that is standing
   # and billing with no state file describing it. The second dispatch waits.
-  group: deploy-${{ github.ref }}
+  # `estate`, the group the other three use, since 2026-09-13. It was `deploy-${{ github.ref }}`,
+  # which serialised deploys against each other and against nothing else: a `destroy` could run
+  # beside an `apply`, and `destroy.yml`'s own header said the opposite. Found by a
+  # fresh-context review.
+  group: estate
   cancel-in-progress: false
 
 jobs:

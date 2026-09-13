@@ -6375,3 +6375,28 @@ exports daily, the test exports the way the estate does, `run.yml` requires the 
 refusal both. What is not closed: `inspect` and `run` still do not assert the unpriced share,
 which is the figure that would have found this in a day
 *Status:* open
+
+---
+
+**`destroy` gave its verdict before it cleaned up, and its deletes could not fail out loud** ·
+found 2026-09-12 · by a fresh-context review reading the shell under `set -e`
+
+Three things in one step. The survivor check `exit 1`-ed before the VPC block ran, so a red
+check left the NAT gateway running with an error about tags. Every child delete was written
+`cmd && echo`, and an `&&` list is exempt from errexit by design, so a subnet that would not go
+was silence followed by a VPC check that looked only at VPCs -- an Elastic IP released from
+nothing would have billed on unseen. And `destroy serving` asked nothing afterwards: the one
+layer that bills while idle verified its own exit code. Beside these, `deploy.yml` serialised on
+`deploy-${ref}` while the other three serialised on `estate`, so an apply and a destroy could
+run together, and `destroy.yml`'s reverse order was a hand-kept list with no gate comparing it to
+`deploy.yml`'s.
+
+**Closed in `ops/destroy-asks-in-the-right-order`**: one `verdict` given at the end; every delete
+an `if` that names what stayed; the addresses asked for separately; `destroy serving` asks the
+workspace whether a `holdout` endpoint stands; one concurrency group; and a test that the destroy
+order is the deploy order plus `serving`.
+
+*Site:* `.github/workflows/destroy.yml` :: `          # **The verdict is given at the end, after the VPC has been dealt with.** Until`
+*Site:* `tests/ops/test_destroy_reverses_the_order_deploy_applies.py` :: `def test_destroy_takes_every_layer_deploy_applies_and_serving() -> None:`
+*Disposition:* branch `ops/destroy-asks-in-the-right-order`
+*Status:* open
