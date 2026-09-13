@@ -403,16 +403,51 @@ def declared_types() -> dict[str, Kind]:
     return {kind.value: kind for kind in Kind}
 
 
-def drop_directories(landing: Path) -> Iterator[Path]:
-    """Every drop in a landing area **or one directory down**, in export order.
+def export_days(
+    run: Run,
+    landing: Path,
+    *,
+    since: date,
+    until: date,
+    schedule: Schedule = DECLARED,
+) -> dict[date, list[Drop]]:
+    """One day's drops for every day in `[since, until)`, each day in its own directory.
 
-    One directory down for the reason `bulk._history_manifests` already searches there: the
-    estate's history arrives in slices — a baseline and a comparison window, generated under
-    different arms — and each slice's drops carry the reference tables as the ERP knew them at
-    the end of it. Two exports into one directory would both write `drop=000`, and the second
-    would be refused as a path already loaded whose bytes had changed. That refusal is correct
-    and is not the arrangement wanted: they are two drops, not one drop twice.
+    **This is what a history slice exports, since 2026-09-13, and the reason is a measurement.**
+    A slice used to export once, on its last day, on the argument that a drop carries every row
+    effective at or before the day it names -- which is true, and is not the question. Silver's
+    `known_from` is the first drop that carried the row, and `cost_as_of` refuses a cost the ERP
+    had not yet told us about at the moment of the sale: so a ledger exported once on the last
+    day of eight weeks priced **the last day**, and every sale before it had no cost.
+    `decision_economics` drops such sales, the pre-period metric came out as seven weeks of
+    nothing and one of everything, and the design engine refused the experiment for a
+    coefficient of variation of 3.57 that the world never had. Measured at `estate` scale on
+    the same seed: one drop on the last day, **97% of sales unpriced**; drops every day,
+    **none** -- mean 150,933 cents, CV **0.12**, and `fresh-ladder` sealed with 192 treated and
+    48 control. The refusal `CLAUDE.md` attributed to the world's size on 2026-09-09 was the
+    ERP's export timetable. Found by a fresh-context review on 2026-09-12.
+
+    So a slice is exported the way an ERP exports: on every day, at the declared hours. That is
+    the *successive drops* `CLAUDE.md` asks for, over the whole history rather than one driven
+    day, and `known_from` then means what its name says.
     """
-    found = [path for path in landing.glob("drop=*") if (path / MANIFEST).is_file()]
-    found += [path for path in landing.glob("*/drop=*") if (path / MANIFEST).is_file()]
+    if until <= since:
+        raise ExportError(f"a slice from {since} to {until} holds no day to export")
+    exported: dict[date, list[Drop]] = {}
+    day = since
+    while day < until:
+        exported[day] = export(run, landing / f"day={day.isoformat()}", day=day, schedule=schedule)
+        day += timedelta(days=1)
+    return exported
+
+
+def drop_directories(landing: Path) -> Iterator[Path]:
+    """Every drop under a landing area, however deep, in path order.
+
+    It was *one directory down*, for the estate's two slices; a slice is now a directory of
+    days and each day a directory of drops, so the search is recursive. The order is the path's,
+    and `bulk.load` orders by `exported_at` from the manifest after reading it, so the depth a
+    drop sits at decides nothing.
+    """
+    found = [path for path in landing.rglob("drop=*") if (path / MANIFEST).is_file()]
     yield from sorted(found)

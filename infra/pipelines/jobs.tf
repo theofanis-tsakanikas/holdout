@@ -158,6 +158,14 @@ resource "databricks_job" "history" {
   # every reference row effective at or before the day it names, so the baseline's drop carries
   # the ledger as the ERP knew it when the window opened and the window's carries what became
   # effective during it.
+  #
+  # **The sentence above was true and priced nothing, until 2026-09-13.** A drop on the last day
+  # carries every row, and silver's `known_from` is the first drop that carried it -- so the
+  # ERP "knew" eight weeks of costs on the last of the eight, `cost_as_of` refused every sale
+  # before it, and the design engine refused the experiment for a variance the world never had.
+  # `pipelines/ingest/erp.py::export_days` carries the measurement (97% of sales unpriced
+  # against none; CV 3.57 against 0.12). The export task is unchanged: `--slice` now exports
+  # every day of the slice, at the declared hours, into `<slice>-drops/day=<date>/`.
   task {
     task_key        = "export"
     environment_key = local.environment_key
