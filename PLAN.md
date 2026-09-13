@@ -2227,6 +2227,38 @@ cost, and everything to be photographed is captured in that cycle or captured ne
 
 ### Progress
 
+> **2026-09-13 — the estate produced the number, and the day before it could not was a bug.**
+>
+> A fresh-context review of 2026-09-12 read `known_from` against the day the ERP drop was
+> exported and found that the estate's refusal — the one the phase-3 criterion had been restated
+> to accept — was a correct output of a ledger nobody had priced: one drop per slice on its last
+> day, every cost known on that day, every earlier sale unpriced and dropped, a CV of 3.57 the
+> world never had. Exported daily, the CV is 0.12 and the experiment exists. Eight branches landed
+> from that review in one day (#135–#142; the ninth, the environment reviewers, is the author's
+> and untouched): the runner reads `result_state`; the readout appends and restates and runs the
+> compiled pinned query on the estate; a budget that sees the Databricks line; the reaper armed
+> by default, deleting by the handle the API takes, and heard; every action pinned and the deploy
+> role unable to grow itself or delete the state; every event stream deduplicated; `destroy`
+> giving its verdict after the cleanup and out loud; phase 3 closed on the destroy that closed it.
+>
+> **Then the cycle, end to end through CI, with every dispatch verified.** `deploy all`
+> 34756057061 · `backfill` 34756473276 · `run` 34758751989 with `--require-number
+> --require-refusal` — **`fresh-ladder` +12,398 cents [+11,223, +13,571], p = 0.001; the peeking
+> design refused** — · `inspect` 34759485334 green: 225 assignment rows, the door refused by
+> name, both dashboards drawing, ten demo queries, the readout row carrying `readout_at`,
+> `restates` and three pinned Delta versions, 296,804 decisions where there were 298,932
+> duplicates-included · `destroy all` 34761519867 green with the corrected workflow, 138
+> resources and the workspace's VPC gone, and the account asked afterwards: the five bootstrap
+> parameters, the two state buckets, the state key, `holdout-deploy`, seven data keys pending
+> deletion, and the orphan VPC of 2026-09-10 that no workflow can see. The Databricks account
+> lists nothing.
+>
+> **What the number means and does not.** It is W6's, a world with a real injected effect, on the
+> estate's own seed; it says the estate can carry an experiment and read one out, which is what
+> phase 3 was accepted on before the criterion was weakened. It does not say the effect is
+> right — that is `make claim-2`'s, local, over two hundred seeds — and the readout's data
+> versions are what let anyone re-run this one.
+
 > **2026-09-12 — the estate stands, and the first day anybody asked its screens to draw.**
 >
 > The phase-4 cycle ran clean on the first dispatch: `deploy all` in five minutes, `backfill` in
