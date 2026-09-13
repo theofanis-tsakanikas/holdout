@@ -6375,3 +6375,90 @@ exports daily, the test exports the way the estate does, `run.yml` requires the 
 refusal both. What is not closed: `inspect` and `run` still do not assert the unpriced share,
 which is the figure that would have found this in a day
 *Status:* open
+
+---
+
+**The readout overwrote itself, and the pinned readout the docs describe ran only in tests** ·
+found 2026-09-12 · by a fresh-context review reading `write` and grepping for callers of
+`pipelines/gold/readout.py`
+
+`gold.readout` was written with `mode("overwrite")`: the second readout of an experiment erased
+the first with no prior value, no reason and no delta, in the table that is the system's last
+word — doctrine rule 4 refused by its own conclusion. And `CLAUDE.md`'s *the readout pins a Delta
+version* described `pipelines/gold/readout.py`, which binds the compiled `generated/readout/*.sql`
+at pinned versions and was called by `tests/pipelines/test_gold.py` and by nothing on the estate:
+the estate read the dbt metric table at *latest* and stored a version it had not read at.
+
+**Closed in this branch, both halves.** `write` appends and stamps `restates` with the
+`readout_at` of the row it supersedes; `latest` and every reader — the acceptance, the screen's
+`verdict`, the demo's query — take the newest row per experiment and the table keeps the rest.
+`readout` pins every relation once, runs the compiled query at those versions per experiment,
+and writes the versions beside the number; measured locally, the compiled path returns the same
++9,552 cents as the dbt table did, which is claim 5 agreeing on the estate's own readout path.
+
+**Not closed, and named:** which *metric version* a readout reads. `_metric_table` takes the
+version the compilers emitted, which is the one in force now; a `v4` declared after a design was
+locked would read it out on a definition it was never sized against. Reading *the version in force
+on the design date* was tried and refused by the artefacts — the estate's window opens in 2025,
+when `v2` was in force, and `v2` has no compiled table because only what is in force now is
+compiled. The honest pin is the design's: a `SealedAssignment` that carries the metric ref it was
+sized on, a core change.
+
+*Site:* `pipelines/gold/experiments.py` :: `    """Append this run's rows to `gold.readout`, each naming the row it restates.`
+*Site:* `pipelines/gold/experiments.py` :: `    **`max(version)` is the version the compilers emitted, and that is the limit, said out`
+*Disposition:* branch `gold/the-readout-restates` for the two closed halves; the metric pin in the
+seal is the author's — a core type change with a restatement of every test that builds one
+*Status:* open
+
+---
+
+**Level 2 could not see the bill, and level 1 had never fired and could not have** · found
+2026-09-12 · by a fresh-context review reading `budget.tf` against Cost Explorer and `reap.py`
+against the API
+
+`CLAUDE.md` ranks three levels of teardown guarantee. **The budget** filtered on the project tag
+and serverless DBUs bill through the Marketplace untagged: 0.42 USD read against 47 USD paid,
+measured. **The reaper** defaulted to dry run in `variables.tf` and in `deploy.yml`, so every
+`deploy foundation` where the operator forgot the input reset the net to *report*; its failure
+topic had no subscription, so a raise landed on a dead-letter queue nobody heard; and its delete
+handle was `id or name` for every surface while a serving endpoint — the one surface that bills
+while idle — deletes by name, so the first real collection would have been a 404 recorded as an
+error. Three guards, each declared, none of which would have held on the day it was needed.
+
+**Closed in `infra/the-nets-that-hold`**: a second budget on the *Databricks Lakehouse Platform*
+line, same limit and thresholds, no action, reading 47 USD on the day it was applied; the alert
+address published once as a SecureString and the topic subscribed to it (the confirmation click is
+`docs/DAY-ONE.md` §8); the dry-run default `false` in both places, with the two read runs that
+earned it; and a per-surface delete field with a fake workspace proving the old handle asked for
+a UUID. **Not closed**: Lakebase's `CU_1` has no auto-stop and is what would bill if the runner
+died between `deploy` and `destroy` — the reaper is what collects it, at 48 hours.
+
+*Site:* `infra/bootstrap/budget.tf` :: `resource "aws_budgets_budget" "databricks" {`
+*Site:* `infra/foundation/reaper/reap.py` :: `#: **The third element exists because the first delete would have been a 404.** The handle was`
+*Disposition:* branch `infra/the-nets-that-hold`; the Lakebase auto-stop the author's, priced
+against the reaper's TTL
+*Status:* open
+
+---
+
+**Five workflows took actions by tag and one by branch, and the role could grant itself the account** ·
+found 2026-09-12 · by a fresh-context review reading `uses:` lines and `RolesThisProjectOwns`
+
+`ci.yml` pinned every action to a commit and said so; `deploy`, `backfill`, `run`, `destroy` and
+`inspect` -- the five that carry the deploy role and the Databricks secret -- took `@v4`, `@v3`
+and `databricks/setup-cli@main`, a branch, on the workflow that tears the estate down. And the
+role's own policy allowed `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on `role/holdout-*`,
+which names the role itself, while `prevent_destroy` on the state bucket guards `terraform
+destroy` and nothing else.
+
+**Closed in `ops/every-action-pinned-and-the-role-cannot-grow`**: every `uses:` in every
+workflow is a commit with its tag beside it, and `tests/ops/test_every_action_is_pinned_by_sha.py`
+enumerates the directory so a sixth workflow arrives under the rule; and a `holdout-deploy-never`
+policy of explicit Denies -- the role's own policies and trust, the state buckets' deletion, the
+state key's scheduling -- applied from the laptop and read back with `simulate-principal-policy`:
+`iam:PutRolePolicy explicitDeny · s3:DeleteBucket explicitDeny · ssm:GetParameter allowed`.
+
+*Site:* `infra/bootstrap/oidc.tf` :: `data "aws_iam_policy_document" "deploy_never" {`
+*Site:* `tests/ops/test_every_action_is_pinned_by_sha.py` :: `def test_every_action_the_workflow_uses_is_pinned_to_a_commit(path: Path) -> None:`
+*Disposition:* branch `ops/every-action-pinned-and-the-role-cannot-grow`
+*Status:* open

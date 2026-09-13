@@ -186,6 +186,24 @@ resource "aws_sns_topic" "reaper_failures" {
   kms_master_key_id = aws_kms_key.data.id
 }
 
+# **And a subscription, since 2026-09-13, because a topic nobody hears is a log line.** The
+# paragraph above was right that the address is personal data with no default here; what it did
+# not do was read the address from where it already lives. `bootstrap` publishes it encrypted
+# under the state key, and this layer subscribes to its own failures the way it reads every other
+# published value. Email subscriptions are confirmed by the recipient once; until then the
+# subscription is pending and the topic is, as before, unheard -- the confirmation is in
+# `docs/DAY-ONE.md`.
+data "aws_ssm_parameter" "alert_email" {
+  name            = "/holdout/bootstrap/alert_email"
+  with_decryption = true
+}
+
+resource "aws_sns_topic_subscription" "reaper_failures" {
+  topic_arn = aws_sns_topic.reaper_failures.arn
+  protocol  = "email"
+  endpoint  = data.aws_ssm_parameter.alert_email.value
+}
+
 # ---------------------------------------------------------------- the schedule
 #
 # **Hourly, against a TTL measured in tens of hours.** The interval is not the TTL: it is how long
