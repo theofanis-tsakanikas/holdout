@@ -1213,6 +1213,17 @@ against a 600 USD model, something has genuinely gone wrong and stopping is the 
 **Enforcement lives in the TTL reaper, not in the budget.** The budget's job is to tell you, early
 and loudly, that the model was wrong.
 
+> **Restated 2026-09-13: the budget above could not see the bill.** It filters on the
+> `holdout:project` tag, and serverless DBUs bill through the AWS Marketplace as *Databricks
+> Lakehouse Platform* with no tag at all: measured with Cost Explorer on 2026-09-12, the tagged
+> budget read **0.42 USD** in a month the account paid **47 USD** for Databricks. Level 2 of the
+> teardown guarantee — *catches what escapes level 1* — could not see the one line that is the
+> estate's cost, and the halt at 150% would never have fired on it. A second budget,
+> `holdout-databricks`, now watches that service line with the same limit and thresholds and
+> **no action**: it counts every Databricks charge in the account, which today is this project's
+> alone, and an automatic halt on a bill a sibling might run up is what the first budget's own
+> comment refuses. Found by a fresh-context review; the prior wording stays per rule 4.
+
 ### The teardown guarantee does not live in a workflow
 
 A workflow step is a convenience, not a guarantee: the runner can die, the network can drop, the
