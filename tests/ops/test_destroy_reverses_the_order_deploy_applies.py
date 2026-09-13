@@ -20,7 +20,7 @@ def _order(name: str) -> list[str]:
     text = (WORKFLOWS / name).read_text(encoding="utf-8")
     found = ORDER.findall(text)
     assert len(found) == 1, f"{name} declares {len(found)} `order=` line(s); this reads exactly one"
-    return found[0].split()
+    return str(found[0]).split()
 
 
 def test_destroy_takes_every_layer_deploy_applies_and_serving() -> None:
