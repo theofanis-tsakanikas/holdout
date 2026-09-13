@@ -6078,8 +6078,18 @@ closing criterion is restated rather than quietly met.
 *Disposition:* branch `gold/the-local-gate-was-easier-than-the-estate`
 *Closed:* 2026-09-09 — the test prices against the ledger the estate prices against, the refusal is
 recorded rather than raised, and the acceptance asks for the refusal it can honestly produce
-*Now:* `tests/pipelines/test_experiments.py` :: `    erp.export(control, root / "landing", day=baseline_closes - timedelta(days=1))`
+*Now:* `tests/pipelines/test_experiments.py` :: `    # **The ERP exports on every day of the baseline, which is what the estate now exports.**`
 *Now:* `pipelines/gold/experiments.py` :: `        # **Refused is an answer, and the run carries on to record it.**`
+
+> **Restated 2026-09-13, and the closure was half right in the wrong half.** Pricing the test
+> against the ledger the estate priced against did make the two agree — and they agreed on an
+> artefact. A drop on the last day of the baseline carries every cost row and tells silver it
+> knew all of them *that day*, so `cost_as_of` refused every earlier sale and the pre-period
+> was seven empty weeks against one full one. The CV of 3.57 was the export timetable's, not
+> the world's. Both the test and the estate now export every day of a slice
+> (`erp.export_days`); measured, no sale is unpriced, the CV is 0.12, and the readout on W6 is
+> a number. The entry below carries the finding; this one's *Now:* moves to the line that says
+> what the test exports and why.
 *Status:* open
 
 ---
@@ -6326,4 +6336,36 @@ were true of the design and false of the file, in the file that is the design's 
 the option list names every layer. What is not closed: nothing asserts that a declared input is
 read by a step, and this is the second time in a week (`--require-*` in `ops/run_assertions.py`
 was the first, `#113`) that one was not
+*Status:* open
+
+---
+
+**The estate's refusal was a correct output of a ledger nobody had priced** · found 2026-09-12 ·
+by a fresh-context review reading `known_from` against the day the ERP drop is exported
+
+`infra/pipelines/jobs.tf` exported one ERP drop per history slice, on the slice's last day, on
+the true argument that a drop carries every row effective at or before the day it names. Silver's
+`reference.known_from` is the first drop that carried the row; `cost_as_of` refuses a cost with
+`known_from > event_ts`; `decision_economics` drops a sale with no cost. So every sale before the
+last day of an eight-week baseline had no cost, the pre-period metric was seven weeks of nothing
+and one of everything, and the design engine refused with `UNDERPOWERED_FOR_CAPACITY` on a
+coefficient of variation of 3.57 that the world never had. Two `run`s passed on it; `CLAUDE.md`
+explained it by the world's size; `PLAN.md` dropped the number from the phase-3 criterion for it.
+
+**Measured, at `estate` scale, same seed** (`pipelines/ingest/erp.py::export_days`): one drop on
+the last day, 97% of sales unpriced; a drop every day, none — mean 150,933 cents, CV 0.12,
+`fresh-ladder` sealed 192/48, readout on W6 +9,552 cents [+8,136, +10,964], p = 0.001.
+
+**The shape is the one this register has most often, at the one place it costs the most.** A
+refusal is a correct output, the system produced it correctly, and nothing anywhere asked whether
+the input was what it claimed to be. The gold job printed *sales with no published cost* on every
+run and nobody read the figure — the same silence as `unpriced` in `ops/inspect_estate.py`, which
+counted tables and never asked what share of them was priced.
+
+*Site:* `pipelines/ingest/erp.py` :: `def export_days(`
+*Site:* `CLAUDE.md` :: `> **Restated 2026-09-13: the refusal above was correct, and its cause was not the world.** The`
+*Disposition:* branch `pipelines/the-ledger-is-known-when-it-was-known` — every history slice
+exports daily, the test exports the way the estate does, `run.yml` requires the number and the
+refusal both. What is not closed: `inspect` and `run` still do not assert the unpriced share,
+which is the figure that would have found this in a day
 *Status:* open

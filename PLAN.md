@@ -2105,6 +2105,18 @@ least one experiment that produces a number and at least one that **refuses** fo
 > produced no rows has not refused, it has not run — and still refuses a reason code the contract
 > does not declare.
 
+> **Restated 2026-09-13: the number is required again, because the refusal was the artefact.**
+> The 3.48 above was the export timetable's, not the metric's: the ERP's history was dropped once
+> per slice, on its last day, so every cost was *known* on that day and every earlier sale went
+> unpriced and was dropped — seven empty weeks against one full one. Exported daily
+> (`erp.export_days`), no sale is unpriced, the CV is 0.12, `fresh-ladder` is sealed, and on W6
+> its readout is +9,552 cents with an interval and p = 0.001, beside the peeking design's
+> refusal. `run.yml` passes `--require-number --require-refusal`. The paragraph two above this
+> one — *the number that stood here for a day was an artefact* — was right that the second-day
+> drop was wrong and wrong about which way: it priced everything stale; the last-day drop priced
+> nothing. A gate that cannot tell a correct refusal from a data-availability bug is not a gate,
+> and this criterion was one for four days. Found by a fresh-context review on 2026-09-12.
+
 > **Met on 2026-09-10, in the first half.** `run` 34459339015 drove the day after the window
 > closes through bronze, silver and gold, read out both experiments — `UNDERPOWERED_FOR_CAPACITY`
 > and `STOPPING_RULE_PERMITS_PEEKING`, both declared, neither a number — and asked `holdout-demand`

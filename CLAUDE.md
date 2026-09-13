@@ -66,6 +66,22 @@ figure depends on corpus size it is reported as such, never extrapolated to the 
 > with a larger estate; what the estate needs is a roster the design can be sized against, which
 > is the sentence immediately below this one, arriving two weeks later as a bill.
 
+> **Restated 2026-09-13: the refusal above was correct, and its cause was not the world.** The
+> coefficient of variation of 3.57 was measured over a pre-period in which the ERP's cost ledger
+> had been exported **once, on the last day**, so silver's `known_from` put every cost on that
+> day, `cost_as_of` refused every sale before it, and `decision_economics` dropped them: seven
+> weeks of nothing against one of everything, which is a variance the metric never had. Measured
+> at `estate` scale on the same seed, in `pipelines/ingest/erp.py::export_days`: exported once,
+> **97% of sales unpriced**; exported on every day of the slice, **none** — mean 150,933 cents,
+> CV **0.12**, `fresh-ladder` sealed with 192 treated and 48 control, and on W6 a readout of
+> **+9,552 cents [+8,136, +10,964], p = 0.001**. The estate now exports every day, and the
+> phase-3 criterion is again what `PLAN.md` first wrote: one experiment produces a number and
+> one refuses. **The design engine did exactly what it should with what it was given; what it was
+> given was a ledger nobody had priced.** A refusal is a correct output — and a correct output of
+> a wrong input is the one thing a system that only ever refuses cannot tell you it has produced.
+> Found by a fresh-context review on 2026-09-12, reading `known_from` against the export day; the
+> prior wording stays per rule 4 and the delta is the finding.
+
 > **The size that decides whether anything is provable is the surviving roster, not the store
 > count. Restated 2026-08-28.** This paragraph read *"claim 2 does not get stronger with 1,200
 > stores"*, and treated the scale as purely a cost decision. It is not. **Two units of scale exist

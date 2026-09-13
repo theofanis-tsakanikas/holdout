@@ -59,7 +59,7 @@ import hashlib
 import json
 from csv import DictReader
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
 from corpus.world.parquet import Column, Kind, ParquetWriter
@@ -590,24 +590,33 @@ def main(argv: list[str] | None = None) -> int:
     if bool(args.day) == bool(args.slice):
         raise SystemExit(
             "export takes exactly one of --day and --slice. A day is a date somebody chose; a "
-            "slice is the last day of a range `pipelines/window.py` owns, and the two disagreeing "
+            "slice is every day of a range `pipelines/window.py` owns, and the two disagreeing "
             "would publish a ledger that does not match the events beside it."
         )
+    schedule = erp.Schedule(tuple(int(hour) for hour in args.hours.split(",")))
     if args.slice:
         from pipelines import window as window_module
 
-        # The last day **inside** the slice: the ranges are half-open, so `until` is the first
-        # day that is not in it. A drop names the moment the ERP knew these rows, and that
-        # moment is the end of what this slice generated.
+        # **Every day of the slice, not its last one.** `erp.export_days` carries the
+        # measurement: one drop on the last day left 97% of the baseline's sales without a cost
+        # the ERP had yet published, and the design engine refused an experiment the world
+        # could carry.
         since, until = (
             window_module.baseline(args.scale)
             if args.slice == "baseline"
             else window_module.window(args.scale)
         )
-        day = until - timedelta(days=1)
-    else:
-        day = date.fromisoformat(args.day)
-    schedule = erp.Schedule(tuple(int(hour) for hour in args.hours.split(",")))
+        print(f"erp drops  {args.world} at {args.scale}, seed {args.seed}, {since} to {until}")
+        exported = erp.export_days(
+            run, args.landing / args.into, since=since, until=until, schedule=schedule
+        )
+        count = sum(len(d) for d in exported.values())
+        rows = sum(drop.rows for d in exported.values() for drop in d)
+        newly = sum(drop.newly_visible for d in exported.values() for drop in d)
+        print(f"  {len(exported)} day(s), {count} drop(s), {rows:,} rows, {newly} newly visible")
+        return 0
+
+    day = date.fromisoformat(args.day)
     steps = erp.cost_steps_on(run, day)
     print(f"erp drops  {args.world} at {args.scale}, seed {args.seed}, {day}")
     print("        measurements of this seed, this scale and this day\n")
