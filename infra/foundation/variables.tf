@@ -124,8 +124,17 @@ variable "databricks_client_secret" {
 
 variable "reaper_dry_run" {
   type    = bool
-  default = true
-  # **The default is `true` and that is the safe direction rather than the common one.**
+  default = false
+  # **The default is `false` since 2026-09-13, and the argument below was right until it was
+  # met.** The first dry run was read on 2026-09-08 and was correct; the first armed run was
+  # read on 2026-09-12 (`deleted: []`, `errors: []`, `skipped: ["estate is 0.9h old…"]`). Both
+  # halves the paragraph below waited for have happened, and a default that reset the net to
+  # *report* on every `deploy foundation` where the operator forgot the input turned the level-1
+  # guarantee into a checkbox. Found by a fresh-context review on 2026-09-12: no dispatch with
+  # `false` is visible in the repository, because dispatch inputs are not, and the net had killed
+  # nothing in its life. The prior text stays as the argument for why it was `true` first.
+  #
+  # **The default was `true` and that was the safe direction rather than the common one.**
   #
   # `watermark` inverted the same switch deliberately, and its argument transfers whole: a
   # deployment that forgets the variable then **under-deletes, which costs money, rather than

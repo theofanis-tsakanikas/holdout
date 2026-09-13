@@ -47,9 +47,9 @@ on:
   workflow_dispatch:
     inputs:
       reaper_dry_run:
-        description: "Reaper reports instead of deleting. Leave true until one dry run is read."
+        description: "Reaper reports instead of deleting. One dry run and one armed run have been read; false is the net."
         type: boolean
-        default: true
+        default: false
       owns_metastore:
         description: "This project owns the region's UC metastore. Leave true unless another project does."
         type: boolean
@@ -202,9 +202,9 @@ jobs:
     # projection taken on the author's laptop. The first real dispatch replaces it.
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: 1.15.5
           terraform_wrapper: false
@@ -230,7 +230,7 @@ jobs:
       #
       # 120 minutes against a 90-minute timeout. `tests/ops/test_credential_outlives_job.py` is
       # what keeps the two in that order when either moves.
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}

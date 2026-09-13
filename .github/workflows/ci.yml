@@ -170,6 +170,8 @@ jobs:
       # failure mode on the job with the least tolerance for one.
       #
       # `hashicorp/setup-terraform` is pinned by sha like every other action here.
+      # (True of this file since it was written and of the other five since 2026-09-13;
+      # `tests/ops/test_every_action_is_pinned_by_sha.py` reads all of them.)
       # `terraform_wrapper: false` because the wrapper replaces the binary with a script that
       # captures stdout, and `make terraform` reads exit codes rather than output.
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
