@@ -41,3 +41,18 @@ resource "aws_ssm_parameter" "region" {
   type        = "String"
   value       = var.region
 }
+
+# **The alert address, published once, encrypted, so the layers above can subscribe to their
+# own failures without a second place to type it.** `infra/foundation/reaper.tf` declared its
+# failure topic with no subscription because an email is personal data with no default in this
+# repository -- true, and the consequence was a dead-letter topic nobody heard for a week. The
+# address already exists here as `budget_alert_email`; publishing it as a SecureString under the
+# state key is the same arrangement every other cross-layer value uses, and the value never
+# enters a `.tf` file or a plan output.
+resource "aws_ssm_parameter" "alert_email" {
+  name        = "/holdout/bootstrap/alert_email"
+  description = "Where a failure that a person has to hear about is sent. Encrypted; read by foundation."
+  type        = "SecureString"
+  key_id      = aws_kms_key.state.arn
+  value       = var.budget_alert_email
+}
