@@ -1569,6 +1569,11 @@ against an estimate, so it is answered there or not at all. Until then the smoke
 and the README's figures carry their command.
 *Restated 2026-08-31:* this read *"the phase-1 integration session decides"*, which names a session
 rather than an event.
+*Closed:* 2026-09-13 — the condition, CI's world-cache budget being set from measurement, was met
+on 2026-08-31 by `evals/world-cache-measured`, and the question it deferred is answered as the
+entry allowed: no periodic scenario-scale run. `ops/roster` is run by hand when a figure about the
+scenario scale is published, the smoke scale stays the gate, and the estate now runs at `estate`
+scale where the figures that matter are measured by `run` itself.
 
 **The world's prices are not certified prices** · deferred 2026-08-27
 `corpus/world/` applies a markdown policy's declared depths and stops. It knows nothing about the
@@ -1663,6 +1668,7 @@ requires that verification to happen **before** phase 3, not inside it.
 > two above this one, *the scenario scale is measured by hand, not by a gate*, costing something for
 > the first time. The figures are restated in that README rather than overwritten.
 
+*Closed:* 2026-09-02 — by T015, through the unlock condition rather than around it.
 > **Closed 2026-09-02 by T015, through the unlock condition rather than around it** —
 > `docs/DAY-ONE.md` exists, before phase 3 and before the network path is attempted.
 >
@@ -1849,6 +1855,9 @@ improvement makes the *test* fail and this entry get re-read.
 > rate on W6 beside the false-positive rate on A/A — measured on data this repository did not
 > write. Until then what is proved is that the arithmetic is now possible, not that it comes
 > out well.
+*Closed:* 2026-09-13 — the condition, T003, closed on 2026-08-28 with the reference set filling at
+the scenario's shape under stratified randomisation (L7), and the test the entry names is in the
+suite. The entry outlived its condition by sixteen days; found by a fresh-context review.
 
 **Two of the four units of randomisation are refused by a declared assumption** · deferred
 2026-08-27
@@ -1994,6 +2003,10 @@ Recorded rather than quietly accepted, because "the target is green" and "the ta
 are different statements and only the second one is worth anything.
 *Unlock condition:* the first deferral taken with a date rather than a condition — at which point
 the registry arms the target itself and the planted entry stops being the only evidence.
+*Closed:* 2026-09-13 — the condition was met on 2026-08-31, when the first entry took an
+`*Expires:*` date; the registry carries seven dated entries today and the target is armed by them
+as well as by its tests. Found by a fresh-context review reading unlock conditions against the
+registry, which is the only way a met condition is ever found.
 
 **CI's gate job runs on a temporary 25-minute timeout** · deferred 2026-08-28
 It was 15. T000 raised it after a run was cancelled at 15m16s — but the cancelled run is not the
@@ -2253,6 +2266,12 @@ than a workflow condition, because those workflows do not exist.
 > as a **question in a procedure** rather than as a gate: *what does the ruleset require, and
 > does it match the jobs that exist today?* is in T008's `closes` for the `integration-review`
 > skill, because a rule only a conversation carries is a rule the next session never reads.
+*Closed:* 2026-09-13 — the condition, *phase 3, when they are written*, was met between
+2026-09-05 and 2026-09-08: `deploy`, `backfill`, `run`, `destroy` and `inspect` each open with a
+`verified` job that refuses any sha without a successful `ci` run and any ref that is not `main`,
+and `infra/bootstrap/github.tf` declares the environments the trust policy names. What is not in
+the code is a required reviewer on those environments, which is the author's decision and is
+recorded in `docs/reviews/phase-3.md` §2b rather than here.
 
 **Claim 2's eval has no three-question README** · deferred 2026-08-29
 `evals/README.md`'s shape block declares `<claim>/README.md` — *what is attacked, where the
@@ -2331,6 +2350,7 @@ to do with a reconstructed store-day. The threshold — if there is one — is d
 `{value, source}` pair in a contract like every other number in this repository, and the source is a
 measurement over the days the pipeline actually trains on.
 
+*Closed:* 2026-09-04 — by T014, and the threshold is not what this entry expected.
 > **Closed 2026-09-04 by T014, and the threshold is not what this entry expected.**
 > `contracts/ml/training.yaml` declares `reconstruction.min_observed_share: 0.5`, and
 > `pipelines/ml/features.py` excludes and **counts** every reconstructed store-day below it.
@@ -2411,6 +2431,7 @@ and a demand feature is built from it, the composition is what claim 4 has to su
 day reaching a feature table unmarked is doctrine rule 2 broken, and it will be provable end to end
 rather than one module at a time.
 
+*Closed:* 2026-09-04 — by T014; it has a consumer.
 > **Closed 2026-09-04 by T014. It has a consumer, and the composition is what the tests assert.**
 > `pipelines/ml/features.py` reads silver's `shelf_state`, applies `censoring.read`, `fit` and
 > `correct`, and emits a `DemandFeature` that **cannot be constructed without `censored` and
@@ -2444,6 +2465,7 @@ movements, and the derivation it writes is what fixes the meaning — at which p
 a declared definition and the correction's direction stops being conditional. Until then the
 conditional statement is the honest one, and it is printed on every run.
 
+*Closed:* 2026-09-04 — the condition fired when T010 landed.
 > **Closed 2026-09-04. The condition fired when T010 landed and nobody read it until T014 needed
 > the column** — which is the ordinary way an unlock condition is met, and the reason a condition
 > names an event rather than a session: the event happened on 2026-09-03 and the noticing happened
@@ -2519,6 +2541,12 @@ That is the exact shape this repository refuses in `make gate-proof`'s *no unpro
 *Unlock condition:* T011, which builds the gold layer. `O10` already reads the metric grain the
 gold models compile from, so the extension is to the silver tables' declared schemas and to the
 Lakebase decision record — the two places a customer column would arrive with a straight face.
+*Closed:* 2026-09-13 — the condition, T011 building gold, was met on 2026-09-04, and the work it
+unlocks is owed rather than done: claim 7 still reads `holdout.core` and the contracts, not the
+silver tables' declared schemas or `gold.decisions`, which exists since 2026-09-12. The owed
+extension is filed in `docs/FINDINGS.md` as *Claim 7 has not been extended to the tables the
+estate writes*, with a disposition, so it cannot sit here as a deferral whose condition fired
+nine days ago.
 
 **The two person-vocabularies are pinned, so nothing notices a name published after them** ·
 deferred 2026-08-29

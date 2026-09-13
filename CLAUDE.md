@@ -1358,13 +1358,13 @@ what each does not catch.
 | `claim` — build a claim's eval, its `gate-proof`, its `make claim-N` | **exists** | `banner`, `social-preview` |
 | `integration-review` — bugs in the process, not the code | **exists** | `readme-standard` |
 | `contract-change` — restatement? new window? which consumers? which past results? | **no task** | `linkedin-debut`, `linkedin-article`, `post-ideas` |
-| `defect-to-rule` — root cause, then the rule that stops the class recurring | **no task** | `promo-guide`, `storyboard`, `aws-mask` |
+| `defect-to-rule` — root cause, then the rule that stops the class recurring | `T00C`, open | `promo-guide`, `storyboard`, `aws-mask` |
 
 **The status column exists because this table listed four skills as living here and one does.**
 `.claude/README.md` said so correctly the whole time; this table did not, which is the same defect
 as the layout section two headings down — a map, in the file every session reads first, describing
-a repository that is not this one. **`contract-change` and `defect-to-rule` have no task id anywhere
-in `TASKS.md`**: by this file's own rule they are not deferred, they are forgotten, and naming that
+a repository that is not this one. **`contract-change` has no task id anywhere in `TASKS.md`**
+(`defect-to-rule` has `T00C`, open, and this sentence said *neither* until 2026-09-13): by this file's own rule they are not deferred, they are forgotten, and naming that
 in the table is cheaper than a deferral nobody would read.
 
 > **`integration-review` moved from `T008` to `exists` on 2026-09-01**, when it landed. The row read
