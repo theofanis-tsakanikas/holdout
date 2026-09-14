@@ -48,3 +48,21 @@ resource "databricks_dashboard" "decision_monitor" {
   parent_path          = var.parent_path
   serialized_dashboard = file("${path.module}/../../generated/dashboards/decision_monitor.lvdash.json")
 }
+
+# ---------------------------------------------------------------- the demo's queries, as a notebook
+#
+# **`CLAUDE.md`'s surface that costs nothing: *a notebook carries the live question*.** The
+# queries a viewer runs while the estate stands are `ops/demo_queries.sql` — one file, read two
+# ways: `ops/inspect_estate.py` executes every `-- @name` block against the warehouse and goes red
+# if one does not run, and this resource imports the same file as a SQL notebook, one cell per
+# block with its explanation above it. So what is typed live is what the last `inspect` measured,
+# and the notebook cannot drift from the gate because they are the same bytes. An edit made in the
+# workspace is lost on the next apply, which is the IaC rule applied to the one surface a person
+# actually types in.
+resource "databricks_notebook" "demo" {
+  provider = databricks.workspace
+  path     = "${var.parent_path}/demo"
+  language = "SQL"
+  format   = "SOURCE"
+  source   = "${path.module}/../../ops/demo_queries.sql"
+}

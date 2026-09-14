@@ -208,6 +208,11 @@ no longer anchors to the line it named, `make expiry` refuses a deferral with no
 and no date, `make figures` re-runs every figure that appears in prose, and `make language`
 refuses Greek outside the declared exceptions in a repository whose author works in Greek.
 
+The demo's queries — [`ops/demo_queries.sql`](ops/demo_queries.sql) — are one file read two ways:
+`inspect` executes every block against the warehouse, and the lakehouse layer imports the same
+file as a SQL notebook at `/Shared/holdout/demo`, one cell per block. What a viewer types is what
+the last `inspect` measured.
+
 ---
 
 ## Quickstart
