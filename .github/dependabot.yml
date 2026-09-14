@@ -1,0 +1,49 @@
+# Version updates are OFF. Security updates are ON, in repository settings.
+#
+# This repository is a pinned reference implementation, not a library under maintenance. Its
+# dependency set is the combination the suite and the seven claims were validated against, and
+# several pins have to move together or not at all: `pyspark`, `delta-spark` and `dbt-spark`
+# are one runtime — `pipelines/gold/session.py` records the parameter-binding behaviour that
+# differs between them by version; the Databricks and AWS providers are pinned per layer in
+# `infra/*/versions.tf` and a provider bump is a plan against a standing estate, not a merge.
+#
+# Routine version-update pull requests therefore do more harm than good — they pile up
+# unreviewed, and they drift the stack away from the versions the gates actually cover.
+#
+# Every ecosystem the repository has is declared, because declaring it documents the posture
+# and omitting one reads as an oversight. All of them sit at `open-pull-requests-limit: 0`,
+# which switches off *version-update* PRs only. Dependabot **security** updates and alerts are
+# a separate feature, are left on, and are the part worth having: a real advisory still opens a
+# pull request.
+#
+# To turn version updates back on, CI must first genuinely exercise what a bump changes: the
+# `silver` and `gold` bins already install the Spark and dbt extras and run against local Delta,
+# so a Spark bump is covered; a provider bump is not, until `terraform plan` runs in CI against
+# a standing estate. Until then, a green tick on an untested upgrade is worse than no tick.
+
+version: 2
+
+updates:
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: terraform
+    directories:
+      - "/infra/bootstrap"
+      - "/infra/foundation"
+      - "/infra/lakehouse"
+      - "/infra/pipelines"
+      - "/infra/ml"
+      - "/infra/serving"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
