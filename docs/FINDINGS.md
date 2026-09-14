@@ -6548,3 +6548,27 @@ table is rewritten to say every source arrives as files — the author's.
 *Disposition:* the author's — build the stream or restate the design; the sentences are honest
 either way now
 *Status:* open
+
+---
+
+**Secret scanning was off on a public repository, and the CI principal is a Databricks account admin** ·
+found 2026-09-14 · by the security review the author asked for after the repository went public
+
+`dependabot.yml`'s header says *security updates are ON, in repository settings*; the settings
+said `secret_scanning: disabled`, `secret_scanning_push_protection: disabled`,
+`dependabot_security_updates: disabled`, and vulnerability alerts off. `gitleaks` in CI is the
+gate that has held — 384 commits, no leak — but push protection is the one that stops a leak
+before it is a commit, and a public repository had none. Enabled the same day through the API;
+zero alerts on first scan.
+
+And the service principal every dispatch workflow runs as holds `account_admin` in the Databricks
+account, because `foundation` creates the workspace and the metastore; the reaper reuses it,
+published as a `SecureString`, for three list-and-delete calls. Both are recorded in
+`SECURITY.md` as limitations rather than fixed: splitting the principal is an ownership design
+across two layers and the author's.
+
+*Site:* `SECURITY.md` :: `## What the review of 2026-09-14 found and changed`
+*Site:* `.github/dependabot.yml` :: `# Version updates are OFF. Security updates are ON, in repository settings.`
+*Disposition:* the settings, closed the same day; the principal split, the author's; restricting
+`allowed_actions` to the pinned six, a one-line repository setting the author can make
+*Status:* open

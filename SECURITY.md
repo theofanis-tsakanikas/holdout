@@ -44,6 +44,21 @@ sha `ci` has not passed and any ref that is not `main`.
 **The assignment table is append-only at the storage layer** and every person has read access and
 nothing more; the door is tried on every `inspect` run and is refused by name.
 
+## What the review of 2026-09-14 found and changed
+
+A full pass over the public repository, its history and the account: `gitleaks` over all 384
+commits (no leaks); a history search for the account id, workspace hosts, e-mail addresses, access
+keys, Databricks tokens, private keys and bucket names (none, in any revision); every workflow's
+triggers, permissions and secret references; the ruleset (no bypass actors, three required
+contexts, up-to-date branches, no force-push, no deletion); the environments (secrets bound to
+protected branches only); the OIDC trust (audience, subject, repository id and owner id all
+checked); every `resources = ["*"]` in the role's policy (two, both resourceless by API design);
+the state and zone buckets (public access blocked at bucket and account level, KMS-encrypted,
+versioned); `pip-audit` over the lockfile (no known vulnerabilities); the Databricks account's
+principals. **Changed the same day**: secret scanning, push protection, Dependabot alerts and
+Dependabot security updates were all **off** in the repository's settings and are now on — the
+`dependabot.yml` header had described a posture the settings did not hold.
+
 ## Known limitations
 
 - **The environments have no required reviewer.** `deploy` and `destroy` dispatch on a green
@@ -60,3 +75,17 @@ nothing more; the door is tried on every `inspect` run and is refused by name.
   left by an earlier, failed cycle has no workspace id for the workflow to find and needs a hand.
 - **Workspace URLs and run pages appear in GitHub Actions logs**, which are public on a public
   repository. They are identifiers of workspaces that no longer exist, not credentials.
+- **The CI service principal is a Databricks account admin.** `infra/foundation` creates the
+  workspace and the metastore, which are account-level objects, so the principal Terraform runs
+  as holds `account_admin`; a compromise of the `deploy` environment's secret is a compromise of
+  the Databricks account, not of one workspace. The secret lives only in environment secrets bound
+  to protected branches and reaches a runner only inside the dispatch workflows. A narrower split —
+  an account-admin principal for `foundation` and a workspace-scoped one for everything after —
+  is a deferral, not a design.
+- **The reaper reuses that same principal.** Its client id and secret are published to SSM as a
+  `SecureString` under the data key for the Lambda to read, and destroyed with `foundation`; the
+  reaper needs list-and-delete on three workspace surfaces and holds the account. A dedicated
+  principal for it is the same deferral.
+- **Any action from the marketplace may run** (`allowed_actions: all`); every action is pinned by
+  commit, which is what makes that acceptable, and restricting the setting to the six pinned
+  actions is a one-line hardening not yet made.
