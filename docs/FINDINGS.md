@@ -6525,3 +6525,26 @@ order is the deploy order plus `serving`.
 *Site:* `tests/ops/test_destroy_reverses_the_order_deploy_applies.py` :: `def test_destroy_takes_every_layer_deploy_applies_and_serving() -> None:`
 *Disposition:* branch `ops/destroy-asks-in-the-right-order`
 *Status:* open
+
+---
+
+**Nothing goes through Zerobus, and three sections of `CLAUDE.md` said the live day did** · found
+2026-09-14 · by reading `CLAUDE.md` against the code before writing the README
+
+`pipelines/ingest/sink.py` declares `MemorySink` and `JsonlSink` and says the estate's sink is
+Zerobus; no Zerobus sink exists. The live-day job drives the day into the landing zone as files and
+bulk-loads them, `run.yml`'s step is named *Drive the day through Zerobus*, and `CLAUDE.md`'s
+sources table, data-flow line and estate order all described a stream. The same read found the
+engines table (declarative pipelines run locally, the estate's silver is a Python job), the
+Lakebase section (an instance with neither flow), the decision path (local only), the model's run
+count and the `serving` row (endpoint only) describing the design in the present tense.
+
+All restated in `CLAUDE.md` per rule 4, each against the file that makes it true or false. What is
+not decided: whether Zerobus is built, which is a stream client and a job, or whether the sources
+table is rewritten to say every source arrives as files — the author's.
+
+*Site:* `pipelines/ingest/sink.py` :: `to **Zerobus**; here there is no workspace and no credentials, so it writes locally. Those are`
+*Site:* `CLAUDE.md` :: `> **Restated 2026-09-14: nothing goes through Zerobus, and the live day arrives the way the`
+*Disposition:* the author's — build the stream or restate the design; the sentences are honest
+either way now
+*Status:* open
