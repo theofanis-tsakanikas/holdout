@@ -303,6 +303,18 @@ of five in this paragraph that does not exist yet, and a paragraph that reads as
 facts when four are true is the defect this repository catalogues. **That reference implementation
 doubles as a fourth, independent check of claim 5.**
 
+> **Restated 2026-09-14 against the code, on two sentences above.** *The injected truth lives in a
+> sealed file the harness opens only after the readout* — `corpus/world/seal.py` writes
+> `truth.sealed.json` when a world is written to disk, and `evals/uplift/worlds.py::open_seals`
+> has **no caller**: claim 2's harness generates its worlds in memory and takes the truth from
+> `potential.counterfactual_unit_weeks`, regenerated. The estimand is the same and nothing
+> statistical changes; what the sentence described is a mechanism the eval does not use. The seal
+> is real on the estate — `bulk.load` refuses to carry it into bronze — and decorative in the
+> eval. And *the comparison crosses a language boundary in phase 2* — it did, in **claim 5**, not
+> in `U10`: `evals/definition/` executes the compiled SQL with Spark over gold and compares it
+> with the Python path as an integer; `U10` still compares two Python implementations. Found by a
+> fresh-context review on 2026-09-12; the prior wording stays per rule 4.
+
 **What is published** — numbers, not a green tick: the false-positive rate on A/A against the
 declared α; per-world correctness; the false-refusal rate on W6; estimator bias; and **CI
 coverage** — over K runs of W6 a 95% interval must contain the truth about 95% of the time.
@@ -465,6 +477,22 @@ demonstrated is incremental load of successive drops, not change capture against
 a smaller claim, made deliberately, because the connector that would have made the larger one runs
 a continuous classic-compute gateway.
 
+> **Restated 2026-09-14: nothing goes through Zerobus, and the live day arrives the way the
+> history does.** `pipelines/ingest/sink.py` declares the two sinks that exist — `MemorySink` and
+> `JsonlSink` — and says the estate's is Zerobus; no Zerobus sink was ever written.
+> `infra/pipelines/jobs.tf`'s live-day job drives the day into the **landing zone as files** and
+> a `load` task bulk-loads them into bronze, with the lateness and duplicates the driver injects
+> intact, and `run.yml`'s step is still named *Drive the day through Zerobus*. So the sources
+> table above has one route, not two, and what the estate demonstrates for the live day is
+> **incremental bulk load of files, the same as the ERP's drops** — the smaller claim the ERP
+> paragraph already makes deliberately, now made for every source. Zerobus stays the design's
+> answer for a stream and is filed as unbuilt in `docs/FINDINGS.md`, not described here as
+> running. The counts in the flow line — `bronze (10) → silver (5) → gold (4 families)` — are
+> the design's: the estate has **seven** bronze sources (`pos_lines · esl_acks · shelf_days ·
+> price_decisions · cost_ledger · product_master · store_master`), **seven** silver tables
+> (`sales · price_displayed · shelf_state · reference · stores · decisions · quarantine`) and
+> four gold families of which two are partial (below). The prior wording stays per rule 4.
+
 ### Bronze — one table per source, in the source's shape
 
 ```
@@ -523,6 +551,16 @@ D · the decision record     decisions          (immutable, written at decision 
 - **The readout pins a Delta version.** Without it, re-running last month's readout returns a
   different number as late data arrives.
 
+> **Restated 2026-09-14: which of the four families' tables exist.** `A` holds
+> `decision_economics` and `waste` and no `store_day`. `B` holds no table: features are computed
+> inside the training job (`pipelines/ml/features.py`) from silver, point-in-time correct, and
+> written nowhere. `C` holds `experiment_assignment` and `readout`; `exposure` is computed at
+> readout from `silver.price_displayed` and `outcomes` from the compiled readout query, neither
+> materialised. `D` holds `decisions`, since 2026-09-12, joined to the contract's policies for
+> the marker. And the readout **pins** its versions on the estate since 2026-09-13 — three Delta
+> versions in the row, the compiled query run at them — and **appends** rather than overwrites,
+> each row naming the one it restates. The prior wording stays per rule 4.
+
 ### Engines
 
 | layer | engine | why |
@@ -531,6 +569,17 @@ D · the decision record     decisions          (immutable, written at decision 
 | silver → gold | **dbt** | many analytical models, tests, docs, per-model ownership; the metric contract compiles into exactly dbt's shape |
 
 Two tools, split at a declared boundary — chosen per problem, not per preference.
+
+> **Restated 2026-09-14: on the estate, bronze → silver is a Python job, and the declarative
+> pipeline runs locally.** `pipelines/silver/pipeline.py` declares the tables as
+> `dp.materialized_view`s and `tests/pipelines/test_silver.py` runs it through `spark-pipelines`;
+> `infra/pipelines/jobs.tf`'s silver job runs `python -m pipelines.silver`, the same table
+> functions called from a build script, because Unity Catalog refuses a table created inside a
+> volume and the declarative runtime's output had nowhere downstream could name. The expectations
+> and the quarantine are the same code on both paths — `pipelines/silver/tables.py` — so what
+> the row above says about them holds; what it says about *streaming and out-of-order being
+> native* describes the local runtime, and the estate's silver is a batch rebuild over bronze.
+> The prior wording stays per rule 4.
 
 ### Lakebase vs the lakehouse — two stores, two jobs
 
@@ -542,6 +591,13 @@ Two tools, split at a declared boundary — chosen per problem, not per preferen
 
 Two flows, in opposite directions: **decisions** go Lakebase → lakehouse; **features** go
 lakehouse → Lakebase. It is not a mirror.
+
+> **Restated 2026-09-14: the instance exists and neither flow runs.** `infra/lakehouse/lakebase.tf`
+> applies a `CU_1` instance; no pipeline writes a decision to it and no job reads a feature from
+> it — the decision record reaches gold from the corpus's own stream, and features are computed
+> in the training job. The instance is the one line item that bills while idle with no auto-stop,
+> which `docs/FINDINGS.md` carries against the reaper's 48-hour TTL. The table above is the
+> design; the estate has the store and not the two jobs. The prior wording stays per rule 4.
 
 ---
 
@@ -570,9 +626,26 @@ trigger → freshness gate → which arm? → features → model → selection
 Three outcomes: **normal** (model, certified) · **fallback** (ladder, marked) · **refusal** (no
 legal price sells the item — donation or disposal, which is a correct output, not an error).
 
+> **Restated 2026-09-14: this path runs local, and the estate runs none of it.** Every price the
+> estate's shelves show is the corpus's own — the world applies the declared ladder per arm and
+> records the decision and the acknowledgement — and no job on the estate calls the model,
+> runs the guardrails, writes a decision record to Lakebase or dispatches to an ESL. The path's
+> pieces are proved where `CLAUDE.md` says proof lives: claim 1 over 28,482 certified prices
+> from real price lists, the ladder and the certificate type in `src/holdout/core/`. So on the
+> estate every decision is a **fallback** with the ladder's marker, no guardrail fires at
+> decision time, and the decision monitor shows one amber band — which is rule 2 made visible on
+> a day where the fallback is everything, and is said at the monitor's own section too. Whether
+> the estate should route the live day through the served model and the guardrails is the
+> author's, and is the largest single piece of unbuilt design in this file. The prior wording
+> stays per rule 4.
+
 ---
 
 ## The two AI systems
+
+> *(Restated 2026-09-14: the demand model is trained and served on the estate and is not in the
+> loop that prices the shelf — see the decision path's restatement above. "~2.4M times/day" is
+> the design; on the estate it is called once, by `run`, to prove the version that answers.)*
 
 | | demand model | agent |
 |---|---|---|
@@ -1017,6 +1090,11 @@ blast radius · consumes only from below · expensive or slow to apply.**
 | `ml` | `deploy` | training job, evaluation, promotion gates, MLflow — **no endpoint** |
 | `serving` | **`backfill`, at the end** | the model serving endpoint, the agent runtime, the AI Gateway and its tool registry |
 
+> *(Restated 2026-09-14: `serving` holds the model serving endpoint and nothing else. The agent
+> runtime and the AI Gateway moved to T025 on 2026-09-10 and were decided as a local adapter —
+> `src/holdout/agent/client.py` reaches Bedrock with the account's own credentials — so no
+> estate object exists for them; T023's `out_of_scope` records the move.)*
+
 `pipelines` is split from `lakehouse` because pipelines are edited constantly and no routine edit
 should put an `apply` near catalogs and grants. **`serving` is split from `ml` because it is
 applied at a different moment**: an endpoint cannot point at a model version that does not exist
@@ -1084,6 +1162,8 @@ backfill   eight months of history:
            → apply serving          <- only now can an endpoint exist
 
 run        one live day through Zerobus, with lateness and duplicates
+             (restated 2026-09-14: as files into the landing zone, bulk-loaded — see the
+              sources restatement; nothing goes through Zerobus)
            decisions routed by arm · exposure collected
            experiment A produces a number · experiment B must refuse
            a live question answered at the endpoint
@@ -1202,6 +1282,13 @@ console time, `destroy` ~15 min.
 **The real number is not one cycle.** It will not come out clean the first time — budget for **five
 to ten cycles**, so **100 – 600 USD** in total. These are list-price estimates, not a verified
 bill; the figure that reaches the README comes from an actual invoice.
+
+> **Measured 2026-09-13, from Cost Explorer rather than an invoice.** September 1–12, over the
+> cycles of the 8th, 9th, 10th and 12th plus every dispatch that failed part-way: **47 USD** on
+> the *Databricks Lakehouse Platform* line and **0.42 USD** on everything the project tag can
+> see — S3, KMS, the reaper. So a full cycle that comes out clean costs on the order of **10 USD**,
+> under the model's floor, and the model's real error was in the other direction: the line that
+> costs is the one the budget could not see, which is the budget posture's restatement below.
 
 ### The budget posture — a guardrail, not a brake
 
