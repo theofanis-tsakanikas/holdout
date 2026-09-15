@@ -5,6 +5,17 @@ Dated entries, newest first. The running record is [`PLAN.md`](PLAN.md)'s *Progr
 [`docs/DECISIONS.md`](docs/DECISIONS.md); what was found wrong and where it stands is
 [`docs/FINDINGS.md`](docs/FINDINGS.md). This file is the short form.
 
+## 2026-09-15 — the screens draw, and the README shows them
+
+A fifth full cycle, run to photograph the estate. `console-shots`, a headless browser signed
+into each console — AWS by federation, Databricks and GitHub once by hand — took forty-four
+frames and masked them; thirty-two are in the README beside the claims they prove. Opening the
+dashboards found that they did not draw: `inspect` had executed every dataset and called the
+screens green while every widget with data read *Missing query "main_query"*. Three branches in a
+day — the widget grammar, the full table-column shape, the verdict rounded to the contract — and
+`inspect` now reads every widget's binding against the columns its dataset returned. Also found
+by signing in: the author had no assignment on the workspace `foundation` builds. Filed, both.
+
 ## 2026-09-15 — the README carries its evidence
 
 Fourteen images, none taken by hand. Thirteen are terminal stills rendered by promo-kit from
