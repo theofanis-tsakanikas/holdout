@@ -6572,3 +6572,48 @@ across two layers and the author's.
 *Disposition:* the settings, closed the same day; the principal split, the author's; restricting
 `allowed_actions` to the pinned six, a one-line repository setting the author can make
 *Status:* open
+
+---
+
+**The datasets ran and the screens did not draw** · found 2026-09-15 · by opening the published
+dashboards with `console-shots` on a standing estate, before a screenshot
+
+`inspect` executes every dataset of every dashboard the way the dashboard executes it, and on run
+34941258528 it reported both screens green. Opened at the console, every widget with data on both
+screens read *Missing query "main_query"* and the two charts *Invalid widget definition is
+imported*. A Lakeview widget spec binds to one query by name, and the name is `main_query`; the
+compiler named it `main`, declared no `fields` and no `disaggregated`, and gave a table a chart's
+spec version. None of that reaches a dataset run, which is the only thing `inspect` can do with a
+dashboard, so the sentence *the screens draw* in the changelog of 2026-09-12 was true of the
+queries and false of the screens — for three days and four cycles, with nothing red.
+
+The compiler now emits every data widget through one grammar (`_data_widget`), and a test reads
+the binding on both compiled screens: the query name, the dataset, the fields, the spec version
+per widget type, and that every encoding names a field the query carries. Run against the artefact
+the estate had, it refuses all four data widgets of the readout. What it does not prove is that
+Lakeview renders what the grammar says — that is still a screen somebody opens, and this cycle's
+frames are it.
+
+*Site:* `src/holdout/contracts/compilers/dashboard.py` :: `MAIN_QUERY = "main_query"`
+*Site:* `tests/contracts/test_dashboard.py` :: `def test_every_data_widget_binds_to_main_query_with_its_fields_declared(`
+*Disposition:* closed by the branch that found it, once the redeployed screen is opened and draws
+*Status:* open
+
+---
+
+**The author was not a member of the workspace the estate builds** · found 2026-09-15 · by signing
+in to take a screenshot
+
+`foundation` creates the workspace under the service principal, and the only permission assignment
+on it was the principal's own `ADMIN`. `lakehouse/grants.tf` gives *account users* `SELECT` and
+`BROWSE` on the catalog, which is a grant inside a workspace the author could not enter: the
+account's one human user had no assignment, and every dashboard, notebook and lineage screen the
+design describes as *what a viewer opens* was unreachable by the one viewer. Assigned by hand this
+cycle with `databricks account workspace-assignment update … ADMIN`, from the laptop, which is a
+console action by another name and is recorded here for that reason.
+
+*Site:* `infra/lakehouse/grants.tf` :: `    principal = "account users"`
+*Disposition:* the assignment belongs in `foundation`, as a `databricks_mws_permission_assignment`
+for a user named by a variable the workflow supplies, never by a committed email; the workspace is
+destroyed each cycle, so the hand-made one does not conflict with it
+*Status:* open

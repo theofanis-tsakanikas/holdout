@@ -32,28 +32,46 @@
             "name": "outcome_over_the_day",
             "queries": [
               {
-                "name": "main",
+                "name": "main_query",
                 "query": {
-                  "datasetName": "decisions_today"
+                  "datasetName": "decisions_today",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "expression": "`hour`",
+                      "name": "hour"
+                    },
+                    {
+                      "expression": "`outcome`",
+                      "name": "outcome"
+                    },
+                    {
+                      "expression": "SUM(`decisions`)",
+                      "name": "sum(decisions)"
+                    }
+                  ]
                 }
               }
             ],
             "spec": {
               "encodings": {
                 "color": {
+                  "displayName": "outcome",
                   "fieldName": "outcome",
                   "scale": {
                     "type": "categorical"
                   }
                 },
                 "x": {
+                  "displayName": "hour",
                   "fieldName": "hour",
                   "scale": {
                     "type": "temporal"
                   }
                 },
                 "y": {
-                  "fieldName": "decisions",
+                  "displayName": "decisions",
+                  "fieldName": "sum(decisions)",
                   "scale": {
                     "type": "quantitative"
                   }
@@ -75,22 +93,35 @@
             "name": "which_guardrails_fired",
             "queries": [
               {
-                "name": "main",
+                "name": "main_query",
                 "query": {
-                  "datasetName": "decisions_today"
+                  "datasetName": "decisions_today",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "expression": "`reason_code`",
+                      "name": "reason_code"
+                    },
+                    {
+                      "expression": "SUM(`decisions`)",
+                      "name": "sum(decisions)"
+                    }
+                  ]
                 }
               }
             ],
             "spec": {
               "encodings": {
                 "x": {
+                  "displayName": "reason_code",
                   "fieldName": "reason_code",
                   "scale": {
                     "type": "categorical"
                   }
                 },
                 "y": {
-                  "fieldName": "decisions",
+                  "displayName": "decisions",
+                  "fieldName": "sum(decisions)",
                   "scale": {
                     "type": "quantitative"
                   }
