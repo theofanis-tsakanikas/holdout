@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="images/banner-readme.png" width="100%"
+       alt="Holdout — an isometric grid of wireframe store tiles on a glass floor. A block of them at the back sits inside a locked cyan enclosure labelled HOLDOUT · LOCKED; two streams from the treated and the held-back tiles pass through four gates labelled BALANCE, EXPOSURE, CONTAMINATION and POWER into a readout card showing +12,398 [+11,223, +13,571] above a carmine panel reading REFUSED · STOPPING_RULE_PERMITS_PEEKING. One tile is amber, labelled FALLBACK. Tagline: no uplift without a valid holdout.">
+</p>
+
 # Holdout
 
 <p align="center">

@@ -289,6 +289,14 @@ subscription with it, and the next `deploy` recreates it pending): open the conf
 click *Confirm subscription*, and check `aws sns list-subscriptions-by-topic` shows an ARN rather
 than `PendingConfirmation`. The budget's alerts are confirmed the same way, once, and were.
 
+### 9 · Uploading the social preview — added 2026-09-15
+
+`images/social_preview.png` is the card GitHub shows when the repository's link unfurls — a
+1280×640 cut of `images/banner.png`, under the 1 MB cap. Committing it makes it the source and
+nothing else: the preview a repository shows is set by hand, under **Settings → General →
+Social preview → Upload an image**, and there is no API for it. Once, after the banner lands,
+and again only if the banner changes.
+
 ---
 
 ## What is deliberately not here, because it has an API

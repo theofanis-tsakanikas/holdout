@@ -16,7 +16,9 @@ signed in by federation for fifteen minutes and passed through `aws-mask`, which
 console's dark mode on the way. Every image sits beside the claim it proves; the test count in
 the badge is `make check`'s own, 1,991. Getting the stills right corrected two metrics in
 promo-kit — a terminal row is 1.3× taller than it assumed, and xterm reserves a scrollbar — and
-the language gate now knows promo-kit's render cache is not repository content.
+the language gate now knows promo-kit's render cache is not repository content. The banner
+arrived the same day — the mechanism drawn, the refusal at the same size as the number — with
+the README cut and the social-preview card taken from it.
 
 ## 2026-09-13 — the estate produced the number
 

@@ -935,6 +935,12 @@ ops/                   the rules the product code is measured by — the corpus 
                        register, the coverage gate and `roster.py`
 tests/                 the suite the gates run
 docs/
+images/                what the README shows: terminal stills rendered by promo-kit from
+                       `promo/storyboard.yaml`, each asserted against the line its command
+                       prints, and console frames under `images/aws/` taken by the
+                       `console-shots` skill and passed through `aws-mask`. Since 2026-09-15
+promo/                 the storyboard the stills are rendered from; `promo/build/` is the
+                       render cache, gitignored and not repository content
 .claude/               the AI layer that ships with the repository: the skills, the hooks,
                        and settings.json
 .github/               **Six workflows**, all built: `ci.yml` on every push, the four that
