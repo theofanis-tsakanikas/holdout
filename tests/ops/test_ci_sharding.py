@@ -844,7 +844,14 @@ def test_an_entry_over_the_ceiling_fails_and_names_itself(tmp_path: Path) -> Non
     assert finished.returncode != 0, f"a bin over its ceiling passed: {output}"
     assert "probe bin" in output, f"the failure does not name the bin that caused it: {output}"
     assert "over the 1s ceiling" in output, output
-    assert "took 2s" in output, f"the elapsed span is not what the step measured: {output}"
+    # The span is what the step measured, not what the clock on an idle machine says: a
+    # target that sleeps 2s reports 2s when nothing else is running, and 3s when a laptop is
+    # also rendering a video — which is how this line failed once, on 2026-09-15, under a
+    # promo-kit capture. Anything below 2s would mean the step measured the wrong span; a
+    # second or two above it is the machine, and is admitted.
+    took = re.search(r"took (\d+)s", output)
+    assert took, f"the elapsed span is not reported: {output}"
+    assert 2 <= int(took.group(1)) <= 4, f"the elapsed span is not what the step measured: {output}"
 
 
 def test_an_entry_under_the_ceiling_passes_and_reports_its_cost(tmp_path: Path) -> None:
