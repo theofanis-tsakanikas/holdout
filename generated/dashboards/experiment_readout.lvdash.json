@@ -294,9 +294,36 @@
             "name": "verdicts",
             "queries": [
               {
-                "name": "main",
+                "name": "main_query",
                 "query": {
-                  "datasetName": "verdict"
+                  "datasetName": "verdict",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "expression": "`experiment_id`",
+                      "name": "experiment_id"
+                    },
+                    {
+                      "expression": "`verdict`",
+                      "name": "verdict"
+                    },
+                    {
+                      "expression": "`ci_low`",
+                      "name": "ci_low"
+                    },
+                    {
+                      "expression": "`ci_high`",
+                      "name": "ci_high"
+                    },
+                    {
+                      "expression": "`p_value`",
+                      "name": "p_value"
+                    },
+                    {
+                      "expression": "`reason_codes`",
+                      "name": "reason_codes"
+                    }
+                  ]
                 }
               }
             ],
@@ -304,26 +331,32 @@
               "encodings": {
                 "columns": [
                   {
+                    "displayName": "experiment_id",
                     "fieldName": "experiment_id"
                   },
                   {
+                    "displayName": "verdict",
                     "fieldName": "verdict"
                   },
                   {
+                    "displayName": "ci_low",
                     "fieldName": "ci_low"
                   },
                   {
+                    "displayName": "ci_high",
                     "fieldName": "ci_high"
                   },
                   {
+                    "displayName": "p_value",
                     "fieldName": "p_value"
                   },
                   {
+                    "displayName": "reason_codes",
                     "fieldName": "reason_codes"
                   }
                 ]
               },
-              "version": 3,
+              "version": 1,
               "widgetType": "table"
             }
           }
@@ -339,28 +372,46 @@
             "name": "arms_by_week",
             "queries": [
               {
-                "name": "main",
+                "name": "main_query",
                 "query": {
-                  "datasetName": "arm_metric"
+                  "datasetName": "arm_metric",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "expression": "`iso_week`",
+                      "name": "iso_week"
+                    },
+                    {
+                      "expression": "`arm`",
+                      "name": "arm"
+                    },
+                    {
+                      "expression": "SUM(`metric_value`)",
+                      "name": "sum(metric_value)"
+                    }
+                  ]
                 }
               }
             ],
             "spec": {
               "encodings": {
                 "color": {
+                  "displayName": "arm",
                   "fieldName": "arm",
                   "scale": {
                     "type": "categorical"
                   }
                 },
                 "x": {
+                  "displayName": "iso_week",
                   "fieldName": "iso_week",
                   "scale": {
-                    "type": "temporal"
+                    "type": "categorical"
                   }
                 },
                 "y": {
-                  "fieldName": "metric_value",
+                  "displayName": "category_margin_per_store_week@v3",
+                  "fieldName": "sum(metric_value)",
                   "scale": {
                     "type": "quantitative"
                   }
@@ -382,23 +433,53 @@
             "name": "per_store_effect",
             "queries": [
               {
-                "name": "main",
+                "name": "main_query",
                 "query": {
-                  "datasetName": "arm_metric"
+                  "datasetName": "arm_metric",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "expression": "`store_id`",
+                      "name": "store_id"
+                    },
+                    {
+                      "expression": "`arm`",
+                      "name": "arm"
+                    },
+                    {
+                      "expression": "SUM(`metric_value`)",
+                      "name": "sum(metric_value)"
+                    }
+                  ]
                 }
               }
             ],
             "spec": {
               "encodings": {
+                "color": {
+                  "displayName": "arm",
+                  "fieldName": "arm",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
                 "x": {
-                  "fieldName": "metric_value",
+                  "displayName": "store_id",
+                  "fieldName": "store_id",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "displayName": "category_margin_per_store_week@v3",
+                  "fieldName": "sum(metric_value)",
                   "scale": {
                     "type": "quantitative"
                   }
                 }
               },
               "version": 3,
-              "widgetType": "histogram"
+              "widgetType": "bar"
             }
           }
         },
@@ -413,9 +494,36 @@
             "name": "locked_design",
             "queries": [
               {
-                "name": "main",
+                "name": "main_query",
                 "query": {
-                  "datasetName": "verdict"
+                  "datasetName": "verdict",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "expression": "`experiment_id`",
+                      "name": "experiment_id"
+                    },
+                    {
+                      "expression": "`seed`",
+                      "name": "seed"
+                    },
+                    {
+                      "expression": "`digest`",
+                      "name": "digest"
+                    },
+                    {
+                      "expression": "`data_version`",
+                      "name": "data_version"
+                    },
+                    {
+                      "expression": "`period_opens_on`",
+                      "name": "period_opens_on"
+                    },
+                    {
+                      "expression": "`period_ends_on`",
+                      "name": "period_ends_on"
+                    }
+                  ]
                 }
               }
             ],
@@ -423,26 +531,32 @@
               "encodings": {
                 "columns": [
                   {
+                    "displayName": "experiment_id",
                     "fieldName": "experiment_id"
                   },
                   {
+                    "displayName": "seed",
                     "fieldName": "seed"
                   },
                   {
+                    "displayName": "digest",
                     "fieldName": "digest"
                   },
                   {
+                    "displayName": "data_version",
                     "fieldName": "data_version"
                   },
                   {
+                    "displayName": "period_opens_on",
                     "fieldName": "period_opens_on"
                   },
                   {
+                    "displayName": "period_ends_on",
                     "fieldName": "period_ends_on"
                   }
                 ]
               },
-              "version": 3,
+              "version": 1,
               "widgetType": "table"
             }
           }

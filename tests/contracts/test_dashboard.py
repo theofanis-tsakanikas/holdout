@@ -13,16 +13,19 @@ would all pass over a dashboard that had copied the query once and drifted since
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 
 from holdout.contracts.compilers import compile_all
 from holdout.contracts.compilers.dashboard import (
+    MAIN_QUERY,
     MONITOR_PATH,
     READOUT_COLUMNS,
     READOUT_METRIC,
     READOUT_PATH,
+    SPEC_VERSION,
     DashboardError,
     compile_decision_monitor,
     compile_readout_dashboard,
@@ -219,3 +222,76 @@ def test_a_screen_compiled_from_a_retired_metric_is_refused() -> None:
             module.compile_readout_dashboard(CONTRACTS)
     finally:
         module.READOUT_METRIC = original
+
+
+# ── the widget grammar ────────────────────────────────────────────────────────────────────
+#
+# **The datasets ran and the screens did not draw.** `inspect` executes every dataset the way
+# the dashboard executes it and reported both screens green on 2026-09-15; opened at the
+# console, every widget with data read *Missing query "main_query"* or *Invalid widget
+# definition is imported*. A widget spec binds to a query by the one name Lakeview gives it,
+# and the first compiler named it `main`, declared no fields, and put a table at a chart's
+# spec version. None of that is visible to a dataset run, so this is the check that reads the
+# binding — the half of "the screens draw" that no query can answer.
+
+
+def _data_widgets(document: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        w["widget"]
+        for page in document["pages"]
+        for w in page["layout"]
+        if "queries" in w["widget"]
+    ]
+
+
+@pytest.mark.parametrize("compile", [compile_readout_dashboard, compile_decision_monitor])
+def test_every_data_widget_binds_to_main_query_with_its_fields_declared(
+    compile: Callable[[Any], str],
+) -> None:
+    document = json.loads(compile(CONTRACTS))
+    datasets = {d["name"] for d in document["datasets"]}
+    widgets = _data_widgets(document)
+    assert widgets, "a screen with no data widget draws nothing"
+    for widget in widgets:
+        (query,) = widget["queries"]
+        assert query["name"] == MAIN_QUERY, (
+            f"{widget['name']}: the spec reads `main_query`, not {query['name']!r}"
+        )
+        body = query["query"]
+        assert body["datasetName"] in datasets, (
+            f"{widget['name']}: dataset {body['datasetName']!r} is not declared"
+        )
+        assert body["fields"], f"{widget['name']}: a query with no fields draws no columns"
+        assert isinstance(body["disaggregated"], bool)
+        names = {f["name"] for f in body["fields"]}
+        spec = widget["spec"]
+        assert spec["version"] == SPEC_VERSION[spec["widgetType"]], (
+            f"{widget['name']}: spec version"
+        )
+        used = _field_names(spec["encodings"])
+        assert used <= names, (
+            f"{widget['name']}: encodings name fields the query does not carry: {used - names}"
+        )
+
+
+def _field_names(encodings: dict[str, Any]) -> set[str]:
+    found: set[str] = set()
+    for value in encodings.values():
+        if isinstance(value, dict) and "fieldName" in value:
+            found.add(value["fieldName"])
+        elif isinstance(value, list):
+            found |= {v["fieldName"] for v in value if isinstance(v, dict) and "fieldName" in v}
+    return found
+
+
+def test_a_table_widget_declares_every_column_it_shows_as_a_field(
+    readout_dashboard: dict[str, Any],
+) -> None:
+    """A table's columns are the query's fields, one to one — a column with no field is empty."""
+    tables = [w for w in _data_widgets(readout_dashboard) if w["spec"]["widgetType"] == "table"]
+    assert tables
+    for table in tables:
+        columns = [c["fieldName"] for c in table["spec"]["encodings"]["columns"]]
+        fields = [f["name"] for f in table["queries"][0]["query"]["fields"]]
+        assert columns == fields, table["name"]
+        assert table["queries"][0]["query"]["disaggregated"] is True, table["name"]

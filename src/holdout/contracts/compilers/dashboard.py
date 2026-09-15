@@ -178,6 +178,80 @@ def _readout_parameters(query: str) -> list[dict[str, Any]]:
     return declared
 
 
+# ── the widget grammar Lakeview draws ─────────────────────────────────────────────────────
+#
+# **A widget spec binds to one query, and that query is named `main_query`.** The first
+# version named it `main`, declared no `fields` and no `disaggregated`, and put a table at
+# spec version 3; the datasets ran, `inspect` executed every one of them and said the screens
+# draw, and the published dashboard showed *Missing query "main_query"* in every widget with
+# data and *Invalid widget definition is imported* in the charts. Measured on 2026-09-15, by
+# opening the screen -- the one thing `inspect` cannot do -- and filed in docs/FINDINGS.md.
+# The grammar is written once, here, and every data widget is emitted through it.
+
+#: The one query name a widget spec reads its data from.
+MAIN_QUERY = "main_query"
+
+#: Spec versions per widget type, as Lakeview exports them today.
+SPEC_VERSION = {"table": 1, "counter": 2, "line": 3, "bar": 3, "area": 3}
+
+
+def _field(name: str, expression: str | None = None) -> dict[str, str]:
+    """A query field: a column as itself, or an aggregate under the name the encoding uses."""
+    return {"name": name, "expression": expression or f"`{name}`"}
+
+
+def _data_widget(
+    *,
+    name: str,
+    dataset: str,
+    widget_type: str,
+    fields: list[dict[str, str]],
+    encodings: dict[str, Any],
+    disaggregated: bool,
+    position: dict[str, int],
+) -> dict[str, Any]:
+    """One widget over one dataset, in the shape the published dashboard renders."""
+    return {
+        "widget": {
+            "name": name,
+            "queries": [
+                {
+                    "name": MAIN_QUERY,
+                    "query": {
+                        "datasetName": dataset,
+                        "fields": fields,
+                        "disaggregated": disaggregated,
+                    },
+                }
+            ],
+            "spec": {
+                "version": SPEC_VERSION[widget_type],
+                "widgetType": widget_type,
+                "encodings": encodings,
+            },
+        },
+        "position": position,
+    }
+
+
+def _table(
+    name: str, dataset: str, columns: tuple[str, ...], position: dict[str, int]
+) -> dict[str, Any]:
+    return _data_widget(
+        name=name,
+        dataset=dataset,
+        widget_type="table",
+        fields=[_field(column) for column in columns],
+        encodings={"columns": [{"fieldName": c, "displayName": c} for c in columns]},
+        disaggregated=True,
+        position=position,
+    )
+
+
+def _axis(field_name: str, scale: str, display: str | None = None) -> dict[str, Any]:
+    return {"fieldName": field_name, "scale": {"type": scale}, "displayName": display or field_name}
+
+
 def compile_readout_dashboard(contracts: ContractSet) -> str:
     """The experiment readout screen. Four check tiles, a hero counter, and the locked design.
 
@@ -272,90 +346,69 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                         },
                         "position": {"x": 0, "y": 3, "width": 6, "height": 4},
                     },
-                    {
-                        "widget": {
-                            "name": "verdicts",
-                            "queries": [{"name": "main", "query": {"datasetName": "verdict"}}],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "table",
-                                "encodings": {
-                                    "columns": [
-                                        {"fieldName": column}
-                                        for column in (
-                                            "experiment_id",
-                                            "verdict",
-                                            "ci_low",
-                                            "ci_high",
-                                            "p_value",
-                                            "reason_codes",
-                                        )
-                                    ]
-                                },
-                            },
+                    _table(
+                        "verdicts",
+                        "verdict",
+                        (
+                            "experiment_id",
+                            "verdict",
+                            "ci_low",
+                            "ci_high",
+                            "p_value",
+                            "reason_codes",
+                        ),
+                        {"x": 0, "y": 7, "width": 12, "height": 3},
+                    ),
+                    _data_widget(
+                        name="arms_by_week",
+                        dataset="arm_metric",
+                        widget_type="line",
+                        fields=[
+                            _field("iso_week"),
+                            _field("arm"),
+                            _field("sum(metric_value)", "SUM(`metric_value`)"),
+                        ],
+                        encodings={
+                            "x": _axis("iso_week", "categorical"),
+                            "y": _axis("sum(metric_value)", "quantitative", metric.ref),
+                            "color": _axis("arm", "categorical"),
                         },
-                        "position": {"x": 0, "y": 7, "width": 12, "height": 3},
-                    },
-                    {
-                        "widget": {
-                            "name": "arms_by_week",
-                            "queries": [{"name": "main", "query": {"datasetName": "arm_metric"}}],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "line",
-                                "encodings": {
-                                    "x": {"fieldName": "iso_week", "scale": {"type": "temporal"}},
-                                    "y": {
-                                        "fieldName": "metric_value",
-                                        "scale": {"type": "quantitative"},
-                                    },
-                                    "color": {"fieldName": "arm", "scale": {"type": "categorical"}},
-                                },
-                            },
+                        disaggregated=False,
+                        position={"x": 6, "y": 3, "width": 6, "height": 4},
+                    ),
+                    # **One bar per store, coloured by arm** -- so one store dragging the mean
+                    # is visible as one bar. A histogram was the first shape and drew nothing:
+                    # its binning grammar is undocumented and the import called it invalid.
+                    _data_widget(
+                        name="per_store_effect",
+                        dataset="arm_metric",
+                        widget_type="bar",
+                        fields=[
+                            _field("store_id"),
+                            _field("arm"),
+                            _field("sum(metric_value)", "SUM(`metric_value`)"),
+                        ],
+                        encodings={
+                            "x": _axis("store_id", "categorical"),
+                            "y": _axis("sum(metric_value)", "quantitative", metric.ref),
+                            "color": _axis("arm", "categorical"),
                         },
-                        "position": {"x": 6, "y": 3, "width": 6, "height": 4},
-                    },
-                    {
-                        "widget": {
-                            "name": "per_store_effect",
-                            "queries": [{"name": "main", "query": {"datasetName": "arm_metric"}}],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "histogram",
-                                "encodings": {
-                                    "x": {
-                                        "fieldName": "metric_value",
-                                        "scale": {"type": "quantitative"},
-                                    }
-                                },
-                            },
-                        },
-                        "position": {"x": 0, "y": 10, "width": 6, "height": 4},
-                    },
-                    {
-                        "widget": {
-                            "name": "locked_design",
-                            "queries": [{"name": "main", "query": {"datasetName": "verdict"}}],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "table",
-                                "encodings": {
-                                    "columns": [
-                                        {"fieldName": column}
-                                        for column in (
-                                            "experiment_id",
-                                            "seed",
-                                            "digest",
-                                            "data_version",
-                                            "period_opens_on",
-                                            "period_ends_on",
-                                        )
-                                    ]
-                                },
-                            },
-                        },
-                        "position": {"x": 6, "y": 10, "width": 6, "height": 4},
-                    },
+                        disaggregated=False,
+                        position={"x": 0, "y": 10, "width": 6, "height": 4},
+                    ),
+                    _table(
+                        "locked_design",
+                        "verdict",
+                        (
+                            "experiment_id",
+                            "seed",
+                            "digest",
+                            "data_version",
+                            "period_opens_on",
+                            "period_ends_on",
+                        ),
+                        {"x": 6, "y": 10, "width": 6, "height": 4},
+                    ),
                 ],
             }
         ],
@@ -408,53 +461,38 @@ def compile_decision_monitor(contracts: ContractSet) -> str:
                 "name": "monitor",
                 "displayName": "Decision monitor",
                 "layout": [
-                    {
-                        "widget": {
-                            "name": "outcome_over_the_day",
-                            "queries": [
-                                {"name": "main", "query": {"datasetName": "decisions_today"}}
-                            ],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "area",
-                                "encodings": {
-                                    "x": {"fieldName": "hour", "scale": {"type": "temporal"}},
-                                    "y": {
-                                        "fieldName": "decisions",
-                                        "scale": {"type": "quantitative"},
-                                    },
-                                    "color": {
-                                        "fieldName": "outcome",
-                                        "scale": {"type": "categorical"},
-                                    },
-                                },
-                            },
+                    _data_widget(
+                        name="outcome_over_the_day",
+                        dataset="decisions_today",
+                        widget_type="area",
+                        fields=[
+                            _field("hour"),
+                            _field("outcome"),
+                            _field("sum(decisions)", "SUM(`decisions`)"),
+                        ],
+                        encodings={
+                            "x": _axis("hour", "temporal"),
+                            "y": _axis("sum(decisions)", "quantitative", "decisions"),
+                            "color": _axis("outcome", "categorical"),
                         },
-                        "position": {"x": 0, "y": 0, "width": 12, "height": 5},
-                    },
-                    {
-                        "widget": {
-                            "name": "which_guardrails_fired",
-                            "queries": [
-                                {"name": "main", "query": {"datasetName": "decisions_today"}}
-                            ],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "bar",
-                                "encodings": {
-                                    "x": {
-                                        "fieldName": "reason_code",
-                                        "scale": {"type": "categorical"},
-                                    },
-                                    "y": {
-                                        "fieldName": "decisions",
-                                        "scale": {"type": "quantitative"},
-                                    },
-                                },
-                            },
+                        disaggregated=False,
+                        position={"x": 0, "y": 0, "width": 12, "height": 5},
+                    ),
+                    _data_widget(
+                        name="which_guardrails_fired",
+                        dataset="decisions_today",
+                        widget_type="bar",
+                        fields=[
+                            _field("reason_code"),
+                            _field("sum(decisions)", "SUM(`decisions`)"),
+                        ],
+                        encodings={
+                            "x": _axis("reason_code", "categorical"),
+                            "y": _axis("sum(decisions)", "quantitative", "decisions"),
                         },
-                        "position": {"x": 0, "y": 5, "width": 6, "height": 5},
-                    },
+                        disaggregated=False,
+                        position={"x": 0, "y": 5, "width": 6, "height": 5},
+                    ),
                     {
                         "widget": {
                             "name": "the_closed_vocabulary",
