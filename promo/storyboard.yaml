@@ -1,0 +1,174 @@
+# The storyboard for this project's promotional output. Rendered by promo-kit:
+#
+#   promokit validate .    check every claim in here against this repository
+#   promokit stills .      write the PNGs, from the same renders the video uses
+#   promokit video .       both canvases, composed from the same masters
+#
+# Two kinds of scene, deliberately. Everything that is a command this repository runs is a
+# `terminal` scene, recorded by the tool with no human in it, and every number in a caption is
+# asserted against the line the command really prints. Everything behind the Databricks or AWS
+# console is a `clip` the author records -- the two dashboards, the notebook, the door, the
+# endpoint, Bedrock's model access -- which is why those scenes arrive last and are named as
+# recordings. Console *stills* are a different matter since 2026-09-14: the `console-shots`
+# skill takes them in a headless browser of its own and masks them, and `images/aws/` is its.
+
+version: 1
+title: Holdout
+subtitle: an uplift number without a valid holdout is a build failure
+
+outputs:
+  - youtube
+  - linkedin
+
+defaults:
+  duration: 4.0
+  fit: contain
+  transition: fade
+  transition_duration: 0.4
+
+scenes:
+  # One scene per claim: the eval, not the mutations, because a still is one frame and the
+  # eval's report is the frame with the figures on it. The mutations are the last scene, as
+  # the ledger that says which claim owns which. Every caption's number is asserted against
+  # the line the command really prints.
+  #
+  # No `rows:` on a scene whose whole report is the frame: promo-kit fits the terminal to
+  # what the command printed, wrapped at `columns`, plus the line it was typed on and the
+  # prompt it returns to. The one scene that sets it is the one that wants the tail only.
+  - id: claim-1
+    type: terminal
+    command: make eval-guardrail
+    assert: 0 violations in 28,482 certified prices
+    caption: No price reaches a shelf without the guardrail set — 28,482 real prices, 0 violations
+    columns: 130
+    settle: 5
+    still: images/claim-1.png
+
+  - id: claim-2
+    type: terminal
+    command: make eval-uplift
+    assert: 8/200 = 4.0% significant against alpha=5%
+    caption: On an A/A split the system reports an effect 8 times in 200 — 4.0% against α = 5%
+    columns: 130
+    timeout: 900
+    settle: 5
+    still: images/claim-2.png
+
+  - id: claim-3
+    type: terminal
+    command: make eval-assignment
+    assert: 273/273 = 100.00% attempts refused
+    caption: The holdout is neither erased nor chosen after the fact — 273 of 273 attempts refused
+    columns: 130
+    settle: 5
+    still: images/claim-3.png
+
+  - id: claim-4
+    type: terminal
+    command: make eval-censoring
+    assert: 0 of 16,942 emptied store-days read as fully observed
+    caption: A stock-out is never read as zero demand — 0 of 16,942 emptied store-days read as fully observed
+    columns: 130
+    settle: 5
+    still: images/claim-4.png
+
+  # Spark and dbt print their session logs before the report, and only the report is worth a
+  # frame: the still is the last frame, so a terminal exactly as tall as the report shows it
+  # and nothing above it. Measured: the report is 31 rows at 130 columns, plus the prompt,
+  # plus dbt's closing `Done. PASS=3` line, which is the model being built.
+  - id: claim-5
+    type: terminal
+    command: make eval-definition
+    assert: 481 cell(s), 0 disagreeing
+    caption: One definition, three mechanisms, the same integer — 481 cells, 0 disagreeing
+    columns: 130
+    rows: 33
+    timeout: 600
+    settle: 5
+    still: images/claim-5.png
+
+  - id: claim-6
+    type: terminal
+    command: make eval-design
+    assert: N = 11 proposal(s) of 13 question(s)
+    caption: The agent proposes, the engine decides — 11 designs proposed, and the code says which may exist
+    columns: 130
+    timeout: 600
+    settle: 5
+    still: images/claim-6.png
+
+  - id: claim-7
+    type: terminal
+    command: make eval-oversight
+    assert: 0 of 244 fields · against 317 published names
+    caption: A decision that targets a person is structurally impossible — 0 of 244 fields is a name a person is known by
+    columns: 130
+    settle: 5
+    still: images/claim-7.png
+
+  - id: gate-proof
+    type: terminal
+    command: make gate-proof
+    assert: 59 mutations · 0 orphaned · 0 run twice
+    caption: 59 planted mutations, each owned by exactly one claim and refused by the check named in advance
+    columns: 130
+    settle: 5
+    still: images/gate-proof.png
+
+  # The ledger says who owns what; this is a gate actually biting. `make claim-1` runs the eval
+  # and then plants claim 1's seventeen mutations one at a time, each refused by the check
+  # named in its YAML before anybody looked. The eval's report scrolls off the top on purpose:
+  # the frame is the mutation half, and claim-1.png already carries the eval.
+  - id: claim-1-mutations
+    type: terminal
+    command: make claim-1
+    assert: every gate bites, or it is not a gate (17/17)
+    caption: Claim 1's 17 planted breaks — the margin floor rounding the wrong way, a bound wearing another rule's id — each refused by the check named in advance
+    columns: 130
+    rows: 41
+    timeout: 900
+    settle: 5
+    still: images/claim-1-mutations.png
+
+  # The whole local gate, in the order that fails fastest, ending in the suite's count. This
+  # is the number the README's badge carries, and the frame is where a reader checks it.
+  - id: check
+    type: terminal
+    command: make check
+    assert: lint · typecheck · contracts · language · findings · expiry · figures · terraform · tests
+    caption: The whole local gate — nine checks in the order that fails fastest, no account, no credentials
+    columns: 130
+    rows: 61
+    timeout: 900
+    settle: 5
+    still: images/check.png
+
+  # One definition compiled into every consumer, and every byte of the output compared.
+  - id: contracts
+    type: terminal
+    command: make contracts
+    assert: every byte matches
+    caption: The contract layer compiles — 93 of 93 values carry a source, 16 artefacts regenerated and byte-compared
+    columns: 130
+    settle: 5
+    still: images/contracts.png
+
+  # A gate reports on what it examined; this is the second enumeration that keeps it honest.
+  - id: figures
+    type: terminal
+    command: make figures
+    assert: every gate examined at least what exists
+    caption: Every gate declares how it enumerates its population, and this counts it a second time
+    columns: 130
+    settle: 5
+    still: images/figures.png
+
+  # The number a claim rests on is the surviving roster, not the store count.
+  - id: roster
+    type: terminal
+    command: make roster
+    assert: "W1       15%      320       59         51      269         53"
+    caption: 320 stores, 59 neighbour pairs, a surviving roster of 269 and a control arm of 53 — the number claim 2 is drawn over
+    columns: 130
+    settle: 5
+    still: images/roster.png

@@ -98,6 +98,10 @@ NOT_CONTENT: frozenset[str] = frozenset(
         # `terraform init` from the tracked `.terraform.lock.hcl` beside it. Same class as
         # `.worlds` and `.shards`: generated, not tracked, and not text.
         ".terraform",
+        # promo-kit's render cache under `promo/build/` — the recordings the README's stills
+        # are the last frame of, gitignored, mp4 and json. Same class again: generated, not
+        # tracked, and the mp4 is not text. Fourth entry added by whoever tripped over it.
+        "build",
     }
 )
 

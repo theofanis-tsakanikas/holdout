@@ -5,6 +5,21 @@ Dated entries, newest first. The running record is [`PLAN.md`](PLAN.md)'s *Progr
 [`docs/DECISIONS.md`](docs/DECISIONS.md); what was found wrong and where it stands is
 [`docs/FINDINGS.md`](docs/FINDINGS.md). This file is the short form.
 
+## 2026-09-15 — the README carries its evidence
+
+Fourteen images, none taken by hand. Thirteen are terminal stills rendered by promo-kit from
+`promo/storyboard.yaml` — the seven evals, claim 1's seventeen mutations biting, `gate-proof`,
+`make check`, `make contracts`, `make figures` and the roster — each with its headline figure
+asserted against the line the command really printed, so a still whose number has moved fails
+the render. The fourteenth is the S3 console after `destroy all`, taken by a headless browser
+signed in by federation for fifteen minutes and passed through `aws-mask`, which learned the
+console's dark mode on the way. Every image sits beside the claim it proves; the test count in
+the badge is `make check`'s own, 1,991. Getting the stills right corrected two metrics in
+promo-kit — a terminal row is 1.3× taller than it assumed, and xterm reserves a scrollbar — and
+the language gate now knows promo-kit's render cache is not repository content. The banner
+arrived the same day — the mechanism drawn, the refusal at the same size as the number — with
+the README cut and the social-preview card taken from it.
+
 ## 2026-09-13 — the estate produced the number
 
 A fresh-context review found that the estate's refusal, accepted as the phase-3 demonstration,
