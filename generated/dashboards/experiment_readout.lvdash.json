@@ -328,36 +328,187 @@
               }
             ],
             "spec": {
+              "allowHTMLByDefault": false,
+              "condensed": true,
               "encodings": {
                 "columns": [
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "experiment_id",
-                    "fieldName": "experiment_id"
+                    "fieldName": "experiment_id",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100000,
+                    "preserveWhitespace": false,
+                    "title": "experiment_id",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "verdict",
-                    "fieldName": "verdict"
+                    "fieldName": "verdict",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100001,
+                    "preserveWhitespace": false,
+                    "title": "verdict",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "number",
                     "displayName": "ci_low",
-                    "fieldName": "ci_low"
+                    "fieldName": "ci_low",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "numberFormat": "0.00",
+                    "order": 100002,
+                    "preserveWhitespace": false,
+                    "title": "ci_low",
+                    "type": "float",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "number",
                     "displayName": "ci_high",
-                    "fieldName": "ci_high"
+                    "fieldName": "ci_high",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "numberFormat": "0.00",
+                    "order": 100003,
+                    "preserveWhitespace": false,
+                    "title": "ci_high",
+                    "type": "float",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "number",
                     "displayName": "p_value",
-                    "fieldName": "p_value"
+                    "fieldName": "p_value",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "numberFormat": "0.00",
+                    "order": 100004,
+                    "preserveWhitespace": false,
+                    "title": "p_value",
+                    "type": "float",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "reason_codes",
-                    "fieldName": "reason_codes"
+                    "fieldName": "reason_codes",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100005,
+                    "preserveWhitespace": false,
+                    "title": "reason_codes",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   }
                 ]
               },
+              "frame": {
+                "showTitle": true,
+                "title": "The number, or the reason there is none"
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
               "version": 1,
-              "widgetType": "table"
+              "widgetType": "table",
+              "withRowNumber": false
             }
           }
         },
@@ -416,6 +567,10 @@
                     "type": "quantitative"
                   }
                 }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Treatment against control, by week"
               },
               "version": 3,
               "widgetType": "line"
@@ -478,6 +633,10 @@
                   }
                 }
               },
+              "frame": {
+                "showTitle": true,
+                "title": "Per store, by arm"
+              },
               "version": 3,
               "widgetType": "bar"
             }
@@ -528,36 +687,184 @@
               }
             ],
             "spec": {
+              "allowHTMLByDefault": false,
+              "condensed": true,
               "encodings": {
                 "columns": [
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "experiment_id",
-                    "fieldName": "experiment_id"
+                    "fieldName": "experiment_id",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100000,
+                    "preserveWhitespace": false,
+                    "title": "experiment_id",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "seed",
-                    "fieldName": "seed"
+                    "fieldName": "seed",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100001,
+                    "preserveWhitespace": false,
+                    "title": "seed",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "digest",
-                    "fieldName": "digest"
+                    "fieldName": "digest",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100002,
+                    "preserveWhitespace": false,
+                    "title": "digest",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "data_version",
-                    "fieldName": "data_version"
+                    "fieldName": "data_version",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100003,
+                    "preserveWhitespace": false,
+                    "title": "data_version",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "period_opens_on",
-                    "fieldName": "period_opens_on"
+                    "fieldName": "period_opens_on",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100004,
+                    "preserveWhitespace": false,
+                    "title": "period_opens_on",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   },
                   {
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "allowSearch": false,
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "displayAs": "string",
                     "displayName": "period_ends_on",
-                    "fieldName": "period_ends_on"
+                    "fieldName": "period_ends_on",
+                    "highlightLinks": false,
+                    "imageHeight": "",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "linkOpenInNewTab": true,
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "order": 100005,
+                    "preserveWhitespace": false,
+                    "title": "period_ends_on",
+                    "type": "string",
+                    "useMonospaceFont": false,
+                    "visible": true
                   }
                 ]
               },
+              "frame": {
+                "showTitle": true,
+                "title": "The locked design"
+              },
+              "invisibleColumns": [],
+              "itemsPerPage": 25,
+              "paginationSize": "default",
               "version": 1,
-              "widgetType": "table"
+              "widgetType": "table",
+              "withRowNumber": false
             }
           }
         }

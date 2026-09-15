@@ -295,3 +295,9 @@ def test_a_table_widget_declares_every_column_it_shows_as_a_field(
         fields = [f["name"] for f in table["queries"][0]["query"]["fields"]]
         assert columns == fields, table["name"]
         assert table["queries"][0]["query"]["disaggregated"] is True, table["name"]
+        # **A column is read in its full shape or not at all.** `fieldName` and `displayName`
+        # alone -- the first repair -- imported as *Invalid widget definition*; these are the
+        # keys the shape Lakeview exports carries on every column.
+        for column in table["spec"]["encodings"]["columns"]:
+            missing = {"title", "type", "displayAs", "visible", "order"} - set(column)
+            assert not missing, f"{table['name']}.{column['fieldName']}: {missing}"

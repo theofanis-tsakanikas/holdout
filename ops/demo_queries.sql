@@ -84,23 +84,6 @@ show tblproperties holdout.gold.experiment_assignment ('delta.appendOnly');
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## the-door-tried
--- MAGIC Claim 3, tried rather than described. A delete that matches no row, so nothing could move
--- MAGIC even if the claim were false. Delta refuses it by name before it looks at the predicate.
--- MAGIC
--- MAGIC **Expected to be refused** — the refusal is the demonstration.
-
--- COMMAND ----------
-
--- @name the-door-tried
--- @expect refused
--- Claim 3, tried rather than described. A delete that matches no row, so nothing could move
--- even if the claim were false. Delta refuses it by name before it looks at the predicate.
-delete from holdout.gold.experiment_assignment where experiment_id = 'nobody-declared-this';
-
--- COMMAND ----------
-
--- MAGIC %md
 -- MAGIC ## one-definition-the-dbt-table
 -- MAGIC Claim 5. The metric compiled from contracts/metrics/ into a dbt model and built on the
 -- MAGIC estate: 320 stores, three categories, the weeks the world carries.
@@ -215,3 +198,23 @@ from system.access.table_lineage
 where target_table_catalog = 'holdout' and source_table_full_name is not null
 group by source_table_full_name, target_table_full_name
 order by target_table_full_name, source_table_full_name;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## the-door-tried
+-- MAGIC Claim 3, tried rather than described. A delete that matches no row, so nothing could move
+-- MAGIC even if the claim were false. Two hands on the door, two refusals: a **person** is stopped by
+-- MAGIC the catalog (`PERMISSION_DENIED` — account users hold `SELECT` and nothing that writes), and
+-- MAGIC the **owner**, which is what `inspect` runs as, by the storage (`DELTA_CANNOT_MODIFY_APPEND_ONLY`).
+-- MAGIC
+-- MAGIC **Expected to be refused** — the refusal is the demonstration, and it is the last cell so
+-- MAGIC that *Run all* runs everything before it stops here.
+
+-- COMMAND ----------
+
+-- @name the-door-tried
+-- @expect refused
+-- Claim 3, tried rather than described. A delete that matches no row, so nothing could move
+-- even if the claim were false. Delta refuses it by name before it looks at the predicate.
+delete from holdout.gold.experiment_assignment where experiment_id = 'nobody-declared-this';

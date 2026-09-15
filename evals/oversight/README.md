@@ -135,18 +135,22 @@ refuse a field called `q7` on the same evidence, because it never reads the name
 `O7` is that sentence made into a gate: **no attack may ever be caught by the word list
 alone.** If one were, claim 7 would be resting on words somebody here chose.
 
-### The twelve explained collisions, published rather than filtered
+### The fifteen explained collisions, published rather than filtered
 
 Ordinary engineering English and the vocabulary of personhood overlap, and hiding the overlap
 would mean curating the input. So it is printed in full, with a reason each — nine of them in
-`src/holdout/`, three more in the compiled consumers under `generated/`: `AGENT`, `agent`,
+`src/holdout/`, six more in the compiled consumers under `generated/`: `AGENT`, `agent`,
 `agent_tool` and `compile_agent_tool` are the design engine's LLM and the tool definition it
 is given, not schema.org's person; `candidate` is a candidate *price* and `candidate_weeks` a
 duration; `members` are the units in a stratum; `parents` is `pathlib`'s keyword in
 `mkdir(parents=True)`; `url` is where a guardrail value's citation points; `height` is a
-widget's grid height in the Lakeview dashboard format; `weight_c` and `weight_t` are the
-estimator's arm weights. A thirteenth appearing turns `O5` or `O10` red, and the fix is a
-conversation — never an addition made in the same commit as the name.
+widget's grid height in the Lakeview dashboard format, and `imageHeight`, `imageUrlTemplate`
+and `linkUrlTemplate` are three of the twenty-two keys a Lakeview table column is read with,
+added 2026-09-15 when the compiled tables took the full shape the published dashboard requires;
+`weight_c` and `weight_t` are the estimator's arm weights. A sixteenth appearing turns `O5` or
+`O10` red, and the fix is a conversation — never an addition made in the same commit as the
+name. (This section said *twelve* and *three more in the compiled consumers*; it is fifteen and
+six, and `make figures` is what said so.)
 
 **The twelfth was `height`, and this paragraph read *eleven* while the table three lines above
 it printed `12`.** Both numbers were on the same screen, on every run, and it was a human
@@ -217,7 +221,7 @@ itself.
 * **That a person could not be re-identified by joining store, SKU and time outside this
   system.** Claim 7 is that no decision *targets* a person. It is not a statement about what
   somebody else could infer from an aggregate, and it would be dishonest to let it read as one.
-* **That the twelve explained collisions are the only ones that will ever be innocent.** Each
+* **That the fifteen explained collisions are the only ones that will ever be innocent.** Each
   new overlap is a conversation.
 * **That the mutation set is complete.** Seven breaks are the breaks we thought of — and one
   of the seven exists only because a reviewer thought of a spelling we had not. A gate can be

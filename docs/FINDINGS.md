@@ -6592,11 +6592,20 @@ the binding on both compiled screens: the query name, the dataset, the fields, t
 per widget type, and that every encoding names a field the query carries. Run against the artefact
 the estate had, it refuses all four data widgets of the readout. What it does not prove is that
 Lakeview renders what the grammar says — that is still a screen somebody opens, and this cycle's
-frames are it.
+frames are it. **Opened once more after the first repair**: the charts drew (*No data*, on the
+parametrised dataset, which is the defaults doing what they say) and both tables still read
+*Invalid widget definition* — a version-1 table column is read in the full shape Lakeview exports,
+twenty-two keys, and `fieldName` with `displayName` is not a column. Taken from a dashboard the
+vendor publishes rather than guessed a third time, and the test now requires the keys. And
+`inspect` reads the binding itself now — `check_widgets`, over the serialized dashboard the API
+hands back and the columns each dataset run returned — so the sentence *the screens draw* is
+asserted on the estate by the command that says it, with a plant in
+`tests/ops/test_inspect_reads_the_widget_binding.py` that undoes the repair and is refused by name.
 
 *Site:* `src/holdout/contracts/compilers/dashboard.py` :: `MAIN_QUERY = "main_query"`
 *Site:* `tests/contracts/test_dashboard.py` :: `def test_every_data_widget_binds_to_main_query_with_its_fields_declared(`
-*Disposition:* closed by the branch that found it, once the redeployed screen is opened and draws
+*Disposition:* closed by the branch that found it, once the redeployed screen is opened and draws;
+`inspect` carries the check from here
 *Status:* open
 
 ---

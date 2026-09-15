@@ -148,6 +148,25 @@ EXPLAINED: dict[tuple[str, str], str] = {
         "this list already carries', plural; measured over the other ten entries, one is. "
         "Prior wording kept per doctrine rule 4"
     ),
+    # Added 2026-09-15, in its own commit, one after the commit that introduced the names --
+    # this list's rule -- and by the session that introduced them, which the rule above says
+    # should be a reviewer; recorded here rather than hidden. Three keys of a Lakeview table
+    # column, in the full shape the vendor exports and the published dashboard requires
+    # (`fieldName` with `displayName` alone imported as *Invalid widget definition*, on this
+    # estate, on 2026-09-15). The narrowing `height` refuses is refused here on the same
+    # footing: the keys stay, and are explained.
+    ("imageHeight", "height"): (
+        "a Lakeview table column's image display height -- one of twenty-two keys the vendor "
+        "exports on every column, in `generated/dashboards/*.lvdash.json`. schema.org's "
+        "`height` is a person's; this one sizes a picture in a cell that shows none"
+    ),
+    ("imageUrlTemplate", "URL"): (
+        "the same column's template for rendering a cell as an image, `{{ @ }}`, the vendor's "
+        "default. Presidio's URL can identify a person; this one is a format string"
+    ),
+    ("linkUrlTemplate", "URL"): (
+        "and the template for rendering a cell as a link, likewise `{{ @ }}`"
+    ),
 }
 
 

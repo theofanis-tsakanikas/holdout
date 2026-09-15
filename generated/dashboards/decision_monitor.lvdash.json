@@ -77,6 +77,10 @@
                   }
                 }
               },
+              "frame": {
+                "showTitle": true,
+                "title": "Decisions over the day, by outcome"
+              },
               "version": 3,
               "widgetType": "area"
             }
@@ -126,6 +130,10 @@
                     "type": "quantitative"
                   }
                 }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Which guardrails fired"
               },
               "version": 3,
               "widgetType": "bar"
