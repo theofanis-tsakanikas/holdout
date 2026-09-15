@@ -252,8 +252,82 @@ def _dashboards() -> list[dict[str, Any]]:
             return found
 
 
+#: The one query name a Lakeview widget spec reads its data from.
+MAIN_QUERY = "main_query"
+
+#: Spec versions per widget type, as Lakeview exports them. A table at a chart's version
+#: imported as *Invalid widget definition* on 2026-09-15.
+SPEC_VERSION = {"table": 1, "counter": 2, "line": 3, "bar": 3, "area": 3}
+
+COLUMN_REF = re.compile(r"`([^`]+)`")
+
+
+def check_widgets(serialized: dict[str, Any], columns: dict[str, list[str]]) -> list[str]:
+    """**The half a dataset run cannot see: the binding from widget to query to column.**
+
+    On 2026-09-15 every dataset of both dashboards executed and this command called the screens
+    green, while the published dashboard showed *Missing query "main_query"* in every widget
+    with data. A widget spec binds to a query by the one name Lakeview gives it; its fields
+    must be columns the dataset returned; its encodings must name fields the query declares;
+    its spec version is per widget type. Read here off the serialized dashboard the API hands
+    back and the columns the dataset run just produced -- both were already in hand.
+    """
+    faults: list[str] = []
+    for page in serialized.get("pages", []):
+        for item in page.get("layout", []):
+            widget = item.get("widget", {})
+            if "queries" not in widget:
+                continue  # a textbox
+            name = widget.get("name", "?")
+            queries = widget["queries"]
+            if len(queries) != 1 or queries[0].get("name") != MAIN_QUERY:
+                faults.append(
+                    f"{name}: binds {[q.get('name') for q in queries]}, not `{MAIN_QUERY}`"
+                )
+                continue
+            query = queries[0].get("query", {})
+            dataset = query.get("datasetName")
+            if dataset not in columns:
+                faults.append(
+                    f"{name}: dataset {dataset!r} did not run, so nothing can draw from it"
+                )
+                continue
+            fields = query.get("fields") or []
+            if not fields:
+                faults.append(f"{name}: declares no fields")
+                continue
+            for field in fields:
+                for column in COLUMN_REF.findall(field.get("expression", "")):
+                    if column != "*" and column not in columns[dataset]:
+                        faults.append(
+                            f"{name}: field `{column}` is not a column {dataset} returned {columns[dataset]}"
+                        )
+            declared = {f.get("name") for f in fields}
+            spec = widget.get("spec", {})
+            used = set()
+            for value in spec.get("encodings", {}).values():
+                if isinstance(value, dict) and "fieldName" in value:
+                    used.add(value["fieldName"])
+                elif isinstance(value, list):
+                    used |= {
+                        v["fieldName"] for v in value if isinstance(v, dict) and "fieldName" in v
+                    }
+            if used - declared:
+                faults.append(
+                    f"{name}: encodings name fields the query does not declare {sorted(used - declared)}"
+                )
+            kind = spec.get("widgetType")
+            if kind in SPEC_VERSION and spec.get("version") != SPEC_VERSION[kind]:
+                faults.append(
+                    f"{name}: a {kind} at spec version {spec.get('version')}, Lakeview reads {SPEC_VERSION[kind]}"
+                )
+    return faults
+
+
 def check_dashboards(warehouse_id: str) -> int:
-    print("── dashboards, every dataset executed as the dashboard would")
+    print(
+        "── dashboards, every dataset executed as the dashboard would, and every widget's binding read"
+    )
     boards = _dashboards()
     if not boards:
         print("FAIL  no dashboard named `Holdout — …` is in the workspace")
@@ -266,6 +340,7 @@ def check_dashboards(warehouse_id: str) -> int:
         print(
             f"  {board['display_name']}  ({widgets} widget(s), lifecycle {full.get('lifecycle_state')})"
         )
+        columns: dict[str, list[str]] = {}
         for dataset in serialized.get("datasets", []):
             text = "\n".join(dataset.get("queryLines", []))
             declared = {p.get("keyword") for p in dataset.get("parameters", [])}
@@ -295,9 +370,25 @@ def check_dashboards(warehouse_id: str) -> int:
                     f"    {dataset['name']:<20} draws: {len(got.rows)} row(s)"
                     + ("   <- EMPTY" if not got.rows else "")
                 )
+                columns[dataset["name"]] = got.columns
             else:
                 print(f"    {dataset['name']:<20} CANNOT DRAW: {(got.error or got.state)[:900]}")
                 failed = 1
+        faults = check_widgets(serialized, columns)
+        bound = sum(
+            1
+            for p in serialized.get("pages", [])
+            for w in p.get("layout", [])
+            if "queries" in w.get("widget", {})
+        )
+        if faults:
+            for fault in faults:
+                print(f"    WIDGET CANNOT DRAW: {fault}")
+            failed = 1
+        else:
+            print(
+                f"    {bound} data widget(s) bound to a query, its fields and its dataset's columns"
+            )
     return failed
 
 
