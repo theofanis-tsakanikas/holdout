@@ -209,8 +209,17 @@ def _data_widget(
     encodings: dict[str, Any],
     disaggregated: bool,
     position: dict[str, int],
+    title: str | None = None,
+    spec_extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One widget over one dataset, in the shape the published dashboard renders."""
+    spec: dict[str, Any] = {
+        "version": SPEC_VERSION[widget_type],
+        "widgetType": widget_type,
+        "encodings": encodings,
+        "frame": {"showTitle": title is not None, **({"title": title} if title else {})},
+    }
+    spec.update(spec_extra or {})
     return {
         "widget": {
             "name": name,
@@ -224,27 +233,82 @@ def _data_widget(
                     },
                 }
             ],
-            "spec": {
-                "version": SPEC_VERSION[widget_type],
-                "widgetType": widget_type,
-                "encodings": encodings,
-            },
+            "spec": spec,
         },
         "position": position,
     }
 
 
+#: A table column, in the full shape a version-1 table spec is read with. **Every key is
+#: required**: a column carrying only `fieldName` and `displayName` -- the first repair --
+#: still imported as *Invalid widget definition*. Taken from the shape Lakeview itself exports
+#: (databricks/bundle-examples, `nyc_taxi_trip_analysis.lvdash.json`), read on 2026-09-15.
+_COLUMN_KINDS = {
+    "string": {"type": "string", "displayAs": "string", "alignContent": "left"},
+    "number": {
+        "type": "float",
+        "displayAs": "number",
+        "alignContent": "right",
+        "numberFormat": "0.00",
+    },
+    "integer": {
+        "type": "integer",
+        "displayAs": "number",
+        "alignContent": "right",
+        "numberFormat": "0",
+    },
+}
+
+
+def _column(name: str, kind: str, order: int) -> dict[str, Any]:
+    return {
+        "fieldName": name,
+        "displayName": name,
+        "title": name,
+        "order": 100000 + order,
+        "visible": True,
+        "allowHTML": False,
+        "allowSearch": False,
+        "booleanValues": ["false", "true"],
+        "highlightLinks": False,
+        "imageHeight": "",
+        "imageWidth": "",
+        "imageTitleTemplate": "{{ @ }}",
+        "imageUrlTemplate": "{{ @ }}",
+        "linkOpenInNewTab": True,
+        "linkTextTemplate": "{{ @ }}",
+        "linkTitleTemplate": "{{ @ }}",
+        "linkUrlTemplate": "{{ @ }}",
+        "preserveWhitespace": False,
+        "useMonospaceFont": False,
+        **_COLUMN_KINDS[kind],
+    }
+
+
 def _table(
-    name: str, dataset: str, columns: tuple[str, ...], position: dict[str, int]
+    name: str,
+    dataset: str,
+    columns: tuple[tuple[str, str], ...],
+    position: dict[str, int],
+    title: str,
 ) -> dict[str, Any]:
     return _data_widget(
         name=name,
         dataset=dataset,
         widget_type="table",
-        fields=[_field(column) for column in columns],
-        encodings={"columns": [{"fieldName": c, "displayName": c} for c in columns]},
+        fields=[_field(column) for column, _ in columns],
+        encodings={"columns": [_column(c, kind, i) for i, (c, kind) in enumerate(columns)]},
         disaggregated=True,
         position=position,
+        title=title,
+        spec_extra={
+            "invisibleColumns": [],
+            "allowHTMLByDefault": False,
+            "itemsPerPage": 25,
+            "paginationSize": "default",
+            "condensed": True,
+            "withRowNumber": False,
+        },
     )
 
 
@@ -350,14 +414,15 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                         "verdicts",
                         "verdict",
                         (
-                            "experiment_id",
-                            "verdict",
-                            "ci_low",
-                            "ci_high",
-                            "p_value",
-                            "reason_codes",
+                            ("experiment_id", "string"),
+                            ("verdict", "string"),
+                            ("ci_low", "number"),
+                            ("ci_high", "number"),
+                            ("p_value", "number"),
+                            ("reason_codes", "string"),
                         ),
                         {"x": 0, "y": 7, "width": 12, "height": 3},
+                        "The number, or the reason there is none",
                     ),
                     _data_widget(
                         name="arms_by_week",
@@ -375,6 +440,7 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                         },
                         disaggregated=False,
                         position={"x": 6, "y": 3, "width": 6, "height": 4},
+                        title="Treatment against control, by week",
                     ),
                     # **One bar per store, coloured by arm** -- so one store dragging the mean
                     # is visible as one bar. A histogram was the first shape and drew nothing:
@@ -395,19 +461,21 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                         },
                         disaggregated=False,
                         position={"x": 0, "y": 10, "width": 6, "height": 4},
+                        title="Per store, by arm",
                     ),
                     _table(
                         "locked_design",
                         "verdict",
                         (
-                            "experiment_id",
-                            "seed",
-                            "digest",
-                            "data_version",
-                            "period_opens_on",
-                            "period_ends_on",
+                            ("experiment_id", "string"),
+                            ("seed", "string"),
+                            ("digest", "string"),
+                            ("data_version", "string"),
+                            ("period_opens_on", "string"),
+                            ("period_ends_on", "string"),
                         ),
                         {"x": 6, "y": 10, "width": 6, "height": 4},
+                        "The locked design",
                     ),
                 ],
             }
@@ -477,6 +545,7 @@ def compile_decision_monitor(contracts: ContractSet) -> str:
                         },
                         disaggregated=False,
                         position={"x": 0, "y": 0, "width": 12, "height": 5},
+                        title="Decisions over the day, by outcome",
                     ),
                     _data_widget(
                         name="which_guardrails_fired",
@@ -492,6 +561,7 @@ def compile_decision_monitor(contracts: ContractSet) -> str:
                         },
                         disaggregated=False,
                         position={"x": 0, "y": 5, "width": 6, "height": 5},
+                        title="Which guardrails fired",
                     ),
                     {
                         "widget": {
