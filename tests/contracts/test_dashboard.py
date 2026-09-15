@@ -27,6 +27,7 @@ from holdout.contracts.compilers.dashboard import (
     READOUT_PATH,
     SPEC_VERSION,
     DashboardError,
+    _readout_metric,
     compile_decision_monitor,
     compile_readout_dashboard,
 )
@@ -103,7 +104,10 @@ def test_the_verdict_dataset_selects_every_column_and_one_verdict(
     text = "".join(_dataset(readout_dashboard, "verdict")["queryLines"])
     for column in READOUT_COLUMNS:
         assert f"  {column}" in text, f"the verdict dataset does not select {column}"
-    assert "coalesce(cast(uplift as string), reason_code) as verdict" in text
+    # The number is rounded as the contract says before it becomes the verdict: a float's
+    # sixteen digits were the first screen's verdict, and the contract says two.
+    decimals = _readout_metric(CONTRACTS).rounding.decimals
+    assert f"coalesce(cast(bround(uplift, {decimals}) as string), reason_code) as verdict" in text
     assert ":" not in text.replace("::", ""), "the verdict dataset takes no parameter"
     placed = next(
         widget
