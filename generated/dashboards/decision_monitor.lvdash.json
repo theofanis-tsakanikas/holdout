@@ -59,6 +59,20 @@
                   "displayName": "outcome",
                   "fieldName": "outcome",
                   "scale": {
+                    "mappings": [
+                      {
+                        "color": "#1FC9DC",
+                        "value": "normal"
+                      },
+                      {
+                        "color": "#FA8E00",
+                        "value": "fallback"
+                      },
+                      {
+                        "color": "#A14840",
+                        "value": "refusal"
+                      }
+                    ],
                     "type": "categorical"
                   }
                 },

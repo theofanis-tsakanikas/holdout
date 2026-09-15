@@ -6626,3 +6626,22 @@ console action by another name and is recorded here for that reason.
 for a user named by a variable the workflow supplies, never by a committed email; the workspace is
 destroyed each cycle, so the hand-made one does not conflict with it
 *Status:* open
+
+---
+
+**The readout's two charts draw nothing until a viewer types the pins** · found 2026-09-15 · by
+opening the redeployed screen
+
+`arm_metric` is the compiled readout query, parametrised on the experiment and three Delta
+versions — the pin, demonstrated. Its defaults are the first versions, which hold nothing, so the
+published screen's *Treatment against control, by week* and *Per store, by arm* read *No data*
+until somebody types the versions off the readout row, and the published URL does not take them.
+`inspect` prints the dataset as `<- EMPTY` and the widget as bound, both true. The verdict table
+and the four tiles draw, which is the screen's argument; the charts are the argument's
+illustration and today they need a hand.
+
+*Site:* `src/holdout/contracts/compilers/dashboard.py` :: `    "experiment_id": ("STRING", "fresh-ladder"),`
+*Disposition:* the author's — filter widgets bound to the four parameters, so the pins are typed
+on the screen rather than in a URL; or a dataset that reads the newest readout row's pins, which
+`VERSION AS OF` cannot take from a subquery and would need a second query the compiler writes
+*Status:* open

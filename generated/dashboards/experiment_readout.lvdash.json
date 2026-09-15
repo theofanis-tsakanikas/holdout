@@ -192,7 +192,7 @@
       "name": "verdict",
       "queryLines": [
         "select\n",
-        "  coalesce(cast(uplift as string), reason_code) as verdict,\n",
+        "  coalesce(cast(bround(uplift, 2) as string), reason_code) as verdict,\n",
         "  experiment_id,\n",
         "  moment,\n",
         "  metric_ref,\n",
@@ -462,7 +462,7 @@
                     "linkTextTemplate": "{{ @ }}",
                     "linkTitleTemplate": "{{ @ }}",
                     "linkUrlTemplate": "{{ @ }}",
-                    "numberFormat": "0.00",
+                    "numberFormat": "0.000",
                     "order": 100004,
                     "preserveWhitespace": false,
                     "title": "p_value",

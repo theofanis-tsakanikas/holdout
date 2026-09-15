@@ -251,6 +251,12 @@ _COLUMN_KINDS = {
         "alignContent": "right",
         "numberFormat": "0.00",
     },
+    "probability": {
+        "type": "float",
+        "displayAs": "number",
+        "alignContent": "right",
+        "numberFormat": "0.000",
+    },
     "integer": {
         "type": "integer",
         "displayAs": "number",
@@ -366,7 +372,10 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                 # the verdict is its last word.
                 "queryLines": [
                     "select\n",
-                    "  coalesce(cast(uplift as string), reason_code) as verdict,\n",
+                    # Rounded as the contract says: the cell is the contract's number, not a
+                    # float's -- `12397.6176738036` was the first screen's verdict.
+                    f"  coalesce(cast(bround(uplift, {metric.rounding.decimals}) as string), "
+                    "reason_code) as verdict,\n",
                     *(f"  {column},\n" for column in READOUT_COLUMNS[:-1]),
                     f"  {READOUT_COLUMNS[-1]}\n",
                     "from (\n",
@@ -418,7 +427,7 @@ def compile_readout_dashboard(contracts: ContractSet) -> str:
                             ("verdict", "string"),
                             ("ci_low", "number"),
                             ("ci_high", "number"),
-                            ("p_value", "number"),
+                            ("p_value", "probability"),
                             ("reason_codes", "string"),
                         ),
                         {"x": 0, "y": 7, "width": 12, "height": 3},
@@ -541,7 +550,20 @@ def compile_decision_monitor(contracts: ContractSet) -> str:
                         encodings={
                             "x": _axis("hour", "temporal"),
                             "y": _axis("sum(decisions)", "quantitative", "decisions"),
-                            "color": _axis("outcome", "categorical"),
+                            # **The doctrine's three colours, fixed to the three outcomes** so
+                            # that a day that is all fallback is an amber band and not whatever
+                            # the palette's first colour happens to be.
+                            "color": {
+                                **_axis("outcome", "categorical"),
+                                "scale": {
+                                    "type": "categorical",
+                                    "mappings": [
+                                        {"value": "normal", "color": "#1FC9DC"},
+                                        {"value": "fallback", "color": "#FA8E00"},
+                                        {"value": "refusal", "color": "#A14840"},
+                                    ],
+                                },
+                            },
                         },
                         disaggregated=False,
                         position={"x": 0, "y": 0, "width": 12, "height": 5},
