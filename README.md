@@ -50,16 +50,16 @@ is a build failure.** That is the project in one sentence.
 ## Status
 
 **Everything in this repository is proved locally, and the estate has been built, driven and torn
-down through CI four times.** The last full cycle ran on 2026-09-13, from `main`, every dispatch
+down through CI five times.** The last full cycle ran on 2026-09-15, from `main`, every dispatch
 verified against the account afterwards:
 
 | step | run | what it did |
 |---|---|---|
-| `deploy` | [34756057061](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34756057061) | four Terraform layers, 135 resources, in 5 minutes |
-| `backfill` | [34756473276](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34756473276) | 8 weeks of history, silver and gold, a model trained, gated, registered and served |
-| `run` | [34758751989](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34758751989) | a live day with late and duplicated deliveries; both experiments read out; the endpoint asked which version answered |
-| `inspect` | [34759485334](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34759485334) | every table counted, both dashboards' datasets executed, the assignment table's door tried, ten demo queries run |
-| `destroy` | [34761519867](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34761519867) | 138 resources and the workspace's network removed; the account asked what is left |
+| `deploy` | [34935407546](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34935407546) | four Terraform layers, in 5 minutes |
+| `backfill` | [34936332293](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34936332293) | 8 weeks of history, silver and gold, a model trained, gated, registered and served — 45 minutes |
+| `run` | [34939891486](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34939891486) | a live day with late and duplicated deliveries; both experiments read out; the endpoint asked which version answered |
+| `inspect` | [34961737449](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34961737449) | every table counted, both dashboards' datasets executed and every widget's binding read, the assignment table's door tried, eleven demo queries run |
+| `destroy` | [34996015161](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34996015161) | reverse order; the account asked what is left — the state bucket and its logs, the state key, five parameters, two roles, and nothing else of this project's |
 
 What `run` read out of `gold.readout` on the estate — one experiment sized correctly, one declared
 with a stopping rule that permits peeking:
@@ -70,6 +70,20 @@ with a number  1   ['fresh-ladder']          +12,398 cents  [+11,223, +13,571]  
 refused        1   [('fresh-ladder-peeking', 'STOPPING_RULE_PERMITS_PEEKING')]
 OK      every figure this step publishes was asserted
 ```
+
+The same two rows, on the screen the project calls its most important one — the compiled AI/BI
+dashboard, opened on the standing estate by a headless browser:
+
+<p align="center">
+  <img src="images/databricks/dashboard-experiment-readout.png" width="900" alt="The experiment readout dashboard in Databricks: four check tiles — balance, exposure, contamination, power — each naming the code it refuses with; a table titled The number, or the reason there is none, with fresh-ladder at 12397.62, ci 11223.00 to 13571.00, p 0.001, and fresh-ladder-peeking reading STOPPING_RULE_PERMITS_PEEKING in the same cell; the locked design with seed and digest; two charts over the parametrised readout reading No data"><br>
+  <sub><b>The refusal at the same size as the number</b> — one column, <code>verdict</code>, carries
+  both cases: <b>12397.62</b> with its interval and <code>p = 0.001</code> for the sized experiment,
+  and <b><code>STOPPING_RULE_PERMITS_PEEKING</code></b> for the one declared with interim looks, in the
+  same cell at the same size. The four tiles above are compiled from the closed vocabulary — a fifth
+  readout check would be a contract change that moves this screen. The two charts read the readout
+  query pinned to Delta versions and draw nothing until a viewer types the pins off the row; that is
+  a filed finding, not a hidden one.</sub>
+</p>
 
 And none of that is needed to check the thesis. The claim that separates this from a demo runs
 on a laptop, with no account, in under five minutes:
@@ -90,7 +104,18 @@ on a laptop, with no account, in under five minutes:
 **The estate is torn down.** It costs nothing while it is down, it is rebuilt from `main` by one
 dispatch, and a torn-down estate that provably ran is worth more here than one left standing —
 the whole argument of the project is that a number has to be reproducible from what was written
-down.
+down. What stood, while it stood:
+
+<table>
+<tr>
+<td width="50%"><img src="images/databricks/catalog-holdout.png" alt="Unity Catalog explorer: the holdout catalog with five schemas — bronze, gold, information_schema, landing, silver — each owned by the deploy service principal, whose id is masked"><br><sub><b>The catalog</b> — five schemas, every one owned by the service principal the workflows run as; no person owns anything here. The storage behind each is its own S3 zone, and the buckets are the ones in the frame above.</sub></td>
+<td width="50%"><img src="images/databricks/job-runs-cycle.png" alt="Jobs and Pipelines, Runs: thirteen job runs on 15 September 2026, all Succeeded, all run as holdout-deploy — baseline history into landing, bronze into silver, silver into gold, experiment design, train gate register, one live day arriving wrong, experiment readout"><br><sub><b>The cycle, as the workspace saw it</b> — thirteen runs, every one <code>holdout-deploy</code>, none started by a hand: history, bronze, silver, gold, the design, training with its gates, the live day, the readout. A job run by a person would be the finding.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="images/github/inspect-run.png" alt="A GitHub Actions run of inspect.yml: the suite was green on this sha, then ask the estate what every screen will show — both green"><br><sub><b>Asking the estate</b> — <code>inspect</code> is the sixth workflow and the only one that changes nothing: every table counted, both readouts printed in full, the door tried, every dashboard dataset executed and every widget's binding read, the notebook's queries run. It exists because the author asked whether the dashboards draw and no command could answer.</sub></td>
+<td width="50%"><img src="images/github/destroy-run.png" alt="A GitHub Actions run of destroy.yml, destroy all: the suite was green on this sha, then destroy all — both green"><br><sub><b>Torn down, by dispatch</b> — never automatic, on success or on failure: on failure it would destroy the evidence, on success the standing estate is what the camera needs. Its last step asks the account what is left and refuses to be green if the answer is more than the survivor list.</sub></td>
+</tr>
+</table>
 
 <p align="center">
   <img src="images/aws/s3-buckets.png" width="900" alt="The S3 console after destroy: nine general-purpose buckets in the account, of which two belong to holdout — the Terraform state bucket and its access-log bucket, in eu-west-1. The account id is masked in the identity chip and inside the names of sibling projects' buckets"><br>
@@ -99,7 +124,7 @@ down.
   project's. The other seven belong to sibling projects and carry the account id in their names,
   which is why they are barred; the frame was taken by a headless browser signed in for fifteen
   minutes with read-only rights, and passed through <code>aws-mask</code> before it landed here.
-  Screenshots of the two AI/BI dashboards are taken on the next cycle, the same way.</sub>
+  Every console frame in this README was taken the same way, and none by hand.</sub>
 </p>
 
 ## Contents
@@ -165,6 +190,21 @@ opens, from a committed seed, and append-only at the storage layer.
   <code>source</code> is a build failure here, whatever file extension it lives in.</sub>
 </p>
 
+<table>
+<tr>
+<td width="50%"><img src="images/databricks/lineage-sales.png" alt="Unity Catalog lineage graph for holdout.silver.sales: a bronze volume, files/pos_lines, feeds silver.sales, which feeds gold.priced_sales; every node owned by holdout-deploy"><br><sub><b>Lineage the catalog drew itself</b> — the POS lines land as files in a bronze volume, become <code>silver.sales</code>, become <code>gold.priced_sales</code>. Nothing here was declared to a lineage tool; Unity Catalog read it off the jobs that ran.</sub></td>
+<td width="50%"><img src="images/databricks/lineage-decision-economics.png" alt="Lineage graph for holdout.gold.decision_economics: priced_sales feeds decision_economics, which feeds the two compiled metric tables category_margin_per_store_week_v3 and units_sold_per_store_week_v1"><br><sub><b>…and where the contract lands</b> — <code>decision_economics</code> feeds the two metric tables the contract compiled into dbt, <code>category_margin_per_store_week_v3</code> and <code>units_sold_per_store_week_v1</code>. The graph is the compile step, seen from the other end.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="images/databricks/silver-schema.png" alt="Catalog explorer, holdout.silver: seven tables — decisions, price_displayed, quarantine, reference, sales, shelf_state, stores — every one owned by the service principal"><br><sub><b>Silver, as it stands</b> — seven tables, one per question: <code>sales</code>, <code>shelf_state</code> with the derived stock-out, <code>price_displayed</code> from the ESL acknowledgement, the as-of <code>reference</code>, <code>stores</code>, the decision record, and <code>quarantine</code> — which holds what was refused rather than dropped, and whose size is a health metric.</sub></td>
+<td width="50%"><img src="images/databricks/gold-schema.png" alt="Catalog explorer, holdout.gold: ten tables — category_margin_per_store_week_v3, decision_economics, decisions, experiment_assignment, policies, priced_sales, priced_waste, readout, units_sold_per_store_week_v1, waste, waste_value_per_store_week_v1 — plus a volume and the registered model demand"><br><sub><b>Gold, as it stands</b> — the business facts, the two compiled metric tables, the assignment table, the readout, the decision record joined to the contract's policies, and one registered model, <code>demand</code>, beside them. Two of the design's four families are partial, and <code>CLAUDE.md</code> says which.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="images/aws/ssm-parameters.png" alt="AWS Systems Manager Parameter Store: parameters under /holdout/bootstrap and /holdout/foundation — alert_email, deploy_role_arn, region, state_bucket, state_kms_key_arn, cross_account, data_key_arn, metastore_id, reaper_client_id, reaper_client_secret, reaper_lambda — names only"><br><sub><b>How the layers talk</b> — every cross-layer reference goes <code>output → SSM parameter → data</code>, never a remote state read: <code>bootstrap</code> publishes the role and the state bucket, <code>foundation</code> the keys, the metastore and the reaper's client. Two are <code>SecureString</code>; none of their values is in this frame.</sub></td>
+<td width="50%"><img src="images/aws/s3-buckets-standing.png" alt="The S3 console while the estate stands: fifteen buckets, of which eight are holdout's — bronze, catalog, gold, landing, silver, the Terraform state bucket and its logs, and the workspace root — all created the same morning in eu-west-1"><br><sub><b>The same list, while it stood</b> — the four zones, the catalog's storage, the workspace root and the two state buckets: eight of this project's, created at 09:06 that morning and gone by evening. The frame under <i>Status</i> is this list after <code>destroy all</code>.</sub></td>
+</tr>
+</table>
+
 ---
 
 ## The seven claims, and how each is attacked
@@ -202,6 +242,16 @@ print them:
 </tr>
 </table>
 
+Two of the seven, asked again on the estate — the same definitions, the estate's tables, the
+notebook's own cells:
+
+<table>
+<tr>
+<td width="50%"><img src="images/databricks/notebook-dbt-table.png" alt="The demo notebook, cell one-definition-the-dbt-table: category_margin_per_store_week, metric version 3, 16320 store-weeks, total 7799687.39 EUR — the compiled dbt model queried on the estate"><br><sub><b>Claim 5, on the estate</b> — the metric contract compiled into a dbt model and built by the gold job: <code>category_margin_per_store_week@v3</code>, <b>16,320</b> store-weeks, 7,799,687.39 EUR. The same definition the readout query and the agent's tool carry, and the one <code>make eval-definition</code> compares as an integer.</sub></td>
+<td width="50%"><img src="images/databricks/notebook-stock-out.png" alt="The demo notebook, cell a-stock-out-is-not-zero-demand: 433920 store-days, 77869 emptied, 17.9 percent, mean last sale hour when emptied 19.1"><br><sub><b>Claim 4, on the estate</b> — of <b>433,920</b> store-days in silver, <b>77,869</b> emptied (17.9%), at a mean last sale hour of 19.1: every one a day whose receipts understate its demand by an amount the day cannot tell you. The correction is graded locally on days censored on purpose; this is the population it exists for.</sub></td>
+</tr>
+</table>
+
 ## The refusal is the product
 
 The design engine sees a nine-field form — hypothesis, intervention, scope, metric, unit, minimum
@@ -229,6 +279,17 @@ other's trade, and the lottery is drawn over what survives:
   with them withheld.</sub>
 </p>
 
+<table>
+<tr>
+<td width="50%"><img src="images/databricks/assignment-table-details.png" alt="Catalog explorer, gold.experiment_assignment, Details tab: table properties including delta.appendOnly true, 225 rows, created by the service principal"><br><sub><b>The door, on the table</b> — <code>gold.experiment_assignment</code> carries <code>delta.appendOnly = true</code>: the storage refuses an update, a delete and an overwrite, and a row appended after the seal is caught at readout by the digest. 225 rows, the two experiments' arms.</sub></td>
+<td width="50%"><img src="images/databricks/notebook-door-tried.png" alt="The demo notebook's last cell, the-door-tried: a DELETE on gold.experiment_assignment that matches no row, refused with PERMISSION_DENIED — user does not have MODIFY on the table"><br><sub><b>The door, tried</b> — the demo notebook's last cell deletes a row that does not exist, run by a person: <b><code>PERMISSION_DENIED</code></b>, because account users hold <code>SELECT</code> and nothing that writes. Run by the owner, as <code>inspect</code> runs it, the same statement is refused one door later by <code>DELTA_CANNOT_MODIFY_APPEND_ONLY</code>. Two hands, two refusals.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="images/databricks/assignment-table-permissions.png" alt="Catalog explorer, gold.experiment_assignment, Permissions tab: one grant — All account users, SELECT, inherited from the holdout catalog"><br><sub><b>The door's one grant</b> — on the assignment table, account users hold <code>SELECT</code>, inherited from the catalog, and nothing that writes. The service principal owns the table and could append; <code>verify</code> re-reads it at readout and recomputes the digest, so an appended row is <code>CONTAMINATED_ASSIGNMENT</code> and not a silent unit in the control arm.</sub></td>
+<td width="50%"><img src="images/databricks/readout-table-sample.png" alt="Catalog explorer, gold.readout, Sample data: two rows — fresh-ladder at moment readout with metric_ref category_margin_per_store_week@v3 and data_version gold.decision_economics@2, gold.experiment_assignment@1, gold.waste@2; fresh-ladder-peeking at moment design with a null metric"><br><sub><b>The readout pins its versions</b> — every row of <code>gold.readout</code> names the Delta version of each table it read: <code>decision_economics@2</code>, <code>experiment_assignment@1</code>, <code>waste@2</code>. Re-running last month's readout returns last month's number, whatever late data arrived since. The peeking experiment's row is at moment <code>design</code>, with no metric, because it never reached a readout.</sub></td>
+</tr>
+</table>
+
 On the estate the two declared experiments are the demonstration: the same intervention, sized
 correctly, produces a number with an interval; declared with four interim looks and no spending
 function, it is refused at design and never assigned. The refused version of the readout screen
@@ -241,6 +302,20 @@ input — the ERP's cost ledger had been exported once, on the last day of the h
 knew every cost on that day and priced no earlier sale. A fresh-context review found it by reading
 `known_from` against the export day; [`docs/FINDINGS.md`](docs/FINDINGS.md) carries it, and the
 gate now requires both a number and a refusal so that it cannot pass on a bug again.
+
+<table>
+<tr>
+<td width="50%"><img src="images/databricks/notebook-verdict.png" alt="The demo notebook, cell the-number-or-the-reason-there-is-none run on serverless SQL: two rows, fresh-ladder with 12397.6176738036, 11223, 13571, p 0.000999, and fresh-ladder-peeking with STOPPING_RULE_PERMITS_PEEKING"><br><sub><b>The same query, typed</b> — <code>ops/demo_queries.sql</code> is deployed as a notebook and executed block by block by <code>inspect</code>, so what a viewer runs here is what the last <code>inspect</code> measured. The verdict column, raw: <code>12397.6176738036</code> beside <code>STOPPING_RULE_PERMITS_PEEKING</code>.</sub></td>
+<td width="50%"><img src="images/databricks/notebook-never-erases.png" alt="The demo notebook, cell the-readout-never-erases: every readout row with readout_at, restates and verdict, and the-door-is-append-only showing delta.appendOnly true"><br><sub><b>Doctrine rule 4, as a table</b> — <code>gold.readout</code> appends; each row names the one it restates, so a corrected readout never erases the readout it corrects. Below it, <code>show tblproperties</code> answers <code>delta.appendOnly = true</code> for the assignment table.</sub></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="50%"><img src="images/databricks/dashboard-decision-monitor.png" alt="The decision monitor dashboard: a stacked area of decisions over the driven day, 07:00 to 19:00, one amber band labelled fallback at about 780 an hour; a bar chart of which guardrails fired with a single bar at null; and the closed vocabulary of refusal codes, compiled from the contract"><br><sub><b>Doctrine rule 2, made visible</b> — the decision monitor's stacked area over the driven day is <b>one amber band</b>: every decision on this estate is the ladder's, marked <code>fallback</code>, because both declared policies are deterministic and the served model is not in the loop that prices the shelf. No guardrail fired, so the bar chart has one bar at <code>null</code>. The screen does not hide a 100% fallback rate behind a percentage; it draws it at full height.</sub></td>
+<td width="50%"><img src="images/databricks/notebook-fallback.png" alt="The demo notebook, cell every-price-on-this-estate-is-a-fallback: one row — 2025-12-22, outcome fallback, marker FALLBACK_LADDER, 3132 decisions, mean depth 37.4 percent"><br><sub><b>The record behind the band</b> — <code>gold.decisions</code> for the driven day: <b>3,132</b> decisions, every one <code>fallback</code> with the marker <code>FALLBACK_LADDER</code>, at a mean markdown depth of 37.4%. The marker is joined in from the contract's policies, never typed by the pipeline, and it travels from the decision record to the dashboard unchanged.</sub></td>
+</tr>
+</table>
 
 ## The agent proposes and never approves
 
@@ -260,6 +335,15 @@ confined rather than trusted:
 
 No language model is anywhere near the decision path: too slow, too expensive at 2.4M decisions
 a day, and non-deterministic.
+
+<p align="center">
+  <img src="images/aws/bedrock-invocations.png" width="900" alt="CloudWatch metrics: AWS/Bedrock Invocations for eu.anthropic.claude-haiku-4-5, summed per day over two weeks — one point, 152 invocations, on the day the recording was made"><br>
+  <sub><b>The recording is a real model run</b> — CloudWatch's <code>AWS/Bedrock · Invocations</code>
+  for the Haiku 4.5 inference profile, summed per day: <b>152</b> calls on the day
+  <code>make record-designs</code> was run, and none since, because the eval grades the recording
+  and does not call the model on every push. The account is the one the estate runs in; there is
+  no second secret.</sub>
+</p>
 
 ## The gates are proved to bite
 
@@ -339,11 +423,18 @@ make gate-proof    # the mutation ledger: every claim target owns what is plante
 </tr>
 </table>
 
+<table>
+<tr>
+<td width="50%"><img src="images/github/ci-run.png" alt="A GitHub Actions run of ci.yml on main: discover, then a matrix of thirteen claim jobs — claim-2 in seven shards, claim-1, claim-3 claim-4, claim-5 gate-proof, claim-6, claim-2-tests silver claim-7, gold — then claim-2 combine, then claims-complete; gate and secrets alongside; all green in 29 minutes"><br><sub><b>One push, as the forge ran it</b> — <code>discover</code> reads the claim targets off the Makefile, the matrix runs them in bins sized from measured runtimes with claim 2 in seven shards, and <code>claims-complete</code> is the one context the ruleset requires. Twenty-nine minutes, on a public repository, logged out.</sub></td>
+<td width="50%"><img src="images/github/run-run.png" alt="A GitHub Actions run of run.yml: the suite was green on this sha, then drive the day — both green"><br><sub><b>A dispatch that spends</b> — <code>run</code> refuses first to do anything unless <code>ci</code> was green on the exact sha it is about to drive, then drives the day, reads out both experiments and asserts the figures against the account. The workflows that spend never run from a branch.</sub></td>
+</tr>
+</table>
+
 CI ([`ci.yml`](.github/workflows/ci.yml)) discovers every `claim-N` target from the Makefile — a
 target that exists but is never run is impossible by construction — packs them into bins sized
 from measured runtimes, shards claim 2 seven ways, and requires one aggregate check on `main` that
-fails on anything that is not `success`, including `skipped`. The count is from `make check` on 2026-09-15; CI's last run on `main` is
-[34832024668](https://github.com/theofanis-tsakanikas/holdout/actions/runs/34832024668).
+fails on anything that is not `success`, including `skipped`. The count is from `make check` on
+2026-09-15; the run in the frame above is CI's on `main` the same day.
 
 ---
 
@@ -410,6 +501,17 @@ the project tag can see. A clean cycle is on the order of 10 USD. Two budgets al
 deploy role rather than the estate. The reaper collects Databricks compute older than 48 hours
 whatever else happened.
 
+<table>
+<tr>
+<td width="50%"><img src="images/aws/reaper-lambda.png" alt="The holdout-reaper Lambda function in the AWS console: triggered by EventBridge, 128 MB, one-minute timeout, last modified minutes ago"><br><sub><b>Level 1 of the teardown guarantee</b> — a Lambda on an hourly EventBridge rule that lists the estate's serving endpoints, warehouses and Lakebase instances and deletes any older than the TTL. It depends on no workflow's control flow, deletes nothing in AWS, and has reported on every scheduled run.</sub></td>
+<td width="50%"><img src="images/aws/landing-erp-drops.png" alt="The S3 console inside the landing bucket, files/baseline-drops/: fifty-six folders named day=2025-09-01 through the end of the history, one per day"><br><sub><b>The finding, as folders</b> — the ERP's cost ledger is exported <b>once per day</b> into the landing zone. When it was exported once per slice, on the last day, every earlier sale was unpriced, the pre-period's coefficient of variation read 3.57, and the estate refused both experiments; exported daily it reads 0.12. Fifty-six folders are the difference between a refusal and a number.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="images/databricks/serving-endpoint.png" alt="Databricks serving endpoint holdout-demand: Ready, serving holdout.gold.demand version 1 on a small CPU, 100 percent traffic; the workspace host masked in the invocation URL"><br><sub><b>The one thing that bills while idle</b> — the serving endpoint, <code>holdout.gold.demand</code> version 1 on the smallest CPU, Ready. It is applied last, by <code>backfill</code>, because an endpoint cannot point at a version that does not exist yet; and it is destroyed first.</sub></td>
+<td width="50%"><img src="images/databricks/sql-warehouses.png" alt="Databricks Compute, SQL warehouses: holdout, 2X-Small, serverless, created by holdout-deploy, 0 of 1 active"><br><sub><b>And the one that does not</b> — a 2X-Small serverless warehouse with auto-stop, <code>0 / 1</code> active between queries. The dashboards, the notebook and <code>inspect</code> all run on it; nothing on the estate is an always-on cluster, which is why there is no VPC.</sub></td>
+</tr>
+</table>
+
 ---
 
 ## Decisions
@@ -446,6 +548,13 @@ links to it and does not repeat it.
 No long-lived credentials: CI assumes one role through GitHub OIDC, scoped to three environment
 subjects, and the role carries an explicit Deny against widening its own policy or deleting the
 state. `gitleaks` is a required check. Scope, reporting and known limits: [SECURITY.md](SECURITY.md).
+
+<table>
+<tr>
+<td width="50%"><img src="images/aws/iam-deploy-role-trust.png" alt="IAM role holdout-deploy, Trust relationships: a federated principal, the account's GitHub OIDC provider, with conditions on audience, repository owner id, repository id, and subjects for the plan, deploy and destroy environments; the account id masked"><br><sub><b>No key, three subjects</b> — the deploy role trusts the GitHub OIDC provider and nothing else, and only for tokens whose subject names this repository's <code>plan</code>, <code>deploy</code> or <code>destroy</code> environment, by repository id rather than name. Nothing in this account can be assumed with a stored secret.</sub></td>
+<td width="50%"><img src="images/aws/iam-deploy-role-permissions.png" alt="IAM role holdout-deploy, Permissions: three policies — holdout-deploy-estate and holdout-deploy-never inline, holdout-deploy-state managed"><br><sub><b>And it cannot grow itself</b> — <code>holdout-deploy-never</code> is an explicit Deny on editing this role's own policies, on the state buckets and on the state key. Checked by simulating the principal, which reports <code>explicitDeny</code>.</sub></td>
+</tr>
+</table>
 
 ## License
 
